@@ -1,0 +1,68 @@
+"use client";
+
+import { useRef, useEffect } from "react";
+import { useSelectionAddress, useSheetStore } from "@/store/sheetStore";
+import { singleCellSelection } from "@/types/sheet-ui";
+
+/**
+ * Always-visible bar showing the selected cell's address and raw content (a formula or a
+ * plain value), editable independently of the grid's own double-click-to-edit overlay — the
+ * way Excel's formula bar works. Uses an uncontrolled input keyed by the cell address: moving
+ * to a different cell remounts it with that cell's content as the new `defaultValue`, instead
+ * of syncing a controlled draft via a ref or effect (both of which this project's lint rules
+ * for React 19 reject as unsafe during render).
+ */
+export default function FormulaBar() {
+  const selection = useSheetStore((s) => s.selection);
+  const sheet = useSheetStore((s) => s.sheet);
+  const setCellRaw = useSheetStore((s) => s.setCellRaw);
+  const setSelection = useSheetStore((s) => s.setSelection);
+  const address = useSelectionAddress();
+
+  const raw = sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "";
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = () => {
+    const value = inputRef.current?.value ?? raw;
+    if (value !== raw) setCellRaw(selection.anchorRow, selection.anchorCol, value);
+  };
+
+  // Clicking a grid cell/header changes `selection` (and thus this input's `key`, remounting
+  // it) from the same mousedown that would otherwise blur it — by the time a native blur
+  // fires, React may have already re-rendered with the new selection, so `commit` above would
+  // read the wrong target cell. Committing on the capture phase runs before that click's own
+  // (bubble-phase) handler changes anything, avoiding the race.
+  useEffect(() => {
+    function handleWindowMouseDown(e: MouseEvent) {
+      if (document.activeElement === inputRef.current && e.target !== inputRef.current) commit();
+    }
+    window.addEventListener("mousedown", handleWindowMouseDown, true);
+    return () => window.removeEventListener("mousedown", handleWindowMouseDown, true);
+  });
+
+  return (
+    <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-1.5">
+      <span className="w-16 shrink-0 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-center text-xs font-medium text-zinc-600">
+        {address}
+      </span>
+      <span className="shrink-0 text-xs italic text-zinc-300">fx</span>
+      <input
+        key={address}
+        ref={inputRef}
+        defaultValue={raw}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            commit();
+            setSelection(singleCellSelection(Math.min(selection.anchorRow + 1, sheet.rows - 1), selection.anchorCol));
+          } else if (e.key === "Escape") {
+            if (inputRef.current) inputRef.current.value = raw;
+            inputRef.current?.blur();
+          }
+        }}
+        placeholder="พิมพ์ค่าหรือสูตร เช่น =SUM(A1:A10)"
+        className="flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-blue-500"
+      />
+    </div>
+  );
+}
