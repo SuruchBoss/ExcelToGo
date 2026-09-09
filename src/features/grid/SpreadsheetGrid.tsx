@@ -15,6 +15,8 @@ import {
 } from "@/store/sheetStore";
 import { FORMULA_BY_ID } from "@/lib/formulaCatalog";
 import ColumnFilterPopover from "./ColumnFilterPopover";
+import { useHeaderContextMenu } from "./useHeaderContextMenu";
+import { useColumnFilterPopoverState } from "./useColumnFilterPopoverState";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 
@@ -40,8 +42,6 @@ export default function SpreadsheetGrid() {
   const columnFilters = useActiveFilters();
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
-  const onSelectionChange = setSelection;
-  const onCellCommit = commitCell;
   const onFormulaDrop = (row: number, col: number, formulaId: string) => {
     const def = FORMULA_BY_ID[formulaId];
     if (!def) return;
@@ -51,10 +51,6 @@ export default function SpreadsheetGrid() {
 
   const [editing, setEditing] = useState<{ row: number; col: number; value: string } | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ type: "row" | "col"; index: number; x: number; y: number } | null>(
-    null
-  );
-  const [filterPopover, setFilterPopover] = useState<{ col: number; x: number; y: number } | null>(null);
   const isSelecting = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -72,58 +68,35 @@ export default function SpreadsheetGrid() {
 
   const commitEdit = useCallback(() => {
     if (!editing) return;
-    onCellCommit(editing.row, editing.col, editing.value);
+    commitCell(editing.row, editing.col, editing.value);
     setEditing(null);
-  }, [editing, onCellCommit]);
+  }, [editing, commitCell]);
 
   const handleMouseDown = (row: number, col: number, shiftKey: boolean) => {
     if (editing && (editing.row !== row || editing.col !== col)) commitEdit();
     isSelecting.current = true;
     if (shiftKey) {
-      onSelectionChange(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
+      setSelection(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
     } else {
-      onSelectionChange(singleCellSelection(row, col));
+      setSelection(singleCellSelection(row, col));
     }
   };
 
   const handleMouseEnter = (row: number, col: number) => {
     if (!isSelecting.current) return;
-    onSelectionChange(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
+    setSelection(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
   };
 
   const selectWholeRow = (row: number) =>
-    onSelectionChange({ anchorRow: row, anchorCol: 0, startRow: row, startCol: 0, endRow: row, endCol: sheet.cols - 1 });
+    setSelection({ anchorRow: row, anchorCol: 0, startRow: row, startCol: 0, endRow: row, endCol: sheet.cols - 1 });
   const selectWholeColumn = (col: number) =>
-    onSelectionChange({ anchorRow: 0, anchorCol: col, startRow: 0, startCol: col, endRow: sheet.rows - 1, endCol: col });
+    setSelection({ anchorRow: 0, anchorCol: col, startRow: 0, startCol: col, endRow: sheet.rows - 1, endCol: col });
 
-  const openHeaderMenu = (e: React.MouseEvent, type: "row" | "col", index: number) => {
-    e.preventDefault();
+  const { menu: contextMenu, open: openHeaderMenu, close: closeHeaderMenu } = useHeaderContextMenu((type, index) => {
     if (type === "row") selectWholeRow(index);
     else selectWholeColumn(index);
-    setContextMenu({ type, index, x: e.clientX, y: e.clientY });
-  };
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-    };
-  }, [contextMenu]);
-
-  useEffect(() => {
-    if (!filterPopover) return;
-    const close = () => setFilterPopover(null);
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-    };
-  }, [filterPopover]);
+  });
+  const { popover: filterPopover, toggle: toggleFilterPopover, close: closeFilterPopover } = useColumnFilterPopoverState();
 
   useEffect(() => {
     const up = () => (isSelecting.current = false);
@@ -136,7 +109,7 @@ export default function SpreadsheetGrid() {
     const move = (r: number, c: number) => {
       const nr = Math.min(Math.max(r, 0), sheet.rows - 1);
       const nc = Math.min(Math.max(c, 0), sheet.cols - 1);
-      onSelectionChange(singleCellSelection(nr, nc));
+      setSelection(singleCellSelection(nr, nc));
       e.preventDefault();
     };
     switch (e.key) {
@@ -211,7 +184,7 @@ export default function SpreadsheetGrid() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setFilterPopover(filterPopover?.col === c ? null : { col: c, x: e.clientX, y: e.clientY });
+                      toggleFilterPopover(e, c);
                     }}
                     title="กรองข้อมูลคอลัมน์นี้"
                     className={clsx(
@@ -265,7 +238,7 @@ export default function SpreadsheetGrid() {
                       setDragOverCell(null);
                       const formulaId = e.dataTransfer.getData("text/formula-id");
                       if (formulaId) {
-                        onSelectionChange(singleCellSelection(r, c));
+                        setSelection(singleCellSelection(r, c));
                         onFormulaDrop(r, c, formulaId);
                       }
                     }}
@@ -290,13 +263,13 @@ export default function SpreadsheetGrid() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             commitEdit();
-                            onSelectionChange(singleCellSelection(Math.min(r + 1, sheet.rows - 1), c));
+                            setSelection(singleCellSelection(Math.min(r + 1, sheet.rows - 1), c));
                           } else if (e.key === "Escape") {
                             setEditing(null);
                           } else if (e.key === "Tab") {
                             e.preventDefault();
                             commitEdit();
-                            onSelectionChange(singleCellSelection(r, Math.min(c + 1, sheet.cols - 1)));
+                            setSelection(singleCellSelection(r, Math.min(c + 1, sheet.cols - 1)));
                           }
                         }}
                       />
@@ -331,7 +304,7 @@ export default function SpreadsheetGrid() {
               <button
                 onClick={() => {
                   insertRowAtSelection();
-                  setContextMenu(null);
+                  closeHeaderMenu();
                 }}
                 className="block w-full px-3 py-1.5 text-left hover:bg-zinc-50"
               >
@@ -340,7 +313,7 @@ export default function SpreadsheetGrid() {
               <button
                 onClick={() => {
                   deleteSelectedRow();
-                  setContextMenu(null);
+                  closeHeaderMenu();
                 }}
                 className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
               >
@@ -352,7 +325,7 @@ export default function SpreadsheetGrid() {
               <button
                 onClick={() => {
                   insertColumnAtSelection();
-                  setContextMenu(null);
+                  closeHeaderMenu();
                 }}
                 className="block w-full px-3 py-1.5 text-left hover:bg-zinc-50"
               >
@@ -361,7 +334,7 @@ export default function SpreadsheetGrid() {
               <button
                 onClick={() => {
                   deleteSelectedColumn();
-                  setContextMenu(null);
+                  closeHeaderMenu();
                 }}
                 className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
               >
@@ -373,12 +346,7 @@ export default function SpreadsheetGrid() {
       )}
 
       {filterPopover && (
-        <ColumnFilterPopover
-          col={filterPopover.col}
-          x={filterPopover.x}
-          y={filterPopover.y}
-          onClose={() => setFilterPopover(null)}
-        />
+        <ColumnFilterPopover col={filterPopover.col} x={filterPopover.x} y={filterPopover.y} onClose={closeFilterPopover} />
       )}
     </div>
   );
