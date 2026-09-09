@@ -16,6 +16,7 @@ import {
   createEmptySheet,
   deleteColumn,
   deleteRow,
+  detectSortRange,
   getCellFormat,
   insertColumnBefore,
   insertRowBefore,
@@ -26,6 +27,7 @@ import {
   setCellRaw,
   setRangeFormat,
   SheetModel,
+  sortRange,
   toTsv,
 } from "@/lib/sheet";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
@@ -100,6 +102,9 @@ interface SheetState {
    *  sheet isn't content that should be undoable or restored on reload. Falls back to (0,0)
    *  for a sheet with no entry yet via `activeSelectionOf`. */
   selectionBySheetId: Record<string, SelectionRect>;
+  /** Per-sheet, per-column allow-list of values to show (a column with no entry is unfiltered).
+   *  Like `selectionBySheetId`, kept out of `sheets` — a view filter isn't undoable content. */
+  filtersBySheetId: Record<string, Record<number, string[]>>;
   pending: PendingFormula | null;
   sidebarMode: SidebarMode;
   busy: string | null;
@@ -126,6 +131,11 @@ interface SheetState {
   cutSelection: () => void;
   pasteAtSelection: (externalText?: string) => void;
   clearClipboard: () => void;
+
+  sortSelection: (ascending: boolean) => void;
+  setColumnFilter: (col: number, values: string[]) => void;
+  clearColumnFilter: (col: number) => void;
+  clearAllFilters: () => void;
 
   toggleBold: () => void;
   setAlign: (align: CellAlign) => void;
@@ -182,6 +192,7 @@ export const useSheetStore = create<SheetState>()(
         sheets: [initialTab],
         activeSheetId: initialTab.id,
         selectionBySheetId: {},
+        filtersBySheetId: {},
         pending: null,
         sidebarMode: "palette",
         busy: null,
@@ -322,6 +333,34 @@ export const useSheetStore = create<SheetState>()(
           }),
 
         clearClipboard: () => set({ clipboard: null }),
+
+        sortSelection: (ascending) =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const computed = computeSheet(sheet);
+            const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
+            const next = sortRange(sheet, computed, range, selection.anchorCol, ascending);
+            return { sheets: withActiveSheet(s, () => next) };
+          }),
+
+        setColumnFilter: (col, values) =>
+          set((s) => ({
+            filtersBySheetId: {
+              ...s.filtersBySheetId,
+              [s.activeSheetId]: { ...s.filtersBySheetId[s.activeSheetId], [col]: values },
+            },
+          })),
+
+        clearColumnFilter: (col) =>
+          set((s) => {
+            const current = { ...s.filtersBySheetId[s.activeSheetId] };
+            delete current[col];
+            return { filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: current } };
+          }),
+
+        clearAllFilters: () =>
+          set((s) => ({ filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: {} } })),
 
         toggleBold: () =>
           set((s) => {
@@ -542,6 +581,51 @@ export function useAnchorFormat(): CellFormat {
     const selection = activeSelectionOf(s);
     return sheet.formats[selection.anchorRow]?.[selection.anchorCol] ?? EMPTY_FORMAT;
   });
+}
+
+const EMPTY_FILTERS: Record<number, string[]> = {};
+
+export function useActiveFilters(): Record<number, string[]> {
+  return useSheetStore((s) => s.filtersBySheetId[s.activeSheetId] ?? EMPTY_FILTERS);
+}
+
+export function useColumnFilter(col: number): string[] | null {
+  const filters = useActiveFilters();
+  return filters[col] ?? null;
+}
+
+const EMPTY_HIDDEN_ROWS: ReadonlySet<number> = new Set();
+
+/** Rows to hide in the grid because they don't match one or more active column filters. */
+export function useHiddenRows(): ReadonlySet<number> {
+  const filters = useActiveFilters();
+  const { display } = useComputedSheet();
+  return useMemo(() => {
+    const cols = Object.keys(filters);
+    if (cols.length === 0) return EMPTY_HIDDEN_ROWS;
+    const hidden = new Set<number>();
+    rows: for (let r = 0; r < display.length; r++) {
+      for (const colStr of cols) {
+        const col = Number(colStr);
+        const value = display[r]?.[col] ?? "";
+        if (!filters[col].includes(value)) {
+          hidden.add(r);
+          continue rows;
+        }
+      }
+    }
+    return hidden;
+  }, [filters, display]);
+}
+
+/** Unique display values in a column, for populating that column's filter checkbox list. */
+export function useUniqueColumnValues(col: number): string[] {
+  const { display } = useComputedSheet();
+  return useMemo(() => {
+    const set = new Set<string>();
+    for (const row of display) set.add(row[col] ?? "");
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [display, col]);
 }
 
 export function useCanUndo() {

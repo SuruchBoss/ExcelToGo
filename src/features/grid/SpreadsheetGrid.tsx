@@ -5,8 +5,17 @@ import { colToLetters } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
 import { normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
-import { selectActiveSelection, selectActiveSheet, useComputedSheet, useSheetStore } from "@/store/sheetStore";
+import {
+  selectActiveSelection,
+  selectActiveSheet,
+  useActiveFilters,
+  useComputedSheet,
+  useHiddenRows,
+  useSheetStore,
+} from "@/store/sheetStore";
 import { FORMULA_BY_ID } from "@/lib/formulaCatalog";
+import ColumnFilterPopover from "./ColumnFilterPopover";
+import { Filter } from "lucide-react";
 import clsx from "clsx";
 
 const ROW_HEADER_WIDTH = 48;
@@ -27,6 +36,8 @@ export default function SpreadsheetGrid() {
   const insertRowAtSelection = useSheetStore((s) => s.insertRowAtSelection);
   const insertColumnAtSelection = useSheetStore((s) => s.insertColumnAtSelection);
   const { values, display } = useComputedSheet();
+  const hiddenRows = useHiddenRows();
+  const columnFilters = useActiveFilters();
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
   const onSelectionChange = setSelection;
@@ -43,6 +54,7 @@ export default function SpreadsheetGrid() {
   const [contextMenu, setContextMenu] = useState<{ type: "row" | "col"; index: number; x: number; y: number } | null>(
     null
   );
+  const [filterPopover, setFilterPopover] = useState<{ col: number; x: number; y: number } | null>(null);
   const isSelecting = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -101,6 +113,17 @@ export default function SpreadsheetGrid() {
       window.removeEventListener("scroll", close, true);
     };
   }, [contextMenu]);
+
+  useEffect(() => {
+    if (!filterPopover) return;
+    const close = () => setFilterPopover(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [filterPopover]);
 
   useEffect(() => {
     const up = () => (isSelecting.current = false);
@@ -183,13 +206,30 @@ export default function SpreadsheetGrid() {
                 )}
                 style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT }}
               >
-                {colToLetters(c)}
+                <div className="flex items-center justify-center gap-1">
+                  <span>{colToLetters(c)}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFilterPopover(filterPopover?.col === c ? null : { col: c, x: e.clientX, y: e.clientY });
+                    }}
+                    title="กรองข้อมูลคอลัมน์นี้"
+                    className={clsx(
+                      "rounded p-0.5 hover:bg-zinc-300/50",
+                      columnFilters[c] ? "text-blue-600" : "text-zinc-400"
+                    )}
+                  >
+                    <Filter size={10} />
+                  </button>
+                </div>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: sheet.rows }, (_, r) => (
+          {Array.from({ length: sheet.rows }, (_, r) => r)
+            .filter((r) => !hiddenRows.has(r))
+            .map((r) => (
             <tr key={r}>
               <th
                 onClick={() => selectWholeRow(r)}
@@ -330,6 +370,15 @@ export default function SpreadsheetGrid() {
             </>
           )}
         </div>
+      )}
+
+      {filterPopover && (
+        <ColumnFilterPopover
+          col={filterPopover.col}
+          x={filterPopover.x}
+          y={filterPopover.y}
+          onClose={() => setFilterPopover(null)}
+        />
       )}
     </div>
   );

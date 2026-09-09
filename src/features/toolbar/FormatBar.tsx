@@ -1,6 +1,6 @@
 "use client";
 
-import { Bold, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
+import { Bold, AlignLeft, AlignCenter, AlignRight, ArrowDownAZ, ArrowDownZA } from "lucide-react";
 import { NUMBER_FORMAT_LABELS, NumberFormat } from "@/lib/sheet";
 import { useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import clsx from "clsx";
@@ -11,6 +11,7 @@ export default function FormatBar() {
   const setAlign = useSheetStore((s) => s.setAlign);
   const setTextColor = useSheetStore((s) => s.setTextColor);
   const setNumberFormat = useSheetStore((s) => s.setNumberFormat);
+  const sortSelection = useSheetStore((s) => s.sortSelection);
 
   return (
     <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-1.5">
@@ -72,6 +73,23 @@ export default function FormatBar() {
           </option>
         ))}
       </select>
+
+      <div className="mx-1 h-5 w-px bg-zinc-200" />
+
+      <button
+        onClick={() => sortSelection(true)}
+        title="เรียงจากน้อยไปมาก (A-Z, 0-9)"
+        className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+      >
+        <ArrowDownAZ size={14} />
+      </button>
+      <button
+        onClick={() => sortSelection(false)}
+        title="เรียงจากมากไปน้อย (Z-A, 9-0)"
+        className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+      >
+        <ArrowDownZA size={14} />
+      </button>
     </div>
   );
 }
