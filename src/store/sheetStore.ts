@@ -1,5 +1,7 @@
-import { useMemo } from "react";
-import { create } from "zustand";
+import { useEffect, useMemo } from "react";
+import { create, useStore } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { temporal } from "zundo";
 import {
   addColumn,
   addRow,
@@ -81,115 +83,153 @@ interface SheetState {
   exportPdf: () => void;
 }
 
-export const useSheetStore = create<SheetState>((set, get) => ({
-  sheet: seedSample(),
-  selection: singleCellSelection(0, 0),
-  pending: null,
-  sidebarMode: "palette",
-  busy: null,
+/** Only the sheet's cell contents are autosaved and tracked for undo/redo — UI-only state
+ *  (selection, an open formula panel, which sidebar tab is active) resets on reload and
+ *  isn't something users expect Ctrl+Z to step through. */
+type PersistedSlice = Pick<SheetState, "sheet">;
 
-  setCellRaw: (row, col, raw) => set((s) => ({ sheet: setCellRaw(s.sheet, row, col, raw) })),
-  addRow: () => set((s) => ({ sheet: addRow(s.sheet) })),
-  addColumn: () => set((s) => ({ sheet: addColumn(s.sheet) })),
+export const useSheetStore = create<SheetState>()(
+  persist(
+    temporal(
+      (set, get) => ({
+        sheet: seedSample(),
+        selection: singleCellSelection(0, 0),
+        pending: null,
+        sidebarMode: "palette",
+        busy: null,
 
-  setSelection: (sel) =>
-    set((s) => {
-      if (!s.pending?.pickingKey) return { selection: sel };
-      const addr = selectionToAddress(sel);
-      return {
-        selection: sel,
-        pending: { ...s.pending, values: { ...s.pending.values, [s.pending.pickingKey]: addr } },
-      };
-    }),
+        setCellRaw: (row, col, raw) => set((s) => ({ sheet: setCellRaw(s.sheet, row, col, raw) })),
+        addRow: () => set((s) => ({ sheet: addRow(s.sheet) })),
+        addColumn: () => set((s) => ({ sheet: addColumn(s.sheet) })),
 
-  setSidebarMode: (mode) => set({ sidebarMode: mode }),
-  toggleSidebar: (mode) => set((s) => ({ sidebarMode: s.sidebarMode === mode ? "none" : mode })),
+        setSelection: (sel) =>
+          set((s) => {
+            if (!s.pending?.pickingKey) return { selection: sel };
+            const addr = selectionToAddress(sel);
+            return {
+              selection: sel,
+              pending: { ...s.pending, values: { ...s.pending.values, [s.pending.pickingKey]: addr } },
+            };
+          }),
 
-  openFormulaPanel: (def, anchorRow, anchorCol) => {
-    const sel = get().selection;
-    const values: Record<string, string> = {};
-    let usedSelection = false;
-    for (const p of def.params) {
-      if (p.options) {
-        values[p.key] = p.defaultValue ?? p.options[0].value;
-        continue;
+        setSidebarMode: (mode) => set({ sidebarMode: mode }),
+        toggleSidebar: (mode) => set((s) => ({ sidebarMode: s.sidebarMode === mode ? "none" : mode })),
+
+        openFormulaPanel: (def, anchorRow, anchorCol) => {
+          const sel = get().selection;
+          const values: Record<string, string> = {};
+          let usedSelection = false;
+          for (const p of def.params) {
+            if (p.options) {
+              values[p.key] = p.defaultValue ?? p.options[0].value;
+              continue;
+            }
+            if (!usedSelection && (p.type === "range" || p.type === "cell")) {
+              if (p.type === "range" && !isSingleCell(sel)) {
+                values[p.key] = rangeRefString(sel.startRow, sel.startCol, sel.endRow, sel.endCol);
+              } else if (p.type === "cell") {
+                values[p.key] = cellRef(sel.anchorRow, sel.anchorCol);
+              } else {
+                values[p.key] = "";
+              }
+              usedSelection = true;
+            } else {
+              values[p.key] = p.defaultValue ?? "";
+            }
+          }
+          set({ pending: { def, anchorRow, anchorCol, values, pickingKey: null, scope: "cell" } });
+        },
+
+        updatePending: (pending) => set({ pending }),
+        cancelPending: () => set({ pending: null }),
+
+        insertPending: () => {
+          const { pending, sheet, selection } = get();
+          if (!pending) return;
+          let body: string;
+          try {
+            body = pending.def.build(pending.values);
+          } catch {
+            return;
+          }
+          const next = applyFormula(sheet, body, {
+            scope: pending.scope,
+            anchorRow: pending.anchorRow,
+            anchorCol: pending.anchorCol,
+            selection: {
+              startRow: selection.startRow,
+              startCol: selection.startCol,
+              endRow: selection.endRow,
+              endCol: selection.endCol,
+            },
+          });
+          set({ sheet: next, pending: null });
+        },
+
+        insertAIFormula: (formula) => {
+          const raw = formula.startsWith("=") ? formula : `=${formula}`;
+          const { sheet, selection } = get();
+          set({ sheet: setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw) });
+        },
+
+        importFromFile: async (file) => {
+          set({ busy: "กำลังนำเข้าไฟล์..." });
+          try {
+            const newSheet = await importWorkbookFromFile(file);
+            set({ sheet: newSheet, selection: singleCellSelection(0, 0) });
+          } catch (err) {
+            console.error(err);
+            alert("ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) ที่ถูกต้อง");
+          } finally {
+            set({ busy: null });
+          }
+        },
+
+        exportXlsx: async () => {
+          set({ busy: "กำลังสร้างไฟล์ Excel..." });
+          try {
+            const blob = await exportSheetToXlsxBlob(get().sheet, computeSheet(get().sheet));
+            downloadBlob(blob, "ExcelToGo.xlsx");
+          } finally {
+            set({ busy: null });
+          }
+        },
+
+        exportPdf: () => {
+          const sheet = get().sheet;
+          exportSheetToPdf(sheet, computeSheet(sheet), "ExcelToGo");
+        },
+      }),
+      {
+        limit: 100,
+        partialize: (s): PersistedSlice => ({ sheet: s.sheet }),
+        // `partialize` above returns a fresh `{ sheet }` wrapper object every call, so the
+        // default reference-equality check would treat every action (even ones that only
+        // touch `selection` or `pending`) as a sheet change and pollute the undo history.
+        // Compare the actual `sheet` reference instead.
+        equality: (a, b) => a.sheet === b.sheet,
       }
-      if (!usedSelection && (p.type === "range" || p.type === "cell")) {
-        if (p.type === "range" && !isSingleCell(sel)) {
-          values[p.key] = rangeRefString(sel.startRow, sel.startCol, sel.endRow, sel.endCol);
-        } else if (p.type === "cell") {
-          values[p.key] = cellRef(sel.anchorRow, sel.anchorCol);
-        } else {
-          values[p.key] = "";
-        }
-        usedSelection = true;
-      } else {
-        values[p.key] = p.defaultValue ?? "";
-      }
+    ),
+    {
+      name: "exceltogo-sheet-v1",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (s): PersistedSlice => ({ sheet: s.sheet }),
+      // Rehydration is triggered manually (see useHydrateSheetStore) after the first client
+      // render, so the server-rendered HTML and the client's initial render match exactly —
+      // reading localStorage during store creation would make them diverge and trigger a
+      // React hydration mismatch.
+      skipHydration: true,
     }
-    set({ pending: { def, anchorRow, anchorCol, values, pickingKey: null, scope: "cell" } });
-  },
+  )
+);
 
-  updatePending: (pending) => set({ pending }),
-  cancelPending: () => set({ pending: null }),
-
-  insertPending: () => {
-    const { pending, sheet, selection } = get();
-    if (!pending) return;
-    let body: string;
-    try {
-      body = pending.def.build(pending.values);
-    } catch {
-      return;
-    }
-    const next = applyFormula(sheet, body, {
-      scope: pending.scope,
-      anchorRow: pending.anchorRow,
-      anchorCol: pending.anchorCol,
-      selection: {
-        startRow: selection.startRow,
-        startCol: selection.startCol,
-        endRow: selection.endRow,
-        endCol: selection.endCol,
-      },
-    });
-    set({ sheet: next, pending: null });
-  },
-
-  insertAIFormula: (formula) => {
-    const raw = formula.startsWith("=") ? formula : `=${formula}`;
-    const { sheet, selection } = get();
-    set({ sheet: setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw) });
-  },
-
-  importFromFile: async (file) => {
-    set({ busy: "กำลังนำเข้าไฟล์..." });
-    try {
-      const newSheet = await importWorkbookFromFile(file);
-      set({ sheet: newSheet, selection: singleCellSelection(0, 0) });
-    } catch (err) {
-      console.error(err);
-      alert("ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) ที่ถูกต้อง");
-    } finally {
-      set({ busy: null });
-    }
-  },
-
-  exportXlsx: async () => {
-    set({ busy: "กำลังสร้างไฟล์ Excel..." });
-    try {
-      const blob = await exportSheetToXlsxBlob(get().sheet, computeSheet(get().sheet));
-      downloadBlob(blob, "ExcelToGo.xlsx");
-    } finally {
-      set({ busy: null });
-    }
-  },
-
-  exportPdf: () => {
-    const sheet = get().sheet;
-    exportSheetToPdf(sheet, computeSheet(sheet), "ExcelToGo");
-  },
-}));
+/** Reads any autosaved sheet from localStorage once, after the initial render has already
+ *  matched the server-rendered HTML. Call once near the root of the app. */
+export function useHydrateSheetStore() {
+  useEffect(() => {
+    useSheetStore.persist.rehydrate();
+  }, []);
+}
 
 /** Recomputes derived cell values/display strings, memoized on the sheet reference. */
 export function useComputedSheet() {
@@ -200,4 +240,44 @@ export function useComputedSheet() {
 export function useSelectionAddress() {
   const selection = useSheetStore((s) => s.selection);
   return selectionToAddress(selection);
+}
+
+export function useCanUndo() {
+  return useStore(useSheetStore.temporal, (s) => s.pastStates.length > 0);
+}
+
+export function useCanRedo() {
+  return useStore(useSheetStore.temporal, (s) => s.futureStates.length > 0);
+}
+
+export function undoSheet() {
+  useSheetStore.temporal.getState().undo();
+}
+
+export function redoSheet() {
+  useSheetStore.temporal.getState().redo();
+}
+
+/** Global Ctrl/Cmd+Z (undo) and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y (redo) shortcuts. Ignored while
+ *  focus is inside a text input/textarea so the browser's native undo for that field still works. */
+export function useUndoRedoShortcuts() {
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      if (!mod || (key !== "z" && key !== "y")) return;
+      e.preventDefault();
+      if (key === "y" || (key === "z" && e.shiftKey)) {
+        redoSheet();
+      } else {
+        undoSheet();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma } from "lucide-react";
-import { useSheetStore } from "@/store/sheetStore";
+import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save } from "lucide-react";
+import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 
 export default function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -16,6 +16,8 @@ export default function Toolbar() {
   const addRow = useSheetStore((s) => s.addRow);
   const addColumn = useSheetStore((s) => s.addColumn);
   const toggleSidebar = useSheetStore((s) => s.toggleSidebar);
+  const canUndo = useCanUndo();
+  const canRedo = useCanRedo();
 
   const paletteOpen = sidebarMode === "palette" && !hasPending;
   const aiOpen = sidebarMode === "ai" && !hasPending;
@@ -59,6 +61,25 @@ export default function Toolbar() {
       <div className="mx-1 h-5 w-px bg-zinc-200" />
 
       <button
+        onClick={undoSheet}
+        disabled={!canUndo}
+        title="เลิกทำ (Ctrl+Z)"
+        className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Undo2 size={15} />
+      </button>
+      <button
+        onClick={redoSheet}
+        disabled={!canRedo}
+        title="ทำซ้ำ (Ctrl+Y)"
+        className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Redo2 size={15} />
+      </button>
+
+      <div className="mx-1 h-5 w-px bg-zinc-200" />
+
+      <button
         onClick={addRow}
         className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
       >
@@ -72,7 +93,13 @@ export default function Toolbar() {
       </button>
 
       <div className="ml-auto flex items-center gap-2">
-        {busy && <span className="text-xs text-zinc-400">{busy}</span>}
+        {busy ? (
+          <span className="text-xs text-zinc-400">{busy}</span>
+        ) : (
+          <span title="ข้อมูลจะถูกบันทึกไว้ในเบราว์เซอร์นี้อัตโนมัติ" className="flex items-center gap-1 text-xs text-zinc-400">
+            <Save size={13} /> บันทึกอัตโนมัติ
+          </span>
+        )}
         <button
           onClick={() => toggleSidebar("palette")}
           className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
