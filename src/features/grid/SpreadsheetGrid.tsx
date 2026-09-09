@@ -19,6 +19,9 @@ export default function SpreadsheetGrid() {
   const setSelection = useSheetStore((s) => s.setSelection);
   const commitCell = useSheetStore((s) => s.setCellRaw);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
+  const clearSelection = useSheetStore((s) => s.clearSelection);
+  const clipboard = useSheetStore((s) => s.clipboard);
+  const clearClipboard = useSheetStore((s) => s.clearClipboard);
   const { values, display } = useComputedSheet();
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
@@ -100,12 +103,18 @@ export default function SpreadsheetGrid() {
         break;
       case "Delete":
       case "Backspace":
-        onCellCommit(row, col, "");
+        clearSelection();
         e.preventDefault();
         break;
       case "F2":
         startEdit(row, col);
         e.preventDefault();
+        break;
+      case "Escape":
+        if (clipboard) {
+          clearClipboard();
+          e.preventDefault();
+        }
         break;
       default:
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
@@ -117,6 +126,12 @@ export default function SpreadsheetGrid() {
   const isInSelection = (row: number, col: number) =>
     row >= selection.startRow && row <= selection.endRow && col >= selection.startCol && col <= selection.endCol;
   const isActive = (row: number, col: number) => row === selection.anchorRow && col === selection.anchorCol;
+  const isInClipboard = (row: number, col: number) => {
+    if (!clipboard) return false;
+    const endRow = clipboard.startRow + clipboard.rows.length - 1;
+    const endCol = clipboard.startCol + (clipboard.rows[0]?.length ?? 0) - 1;
+    return row >= clipboard.startRow && row <= endRow && col >= clipboard.startCol && col <= endCol;
+  };
 
   return (
     <div className="relative h-full overflow-auto rounded-lg border border-zinc-200 bg-white" tabIndex={-1}>
@@ -184,6 +199,7 @@ export default function SpreadsheetGrid() {
                       isActive(r, c) && "ring-2 ring-inset ring-blue-500",
                       !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
                       dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
+                      isInClipboard(r, c) && (clipboard?.cut ? "outline-dashed outline-2 outline-orange-400 -outline-offset-2" : "outline-dashed outline-2 outline-blue-400 -outline-offset-2"),
                       isErr && "text-red-600"
                     )}
                     style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT, maxWidth: COL_WIDTH }}

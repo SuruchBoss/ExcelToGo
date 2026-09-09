@@ -5,11 +5,12 @@ import SpreadsheetGrid from "@/features/grid/SpreadsheetGrid";
 import FormulaPalette from "@/features/formulas/FormulaPalette";
 import FormulaParamPanel from "@/features/formulas/FormulaParamPanel";
 import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
-import { useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
+import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
 
 export default function Home() {
   useHydrateSheetStore();
   useUndoRedoShortcuts();
+  useClipboardShortcuts();
 
   const sidebarMode = useSheetStore((s) => s.sidebarMode);
   const hasPending = useSheetStore((s) => s.pending !== null);

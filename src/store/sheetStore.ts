@@ -7,10 +7,17 @@ import {
   addRow,
   applyFormula,
   ApplyScope,
+  clearRange,
+  ClipboardBlock,
   computeSheet,
+  copyRange,
   createEmptySheet,
+  parseTsv,
+  pasteClipboardBlock,
+  pastePlainTextBlock,
   setCellRaw,
   SheetModel,
+  toTsv,
 } from "@/lib/sheet";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { downloadBlob, exportSheetToXlsxBlob, importWorkbookFromFile } from "@/lib/excelIO";
@@ -57,12 +64,17 @@ function selectionToAddress(sel: SelectionRect): string {
     : rangeRefString(sel.startRow, sel.startCol, sel.endRow, sel.endCol);
 }
 
+interface ClipboardState extends ClipboardBlock {
+  cut: boolean;
+}
+
 interface SheetState {
   sheet: SheetModel;
   selection: SelectionRect;
   pending: PendingFormula | null;
   sidebarMode: SidebarMode;
   busy: string | null;
+  clipboard: ClipboardState | null;
 
   setCellRaw: (row: number, col: number, raw: string) => void;
   addRow: () => void;
@@ -70,6 +82,12 @@ interface SheetState {
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   toggleSidebar: (mode: "palette" | "ai") => void;
+
+  clearSelection: () => void;
+  copySelection: () => void;
+  cutSelection: () => void;
+  pasteAtSelection: (externalText?: string) => void;
+  clearClipboard: () => void;
 
   openFormulaPanel: (def: FormulaDef, anchorRow: number, anchorCol: number) => void;
   updatePending: (pending: PendingFormula) => void;
@@ -97,10 +115,65 @@ export const useSheetStore = create<SheetState>()(
         pending: null,
         sidebarMode: "palette",
         busy: null,
+        clipboard: null,
 
         setCellRaw: (row, col, raw) => set((s) => ({ sheet: setCellRaw(s.sheet, row, col, raw) })),
         addRow: () => set((s) => ({ sheet: addRow(s.sheet) })),
         addColumn: () => set((s) => ({ sheet: addColumn(s.sheet) })),
+
+        clearSelection: () => {
+          const { sheet, selection } = get();
+          set({ sheet: clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol) });
+        },
+
+        copySelection: () => {
+          const { sheet, selection } = get();
+          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+          set({ clipboard: { ...block, cut: false } });
+          navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
+        },
+
+        cutSelection: () => {
+          const { sheet, selection } = get();
+          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+          set({ clipboard: { ...block, cut: true } });
+          navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
+        },
+
+        pasteAtSelection: (externalText) => {
+          const { sheet, selection, clipboard } = get();
+          const targetRow = selection.anchorRow;
+          const targetCol = selection.anchorCol;
+          if (clipboard) {
+            let next = pasteClipboardBlock(sheet, clipboard, targetRow, targetCol);
+            if (clipboard.cut) {
+              const height = clipboard.rows.length;
+              const width = clipboard.rows[0]?.length ?? 0;
+              const srcEndRow = clipboard.startRow + height - 1;
+              const srcEndCol = clipboard.startCol + width - 1;
+              const destOverlapsSource =
+                targetRow <= srcEndRow &&
+                targetRow + height - 1 >= clipboard.startRow &&
+                targetCol <= srcEndCol &&
+                targetCol + width - 1 >= clipboard.startCol;
+              // Moving to a spot that overlaps the original block would otherwise wipe out
+              // the very cells pasteClipboardBlock just wrote there.
+              if (!destOverlapsSource) {
+                next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+              }
+              set({ sheet: next, clipboard: null });
+            } else {
+              set({ sheet: next });
+            }
+            return;
+          }
+          if (externalText) {
+            const rows = parseTsv(externalText);
+            if (rows.length > 0) set({ sheet: pastePlainTextBlock(sheet, rows, targetRow, targetCol) });
+          }
+        },
+
+        clearClipboard: () => set({ clipboard: null }),
 
         setSelection: (sel) =>
           set((s) => {
@@ -279,5 +352,42 @@ export function useUndoRedoShortcuts() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+}
+
+/** Ctrl/Cmd+C copies the current selection, Ctrl/Cmd+X cuts it, and the browser's native
+ *  `paste` event (fired for Ctrl/Cmd+V, right-click paste, or the Edit menu alike) pastes it —
+ *  reading `clipboardData` directly instead of the async, permission-gated Clipboard API so a
+ *  paste from another app (e.g. real Excel) works too. All ignored while a text input/textarea
+ *  has focus so native copy/paste in that field keeps working. */
+export function useClipboardShortcuts() {
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(e.target)) return;
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      if (!mod || (key !== "c" && key !== "x")) return;
+      e.preventDefault();
+      const { copySelection, cutSelection } = useSheetStore.getState();
+      if (key === "c") copySelection();
+      else cutSelection();
+    }
+    function handlePaste(e: ClipboardEvent) {
+      if (isTypingTarget(e.target)) return;
+      e.preventDefault();
+      const text = e.clipboardData?.getData("text/plain");
+      useSheetStore.getState().pasteAtSelection(text);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("paste", handlePaste);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("paste", handlePaste);
+    };
   }, []);
 }
