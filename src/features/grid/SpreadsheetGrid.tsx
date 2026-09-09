@@ -13,10 +13,11 @@ import {
   useHiddenRows,
   useSheetStore,
 } from "@/store/sheetStore";
-import { FORMULA_BY_ID } from "@/lib/formulaCatalog";
+import { getFormulaById } from "@/lib/formulaCatalog";
 import ColumnFilterPopover from "./ColumnFilterPopover";
 import { useHeaderContextMenu } from "./useHeaderContextMenu";
 import { useColumnFilterPopoverState } from "./useColumnFilterPopoverState";
+import { useT } from "@/i18n";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 
@@ -25,6 +26,7 @@ const COL_WIDTH = 112;
 const ROW_HEIGHT = 32;
 
 export default function SpreadsheetGrid() {
+  const t = useT();
   const sheet = useSheetStore(selectActiveSheet);
   const selection = useSheetStore(selectActiveSelection);
   const setSelection = useSheetStore((s) => s.setSelection);
@@ -43,7 +45,7 @@ export default function SpreadsheetGrid() {
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
   const onFormulaDrop = (row: number, col: number, formulaId: string) => {
-    const def = FORMULA_BY_ID[formulaId];
+    const def = getFormulaById(t, formulaId);
     if (!def) return;
     setSelection(singleCellSelection(row, col));
     openFormulaPanel(def, row, col);
@@ -186,7 +188,7 @@ export default function SpreadsheetGrid() {
                       e.stopPropagation();
                       toggleFilterPopover(e, c);
                     }}
-                    title="กรองข้อมูลคอลัมน์นี้"
+                    title={t.grid.filterColumnTitle}
                     className={clsx(
                       "rounded p-0.5 hover:bg-zinc-300/50",
                       columnFilters[c] ? "text-blue-600" : "text-zinc-400"
@@ -308,7 +310,7 @@ export default function SpreadsheetGrid() {
                 }}
                 className="block w-full px-3 py-1.5 text-left hover:bg-zinc-50"
               >
-                แทรกแถวด้านบน
+                {t.grid.insertRowAbove}
               </button>
               <button
                 onClick={() => {
@@ -317,7 +319,7 @@ export default function SpreadsheetGrid() {
                 }}
                 className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
               >
-                ลบแถวนี้
+                {t.grid.deleteRow}
               </button>
             </>
           ) : (
@@ -329,7 +331,7 @@ export default function SpreadsheetGrid() {
                 }}
                 className="block w-full px-3 py-1.5 text-left hover:bg-zinc-50"
               >
-                แทรกคอลัมน์ด้านซ้าย
+                {t.grid.insertColumnLeft}
               </button>
               <button
                 onClick={() => {
@@ -338,7 +340,7 @@ export default function SpreadsheetGrid() {
                 }}
                 className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
               >
-                ลบคอลัมน์นี้
+                {t.grid.deleteColumn}
               </button>
             </>
           )}

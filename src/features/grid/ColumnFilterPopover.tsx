@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useColumnFilter, useSheetStore, useUniqueColumnValues } from "@/store/sheetStore";
+import { useT } from "@/i18n";
 
 interface Props {
   col: number;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function ColumnFilterPopover({ col, x, y, onClose }: Props) {
+  const t = useT();
   const values = useUniqueColumnValues(col);
   const activeFilter = useColumnFilter(col);
   const setColumnFilter = useSheetStore((s) => s.setColumnFilter);
@@ -32,20 +34,20 @@ export default function ColumnFilterPopover({ col, x, y, onClose }: Props) {
     >
       <div className="mb-1.5 flex gap-3 text-xs">
         <button className="text-blue-600 hover:underline" onClick={() => setDraft(new Set(values))}>
-          เลือกทั้งหมด
+          {t.filterPopover.selectAll}
         </button>
         <button className="text-blue-600 hover:underline" onClick={() => setDraft(new Set())}>
-          ล้างทั้งหมด
+          {t.filterPopover.clearAll}
         </button>
       </div>
       <div className="max-h-48 overflow-y-auto border-t border-zinc-100 pt-1.5">
         {values.map((v) => (
           <label key={v} className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-1 text-xs hover:bg-zinc-50">
             <input type="checkbox" checked={draft.has(v)} onChange={() => toggle(v)} />
-            <span className="truncate text-zinc-700">{v === "" ? "(ว่าง)" : v}</span>
+            <span className="truncate text-zinc-700">{v === "" ? t.filterPopover.blank : v}</span>
           </label>
         ))}
-        {values.length === 0 && <p className="px-1 py-2 text-center text-xs text-zinc-400">ไม่มีข้อมูลในคอลัมน์นี้</p>}
+        {values.length === 0 && <p className="px-1 py-2 text-center text-xs text-zinc-400">{t.filterPopover.noData}</p>}
       </div>
       <div className="mt-2 flex gap-1.5 border-t border-zinc-100 pt-2">
         <button
@@ -56,7 +58,7 @@ export default function ColumnFilterPopover({ col, x, y, onClose }: Props) {
           disabled={!activeFilter}
           className="flex-1 rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          ล้างตัวกรอง
+          {t.filterPopover.clearFilter}
         </button>
         <button
           onClick={() => {
@@ -65,7 +67,7 @@ export default function ColumnFilterPopover({ col, x, y, onClose }: Props) {
           }}
           className="flex-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
         >
-          ตกลง
+          {t.filterPopover.ok}
         </button>
       </div>
     </div>

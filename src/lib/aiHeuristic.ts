@@ -1,81 +1,41 @@
 // Keyword-based fallback used when no ANTHROPIC_API_KEY is configured, so the
 // AI assistant panel still returns something useful out of the box.
+import { MESSAGES } from "@/i18n/messages";
+import { Locale } from "@/i18n/types";
 
 interface Rule {
+  id: string;
   keywords: string[];
   build: (range: string) => string;
-  explain: string;
 }
 
+// Keywords match regardless of the UI's selected language, so a Thai speaker who types an
+// English word (or vice versa) still gets a match — only the returned explanation is localized.
 const RULES: Rule[] = [
-  {
-    keywords: ["รวม", "บวก", "sum", "total", "ยอดรวม"],
-    build: (r) => `SUM(${r})`,
-    explain: "รวมค่าตัวเลขทั้งหมดในช่วงที่เลือก",
-  },
-  {
-    keywords: ["เฉลี่ย", "average", "avg", "ค่าเฉลี่ย"],
-    build: (r) => `AVERAGE(${r})`,
-    explain: "คำนวณค่าเฉลี่ยของตัวเลขในช่วงที่เลือก",
-  },
-  {
-    keywords: ["มากที่สุด", "สูงสุด", "max", "highest"],
-    build: (r) => `MAX(${r})`,
-    explain: "หาค่าสูงสุดในช่วงที่เลือก",
-  },
-  {
-    keywords: ["น้อยที่สุด", "ต่ำสุด", "min", "lowest"],
-    build: (r) => `MIN(${r})`,
-    explain: "หาค่าต่ำสุดในช่วงที่เลือก",
-  },
-  {
-    keywords: ["นับจำนวนข้อความ", "counta", "นับที่ไม่ว่าง"],
-    build: (r) => `COUNTA(${r})`,
-    explain: "นับจำนวนเซลล์ที่มีข้อมูล (ไม่ว่าง)",
-  },
-  {
-    keywords: ["นับ", "count", "จำนวน"],
-    build: (r) => `COUNT(${r})`,
-    explain: "นับจำนวนเซลล์ที่เป็นตัวเลขในช่วงที่เลือก",
-  },
-  {
-    keywords: ["ค้นหา", "vlookup", "lookup"],
-    build: (r) => `VLOOKUP(A1,${r},2,FALSE)`,
-    explain: "ค้นหาค่า A1 ในคอลัมน์แรกของตาราง แล้วดึงค่าคอลัมน์ที่ 2 มาแสดง (ปรับเลขคอลัมน์ตามจริง)",
-  },
-  {
-    keywords: ["เงื่อนไข", "ถ้า", "if"],
-    build: () => `IF(A1>0,"ผ่าน","ไม่ผ่าน")`,
-    explain: "ตรวจสอบเงื่อนไขแล้วคืนค่าตามจริงหรือเท็จ (ปรับเงื่อนไขและข้อความตามต้องการ)",
-  },
-  {
-    keywords: ["ต่อข้อความ", "รวมข้อความ", "concatenate", "concat"],
-    build: () => `CONCATENATE(A1," ",B1)`,
-    explain: "รวมข้อความจากหลายเซลล์เข้าด้วยกัน",
-  },
-  {
-    keywords: ["ตัวพิมพ์ใหญ่", "upper"],
-    build: () => `UPPER(A1)`,
-    explain: "แปลงข้อความเป็นตัวพิมพ์ใหญ่ทั้งหมด",
-  },
-  {
-    keywords: ["วันที่ปัจจุบัน", "today", "วันนี้"],
-    build: () => `TODAY()`,
-    explain: "แสดงวันที่ปัจจุบัน",
-  },
+  { id: "sum", keywords: ["รวม", "บวก", "sum", "total", "ยอดรวม"], build: (r) => `SUM(${r})` },
+  { id: "average", keywords: ["เฉลี่ย", "average", "avg", "ค่าเฉลี่ย"], build: (r) => `AVERAGE(${r})` },
+  { id: "max", keywords: ["มากที่สุด", "สูงสุด", "max", "highest"], build: (r) => `MAX(${r})` },
+  { id: "min", keywords: ["น้อยที่สุด", "ต่ำสุด", "min", "lowest"], build: (r) => `MIN(${r})` },
+  { id: "counta", keywords: ["นับจำนวนข้อความ", "counta", "นับที่ไม่ว่าง"], build: (r) => `COUNTA(${r})` },
+  { id: "count", keywords: ["นับ", "count", "จำนวน"], build: (r) => `COUNT(${r})` },
+  { id: "vlookup", keywords: ["ค้นหา", "vlookup", "lookup"], build: (r) => `VLOOKUP(A1,${r},2,FALSE)` },
+  { id: "if", keywords: ["เงื่อนไข", "ถ้า", "if"], build: () => `IF(A1>0,"ผ่าน","ไม่ผ่าน")` },
+  { id: "concatenate", keywords: ["ต่อข้อความ", "รวมข้อความ", "concatenate", "concat"], build: () => `CONCATENATE(A1," ",B1)` },
+  { id: "upper", keywords: ["ตัวพิมพ์ใหญ่", "upper"], build: () => `UPPER(A1)` },
+  { id: "today", keywords: ["วันที่ปัจจุบัน", "today", "วันนี้"], build: () => `TODAY()` },
 ];
 
-export function heuristicSuggest(question: string, range?: string): { formula: string; explanation: string } {
+export function heuristicSuggest(question: string, range: string | undefined, locale: Locale): { formula: string; explanation: string } {
+  const t = MESSAGES[locale].aiHeuristic;
   const q = question.toLowerCase();
   const targetRange = range && /:/.test(range) ? range : range || "A1:A10";
   for (const rule of RULES) {
     if (rule.keywords.some((k) => q.includes(k.toLowerCase()))) {
-      return { formula: `=${rule.build(targetRange)}`, explanation: rule.explain };
+      return { formula: `=${rule.build(targetRange)}`, explanation: t.rules[rule.id] };
     }
   }
   return {
     formula: `=SUM(${targetRange})`,
-    explanation:
-      "ยังไม่ได้ตั้งค่า AI (ANTHROPIC_API_KEY) จึงแนะนำสูตรพื้นฐานให้ก่อน ลองเลือกสูตรจากแถบด้านซ้ายแทนได้ หรือใส่ API key เพื่อให้ AI แนะนำได้แม่นยำขึ้น",
+    explanation: t.fallback,
   };
 }

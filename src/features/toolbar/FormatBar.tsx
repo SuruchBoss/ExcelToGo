@@ -1,11 +1,13 @@
 "use client";
 
 import { Bold, AlignLeft, AlignCenter, AlignRight, ArrowDownAZ, ArrowDownZA } from "lucide-react";
-import { NUMBER_FORMAT_LABELS, NumberFormat } from "@/lib/sheet";
+import { NumberFormat } from "@/lib/sheet";
 import { useAnchorFormat, useSheetStore } from "@/store/sheetStore";
+import { useT } from "@/i18n";
 import clsx from "clsx";
 
 export default function FormatBar() {
+  const t = useT();
   const format = useAnchorFormat();
   const toggleBold = useSheetStore((s) => s.toggleBold);
   const setAlign = useSheetStore((s) => s.setAlign);
@@ -15,11 +17,11 @@ export default function FormatBar() {
 
   return (
     <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-1.5">
-      <span className="text-xs font-medium text-zinc-400">จัดรูปแบบ:</span>
+      <span className="text-xs font-medium text-zinc-400">{t.formatBar.label}</span>
 
       <button
         onClick={toggleBold}
-        title="ตัวหนา"
+        title={t.formatBar.boldTitle}
         className={clsx(
           "flex h-7 w-7 items-center justify-center rounded-md border",
           format.bold ? "border-blue-500 bg-blue-50 text-blue-700" : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
@@ -39,7 +41,7 @@ export default function FormatBar() {
           <button
             key={v}
             onClick={() => setAlign(v)}
-            title={`จัดตำแหน่ง${v === "left" ? "ซ้าย" : v === "center" ? "กลาง" : "ขวา"}`}
+            title={t.formatBar.alignTitle[v]}
             className={clsx(
               "flex h-7 w-7 items-center justify-center border-r border-zinc-300 last:border-r-0",
               (format.align ?? "left") === v ? "bg-blue-50 text-blue-700" : "text-zinc-600 hover:bg-zinc-50"
@@ -50,7 +52,7 @@ export default function FormatBar() {
         ))}
       </div>
 
-      <label title="สีข้อความ" className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-zinc-300 hover:bg-zinc-50">
+      <label title={t.formatBar.colorTitle} className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-zinc-300 hover:bg-zinc-50">
         <span className="text-xs font-bold" style={{ color: format.color ?? "#18181b" }}>
           A
         </span>
@@ -67,7 +69,7 @@ export default function FormatBar() {
         onChange={(e) => setNumberFormat(e.target.value as NumberFormat)}
         className="h-7 rounded-md border border-zinc-300 px-1.5 text-xs text-zinc-700 outline-none focus:border-blue-500"
       >
-        {Object.entries(NUMBER_FORMAT_LABELS).map(([value, label]) => (
+        {Object.entries(t.numberFormats).map(([value, label]) => (
           <option key={value} value={value}>
             {label}
           </option>
@@ -78,14 +80,14 @@ export default function FormatBar() {
 
       <button
         onClick={() => sortSelection(true)}
-        title="เรียงจากน้อยไปมาก (A-Z, 0-9)"
+        title={t.formatBar.sortAscTitle}
         className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
       >
         <ArrowDownAZ size={14} />
       </button>
       <button
         onClick={() => sortSelection(false)}
-        title="เรียงจากมากไปน้อย (Z-A, 9-0)"
+        title={t.formatBar.sortDescTitle}
         className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
       >
         <ArrowDownZA size={14} />

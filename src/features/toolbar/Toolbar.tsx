@@ -3,8 +3,11 @@
 import { useRef } from "react";
 import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save } from "lucide-react";
 import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
+import { useT } from "@/i18n";
+import LanguageToggle from "./LanguageToggle";
 
 export default function Toolbar() {
+  const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const busy = useSheetStore((s) => s.busy);
@@ -24,13 +27,13 @@ export default function Toolbar() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2">
-      <span className="mr-2 text-lg font-bold text-blue-700">ExcelToGo</span>
+      <span className="mr-2 text-lg font-bold text-blue-700">{t.app.brand}</span>
 
       <button
         onClick={() => fileInputRef.current?.click()}
         className="flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
       >
-        <FileUp size={15} /> นำเข้า Excel
+        <FileUp size={15} /> {t.toolbar.importExcel}
       </button>
       <input
         ref={fileInputRef}
@@ -48,14 +51,14 @@ export default function Toolbar() {
         onClick={exportXlsx}
         className="flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
       >
-        <FileDown size={15} /> ส่งออก Excel
+        <FileDown size={15} /> {t.toolbar.exportExcel}
       </button>
 
       <button
         onClick={exportPdf}
         className="flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
       >
-        <FileText size={15} /> ส่งออก PDF
+        <FileText size={15} /> {t.toolbar.exportPdf}
       </button>
 
       <div className="mx-1 h-5 w-px bg-zinc-200" />
@@ -63,7 +66,7 @@ export default function Toolbar() {
       <button
         onClick={undoSheet}
         disabled={!canUndo}
-        title="เลิกทำ (Ctrl+Z)"
+        title={t.toolbar.undoTitle}
         className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Undo2 size={15} />
@@ -71,7 +74,7 @@ export default function Toolbar() {
       <button
         onClick={redoSheet}
         disabled={!canRedo}
-        title="ทำซ้ำ (Ctrl+Y)"
+        title={t.toolbar.redoTitle}
         className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Redo2 size={15} />
@@ -83,21 +86,21 @@ export default function Toolbar() {
         onClick={addRow}
         className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
       >
-        <Plus size={14} /> แถว
+        <Plus size={14} /> {t.toolbar.addRow}
       </button>
       <button
         onClick={addColumn}
         className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
       >
-        <Plus size={14} /> คอลัมน์
+        <Plus size={14} /> {t.toolbar.addColumn}
       </button>
 
       <div className="ml-auto flex items-center gap-2">
         {busy ? (
           <span className="text-xs text-zinc-400">{busy}</span>
         ) : (
-          <span title="ข้อมูลจะถูกบันทึกไว้ในเบราว์เซอร์นี้อัตโนมัติ" className="flex items-center gap-1 text-xs text-zinc-400">
-            <Save size={13} /> บันทึกอัตโนมัติ
+          <span title={t.toolbar.autosaveTitle} className="flex items-center gap-1 text-xs text-zinc-400">
+            <Save size={13} /> {t.toolbar.autosaveLabel}
           </span>
         )}
         <button
@@ -106,7 +109,7 @@ export default function Toolbar() {
             paletteOpen ? "bg-blue-600 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
-          <Sigma size={15} /> สูตร
+          <Sigma size={15} /> {t.toolbar.formulas}
         </button>
         <button
           onClick={() => toggleSidebar("ai")}
@@ -114,8 +117,9 @@ export default function Toolbar() {
             aiOpen ? "bg-violet-600 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
-          <Sparkles size={15} /> ถาม AI
+          <Sparkles size={15} /> {t.toolbar.askAi}
         </button>
+        <LanguageToggle />
       </div>
     </div>
   );

@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useSheetStore } from "@/store/sheetStore";
+import { useT } from "@/i18n";
 import clsx from "clsx";
 
 export default function SheetTabs() {
+  const t = useT();
   const sheets = useSheetStore((s) => s.sheets);
   const activeSheetId = useSheetStore((s) => s.activeSheetId);
   const setActiveSheet = useSheetStore((s) => s.setActiveSheet);
@@ -54,9 +56,9 @@ export default function SheetTabs() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (confirm(`ลบชีต "${tab.name}" ใช่หรือไม่? ข้อมูลในชีตนี้จะหายไป`)) deleteSheet(tab.id);
+                if (confirm(t.sheetTabs.confirmDelete(tab.name))) deleteSheet(tab.id);
               }}
-              title="ลบชีตนี้"
+              title={t.sheetTabs.deleteTitle}
               className="rounded p-0.5 text-zinc-300 opacity-0 hover:bg-zinc-200 hover:text-zinc-600 group-hover:opacity-100"
             >
               <X size={12} />
@@ -66,7 +68,7 @@ export default function SheetTabs() {
       ))}
       <button
         onClick={addSheet}
-        title="เพิ่มชีตใหม่"
+        title={t.sheetTabs.addTitle}
         className="flex shrink-0 items-center justify-center rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"
       >
         <Plus size={16} />

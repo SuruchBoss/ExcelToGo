@@ -4,10 +4,12 @@ import { ApplyScope } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { isSingleCell } from "@/types/sheet-ui";
 import { selectActiveSelection, useSheetStore } from "@/store/sheetStore";
+import { useT } from "@/i18n";
 import { Crosshair, X } from "lucide-react";
 import clsx from "clsx";
 
 export default function FormulaParamPanel() {
+  const t = useT();
   const pending = useSheetStore((s) => s.pending);
   const selection = useSheetStore(selectActiveSelection);
   const onChange = useSheetStore((s) => s.updatePending);
@@ -44,7 +46,7 @@ export default function FormulaParamPanel() {
       <p className="text-xs text-zinc-500">{def.description}</p>
 
       <div className="rounded-md bg-zinc-50 p-2 text-xs text-zinc-600">
-        กำลังใส่สูตรที่เซลล์ <span className="font-semibold text-blue-700">{anchorAddress}</span>
+        {t.paramPanel.insertingAt} <span className="font-semibold text-blue-700">{anchorAddress}</span>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -76,7 +78,7 @@ export default function FormulaParamPanel() {
                 />
                 {(p.type === "range" || p.type === "cell") && (
                   <button
-                    title="เลือกช่วงจากตาราง"
+                    title={t.paramPanel.pickRangeTitle}
                     onClick={() =>
                       onChange({ ...pending, pickingKey: pending.pickingKey === p.key ? null : p.key })
                     }
@@ -94,23 +96,21 @@ export default function FormulaParamPanel() {
             )}
           </div>
         ))}
-        {def.params.length === 0 && <p className="text-xs text-zinc-400">สูตรนี้ไม่ต้องการพารามิเตอร์</p>}
+        {def.params.length === 0 && <p className="text-xs text-zinc-400">{t.paramPanel.noParams}</p>}
         {pending.pickingKey && (
-          <p className="rounded bg-emerald-50 p-2 text-xs text-emerald-700">
-            คลิกหรือลากเลือกเซลล์ในตารางเพื่อเลือกช่วง — แถวและคอลัมน์ที่เลือกจะถูกไฮไลต์ให้เห็นชัดเจน
-          </p>
+          <p className="rounded bg-emerald-50 p-2 text-xs text-emerald-700">{t.paramPanel.pickingHint}</p>
         )}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-zinc-600">ใส่สูตรนี้ให้กับ</label>
+        <label className="text-xs font-medium text-zinc-600">{t.paramPanel.applyToLabel}</label>
         <div className="grid grid-cols-2 gap-1.5">
           {(
             [
-              { v: "cell", label: "เซลล์นี้เท่านั้น" },
-              { v: "row", label: "ทั้งแถว" },
-              { v: "column", label: "ทั้งคอลัมน์" },
-              { v: "selection", label: "ช่วงที่เลือกไว้", disabled: !selectionIsRange },
+              { v: "cell", label: t.paramPanel.scopeCell },
+              { v: "row", label: t.paramPanel.scopeRow },
+              { v: "column", label: t.paramPanel.scopeColumn },
+              { v: "selection", label: t.paramPanel.scopeSelection, disabled: !selectionIsRange },
             ] as { v: ApplyScope; label: string; disabled?: boolean }[]
           ).map((opt) => (
             <button
@@ -132,7 +132,7 @@ export default function FormulaParamPanel() {
       </div>
 
       <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-400">ตัวอย่างสูตร</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">{t.paramPanel.previewLabel}</p>
         <code className="text-sm text-zinc-800">{preview}</code>
       </div>
 
@@ -141,14 +141,14 @@ export default function FormulaParamPanel() {
           onClick={onCancel}
           className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
         >
-          ยกเลิก
+          {t.paramPanel.cancel}
         </button>
         <button
           onClick={onInsert}
           disabled={missingRequired}
           className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          ใส่สูตร
+          {t.paramPanel.insert}
         </button>
       </div>
     </div>

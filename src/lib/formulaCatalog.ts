@@ -1,4 +1,26 @@
+import { CategoryKey, Messages } from "@/i18n/types";
+
 export type ParamType = "range" | "cell" | "number" | "text" | "boolean";
+
+/** Structural, locale-independent shape of a formula's parameter — its display label,
+ *  placeholder, and option labels (for a <select> param like VLOOKUP's exact/approximate
+ *  toggle) live in the locale messages (`src/i18n/th.ts` / `en.ts`) under `formulas.<id>`. */
+interface ParamSpec {
+  key: string;
+  type: ParamType;
+  optional?: boolean;
+  defaultValue?: string;
+  /** For a param rendered as a <select>: the fixed values it can take (labels are translated). */
+  optionValues?: string[];
+}
+
+interface FormulaSpec {
+  id: string;
+  categoryKey: CategoryKey;
+  syntax: string;
+  params: ParamSpec[];
+  build: (values: Record<string, string>) => string;
+}
 
 export interface FormulaParam {
   key: string;
@@ -7,14 +29,16 @@ export interface FormulaParam {
   placeholder?: string;
   optional?: boolean;
   defaultValue?: string;
-  /** For boolean params rendered as a select, e.g. exact vs approximate match. */
   options?: { value: string; label: string }[];
 }
 
+/** The localized, consumer-facing shape components render — merges a FormulaSpec's structure
+ *  with the current locale's text from `Messages.formulas[id]`. */
 export interface FormulaDef {
   id: string;
   name: string;
   category: string;
+  categoryKey: CategoryKey;
   syntax: string;
   description: string;
   example: string;
@@ -22,309 +46,193 @@ export interface FormulaDef {
   build: (values: Record<string, string>) => string;
 }
 
-export const CATEGORIES = [
-  "คณิตศาสตร์",
-  "สถิติ",
-  "ตรรกะ",
-  "ข้อความ",
-  "วันที่",
-  "ค้นหา",
-] as const;
+export const CATEGORY_KEYS: CategoryKey[] = ["math", "stats", "logic", "text", "date", "lookup"];
 
-function req(key: string, label: string, type: ParamType, placeholder = ""): FormulaParam {
-  return { key, label, type, placeholder };
+function req(key: string, type: ParamType): ParamSpec {
+  return { key, type };
 }
-function opt(key: string, label: string, type: ParamType, placeholder = "", defaultValue = ""): FormulaParam {
-  return { key, label, type, placeholder, optional: true, defaultValue };
+function opt(key: string, type: ParamType, defaultValue = ""): ParamSpec {
+  return { key, type, optional: true, defaultValue };
 }
 
-export const FORMULA_CATALOG: FormulaDef[] = [
+const FORMULA_SPECS: FormulaSpec[] = [
   {
     id: "SUM",
-    name: "SUM - รวมตัวเลข",
-    category: "คณิตศาสตร์",
+    categoryKey: "math",
     syntax: "SUM(range)",
-    description: "รวมค่าตัวเลขทั้งหมดในช่วงที่เลือก",
-    example: "=SUM(A1:A10)",
-    params: [req("range", "ช่วงเซลล์", "range", "เช่น A1:A10")],
+    params: [req("range", "range")],
     build: (v) => `SUM(${v.range})`,
   },
   {
     id: "AVERAGE",
-    name: "AVERAGE - ค่าเฉลี่ย",
-    category: "สถิติ",
+    categoryKey: "stats",
     syntax: "AVERAGE(range)",
-    description: "คำนวณค่าเฉลี่ยของตัวเลขในช่วงที่เลือก",
-    example: "=AVERAGE(B2:B20)",
-    params: [req("range", "ช่วงเซลล์", "range", "เช่น B2:B20")],
+    params: [req("range", "range")],
     build: (v) => `AVERAGE(${v.range})`,
   },
   {
     id: "COUNT",
-    name: "COUNT - นับตัวเลข",
-    category: "สถิติ",
+    categoryKey: "stats",
     syntax: "COUNT(range)",
-    description: "นับจำนวนเซลล์ที่เป็นตัวเลขในช่วงที่เลือก",
-    example: "=COUNT(A1:A20)",
-    params: [req("range", "ช่วงเซลล์", "range")],
+    params: [req("range", "range")],
     build: (v) => `COUNT(${v.range})`,
   },
   {
     id: "COUNTA",
-    name: "COUNTA - นับข้อมูลที่ไม่ว่าง",
-    category: "สถิติ",
+    categoryKey: "stats",
     syntax: "COUNTA(range)",
-    description: "นับจำนวนเซลล์ที่มีข้อมูล (ไม่ว่าง) ในช่วงที่เลือก",
-    example: "=COUNTA(A1:A20)",
-    params: [req("range", "ช่วงเซลล์", "range")],
+    params: [req("range", "range")],
     build: (v) => `COUNTA(${v.range})`,
   },
   {
     id: "MIN",
-    name: "MIN - ค่าต่ำสุด",
-    category: "สถิติ",
+    categoryKey: "stats",
     syntax: "MIN(range)",
-    description: "หาค่าต่ำสุดในช่วงที่เลือก",
-    example: "=MIN(A1:A10)",
-    params: [req("range", "ช่วงเซลล์", "range")],
+    params: [req("range", "range")],
     build: (v) => `MIN(${v.range})`,
   },
   {
     id: "MAX",
-    name: "MAX - ค่าสูงสุด",
-    category: "สถิติ",
+    categoryKey: "stats",
     syntax: "MAX(range)",
-    description: "หาค่าสูงสุดในช่วงที่เลือก",
-    example: "=MAX(A1:A10)",
-    params: [req("range", "ช่วงเซลล์", "range")],
+    params: [req("range", "range")],
     build: (v) => `MAX(${v.range})`,
   },
   {
     id: "PRODUCT",
-    name: "PRODUCT - คูณตัวเลข",
-    category: "คณิตศาสตร์",
+    categoryKey: "math",
     syntax: "PRODUCT(range)",
-    description: "คูณค่าตัวเลขทั้งหมดในช่วงที่เลือกเข้าด้วยกัน",
-    example: "=PRODUCT(A1:A3)",
-    params: [req("range", "ช่วงเซลล์", "range")],
+    params: [req("range", "range")],
     build: (v) => `PRODUCT(${v.range})`,
   },
   {
     id: "ROUND",
-    name: "ROUND - ปัดเศษ",
-    category: "คณิตศาสตร์",
+    categoryKey: "math",
     syntax: "ROUND(number, digits)",
-    description: "ปัดเศษตัวเลขตามจำนวนหลักทศนิยมที่กำหนด",
-    example: "=ROUND(A1,2)",
-    params: [req("number", "เซลล์หรือค่า", "cell", "เช่น A1"), opt("digits", "จำนวนหลักทศนิยม", "number", "0", "0")],
+    params: [req("number", "cell"), opt("digits", "number", "0")],
     build: (v) => `ROUND(${v.number},${v.digits || "0"})`,
   },
   {
     id: "ABS",
-    name: "ABS - ค่าสัมบูรณ์",
-    category: "คณิตศาสตร์",
+    categoryKey: "math",
     syntax: "ABS(number)",
-    description: "แปลงค่าติดลบให้เป็นค่าบวก",
-    example: "=ABS(A1)",
-    params: [req("number", "เซลล์หรือค่า", "cell")],
+    params: [req("number", "cell")],
     build: (v) => `ABS(${v.number})`,
   },
   {
     id: "SUMIF",
-    name: "SUMIF - รวมตามเงื่อนไข",
-    category: "คณิตศาสตร์",
+    categoryKey: "math",
     syntax: "SUMIF(range, criteria, sum_range)",
-    description: "รวมค่าตัวเลขเฉพาะแถวที่ตรงตามเงื่อนไขที่กำหนด",
-    example: '=SUMIF(A1:A10,">100",B1:B10)',
-    params: [
-      req("range", "ช่วงที่ใช้ตรวจเงื่อนไข", "range", "เช่น A1:A10"),
-      req("criteria", "เงื่อนไข", "text", 'เช่น >100 หรือ "ผลไม้"'),
-      req("sumRange", "ช่วงที่ต้องการรวม", "range", "เช่น B1:B10"),
-    ],
+    params: [req("range", "range"), req("criteria", "text"), req("sumRange", "range")],
     build: (v) => `SUMIF(${v.range},${quoteIfNeeded(v.criteria)},${v.sumRange})`,
   },
   {
     id: "COUNTIF",
-    name: "COUNTIF - นับตามเงื่อนไข",
-    category: "สถิติ",
+    categoryKey: "stats",
     syntax: "COUNTIF(range, criteria)",
-    description: "นับจำนวนเซลล์ที่ตรงตามเงื่อนไขที่กำหนด",
-    example: '=COUNTIF(A1:A10,"เสร็จแล้ว")',
-    params: [req("range", "ช่วงเซลล์", "range"), req("criteria", "เงื่อนไข", "text", 'เช่น >=18 หรือ "ใช่"')],
+    params: [req("range", "range"), req("criteria", "text")],
     build: (v) => `COUNTIF(${v.range},${quoteIfNeeded(v.criteria)})`,
   },
   {
     id: "AVERAGEIF",
-    name: "AVERAGEIF - ค่าเฉลี่ยตามเงื่อนไข",
-    category: "สถิติ",
+    categoryKey: "stats",
     syntax: "AVERAGEIF(range, criteria, average_range)",
-    description: "หาค่าเฉลี่ยเฉพาะแถวที่ตรงตามเงื่อนไขที่กำหนด",
-    example: '=AVERAGEIF(A1:A10,"ชาย",B1:B10)',
-    params: [
-      req("range", "ช่วงที่ใช้ตรวจเงื่อนไข", "range"),
-      req("criteria", "เงื่อนไข", "text"),
-      req("avgRange", "ช่วงที่ต้องการเฉลี่ย", "range"),
-    ],
+    params: [req("range", "range"), req("criteria", "text"), req("avgRange", "range")],
     build: (v) => `AVERAGEIF(${v.range},${quoteIfNeeded(v.criteria)},${v.avgRange})`,
   },
   {
     id: "VLOOKUP",
-    name: "VLOOKUP - ค้นหาแนวตั้ง",
-    category: "ค้นหา",
+    categoryKey: "lookup",
     syntax: "VLOOKUP(lookup_value, table, col_index, [exact])",
-    description: "ค้นหาค่าจากคอลัมน์แรกของตาราง แล้วดึงค่าจากคอลัมน์ที่ต้องการในแถวเดียวกัน",
-    example: "=VLOOKUP(A2,$D$1:$F$100,3,FALSE)",
     params: [
-      req("lookup", "ค่าที่ต้องการค้นหา", "cell", "เช่น A2"),
-      req("table", "ตารางข้อมูล", "range", "เช่น D1:F100"),
-      req("colIndex", "ลำดับคอลัมน์ที่ต้องการดึง", "number", "เช่น 3"),
-      {
-        key: "exact",
-        label: "รูปแบบการค้นหา",
-        type: "boolean",
-        optional: true,
-        defaultValue: "FALSE",
-        options: [
-          { value: "FALSE", label: "ค้นหาตรงทั้งหมด (แนะนำ)" },
-          { value: "TRUE", label: "ค้นหาแบบใกล้เคียง" },
-        ],
-      },
+      req("lookup", "cell"),
+      req("table", "range"),
+      req("colIndex", "number"),
+      { key: "exact", type: "boolean", optional: true, defaultValue: "FALSE", optionValues: ["FALSE", "TRUE"] },
     ],
     build: (v) => `VLOOKUP(${v.lookup},${v.table},${v.colIndex},${v.exact || "FALSE"})`,
   },
   {
     id: "IF",
-    name: "IF - เงื่อนไข",
-    category: "ตรรกะ",
+    categoryKey: "logic",
     syntax: "IF(condition, value_if_true, value_if_false)",
-    description: "ตรวจสอบเงื่อนไข แล้วคืนค่าตามจริงหรือเท็จ",
-    example: '=IF(A1>=50,"ผ่าน","ไม่ผ่าน")',
-    params: [
-      req("cond", "เงื่อนไข", "text", "เช่น A1>=50"),
-      req("ifTrue", "ค่าเมื่อเป็นจริง", "text", 'เช่น "ผ่าน"'),
-      req("ifFalse", "ค่าเมื่อเป็นเท็จ", "text", 'เช่น "ไม่ผ่าน"'),
-    ],
+    params: [req("cond", "text"), req("ifTrue", "text"), req("ifFalse", "text")],
     build: (v) => `IF(${v.cond},${quoteIfNeeded(v.ifTrue)},${quoteIfNeeded(v.ifFalse)})`,
   },
   {
     id: "IFERROR",
-    name: "IFERROR - จัดการค่าผิดพลาด",
-    category: "ตรรกะ",
+    categoryKey: "logic",
     syntax: "IFERROR(value, value_if_error)",
-    description: "แสดงค่าสำรองเมื่อสูตรคำนวณผิดพลาด (เช่น หารด้วยศูนย์)",
-    example: '=IFERROR(A1/B1,"-")',
-    params: [
-      req("value", "สูตรหรือค่า", "text", "เช่น A1/B1"),
-      req("fallback", "ค่าเมื่อเกิดข้อผิดพลาด", "text", 'เช่น "-"'),
-    ],
+    params: [req("value", "text"), req("fallback", "text")],
     build: (v) => `IFERROR(${v.value},${quoteIfNeeded(v.fallback)})`,
   },
   {
     id: "AND",
-    name: "AND - เงื่อนไขทั้งหมดต้องจริง",
-    category: "ตรรกะ",
+    categoryKey: "logic",
     syntax: "AND(condition1, condition2, ...)",
-    description: "คืนค่า TRUE เมื่อทุกเงื่อนไขเป็นจริง",
-    example: "=AND(A1>0,B1>0)",
-    params: [
-      req("cond1", "เงื่อนไขที่ 1", "text", "เช่น A1>0"),
-      opt("cond2", "เงื่อนไขที่ 2", "text", "เช่น B1>0"),
-    ],
+    params: [req("cond1", "text"), opt("cond2", "text")],
     build: (v) => `AND(${[v.cond1, v.cond2].filter(Boolean).join(",")})`,
   },
   {
     id: "OR",
-    name: "OR - เงื่อนไขใดจริงก็ได้",
-    category: "ตรรกะ",
+    categoryKey: "logic",
     syntax: "OR(condition1, condition2, ...)",
-    description: "คืนค่า TRUE เมื่ออย่างน้อยหนึ่งเงื่อนไขเป็นจริง",
-    example: "=OR(A1=1,A1=2)",
-    params: [
-      req("cond1", "เงื่อนไขที่ 1", "text"),
-      opt("cond2", "เงื่อนไขที่ 2", "text"),
-    ],
+    params: [req("cond1", "text"), opt("cond2", "text")],
     build: (v) => `OR(${[v.cond1, v.cond2].filter(Boolean).join(",")})`,
   },
   {
     id: "CONCATENATE",
-    name: "CONCATENATE - ต่อข้อความ",
-    category: "ข้อความ",
+    categoryKey: "text",
     syntax: "CONCATENATE(text1, text2, ...)",
-    description: "รวมข้อความจากหลายเซลล์เข้าด้วยกัน",
-    example: "=CONCATENATE(A1,\" \",B1)",
-    params: [
-      req("text1", "ข้อความ/เซลล์ที่ 1", "text", "เช่น A1"),
-      req("text2", "ข้อความ/เซลล์ที่ 2", "text", 'เช่น " " หรือ B1'),
-    ],
+    params: [req("text1", "text"), req("text2", "text")],
     build: (v) => `CONCATENATE(${v.text1},${v.text2})`,
   },
   {
     id: "UPPER",
-    name: "UPPER - ตัวพิมพ์ใหญ่",
-    category: "ข้อความ",
+    categoryKey: "text",
     syntax: "UPPER(text)",
-    description: "แปลงข้อความเป็นตัวพิมพ์ใหญ่ทั้งหมด",
-    example: "=UPPER(A1)",
-    params: [req("text", "ข้อความ/เซลล์", "cell")],
+    params: [req("text", "cell")],
     build: (v) => `UPPER(${v.text})`,
   },
   {
     id: "LOWER",
-    name: "LOWER - ตัวพิมพ์เล็ก",
-    category: "ข้อความ",
+    categoryKey: "text",
     syntax: "LOWER(text)",
-    description: "แปลงข้อความเป็นตัวพิมพ์เล็กทั้งหมด",
-    example: "=LOWER(A1)",
-    params: [req("text", "ข้อความ/เซลล์", "cell")],
+    params: [req("text", "cell")],
     build: (v) => `LOWER(${v.text})`,
   },
   {
     id: "TRIM",
-    name: "TRIM - ตัดช่องว่าง",
-    category: "ข้อความ",
+    categoryKey: "text",
     syntax: "TRIM(text)",
-    description: "ตัดช่องว่างส่วนเกินหน้า-หลังข้อความออก",
-    example: "=TRIM(A1)",
-    params: [req("text", "ข้อความ/เซลล์", "cell")],
+    params: [req("text", "cell")],
     build: (v) => `TRIM(${v.text})`,
   },
   {
     id: "LEFT",
-    name: "LEFT - ตัดข้อความด้านซ้าย",
-    category: "ข้อความ",
+    categoryKey: "text",
     syntax: "LEFT(text, num_chars)",
-    description: "ดึงตัวอักษรจำนวนที่กำหนดจากด้านซ้ายของข้อความ",
-    example: "=LEFT(A1,3)",
-    params: [req("text", "ข้อความ/เซลล์", "cell"), req("n", "จำนวนตัวอักษร", "number", "เช่น 3")],
+    params: [req("text", "cell"), req("n", "number")],
     build: (v) => `LEFT(${v.text},${v.n})`,
   },
   {
     id: "RIGHT",
-    name: "RIGHT - ตัดข้อความด้านขวา",
-    category: "ข้อความ",
+    categoryKey: "text",
     syntax: "RIGHT(text, num_chars)",
-    description: "ดึงตัวอักษรจำนวนที่กำหนดจากด้านขวาของข้อความ",
-    example: "=RIGHT(A1,3)",
-    params: [req("text", "ข้อความ/เซลล์", "cell"), req("n", "จำนวนตัวอักษร", "number", "เช่น 3")],
+    params: [req("text", "cell"), req("n", "number")],
     build: (v) => `RIGHT(${v.text},${v.n})`,
   },
   {
     id: "TODAY",
-    name: "TODAY - วันที่ปัจจุบัน",
-    category: "วันที่",
+    categoryKey: "date",
     syntax: "TODAY()",
-    description: "แสดงวันที่ปัจจุบัน",
-    example: "=TODAY()",
     params: [],
     build: () => `TODAY()`,
   },
   {
     id: "NOW",
-    name: "NOW - วันเวลาปัจจุบัน",
-    category: "วันที่",
+    categoryKey: "date",
     syntax: "NOW()",
-    description: "แสดงวันที่และเวลาปัจจุบัน",
-    example: "=NOW()",
     params: [],
     build: () => `NOW()`,
   },
@@ -341,10 +249,35 @@ function quoteIfNeeded(text: string | undefined): string {
   return `"${t.replace(/"/g, '""')}"`;
 }
 
-export function getCategories(): string[] {
-  return [...CATEGORIES];
+function mergeFormula(spec: FormulaSpec, t: Messages): FormulaDef {
+  const msg = t.formulas[spec.id];
+  return {
+    id: spec.id,
+    name: msg.name,
+    category: t.categories[spec.categoryKey],
+    categoryKey: spec.categoryKey,
+    syntax: spec.syntax,
+    description: msg.description,
+    example: msg.example,
+    build: spec.build,
+    params: spec.params.map((p) => ({
+      key: p.key,
+      type: p.type,
+      optional: p.optional,
+      defaultValue: p.defaultValue,
+      label: msg.params[p.key]?.label ?? p.key,
+      placeholder: msg.params[p.key]?.placeholder,
+      options: p.optionValues?.map((value) => ({ value, label: msg.options?.[p.key]?.[value] ?? value })),
+    })),
+  };
 }
 
-export const FORMULA_BY_ID: Record<string, FormulaDef> = Object.fromEntries(
-  FORMULA_CATALOG.map((f) => [f.id, f])
-);
+/** The full formula catalog, localized text merged in for the given locale's messages. */
+export function getFormulaCatalog(t: Messages): FormulaDef[] {
+  return FORMULA_SPECS.map((spec) => mergeFormula(spec, t));
+}
+
+export function getFormulaById(t: Messages, id: string): FormulaDef | undefined {
+  const spec = FORMULA_SPECS.find((s) => s.id === id);
+  return spec ? mergeFormula(spec, t) : undefined;
+}

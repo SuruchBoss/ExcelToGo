@@ -1,22 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CATEGORIES, FORMULA_CATALOG } from "@/lib/formulaCatalog";
+import { CATEGORY_KEYS, getFormulaCatalog } from "@/lib/formulaCatalog";
 import { selectActiveSelection, useSheetStore } from "@/store/sheetStore";
+import { useT } from "@/i18n";
+import { CategoryKey } from "@/i18n/types";
 import clsx from "clsx";
 
 export default function FormulaPalette() {
+  const t = useT();
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string>("ทั้งหมด");
+  const [activeCategory, setActiveCategory] = useState<CategoryKey | "all">("all");
   const selection = useSheetStore(selectActiveSelection);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
-  const onPick = (def: (typeof FORMULA_CATALOG)[number]) =>
+  const catalog = useMemo(() => getFormulaCatalog(t), [t]);
+  const onPick = (def: (typeof catalog)[number]) =>
     openFormulaPanel(def, selection.anchorRow, selection.anchorCol);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return FORMULA_CATALOG.filter((f) => {
-      if (activeCategory !== "ทั้งหมด" && f.category !== activeCategory) return false;
+    return catalog.filter((f) => {
+      if (activeCategory !== "all" && f.categoryKey !== activeCategory) return false;
       if (!q) return true;
       return (
         f.name.toLowerCase().includes(q) ||
@@ -24,22 +28,22 @@ export default function FormulaPalette() {
         f.description.toLowerCase().includes(q)
       );
     });
-  }, [query, activeCategory]);
+  }, [catalog, query, activeCategory]);
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden">
       <div>
-        <h2 className="text-sm font-semibold text-zinc-700">สูตรพร้อมใช้</h2>
-        <p className="text-xs text-zinc-500">ลากสูตรไปวางบนเซลล์ หรือคลิกเพื่อใส่ในเซลล์ที่เลือกอยู่</p>
+        <h2 className="text-sm font-semibold text-zinc-700">{t.palette.title}</h2>
+        <p className="text-xs text-zinc-500">{t.palette.subtitle}</p>
       </div>
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="ค้นหาสูตร เช่น รวม, เฉลี่ย, ค้นหา..."
+        placeholder={t.palette.searchPlaceholder}
         className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500"
       />
       <div className="flex flex-wrap gap-1">
-        {["ทั้งหมด", ...CATEGORIES].map((cat) => (
+        {(["all", ...CATEGORY_KEYS] as const).map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
@@ -48,7 +52,7 @@ export default function FormulaPalette() {
               activeCategory === cat ? "bg-blue-600 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
             )}
           >
-            {cat}
+            {cat === "all" ? t.palette.allCategory : t.categories[cat]}
           </button>
         ))}
       </div>
@@ -75,7 +79,7 @@ export default function FormulaPalette() {
               <code className="mt-1 block truncate text-[11px] text-blue-600">{f.example}</code>
             </div>
           ))}
-          {filtered.length === 0 && <p className="p-4 text-center text-xs text-zinc-400">ไม่พบสูตรที่ค้นหา</p>}
+          {filtered.length === 0 && <p className="p-4 text-center text-xs text-zinc-400">{t.palette.notFound}</p>}
         </div>
       </div>
     </div>

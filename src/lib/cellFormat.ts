@@ -8,13 +8,6 @@ export interface CellFormat {
   numberFormat?: NumberFormat;
 }
 
-export const NUMBER_FORMAT_LABELS: Record<NumberFormat, string> = {
-  general: "ทั่วไป",
-  number2: "ทศนิยม 2 ตำแหน่ง",
-  percent: "เปอร์เซ็นต์ (%)",
-  currency: "สกุลเงิน (฿)",
-};
-
 /**
  * Renders a numeric cell value under the given number format. This only changes what's
  * displayed — the underlying value/formula stored in the cell is untouched. "percent" here

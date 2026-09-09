@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react";
 import { selectActiveSelection, selectActiveSheet, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 import { singleCellSelection } from "@/types/sheet-ui";
+import { useT } from "@/i18n";
 
 /**
  * Always-visible bar showing the selected cell's address and raw content (a formula or a
@@ -13,6 +14,7 @@ import { singleCellSelection } from "@/types/sheet-ui";
  * for React 19 reject as unsafe during render).
  */
 export default function FormulaBar() {
+  const t = useT();
   const selection = useSheetStore(selectActiveSelection);
   const sheet = useSheetStore(selectActiveSheet);
   const setCellRaw = useSheetStore((s) => s.setCellRaw);
@@ -60,7 +62,7 @@ export default function FormulaBar() {
             inputRef.current?.blur();
           }
         }}
-        placeholder="พิมพ์ค่าหรือสูตร เช่น =SUM(A1:A10)"
+        placeholder={t.formulaBar.placeholder}
         className="flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-blue-500"
       />
     </div>

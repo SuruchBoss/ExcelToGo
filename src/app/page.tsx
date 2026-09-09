@@ -9,9 +9,11 @@ import FormulaPalette from "@/features/formulas/FormulaPalette";
 import FormulaParamPanel from "@/features/formulas/FormulaParamPanel";
 import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
 import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
+import { useHydrateLocaleStore } from "@/store/localeStore";
 
 export default function Home() {
   useHydrateSheetStore();
+  useHydrateLocaleStore();
   useUndoRedoShortcuts();
   useClipboardShortcuts();
 

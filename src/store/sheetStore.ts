@@ -35,6 +35,7 @@ import { downloadBlob, exportWorkbookToXlsxBlob, importWorkbookFromFile } from "
 import { exportSheetToPdf } from "@/lib/pdfExport";
 import { FormulaDef } from "@/lib/formulaCatalog";
 import { isSingleCell, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
+import { getMessages } from "@/i18n";
 
 export type SidebarMode = "palette" | "ai" | "none";
 export type { ApplyScope };
@@ -469,21 +470,21 @@ export const useSheetStore = create<SheetState>()(
           })),
 
         importFromFile: async (file) => {
-          set({ busy: "กำลังนำเข้าไฟล์..." });
+          set({ busy: getMessages().store.busyImporting });
           try {
             const imported = await importWorkbookFromFile(file);
             const sheets = imported.map((w) => newTab(w.name, w.sheet));
             set({ sheets, activeSheetId: sheets[0].id });
           } catch (err) {
             console.error(err);
-            alert("ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) ที่ถูกต้อง");
+            alert(getMessages().store.importError);
           } finally {
             set({ busy: null });
           }
         },
 
         exportXlsx: async () => {
-          set({ busy: "กำลังสร้างไฟล์ Excel..." });
+          set({ busy: getMessages().store.busyExportingXlsx });
           try {
             const sheets = get().sheets.map((t) => ({ name: t.name, sheet: t.sheet, computed: computeSheet(t.sheet) }));
             const blob = await exportWorkbookToXlsxBlob(sheets);

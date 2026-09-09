@@ -244,7 +244,6 @@ export function insertColumnBefore(sheet: SheetModel, col: number): SheetModel {
 
 export { cellRef, colToLetters };
 export type { CellFormat, CellAlign, NumberFormat } from "./cellFormat";
-export { NUMBER_FORMAT_LABELS } from "./cellFormat";
 
 // Re-exported so `@/lib/sheet` stays the one import surface for sheet operations, even though
 // clipboard and sort logic live in their own focused modules.
