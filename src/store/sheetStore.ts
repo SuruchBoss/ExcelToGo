@@ -174,6 +174,26 @@ function withActiveSheet(s: SheetState, fn: (tab: SheetTab) => SheetModel): Shee
   return s.sheets.map((tab) => (tab.id === s.activeSheetId ? { ...tab, sheet: fn(tab) } : tab));
 }
 
+/** The shape behind almost every action that edits cell content: read the active sheet and its
+ *  selection, compute the next sheet, write it back. Collapses what would otherwise be a
+ *  repeated `const { sheet } = activeTab(s); const selection = activeSelectionOf(s); ...
+ *  withActiveSheet(s, () => next)` in each action to a single call. */
+function updateActiveSheet(s: SheetState, fn: (sheet: SheetModel, selection: SelectionRect) => SheetModel): SheetTab[] {
+  const { sheet } = activeTab(s);
+  const selection = activeSelectionOf(s);
+  return withActiveSheet(s, () => fn(sheet, selection));
+}
+
+/** Clamps a single-cell selection into a sheet's (possibly now-smaller) bounds — used after
+ *  deleting the row/column the selection was on. */
+function clampSelectionToBounds(sheet: SheetModel, selection: SelectionRect): SelectionRect {
+  return singleCellSelection(Math.min(selection.anchorRow, sheet.rows - 1), Math.min(selection.anchorCol, sheet.cols - 1));
+}
+
+function applySelectionFormat(sheet: SheetModel, selection: SelectionRect, patch: Partial<CellFormat>): SheetModel {
+  return setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, patch);
+}
+
 /** Only the sheet tabs' content is tracked for undo/redo — switching tabs isn't something
  *  users expect Ctrl+Z to step through. */
 type TemporalSlice = Pick<SheetState, "sheets">;
@@ -232,11 +252,9 @@ export const useSheetStore = create<SheetState>()(
             const { sheet } = activeTab(s);
             const selection = activeSelectionOf(s);
             const next = deleteRow(sheet, selection.anchorRow);
-            const row = Math.min(selection.anchorRow, next.rows - 1);
-            const col = Math.min(selection.anchorCol, next.cols - 1);
             return {
               sheets: withActiveSheet(s, () => next),
-              selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: singleCellSelection(row, col) },
+              selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
             };
           }),
 
@@ -245,35 +263,26 @@ export const useSheetStore = create<SheetState>()(
             const { sheet } = activeTab(s);
             const selection = activeSelectionOf(s);
             const next = deleteColumn(sheet, selection.anchorCol);
-            const row = Math.min(selection.anchorRow, next.rows - 1);
-            const col = Math.min(selection.anchorCol, next.cols - 1);
             return {
               sheets: withActiveSheet(s, () => next),
-              selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: singleCellSelection(row, col) },
+              selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
             };
           }),
 
         insertRowAtSelection: () =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            return { sheets: withActiveSheet(s, () => insertRowBefore(sheet, selection.anchorRow)) };
-          }),
+          set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => insertRowBefore(sheet, selection.anchorRow)) })),
 
         insertColumnAtSelection: () =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            return { sheets: withActiveSheet(s, () => insertColumnBefore(sheet, selection.anchorCol)) };
-          }),
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => insertColumnBefore(sheet, selection.anchorCol)),
+          })),
 
         clearSelection: () =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            const next = clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-            return { sheets: withActiveSheet(s, () => next) };
-          }),
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) =>
+              clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol)
+            ),
+          })),
 
         copySelection: () => {
           const s = get();
@@ -335,14 +344,13 @@ export const useSheetStore = create<SheetState>()(
         clearClipboard: () => set({ clipboard: null }),
 
         sortSelection: (ascending) =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            const computed = computeSheet(sheet);
-            const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
-            const next = sortRange(sheet, computed, range, selection.anchorCol, ascending);
-            return { sheets: withActiveSheet(s, () => next) };
-          }),
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const computed = computeSheet(sheet);
+              const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
+              return sortRange(sheet, computed, range, selection.anchorCol, ascending);
+            }),
+          })),
 
         setColumnFilter: (col, values) =>
           set((s) => ({
@@ -363,45 +371,23 @@ export const useSheetStore = create<SheetState>()(
           set((s) => ({ filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: {} } })),
 
         toggleBold: () =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            const anchorBold = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).bold;
-            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
-              bold: !anchorBold,
-            });
-            return { sheets: withActiveSheet(s, () => next) };
-          }),
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const anchorBold = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).bold;
+              return applySelectionFormat(sheet, selection, { bold: !anchorBold });
+            }),
+          })),
 
         setAlign: (align) =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
-              align,
-            });
-            return { sheets: withActiveSheet(s, () => next) };
-          }),
+          set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { align })) })),
 
         setTextColor: (color) =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
-              color,
-            });
-            return { sheets: withActiveSheet(s, () => next) };
-          }),
+          set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { color })) })),
 
         setNumberFormat: (numberFormat) =>
-          set((s) => {
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
-              numberFormat,
-            });
-            return { sheets: withActiveSheet(s, () => next) };
-          }),
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { numberFormat })),
+          })),
 
         setSelection: (sel) =>
           set((s) => {
@@ -447,40 +433,40 @@ export const useSheetStore = create<SheetState>()(
         updatePending: (pending) => set({ pending }),
         cancelPending: () => set({ pending: null }),
 
-        insertPending: () =>
-          set((s) => {
-            const { pending } = s;
-            if (!pending) return {};
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            let body: string;
-            try {
-              body = pending.def.build(pending.values);
-            } catch {
-              return {};
-            }
-            const next = applyFormula(sheet, body, {
-              scope: pending.scope,
-              anchorRow: pending.anchorRow,
-              anchorCol: pending.anchorCol,
-              selection: {
-                startRow: selection.startRow,
-                startCol: selection.startCol,
-                endRow: selection.endRow,
-                endCol: selection.endCol,
-              },
-            });
-            return { sheets: withActiveSheet(s, () => next), pending: null };
-          }),
+        insertPending: () => {
+          const { pending } = get();
+          if (!pending) return;
+          let body: string;
+          try {
+            body = pending.def.build(pending.values);
+          } catch {
+            return;
+          }
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) =>
+              applyFormula(sheet, body, {
+                scope: pending.scope,
+                anchorRow: pending.anchorRow,
+                anchorCol: pending.anchorCol,
+                selection: {
+                  startRow: selection.startRow,
+                  startCol: selection.startCol,
+                  endRow: selection.endRow,
+                  endCol: selection.endCol,
+                },
+              })
+            ),
+            pending: null,
+          }));
+        },
 
         insertAIFormula: (formula) =>
-          set((s) => {
-            const raw = formula.startsWith("=") ? formula : `=${formula}`;
-            const { sheet } = activeTab(s);
-            const selection = activeSelectionOf(s);
-            const next = setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw);
-            return { sheets: withActiveSheet(s, () => next) };
-          }),
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const raw = formula.startsWith("=") ? formula : `=${formula}`;
+              return setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw);
+            }),
+          })),
 
         importFromFile: async (file) => {
           set({ busy: "กำลังนำเข้าไฟล์..." });
