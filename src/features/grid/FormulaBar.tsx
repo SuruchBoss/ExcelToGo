@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { useSelectionAddress, useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, selectActiveSheet, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 import { singleCellSelection } from "@/types/sheet-ui";
 
 /**
@@ -13,8 +13,8 @@ import { singleCellSelection } from "@/types/sheet-ui";
  * for React 19 reject as unsafe during render).
  */
 export default function FormulaBar() {
-  const selection = useSheetStore((s) => s.selection);
-  const sheet = useSheetStore((s) => s.sheet);
+  const selection = useSheetStore(selectActiveSelection);
+  const sheet = useSheetStore(selectActiveSheet);
   const setCellRaw = useSheetStore((s) => s.setCellRaw);
   const setSelection = useSheetStore((s) => s.setSelection);
   const address = useSelectionAddress();

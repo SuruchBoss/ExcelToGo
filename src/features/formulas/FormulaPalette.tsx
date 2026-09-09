@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { CATEGORIES, FORMULA_CATALOG } from "@/lib/formulaCatalog";
-import { useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, useSheetStore } from "@/store/sheetStore";
 import clsx from "clsx";
 
 export default function FormulaPalette() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("ทั้งหมด");
-  const selection = useSheetStore((s) => s.selection);
+  const selection = useSheetStore(selectActiveSelection);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
   const onPick = (def: (typeof FORMULA_CATALOG)[number]) =>
     openFormulaPanel(def, selection.anchorRow, selection.anchorCol);

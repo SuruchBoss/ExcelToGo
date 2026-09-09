@@ -3,13 +3,13 @@
 import { ApplyScope } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { isSingleCell } from "@/types/sheet-ui";
-import { useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, useSheetStore } from "@/store/sheetStore";
 import { Crosshair, X } from "lucide-react";
 import clsx from "clsx";
 
 export default function FormulaParamPanel() {
   const pending = useSheetStore((s) => s.pending);
-  const selection = useSheetStore((s) => s.selection);
+  const selection = useSheetStore(selectActiveSelection);
   const onChange = useSheetStore((s) => s.updatePending);
   const onInsert = useSheetStore((s) => s.insertPending);
   const onCancel = useSheetStore((s) => s.cancelPending);

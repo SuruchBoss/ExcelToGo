@@ -12,6 +12,20 @@ function argbToHex(argb: string | undefined): string | undefined {
   return `#${argb.slice(-6).toLowerCase()}`;
 }
 
+/** Excel worksheet names can't contain \ / * ? : [ ] and are capped at 31 characters. */
+function sanitizeSheetName(name: string, usedNames: Set<string>): string {
+  const clean = name.replace(/[\\/*?:[\]]/g, " ").trim().slice(0, 31) || "Sheet";
+  let unique = clean;
+  let i = 2;
+  while (usedNames.has(unique)) {
+    const suffix = ` (${i})`;
+    unique = clean.slice(0, 31 - suffix.length) + suffix;
+    i += 1;
+  }
+  usedNames.add(unique);
+  return unique;
+}
+
 function cellValueToRaw(cell: ExcelJS.Cell): string {
   const v = cell.value;
   if (v === null || v === undefined) return "";
@@ -33,13 +47,7 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
   return "";
 }
 
-export async function importWorkbookFromFile(file: File): Promise<SheetModel> {
-  const buffer = await file.arrayBuffer();
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) return createEmptySheet();
-
+function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
   const rowCount = Math.max(worksheet.actualRowCount || 0, 1);
   const colCount = Math.max(worksheet.actualColumnCount || 0, 1);
   const rows = Math.max(rowCount, 20);
@@ -69,10 +77,26 @@ export async function importWorkbookFromFile(file: File): Promise<SheetModel> {
   return sheet;
 }
 
-export async function exportSheetToXlsxBlob(sheet: SheetModel, computed: ComputedSheet): Promise<Blob> {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Sheet1");
+export interface ImportedSheet {
+  name: string;
+  sheet: SheetModel;
+}
 
+/** Imports every worksheet in the workbook (not just the first) as a separate tab. */
+export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  if (workbook.worksheets.length === 0) {
+    return [{ name: "Sheet1", sheet: createEmptySheet() }];
+  }
+  return workbook.worksheets.map((worksheet) => ({
+    name: worksheet.name || "Sheet1",
+    sheet: importWorksheet(worksheet),
+  }));
+}
+
+function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
   for (let r = 0; r < sheet.rows; r++) {
     for (let c = 0; c < sheet.cols; c++) {
       const raw = sheet.cells[r][c];
@@ -105,7 +129,22 @@ export async function exportSheetToXlsxBlob(sheet: SheetModel, computed: Compute
   worksheet.columns.forEach((col) => {
     col.width = 16;
   });
+}
 
+export interface ExportableSheet {
+  name: string;
+  sheet: SheetModel;
+  computed: ComputedSheet;
+}
+
+/** Exports every tab as its own worksheet in a single .xlsx file, in order. */
+export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promise<Blob> {
+  const workbook = new ExcelJS.Workbook();
+  const usedNames = new Set<string>();
+  for (const { name, sheet, computed } of sheets) {
+    const worksheet = workbook.addWorksheet(sanitizeSheetName(name, usedNames));
+    writeSheetToWorksheet(worksheet, sheet, computed);
+  }
   const buffer = await workbook.xlsx.writeBuffer();
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }

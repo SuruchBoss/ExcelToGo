@@ -4,6 +4,7 @@ import Toolbar from "@/features/toolbar/Toolbar";
 import FormatBar from "@/features/toolbar/FormatBar";
 import FormulaBar from "@/features/grid/FormulaBar";
 import SpreadsheetGrid from "@/features/grid/SpreadsheetGrid";
+import SheetTabs from "@/features/grid/SheetTabs";
 import FormulaPalette from "@/features/formulas/FormulaPalette";
 import FormulaParamPanel from "@/features/formulas/FormulaParamPanel";
 import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
@@ -24,8 +25,11 @@ export default function Home() {
       <FormatBar />
       <FormulaBar />
       <div className="flex min-h-0 flex-1 gap-3 p-3">
-        <div className="min-w-0 flex-1">
-          <SpreadsheetGrid />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white">
+          <div className="min-h-0 flex-1">
+            <SpreadsheetGrid />
+          </div>
+          <SheetTabs />
         </div>
         {sidebarVisible && (
           <aside className="w-80 shrink-0 rounded-lg border border-zinc-200 bg-white p-3">

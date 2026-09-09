@@ -5,7 +5,7 @@ import { colToLetters } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
 import { normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
-import { useComputedSheet, useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, selectActiveSheet, useComputedSheet, useSheetStore } from "@/store/sheetStore";
 import { FORMULA_BY_ID } from "@/lib/formulaCatalog";
 import clsx from "clsx";
 
@@ -14,8 +14,8 @@ const COL_WIDTH = 112;
 const ROW_HEIGHT = 32;
 
 export default function SpreadsheetGrid() {
-  const sheet = useSheetStore((s) => s.sheet);
-  const selection = useSheetStore((s) => s.selection);
+  const sheet = useSheetStore(selectActiveSheet);
+  const selection = useSheetStore(selectActiveSelection);
   const setSelection = useSheetStore((s) => s.setSelection);
   const commitCell = useSheetStore((s) => s.setCellRaw);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
@@ -164,7 +164,7 @@ export default function SpreadsheetGrid() {
   };
 
   return (
-    <div className="relative h-full overflow-auto rounded-lg border border-zinc-200 bg-white" tabIndex={-1}>
+    <div className="relative h-full overflow-auto bg-white" tabIndex={-1}>
       <table className="border-separate border-spacing-0 select-none" style={{ tableLayout: "fixed" }}>
         <thead>
           <tr>

@@ -29,7 +29,7 @@ import {
   toTsv,
 } from "@/lib/sheet";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
-import { downloadBlob, exportSheetToXlsxBlob, importWorkbookFromFile } from "@/lib/excelIO";
+import { downloadBlob, exportWorkbookToXlsxBlob, importWorkbookFromFile } from "@/lib/excelIO";
 import { exportSheetToPdf } from "@/lib/pdfExport";
 import { FormulaDef } from "@/lib/formulaCatalog";
 import { isSingleCell, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
@@ -44,6 +44,12 @@ export interface PendingFormula {
   values: Record<string, string>;
   pickingKey: string | null;
   scope: ApplyScope;
+}
+
+export interface SheetTab {
+  id: string;
+  name: string;
+  sheet: SheetModel;
 }
 
 function seedSample(): SheetModel {
@@ -67,6 +73,16 @@ function seedSample(): SheetModel {
   return sheet;
 }
 
+let idCounter = 0;
+function genId(): string {
+  idCounter += 1;
+  return `sheet-${Date.now().toString(36)}-${idCounter}`;
+}
+
+function newTab(name: string, sheet: SheetModel = createEmptySheet()): SheetTab {
+  return { id: genId(), name, sheet };
+}
+
 function selectionToAddress(sel: SelectionRect): string {
   return isSingleCell(sel)
     ? cellRef(sel.anchorRow, sel.anchorCol)
@@ -78,12 +94,21 @@ interface ClipboardState extends ClipboardBlock {
 }
 
 interface SheetState {
-  sheet: SheetModel;
-  selection: SelectionRect;
+  sheets: SheetTab[];
+  activeSheetId: string;
+  /** Kept separate from `sheets` (not tracked for undo/autosave) since navigating within a
+   *  sheet isn't content that should be undoable or restored on reload. Falls back to (0,0)
+   *  for a sheet with no entry yet via `activeSelectionOf`. */
+  selectionBySheetId: Record<string, SelectionRect>;
   pending: PendingFormula | null;
   sidebarMode: SidebarMode;
   busy: string | null;
   clipboard: ClipboardState | null;
+
+  setActiveSheet: (id: string) => void;
+  addSheet: () => void;
+  renameSheet: (id: string, name: string) => void;
+  deleteSheet: (id: string) => void;
 
   setCellRaw: (row: number, col: number, raw: string) => void;
   addRow: () => void;
@@ -119,147 +144,235 @@ interface SheetState {
   exportPdf: () => void;
 }
 
-/** Only the sheet's cell contents are autosaved and tracked for undo/redo — UI-only state
- *  (selection, an open formula panel, which sidebar tab is active) resets on reload and
- *  isn't something users expect Ctrl+Z to step through. */
-type PersistedSlice = Pick<SheetState, "sheet">;
+function activeTab(s: SheetState): SheetTab {
+  return s.sheets.find((t) => t.id === s.activeSheetId) ?? s.sheets[0];
+}
+
+// A stable reference for "no selection recorded yet" — used as a Zustand selector fallback,
+// where a freshly-allocated object every call would break snapshot-stability (the same bug
+// fixed for useAnchorFormat's EMPTY_FORMAT below) and cause an infinite render loop.
+const DEFAULT_SELECTION: SelectionRect = singleCellSelection(0, 0);
+
+function activeSelectionOf(s: SheetState): SelectionRect {
+  return s.selectionBySheetId[s.activeSheetId] ?? DEFAULT_SELECTION;
+}
+
+/** Replaces the active tab's sheet with whatever `fn` returns, leaving every other tab (and
+ *  its name/id) untouched. Every action that edits cell content goes through this instead of
+ *  a top-level `sheet` field, since edits always target "whichever tab is open right now". */
+function withActiveSheet(s: SheetState, fn: (tab: SheetTab) => SheetModel): SheetTab[] {
+  return s.sheets.map((tab) => (tab.id === s.activeSheetId ? { ...tab, sheet: fn(tab) } : tab));
+}
+
+/** Only the sheet tabs' content is tracked for undo/redo — switching tabs isn't something
+ *  users expect Ctrl+Z to step through. */
+type TemporalSlice = Pick<SheetState, "sheets">;
+
+/** Autosaved to localStorage: the tabs' content plus which one was active, so reloading lands
+ *  back on the same tab. Other UI-only state (an open formula panel, which sidebar is open)
+ *  resets on reload. */
+type PersistedSlice = Pick<SheetState, "sheets" | "activeSheetId">;
+
+const initialTab = newTab("Sheet1", seedSample());
 
 export const useSheetStore = create<SheetState>()(
   persist(
     temporal(
       (set, get) => ({
-        sheet: seedSample(),
-        selection: singleCellSelection(0, 0),
+        sheets: [initialTab],
+        activeSheetId: initialTab.id,
+        selectionBySheetId: {},
         pending: null,
         sidebarMode: "palette",
         busy: null,
         clipboard: null,
 
-        setCellRaw: (row, col, raw) => set((s) => ({ sheet: setCellRaw(s.sheet, row, col, raw) })),
-        addRow: () => set((s) => ({ sheet: addRow(s.sheet) })),
-        addColumn: () => set((s) => ({ sheet: addColumn(s.sheet) })),
+        setActiveSheet: (id) => set({ activeSheetId: id }),
 
-        deleteSelectedRow: () => {
-          const { sheet, selection } = get();
-          const next = deleteRow(sheet, selection.anchorRow);
-          const row = Math.min(selection.anchorRow, next.rows - 1);
-          set({ sheet: next, selection: singleCellSelection(row, Math.min(selection.anchorCol, next.cols - 1)) });
+        addSheet: () => {
+          const s = get();
+          const tab = newTab(`Sheet${s.sheets.length + 1}`);
+          set({ sheets: [...s.sheets, tab], activeSheetId: tab.id });
         },
 
-        deleteSelectedColumn: () => {
-          const { sheet, selection } = get();
-          const next = deleteColumn(sheet, selection.anchorCol);
-          const col = Math.min(selection.anchorCol, next.cols - 1);
-          set({ sheet: next, selection: singleCellSelection(Math.min(selection.anchorRow, next.rows - 1), col) });
+        renameSheet: (id, name) => {
+          const trimmed = name.trim();
+          if (!trimmed) return;
+          set((s) => ({ sheets: s.sheets.map((t) => (t.id === id ? { ...t, name: trimmed } : t)) }));
         },
 
-        insertRowAtSelection: () => {
-          const { sheet, selection } = get();
-          set({ sheet: insertRowBefore(sheet, selection.anchorRow) });
+        deleteSheet: (id) => {
+          const s = get();
+          if (s.sheets.length <= 1) return;
+          const index = s.sheets.findIndex((t) => t.id === id);
+          if (index === -1) return;
+          const sheets = s.sheets.filter((t) => t.id !== id);
+          const activeSheetId = s.activeSheetId === id ? sheets[Math.max(0, index - 1)].id : s.activeSheetId;
+          set({ sheets, activeSheetId });
         },
 
-        insertColumnAtSelection: () => {
-          const { sheet, selection } = get();
-          set({ sheet: insertColumnBefore(sheet, selection.anchorCol) });
-        },
+        setCellRaw: (row, col, raw) =>
+          set((s) => ({ sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) })),
+        addRow: () => set((s) => ({ sheets: withActiveSheet(s, (tab) => addRow(tab.sheet)) })),
+        addColumn: () => set((s) => ({ sheets: withActiveSheet(s, (tab) => addColumn(tab.sheet)) })),
 
-        clearSelection: () => {
-          const { sheet, selection } = get();
-          set({ sheet: clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol) });
-        },
+        deleteSelectedRow: () =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const next = deleteRow(sheet, selection.anchorRow);
+            const row = Math.min(selection.anchorRow, next.rows - 1);
+            const col = Math.min(selection.anchorCol, next.cols - 1);
+            return {
+              sheets: withActiveSheet(s, () => next),
+              selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: singleCellSelection(row, col) },
+            };
+          }),
+
+        deleteSelectedColumn: () =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const next = deleteColumn(sheet, selection.anchorCol);
+            const row = Math.min(selection.anchorRow, next.rows - 1);
+            const col = Math.min(selection.anchorCol, next.cols - 1);
+            return {
+              sheets: withActiveSheet(s, () => next),
+              selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: singleCellSelection(row, col) },
+            };
+          }),
+
+        insertRowAtSelection: () =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            return { sheets: withActiveSheet(s, () => insertRowBefore(sheet, selection.anchorRow)) };
+          }),
+
+        insertColumnAtSelection: () =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            return { sheets: withActiveSheet(s, () => insertColumnBefore(sheet, selection.anchorCol)) };
+          }),
+
+        clearSelection: () =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const next = clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+            return { sheets: withActiveSheet(s, () => next) };
+          }),
 
         copySelection: () => {
-          const { sheet, selection } = get();
+          const s = get();
+          const { sheet } = activeTab(s);
+          const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
           set({ clipboard: { ...block, cut: false } });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
         cutSelection: () => {
-          const { sheet, selection } = get();
+          const s = get();
+          const { sheet } = activeTab(s);
+          const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
           set({ clipboard: { ...block, cut: true } });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
-        pasteAtSelection: (externalText) => {
-          const { sheet, selection, clipboard } = get();
-          const targetRow = selection.anchorRow;
-          const targetCol = selection.anchorCol;
-          if (clipboard) {
-            let next = pasteClipboardBlock(sheet, clipboard, targetRow, targetCol);
-            if (clipboard.cut) {
-              const height = clipboard.rows.length;
-              const width = clipboard.rows[0]?.length ?? 0;
-              const srcEndRow = clipboard.startRow + height - 1;
-              const srcEndCol = clipboard.startCol + width - 1;
-              const destOverlapsSource =
-                targetRow <= srcEndRow &&
-                targetRow + height - 1 >= clipboard.startRow &&
-                targetCol <= srcEndCol &&
-                targetCol + width - 1 >= clipboard.startCol;
-              // Moving to a spot that overlaps the original block would otherwise wipe out
-              // the very cells pasteClipboardBlock just wrote there.
-              if (!destOverlapsSource) {
-                next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+        pasteAtSelection: (externalText) =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const { clipboard } = s;
+            const targetRow = selection.anchorRow;
+            const targetCol = selection.anchorCol;
+            if (clipboard) {
+              let next = pasteClipboardBlock(sheet, clipboard, targetRow, targetCol);
+              let clearedClipboard: ClipboardState | null = clipboard;
+              if (clipboard.cut) {
+                const height = clipboard.rows.length;
+                const width = clipboard.rows[0]?.length ?? 0;
+                const srcEndRow = clipboard.startRow + height - 1;
+                const srcEndCol = clipboard.startCol + width - 1;
+                const destOverlapsSource =
+                  targetRow <= srcEndRow &&
+                  targetRow + height - 1 >= clipboard.startRow &&
+                  targetCol <= srcEndCol &&
+                  targetCol + width - 1 >= clipboard.startCol;
+                // Moving to a spot that overlaps the original block would otherwise wipe out
+                // the very cells pasteClipboardBlock just wrote there.
+                if (!destOverlapsSource) {
+                  next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+                }
+                clearedClipboard = null;
               }
-              set({ sheet: next, clipboard: null });
-            } else {
-              set({ sheet: next });
+              return { sheets: withActiveSheet(s, () => next), clipboard: clearedClipboard };
             }
-            return;
-          }
-          if (externalText) {
-            const rows = parseTsv(externalText);
-            if (rows.length > 0) set({ sheet: pastePlainTextBlock(sheet, rows, targetRow, targetCol) });
-          }
-        },
+            if (externalText) {
+              const rows = parseTsv(externalText);
+              if (rows.length > 0) {
+                const next = pastePlainTextBlock(sheet, rows, targetRow, targetCol);
+                return { sheets: withActiveSheet(s, () => next) };
+              }
+            }
+            return {};
+          }),
 
         clearClipboard: () => set({ clipboard: null }),
 
-        toggleBold: () => {
-          const { sheet, selection } = get();
-          const anchorBold = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).bold;
-          set({
-            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+        toggleBold: () =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const anchorBold = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).bold;
+            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
               bold: !anchorBold,
-            }),
-          });
-        },
+            });
+            return { sheets: withActiveSheet(s, () => next) };
+          }),
 
-        setAlign: (align) => {
-          const { sheet, selection } = get();
-          set({
-            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+        setAlign: (align) =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
               align,
-            }),
-          });
-        },
+            });
+            return { sheets: withActiveSheet(s, () => next) };
+          }),
 
-        setTextColor: (color) => {
-          const { sheet, selection } = get();
-          set({
-            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+        setTextColor: (color) =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
               color,
-            }),
-          });
-        },
+            });
+            return { sheets: withActiveSheet(s, () => next) };
+          }),
 
-        setNumberFormat: (numberFormat) => {
-          const { sheet, selection } = get();
-          set({
-            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+        setNumberFormat: (numberFormat) =>
+          set((s) => {
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const next = setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
               numberFormat,
-            }),
-          });
-        },
+            });
+            return { sheets: withActiveSheet(s, () => next) };
+          }),
 
         setSelection: (sel) =>
           set((s) => {
-            if (!s.pending?.pickingKey) return { selection: sel };
+            const selectionBySheetId = { ...s.selectionBySheetId, [s.activeSheetId]: sel };
+            if (!s.pending?.pickingKey) {
+              return { selectionBySheetId };
+            }
             const addr = selectionToAddress(sel);
             return {
-              selection: sel,
+              selectionBySheetId,
               pending: { ...s.pending, values: { ...s.pending.values, [s.pending.pickingKey]: addr } },
             };
           }),
@@ -268,7 +381,7 @@ export const useSheetStore = create<SheetState>()(
         toggleSidebar: (mode) => set((s) => ({ sidebarMode: s.sidebarMode === mode ? "none" : mode })),
 
         openFormulaPanel: (def, anchorRow, anchorCol) => {
-          const sel = get().selection;
+          const sel = activeSelectionOf(get());
           const values: Record<string, string> = {};
           let usedSelection = false;
           for (const p of def.params) {
@@ -295,40 +408,47 @@ export const useSheetStore = create<SheetState>()(
         updatePending: (pending) => set({ pending }),
         cancelPending: () => set({ pending: null }),
 
-        insertPending: () => {
-          const { pending, sheet, selection } = get();
-          if (!pending) return;
-          let body: string;
-          try {
-            body = pending.def.build(pending.values);
-          } catch {
-            return;
-          }
-          const next = applyFormula(sheet, body, {
-            scope: pending.scope,
-            anchorRow: pending.anchorRow,
-            anchorCol: pending.anchorCol,
-            selection: {
-              startRow: selection.startRow,
-              startCol: selection.startCol,
-              endRow: selection.endRow,
-              endCol: selection.endCol,
-            },
-          });
-          set({ sheet: next, pending: null });
-        },
+        insertPending: () =>
+          set((s) => {
+            const { pending } = s;
+            if (!pending) return {};
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            let body: string;
+            try {
+              body = pending.def.build(pending.values);
+            } catch {
+              return {};
+            }
+            const next = applyFormula(sheet, body, {
+              scope: pending.scope,
+              anchorRow: pending.anchorRow,
+              anchorCol: pending.anchorCol,
+              selection: {
+                startRow: selection.startRow,
+                startCol: selection.startCol,
+                endRow: selection.endRow,
+                endCol: selection.endCol,
+              },
+            });
+            return { sheets: withActiveSheet(s, () => next), pending: null };
+          }),
 
-        insertAIFormula: (formula) => {
-          const raw = formula.startsWith("=") ? formula : `=${formula}`;
-          const { sheet, selection } = get();
-          set({ sheet: setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw) });
-        },
+        insertAIFormula: (formula) =>
+          set((s) => {
+            const raw = formula.startsWith("=") ? formula : `=${formula}`;
+            const { sheet } = activeTab(s);
+            const selection = activeSelectionOf(s);
+            const next = setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw);
+            return { sheets: withActiveSheet(s, () => next) };
+          }),
 
         importFromFile: async (file) => {
           set({ busy: "กำลังนำเข้าไฟล์..." });
           try {
-            const newSheet = await importWorkbookFromFile(file);
-            set({ sheet: newSheet, selection: singleCellSelection(0, 0) });
+            const imported = await importWorkbookFromFile(file);
+            const sheets = imported.map((w) => newTab(w.name, w.sheet));
+            set({ sheets, activeSheetId: sheets[0].id });
           } catch (err) {
             console.error(err);
             alert("ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) ที่ถูกต้อง");
@@ -340,7 +460,8 @@ export const useSheetStore = create<SheetState>()(
         exportXlsx: async () => {
           set({ busy: "กำลังสร้างไฟล์ Excel..." });
           try {
-            const blob = await exportSheetToXlsxBlob(get().sheet, computeSheet(get().sheet));
+            const sheets = get().sheets.map((t) => ({ name: t.name, sheet: t.sheet, computed: computeSheet(t.sheet) }));
+            const blob = await exportWorkbookToXlsxBlob(sheets);
             downloadBlob(blob, "ExcelToGo.xlsx");
           } finally {
             set({ busy: null });
@@ -348,34 +469,41 @@ export const useSheetStore = create<SheetState>()(
         },
 
         exportPdf: () => {
-          const sheet = get().sheet;
-          exportSheetToPdf(sheet, computeSheet(sheet), "ExcelToGo");
+          const tab = activeTab(get());
+          exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name);
         },
       }),
       {
         limit: 100,
-        partialize: (s): PersistedSlice => ({ sheet: s.sheet }),
-        // `partialize` above returns a fresh `{ sheet }` wrapper object every call, so the
+        partialize: (s): TemporalSlice => ({ sheets: s.sheets }),
+        // `partialize` above returns a fresh `{ sheets }` wrapper object every call, so the
         // default reference-equality check would treat every action (even ones that only
-        // touch `selection` or `pending`) as a sheet change and pollute the undo history.
-        // Compare the actual `sheet` reference instead.
-        equality: (a, b) => a.sheet === b.sheet,
+        // touch `selection` or `pending`) as a content change and pollute the undo history.
+        // Compare the actual `sheets` array reference instead.
+        equality: (a, b) => a.sheets === b.sheets,
       }
     ),
     {
-      name: "exceltogo-sheet-v1",
+      name: "exceltogo-sheet-v2",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s): PersistedSlice => ({ sheet: s.sheet }),
+      partialize: (s): PersistedSlice => ({ sheets: s.sheets, activeSheetId: s.activeSheetId }),
       // Rehydration is triggered manually (see useHydrateSheetStore) after the first client
       // render, so the server-rendered HTML and the client's initial render match exactly —
       // reading localStorage during store creation would make them diverge and trigger a
       // React hydration mismatch.
       skipHydration: true,
+      merge: (persisted, current) => {
+        const p = persisted as Partial<PersistedSlice> | undefined;
+        const sheets = p?.sheets;
+        if (!sheets || sheets.length === 0) return current;
+        const activeSheetId = sheets.some((t) => t.id === p.activeSheetId) ? p.activeSheetId! : sheets[0].id;
+        return { ...current, sheets, activeSheetId };
+      },
     }
   )
 );
 
-/** Reads any autosaved sheet from localStorage once, after the initial render has already
+/** Reads any autosaved sheets from localStorage once, after the initial render has already
  *  matched the server-rendered HTML. Call once near the root of the app. */
 export function useHydrateSheetStore() {
   useEffect(() => {
@@ -383,14 +511,22 @@ export function useHydrateSheetStore() {
   }, []);
 }
 
-/** Recomputes derived cell values/display strings, memoized on the sheet reference. */
+export function selectActiveSheet(s: SheetState): SheetModel {
+  return activeTab(s).sheet;
+}
+
+export function selectActiveSelection(s: SheetState): SelectionRect {
+  return activeSelectionOf(s);
+}
+
+/** Recomputes derived cell values/display strings, memoized on the active sheet's reference. */
 export function useComputedSheet() {
-  const sheet = useSheetStore((s) => s.sheet);
+  const sheet = useSheetStore(selectActiveSheet);
   return useMemo(() => computeSheet(sheet), [sheet]);
 }
 
 export function useSelectionAddress() {
-  const selection = useSheetStore((s) => s.selection);
+  const selection = useSheetStore(selectActiveSelection);
   return selectionToAddress(selection);
 }
 
@@ -401,7 +537,11 @@ const EMPTY_FORMAT: CellFormat = {};
  *  fresh `{}` per call) so the selector returns a stable reference when there's no format,
  *  which Zustand's snapshot comparison requires to avoid re-rendering forever. */
 export function useAnchorFormat(): CellFormat {
-  return useSheetStore((s) => s.sheet.formats[s.selection.anchorRow]?.[s.selection.anchorCol] ?? EMPTY_FORMAT);
+  return useSheetStore((s) => {
+    const sheet = activeTab(s).sheet;
+    const selection = activeSelectionOf(s);
+    return sheet.formats[selection.anchorRow]?.[selection.anchorCol] ?? EMPTY_FORMAT;
+  });
 }
 
 export function useCanUndo() {
