@@ -110,6 +110,10 @@ class Parser {
       this.next();
       return { type: "bool", value: t.value === "TRUE" };
     }
+    if (t.type === "REFERR") {
+      this.next();
+      return { type: "referror" };
+    }
     if (t.type === "RANGE") {
       this.next();
       const r = parseRangeRef(t.value);

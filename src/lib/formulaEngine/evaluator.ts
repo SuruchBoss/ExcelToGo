@@ -1,5 +1,5 @@
 import { AstNode } from "./ast";
-import { EvalResult, FormulaValue, isError, scalar, ERR_DIV0, ERR_NAME, ERR_VALUE } from "./types";
+import { EvalResult, FormulaValue, isError, scalar, ERR_DIV0, ERR_NAME, ERR_REF, ERR_VALUE } from "./types";
 import { toNumber, toDisplayString } from "./coerce";
 import { FUNCTIONS } from "./functions";
 
@@ -17,6 +17,8 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
       return scalar(node.value);
     case "cell":
       return scalar(ctx.getCell(node.row, node.col));
+    case "referror":
+      return scalar(ERR_REF);
     case "range": {
       const rows: FormulaValue[][] = [];
       for (let r = node.startRow; r <= node.endRow; r++) {

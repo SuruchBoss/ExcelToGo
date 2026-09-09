@@ -5,6 +5,7 @@ export type TokenType =
   | "RANGE"
   | "CELL"
   | "FUNC"
+  | "REFERR"
   | "OP"
   | "LPAREN"
   | "RPAREN"
@@ -16,6 +17,7 @@ export interface Token {
   value: string;
 }
 
+const REF_ERROR_RE = /^#REF!/i;
 const RANGE_RE = /^\$?[A-Za-z]{1,3}\$?\d+:\$?[A-Za-z]{1,3}\$?\d+/;
 const CELL_RE = /^\$?[A-Za-z]{1,3}\$?\d+/;
 const NUMBER_RE = /^\d+(\.\d+)?/;
@@ -52,6 +54,12 @@ export function tokenize(input: string): Token[] {
       continue;
     }
 
+    const refErrMatch = REF_ERROR_RE.exec(s);
+    if (refErrMatch) {
+      tokens.push({ type: "REFERR", value: "#REF!" });
+      s = s.slice(refErrMatch[0].length);
+      continue;
+    }
     const rangeMatch = RANGE_RE.exec(s);
     if (rangeMatch) {
       tokens.push({ type: "RANGE", value: rangeMatch[0].toUpperCase() });

@@ -14,7 +14,11 @@ import {
   computeSheet,
   copyRange,
   createEmptySheet,
+  deleteColumn,
+  deleteRow,
   getCellFormat,
+  insertColumnBefore,
+  insertRowBefore,
   NumberFormat,
   parseTsv,
   pasteClipboardBlock,
@@ -84,6 +88,10 @@ interface SheetState {
   setCellRaw: (row: number, col: number, raw: string) => void;
   addRow: () => void;
   addColumn: () => void;
+  deleteSelectedRow: () => void;
+  deleteSelectedColumn: () => void;
+  insertRowAtSelection: () => void;
+  insertColumnAtSelection: () => void;
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   toggleSidebar: (mode: "palette" | "ai") => void;
@@ -130,6 +138,30 @@ export const useSheetStore = create<SheetState>()(
         setCellRaw: (row, col, raw) => set((s) => ({ sheet: setCellRaw(s.sheet, row, col, raw) })),
         addRow: () => set((s) => ({ sheet: addRow(s.sheet) })),
         addColumn: () => set((s) => ({ sheet: addColumn(s.sheet) })),
+
+        deleteSelectedRow: () => {
+          const { sheet, selection } = get();
+          const next = deleteRow(sheet, selection.anchorRow);
+          const row = Math.min(selection.anchorRow, next.rows - 1);
+          set({ sheet: next, selection: singleCellSelection(row, Math.min(selection.anchorCol, next.cols - 1)) });
+        },
+
+        deleteSelectedColumn: () => {
+          const { sheet, selection } = get();
+          const next = deleteColumn(sheet, selection.anchorCol);
+          const col = Math.min(selection.anchorCol, next.cols - 1);
+          set({ sheet: next, selection: singleCellSelection(Math.min(selection.anchorRow, next.rows - 1), col) });
+        },
+
+        insertRowAtSelection: () => {
+          const { sheet, selection } = get();
+          set({ sheet: insertRowBefore(sheet, selection.anchorRow) });
+        },
+
+        insertColumnAtSelection: () => {
+          const { sheet, selection } = get();
+          set({ sheet: insertColumnBefore(sheet, selection.anchorCol) });
+        },
 
         clearSelection: () => {
           const { sheet, selection } = get();

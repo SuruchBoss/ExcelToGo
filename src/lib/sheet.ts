@@ -4,6 +4,7 @@ import { FormulaError, FormulaValue } from "./formulaEngine/types";
 import { toDisplayString } from "./formulaEngine/coerce";
 import { cellRef, colToLetters } from "./formulaEngine/address";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
+import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
 import { CellFormat, formatNumberForDisplay } from "./cellFormat";
 
 export const DEFAULT_ROWS = 30;
@@ -178,6 +179,67 @@ export function applyFormula(sheet: SheetModel, formulaBody: string, opts: Apply
     }
   }
   return next;
+}
+
+function adjustAllFormulas(sheet: SheetModel, axis: Axis, opIndex: number, delta: 1 | -1): SheetModel {
+  const next = cloneSheet(sheet);
+  for (let r = 0; r < next.rows; r++) {
+    for (let c = 0; c < next.cols; c++) {
+      const raw = next.cells[r][c];
+      if (raw.startsWith("=") && raw.length > 1) {
+        next.cells[r][c] = `=${adjustFormulaForStructuralOp(raw.slice(1), axis, opIndex, delta)}`;
+      }
+    }
+  }
+  return next;
+}
+
+/** Deletes row `row` (0-based), shifting formula references elsewhere in the sheet the way
+ *  Excel does (refs to the deleted row become #REF!, refs below it shift up). Refuses to
+ *  delete the sheet's only remaining row. */
+export function deleteRow(sheet: SheetModel, row: number): SheetModel {
+  if (sheet.rows <= 1) return sheet;
+  const adjusted = adjustAllFormulas(sheet, "row", row, -1);
+  return {
+    ...adjusted,
+    rows: adjusted.rows - 1,
+    cells: [...adjusted.cells.slice(0, row), ...adjusted.cells.slice(row + 1)],
+    formats: [...adjusted.formats.slice(0, row), ...adjusted.formats.slice(row + 1)],
+  };
+}
+
+export function insertRowBefore(sheet: SheetModel, row: number): SheetModel {
+  const adjusted = adjustAllFormulas(sheet, "row", row, 1);
+  const blankCells = Array.from({ length: adjusted.cols }, () => "");
+  const blankFormats = Array.from({ length: adjusted.cols }, () => undefined);
+  return {
+    ...adjusted,
+    rows: adjusted.rows + 1,
+    cells: [...adjusted.cells.slice(0, row), blankCells, ...adjusted.cells.slice(row)],
+    formats: [...adjusted.formats.slice(0, row), blankFormats, ...adjusted.formats.slice(row)],
+  };
+}
+
+/** Deletes column `col` (0-based); see deleteRow for the reference-adjustment behavior. */
+export function deleteColumn(sheet: SheetModel, col: number): SheetModel {
+  if (sheet.cols <= 1) return sheet;
+  const adjusted = adjustAllFormulas(sheet, "col", col, -1);
+  return {
+    ...adjusted,
+    cols: adjusted.cols - 1,
+    cells: adjusted.cells.map((r) => [...r.slice(0, col), ...r.slice(col + 1)]),
+    formats: adjusted.formats.map((r) => [...r.slice(0, col), ...r.slice(col + 1)]),
+  };
+}
+
+export function insertColumnBefore(sheet: SheetModel, col: number): SheetModel {
+  const adjusted = adjustAllFormulas(sheet, "col", col, 1);
+  return {
+    ...adjusted,
+    cols: adjusted.cols + 1,
+    cells: adjusted.cells.map((r) => [...r.slice(0, col), "", ...r.slice(col)]),
+    formats: adjusted.formats.map((r) => [...r.slice(0, col), undefined, ...r.slice(col)]),
+  };
 }
 
 export interface ClipboardBlock {

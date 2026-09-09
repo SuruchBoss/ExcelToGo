@@ -22,6 +22,10 @@ export default function SpreadsheetGrid() {
   const clearSelection = useSheetStore((s) => s.clearSelection);
   const clipboard = useSheetStore((s) => s.clipboard);
   const clearClipboard = useSheetStore((s) => s.clearClipboard);
+  const deleteSelectedRow = useSheetStore((s) => s.deleteSelectedRow);
+  const deleteSelectedColumn = useSheetStore((s) => s.deleteSelectedColumn);
+  const insertRowAtSelection = useSheetStore((s) => s.insertRowAtSelection);
+  const insertColumnAtSelection = useSheetStore((s) => s.insertColumnAtSelection);
   const { values, display } = useComputedSheet();
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
@@ -36,6 +40,9 @@ export default function SpreadsheetGrid() {
 
   const [editing, setEditing] = useState<{ row: number; col: number; value: string } | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ type: "row" | "col"; index: number; x: number; y: number } | null>(
+    null
+  );
   const isSelecting = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -71,6 +78,29 @@ export default function SpreadsheetGrid() {
     if (!isSelecting.current) return;
     onSelectionChange(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
   };
+
+  const selectWholeRow = (row: number) =>
+    onSelectionChange({ anchorRow: row, anchorCol: 0, startRow: row, startCol: 0, endRow: row, endCol: sheet.cols - 1 });
+  const selectWholeColumn = (col: number) =>
+    onSelectionChange({ anchorRow: 0, anchorCol: col, startRow: 0, startCol: col, endRow: sheet.rows - 1, endCol: col });
+
+  const openHeaderMenu = (e: React.MouseEvent, type: "row" | "col", index: number) => {
+    e.preventDefault();
+    if (type === "row") selectWholeRow(index);
+    else selectWholeColumn(index);
+    setContextMenu({ type, index, x: e.clientX, y: e.clientY });
+  };
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     const up = () => (isSelecting.current = false);
@@ -145,8 +175,10 @@ export default function SpreadsheetGrid() {
             {Array.from({ length: sheet.cols }, (_, c) => (
               <th
                 key={c}
+                onClick={() => selectWholeColumn(c)}
+                onContextMenu={(e) => openHeaderMenu(e, "col", c)}
                 className={clsx(
-                  "sticky top-0 z-20 border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
+                  "sticky top-0 z-20 cursor-pointer border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
                   c >= selection.startCol && c <= selection.endCol ? "bg-blue-100 text-blue-800" : "bg-zinc-100"
                 )}
                 style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT }}
@@ -160,8 +192,10 @@ export default function SpreadsheetGrid() {
           {Array.from({ length: sheet.rows }, (_, r) => (
             <tr key={r}>
               <th
+                onClick={() => selectWholeRow(r)}
+                onContextMenu={(e) => openHeaderMenu(e, "row", r)}
                 className={clsx(
-                  "sticky left-0 z-10 border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
+                  "sticky left-0 z-10 cursor-pointer border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
                   r >= selection.startRow && r <= selection.endRow ? "bg-blue-100 text-blue-800" : "bg-zinc-100"
                 )}
                 style={{ width: ROW_HEADER_WIDTH, minWidth: ROW_HEADER_WIDTH, height: ROW_HEIGHT }}
@@ -245,6 +279,58 @@ export default function SpreadsheetGrid() {
           ))}
         </tbody>
       </table>
+
+      {contextMenu && (
+        <div
+          className="fixed z-50 w-44 overflow-hidden rounded-md border border-zinc-200 bg-white py-1 text-sm shadow-lg"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.type === "row" ? (
+            <>
+              <button
+                onClick={() => {
+                  insertRowAtSelection();
+                  setContextMenu(null);
+                }}
+                className="block w-full px-3 py-1.5 text-left hover:bg-zinc-50"
+              >
+                แทรกแถวด้านบน
+              </button>
+              <button
+                onClick={() => {
+                  deleteSelectedRow();
+                  setContextMenu(null);
+                }}
+                className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
+              >
+                ลบแถวนี้
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  insertColumnAtSelection();
+                  setContextMenu(null);
+                }}
+                className="block w-full px-3 py-1.5 text-left hover:bg-zinc-50"
+              >
+                แทรกคอลัมน์ด้านซ้าย
+              </button>
+              <button
+                onClick={() => {
+                  deleteSelectedColumn();
+                  setContextMenu(null);
+                }}
+                className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
+              >
+                ลบคอลัมน์นี้
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
