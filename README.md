@@ -51,6 +51,7 @@
 ### เครื่องมือ (Tools)
 - **Node.js 18.18+** (แนะนำ Node 20 หรือ 22) และ **npm**
 - **ESLint 9** (`eslint-config-next`) สำหรับตรวจโค้ด
+- **Vitest** สำหรับ unit test ของ formula engine (`src/lib/formulaEngine/*.test.ts`) และการเรียงข้อมูล (`src/lib/sheetSort.test.ts`)
 - **Git** สำหรับ clone/push โค้ด
 - ไม่ต้องใช้ฐานข้อมูลหรือ backend แยก — ทุกอย่างรันอยู่ใน Next.js เดียว (ข้อมูลตารางบันทึกอัตโนมัติลง `localStorage`
   ของเบราว์เซอร์ผู้ใช้ ยังไม่มีระบบบันทึกลงคลาวด์หรือ sync ข้ามเครื่อง)
@@ -83,6 +84,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
+| `npm test` | รัน unit test ของ formula engine ด้วย Vitest |
 
 ### 2) ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -271,6 +273,9 @@ src/
   features/
     grid/SpreadsheetGrid.tsx        # ตารางหลัก (เลือกเซลล์, แก้ไข, sticky header, คลิกขวาแทรก/ลบแถว-คอลัมน์,
                                      # ซ่อนแถวที่ถูกกรอง, drag-drop รับสูตร)
+    grid/useHeaderContextMenu.ts    # hook: state + เปิด/ปิดเมนูคลิกขวาที่หัวแถว/คอลัมน์
+    grid/useColumnFilterPopoverState.ts # hook: state + เปิด/ปิด/สลับป็อปอัปตัวกรองคอลัมน์
+    grid/useClickAway.ts            # hook กลาง: ปิดป็อปอัป/เมนูเมื่อคลิกหรือ scroll ออกนอกพื้นที่
     grid/FormulaBar.tsx             # แถบสูตรด้านบนตาราง แสดง/แก้ไขเนื้อหาดิบของเซลล์ที่เลือก
     grid/SheetTabs.tsx              # แถบแท็บชีตด้านล่างตาราง (สลับ/เพิ่ม/เปลี่ยนชื่อ/ลบชีต)
     grid/ColumnFilterPopover.tsx    # ป็อปอัปเลือกค่าที่จะแสดง/ซ่อนสำหรับตัวกรองแต่ละคอลัมน์
@@ -282,11 +287,15 @@ src/
   lib/                       # ตรรกะหลักของโดเมน ไม่ผูกกับ React/UI แก้ไข/ทดสอบแยกจาก UI ได้อิสระ
     formulaEngine/           # เอนจินคำนวณสูตรที่เขียนเอง (tokenizer, parser, evaluator, functions,
                               # การเลื่อนสูตรแบบ relative ตอน fill/paste และแบบโครงสร้างตอนแทรก/ลบแถว-คอลัมน์)
+                              # พร้อม unit test คู่กันทุกไฟล์ (*.test.ts, รันด้วย Vitest)
     formulaCatalog.ts        # รายการสูตรสำเร็จรูปที่แสดงในแถบ "สูตร"
     cellFormat.ts            # รูปแบบเซลล์ (ตัวหนา/สี/จัดตำแหน่ง/รูปแบบตัวเลข) + แปลงเป็น/จาก numFmt ของ Excel
     aiHeuristic.ts           # ตรรกะแนะนำสูตรจากคำสำคัญ (ใช้เมื่อไม่มี ANTHROPIC_API_KEY)
-    sheet.ts                 # โมเดลข้อมูลตาราง, คำนวณค่าทั้งชีต, ใส่สูตรตาม scope ต่างๆ, คัดลอก/วาง,
-                              # แทรก/ลบแถว-คอลัมน์, เรียงลำดับ
+    sheet.ts                 # โมเดลข้อมูลตารางหลัก, คำนวณค่าทั้งชีต, ใส่สูตรตาม scope ต่างๆ,
+                              # แทรก/ลบแถว-คอลัมน์ — re-export sheetClipboard.ts/sheetSort.ts ด้านล่างด้วย
+                              # เพื่อให้ import "@/lib/sheet" จุดเดียวยังใช้ได้เหมือนเดิม
+    sheetClipboard.ts        # คัดลอก/ตัด/วาง, แปลงเป็น/จาก TSV (สำหรับ paste ข้ามแอป)
+    sheetSort.ts             # ตรวจจับช่วงที่จะเรียง + เรียงลำดับข้อมูล (พร้อม unit test)
     excelIO.ts                # นำเข้า/ส่งออก workbook หลายชีต (.xlsx) ด้วย exceljs พร้อมรูปแบบเซลล์
     pdfExport.ts              # ส่งออก PDF ด้วย jspdf + jspdf-autotable
   types/
