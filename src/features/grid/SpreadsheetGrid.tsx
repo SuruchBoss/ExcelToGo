@@ -172,6 +172,7 @@ export default function SpreadsheetGrid() {
                 const value = values[r]?.[c];
                 const isErr = value instanceof FormulaError;
                 const editingHere = editing?.row === r && editing?.col === c;
+                const format = sheet.formats[r]?.[c];
                 return (
                   <td
                     key={c}
@@ -226,7 +227,14 @@ export default function SpreadsheetGrid() {
                         }}
                       />
                     ) : (
-                      <div className="overflow-hidden text-ellipsis whitespace-nowrap leading-8">
+                      <div
+                        className="overflow-hidden text-ellipsis whitespace-nowrap leading-8"
+                        style={{
+                          fontWeight: format?.bold ? 700 : undefined,
+                          color: isErr ? undefined : format?.color,
+                          textAlign: format?.align,
+                        }}
+                      >
                         {display[r]?.[c]}
                       </div>
                     )}

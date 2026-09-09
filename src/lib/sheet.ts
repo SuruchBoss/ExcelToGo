@@ -4,6 +4,7 @@ import { FormulaError, FormulaValue } from "./formulaEngine/types";
 import { toDisplayString } from "./formulaEngine/coerce";
 import { cellRef, colToLetters } from "./formulaEngine/address";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
+import { CellFormat, formatNumberForDisplay } from "./cellFormat";
 
 export const DEFAULT_ROWS = 30;
 export const DEFAULT_COLS = 10;
@@ -12,6 +13,8 @@ export interface SheetModel {
   rows: number;
   cols: number;
   cells: string[][];
+  /** Sparse — a cell with no entry (or an empty object) uses default formatting. */
+  formats: (CellFormat | undefined)[][];
 }
 
 export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): SheetModel {
@@ -19,11 +22,16 @@ export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): Shee
     rows,
     cols,
     cells: Array.from({ length: rows }, () => Array.from({ length: cols }, () => "")),
+    formats: Array.from({ length: rows }, () => Array.from({ length: cols }, () => undefined)),
   };
 }
 
 export function cloneSheet(sheet: SheetModel): SheetModel {
-  return { ...sheet, cells: sheet.cells.map((row) => [...row]) };
+  return {
+    ...sheet,
+    cells: sheet.cells.map((row) => [...row]),
+    formats: sheet.formats.map((row) => [...row]),
+  };
 }
 
 export function setCellRaw(sheet: SheetModel, row: number, col: number, raw: string): SheetModel {
@@ -32,11 +40,34 @@ export function setCellRaw(sheet: SheetModel, row: number, col: number, raw: str
   return next;
 }
 
+export function getCellFormat(sheet: SheetModel, row: number, col: number): CellFormat {
+  return sheet.formats[row]?.[col] ?? {};
+}
+
+export function setRangeFormat(
+  sheet: SheetModel,
+  startRow: number,
+  startCol: number,
+  endRow: number,
+  endCol: number,
+  patch: Partial<CellFormat>
+): SheetModel {
+  const next = cloneSheet(sheet);
+  for (let r = startRow; r <= endRow; r++) {
+    for (let c = startCol; c <= endCol; c++) {
+      if (!next.formats[r]) continue;
+      next.formats[r][c] = { ...next.formats[r][c], ...patch };
+    }
+  }
+  return next;
+}
+
 export function addRow(sheet: SheetModel): SheetModel {
   return {
     ...sheet,
     rows: sheet.rows + 1,
     cells: [...sheet.cells.map((r) => [...r]), Array.from({ length: sheet.cols }, () => "")],
+    formats: [...sheet.formats.map((r) => [...r]), Array.from({ length: sheet.cols }, () => undefined)],
   };
 }
 
@@ -45,6 +76,7 @@ export function addColumn(sheet: SheetModel): SheetModel {
     ...sheet,
     cols: sheet.cols + 1,
     cells: sheet.cells.map((r) => [...r, ""]),
+    formats: sheet.formats.map((r) => [...r, undefined]),
   };
 }
 
@@ -95,7 +127,12 @@ export function computeSheet(sheet: SheetModel): ComputedSheet {
     for (let c = 0; c < sheet.cols; c++) {
       const v = getCell(r, c);
       valueRow.push(v);
-      displayRow.push(toDisplayString(v));
+      const numberFormat = sheet.formats[r]?.[c]?.numberFormat;
+      displayRow.push(
+        typeof v === "number" && numberFormat && numberFormat !== "general"
+          ? formatNumberForDisplay(v, numberFormat)
+          : toDisplayString(v)
+      );
     }
     values.push(valueRow);
     display.push(displayRow);
@@ -145,6 +182,7 @@ export function applyFormula(sheet: SheetModel, formulaBody: string, opts: Apply
 
 export interface ClipboardBlock {
   rows: string[][];
+  formats: (CellFormat | undefined)[][];
   startRow: number;
   startCol: number;
 }
@@ -157,12 +195,18 @@ export function copyRange(
   endCol: number
 ): ClipboardBlock {
   const rows: string[][] = [];
+  const formats: (CellFormat | undefined)[][] = [];
   for (let r = startRow; r <= endRow; r++) {
     const row: string[] = [];
-    for (let c = startCol; c <= endCol; c++) row.push(sheet.cells[r]?.[c] ?? "");
+    const formatRow: (CellFormat | undefined)[] = [];
+    for (let c = startCol; c <= endCol; c++) {
+      row.push(sheet.cells[r]?.[c] ?? "");
+      formatRow.push(sheet.formats[r]?.[c]);
+    }
     rows.push(row);
+    formats.push(formatRow);
   }
-  return { rows, startRow, startCol };
+  return { rows, formats, startRow, startCol };
 }
 
 function ensureBounds(sheet: SheetModel, minRows: number, minCols: number): SheetModel {
@@ -189,6 +233,7 @@ export function pasteClipboardBlock(sheet: SheetModel, clip: ClipboardBlock, tar
       const raw = clip.rows[r][c];
       next.cells[targetRow + r][targetCol + c] =
         raw.startsWith("=") && raw.length > 1 ? `=${shiftFormulaRefs(raw.slice(1), rowOffset, colOffset)}` : raw;
+      next.formats[targetRow + r][targetCol + c] = clip.formats[r]?.[c];
     }
   }
   return next;
@@ -233,3 +278,5 @@ export function parseTsv(text: string): string[][] {
 }
 
 export { cellRef, colToLetters };
+export type { CellFormat, CellAlign, NumberFormat } from "./cellFormat";
+export { NUMBER_FORMAT_LABELS } from "./cellFormat";

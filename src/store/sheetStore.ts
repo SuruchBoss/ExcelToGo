@@ -7,15 +7,20 @@ import {
   addRow,
   applyFormula,
   ApplyScope,
+  CellAlign,
+  CellFormat,
   clearRange,
   ClipboardBlock,
   computeSheet,
   copyRange,
   createEmptySheet,
+  getCellFormat,
+  NumberFormat,
   parseTsv,
   pasteClipboardBlock,
   pastePlainTextBlock,
   setCellRaw,
+  setRangeFormat,
   SheetModel,
   toTsv,
 } from "@/lib/sheet";
@@ -88,6 +93,11 @@ interface SheetState {
   cutSelection: () => void;
   pasteAtSelection: (externalText?: string) => void;
   clearClipboard: () => void;
+
+  toggleBold: () => void;
+  setAlign: (align: CellAlign) => void;
+  setTextColor: (color: string) => void;
+  setNumberFormat: (fmt: NumberFormat) => void;
 
   openFormulaPanel: (def: FormulaDef, anchorRow: number, anchorCol: number) => void;
   updatePending: (pending: PendingFormula) => void;
@@ -174,6 +184,43 @@ export const useSheetStore = create<SheetState>()(
         },
 
         clearClipboard: () => set({ clipboard: null }),
+
+        toggleBold: () => {
+          const { sheet, selection } = get();
+          const anchorBold = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).bold;
+          set({
+            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+              bold: !anchorBold,
+            }),
+          });
+        },
+
+        setAlign: (align) => {
+          const { sheet, selection } = get();
+          set({
+            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+              align,
+            }),
+          });
+        },
+
+        setTextColor: (color) => {
+          const { sheet, selection } = get();
+          set({
+            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+              color,
+            }),
+          });
+        },
+
+        setNumberFormat: (numberFormat) => {
+          const { sheet, selection } = get();
+          set({
+            sheet: setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+              numberFormat,
+            }),
+          });
+        },
 
         setSelection: (sel) =>
           set((s) => {
@@ -313,6 +360,16 @@ export function useComputedSheet() {
 export function useSelectionAddress() {
   const selection = useSheetStore((s) => s.selection);
   return selectionToAddress(selection);
+}
+
+const EMPTY_FORMAT: CellFormat = {};
+
+/** The format of the selection's anchor cell — used to reflect e.g. "is Bold active" in the
+ *  formatting toolbar's toggle buttons. Falls back to a module-level constant (rather than a
+ *  fresh `{}` per call) so the selector returns a stable reference when there's no format,
+ *  which Zustand's snapshot comparison requires to avoid re-rendering forever. */
+export function useAnchorFormat(): CellFormat {
+  return useSheetStore((s) => s.sheet.formats[s.selection.anchorRow]?.[s.selection.anchorCol] ?? EMPTY_FORMAT);
 }
 
 export function useCanUndo() {

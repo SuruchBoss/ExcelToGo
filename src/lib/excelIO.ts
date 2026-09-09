@@ -1,6 +1,16 @@
 import ExcelJS from "exceljs";
 import { ComputedSheet, SheetModel, createEmptySheet } from "./sheet";
 import { isError } from "./formulaEngine/types";
+import { CellAlign, EXCEL_NUM_FMT, numberFormatFromExcelNumFmt } from "./cellFormat";
+
+function hexToArgb(hex: string): string {
+  return `FF${hex.replace("#", "").toUpperCase()}`;
+}
+
+function argbToHex(argb: string | undefined): string | undefined {
+  if (!argb || argb.length < 6) return undefined;
+  return `#${argb.slice(-6).toLowerCase()}`;
+}
 
 function cellValueToRaw(cell: ExcelJS.Cell): string {
   const v = cell.value;
@@ -42,6 +52,17 @@ export async function importWorkbookFromFile(file: File): Promise<SheetModel> {
       const c = colNumber - 1;
       if (r < sheet.rows && c < sheet.cols) {
         sheet.cells[r][c] = cellValueToRaw(cell);
+        const align = cell.alignment?.horizontal;
+        const format = {
+          bold: cell.font?.bold || undefined,
+          color: argbToHex(cell.font?.color?.argb),
+          align: align === "left" || align === "center" || align === "right" ? (align as CellAlign) : undefined,
+          numberFormat:
+            cell.numFmt && cell.numFmt !== "General" ? numberFormatFromExcelNumFmt(cell.numFmt) : undefined,
+        };
+        if (Object.values(format).some((v) => v !== undefined)) {
+          sheet.formats[r][c] = format;
+        }
       }
     });
   });
@@ -67,6 +88,17 @@ export async function exportSheetToXlsxBlob(sheet: SheetModel, computed: Compute
       } else {
         const n = Number(raw);
         cell.value = raw.trim() !== "" && !Number.isNaN(n) ? n : raw;
+      }
+
+      const format = sheet.formats[r]?.[c];
+      if (format?.bold || format?.color) {
+        cell.font = { bold: format.bold || undefined, color: format.color ? { argb: hexToArgb(format.color) } : undefined };
+      }
+      if (format?.align) {
+        cell.alignment = { horizontal: format.align };
+      }
+      if (format?.numberFormat && EXCEL_NUM_FMT[format.numberFormat]) {
+        cell.numFmt = EXCEL_NUM_FMT[format.numberFormat]!;
       }
     }
   }
