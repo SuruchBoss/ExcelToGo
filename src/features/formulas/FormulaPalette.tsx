@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CATEGORIES, FORMULA_CATALOG, FormulaDef } from "@/lib/formulaCatalog";
+import { CATEGORIES, FORMULA_CATALOG } from "@/lib/formulaCatalog";
+import { useSheetStore } from "@/store/sheetStore";
 import clsx from "clsx";
 
-interface Props {
-  onPick: (def: FormulaDef) => void;
-}
-
-export default function FormulaPalette({ onPick }: Props) {
+export default function FormulaPalette() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("ทั้งหมด");
+  const selection = useSheetStore((s) => s.selection);
+  const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
+  const onPick = (def: (typeof FORMULA_CATALOG)[number]) =>
+    openFormulaPanel(def, selection.anchorRow, selection.anchorCol);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

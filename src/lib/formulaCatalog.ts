@@ -344,3 +344,7 @@ function quoteIfNeeded(text: string | undefined): string {
 export function getCategories(): string[] {
   return [...CATEGORIES];
 }
+
+export const FORMULA_BY_ID: Record<string, FormulaDef> = Object.fromEntries(
+  FORMULA_CATALOG.map((f) => [f.id, f])
+);

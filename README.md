@@ -33,6 +33,7 @@
 ### ไลบรารีหลักที่ใช้
 | ไลบรารี | ใช้ทำอะไร |
 |---|---|
+| `zustand` | จัดการ state ส่วนกลางของแอป (ตาราง, selection, แผงสูตรที่กำลังกรอก, แถบข้างที่เปิดอยู่) ใน `src/store/sheetStore.ts` แทนการส่ง props เป็นทอดๆ |
 | `exceljs` | อ่านไฟล์ `.xlsx` ที่ผู้ใช้อัปโหลด และสร้างไฟล์ `.xlsx` ตอนส่งออก (คงสูตรเดิมไว้ในไฟล์ที่ export) |
 | `jspdf` + `jspdf-autotable` | สร้างไฟล์ PDF จากตารางที่คำนวณค่าแล้ว |
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI แนะนำสูตร |
@@ -197,15 +198,18 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 ```
 src/
   app/
-    page.tsx                 # หน้าเว็บหลัก เชื่อม state ของตาราง + คอมโพเนนต์ทั้งหมดเข้าด้วยกัน
+    page.tsx                 # หน้าเว็บหลัก แค่ประกอบคอมโพเนนต์ตาม state จาก store (ไม่ถือ state เอง)
     api/ai/formula/route.ts  # API endpoint ให้ AI แนะนำสูตร (ใช้ Claude หรือ fallback)
-  components/
-    SpreadsheetGrid.tsx      # ตารางหลัก (เลือกเซลล์, แก้ไข, sticky header, drag-drop รับสูตร)
-    FormulaPalette.tsx       # แถบรายการสูตร ค้นหา/กรองหมวดหมู่/ลากวาง
-    FormulaParamPanel.tsx    # แผงกรอกพารามิเตอร์สูตร + เลือกช่วงจากตาราง + เลือก scope
-    AIAssistantPanel.tsx     # แชทถาม AI หาสูตร
-    Toolbar.tsx              # แถบเครื่องมือด้านบน (นำเข้า/ส่งออก/เพิ่มแถว-คอลัมน์/สลับแถบข้าง)
-  lib/
+  store/
+    sheetStore.ts            # Zustand store — แหล่งความจริงเดียวของ state ทั้งแอป (ตาราง, selection,
+                              # แผงสูตรที่กำลังกรอก, แถบข้างที่เปิดอยู่) และ action ทั้งหมดที่แก้ state นี้
+  features/
+    grid/SpreadsheetGrid.tsx        # ตารางหลัก (เลือกเซลล์, แก้ไข, sticky header, drag-drop รับสูตร)
+    formulas/FormulaPalette.tsx     # แถบรายการสูตร ค้นหา/กรองหมวดหมู่/ลากวาง
+    formulas/FormulaParamPanel.tsx  # แผงกรอกพารามิเตอร์สูตร + เลือกช่วงจากตาราง + เลือก scope
+    ai/AIAssistantPanel.tsx         # แชทถาม AI หาสูตร
+    toolbar/Toolbar.tsx             # แถบเครื่องมือด้านบน (นำเข้า/ส่งออก/เพิ่มแถว-คอลัมน์/สลับแถบข้าง)
+  lib/                       # ตรรกะหลักของโดเมน ไม่ผูกกับ React/UI แก้ไข/ทดสอบแยกจาก UI ได้อิสระ
     formulaEngine/           # เอนจินคำนวณสูตรที่เขียนเอง (tokenizer, parser, evaluator, functions)
     formulaCatalog.ts        # รายการสูตรสำเร็จรูปที่แสดงในแถบ "สูตร"
     aiHeuristic.ts           # ตรรกะแนะนำสูตรจากคำสำคัญ (ใช้เมื่อไม่มี ANTHROPIC_API_KEY)
@@ -215,6 +219,10 @@ src/
   types/
     sheet-ui.ts               # types สำหรับ selection ของตารางฝั่ง UI
 ```
+
+ทุกคอมโพเนนต์ใน `features/` อ่าน/แก้ state ผ่าน `useSheetStore` โดยตรง (ไม่ผ่าน props จาก `page.tsx`)
+ทำให้ไม่ต้องส่ง props เป็นทอดๆ (prop drilling) และเพิ่มฟีเจอร์ใหม่ (เช่น undo/redo, บันทึกอัตโนมัติ)
+ได้ง่ายในที่เดียวคือ `store/sheetStore.ts`
 
 ---
 

@@ -1,37 +1,36 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cellRef, colToLetters, SheetModel } from "@/lib/sheet";
+import { colToLetters } from "@/lib/sheet";
+import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
-import { SelectionRect, normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
+import { normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
+import { useComputedSheet, useSheetStore } from "@/store/sheetStore";
+import { FORMULA_BY_ID } from "@/lib/formulaCatalog";
 import clsx from "clsx";
-
-interface Props {
-  sheet: SheetModel;
-  values: (string | number | boolean | null | FormulaError)[][];
-  display: string[][];
-  selection: SelectionRect;
-  onSelectionChange: (sel: SelectionRect) => void;
-  onCellCommit: (row: number, col: number, raw: string) => void;
-  /** Called when a formula chip from the palette is dropped on a cell. */
-  onFormulaDrop: (row: number, col: number, formulaId: string) => void;
-  rawAt: (row: number, col: number) => string;
-}
 
 const ROW_HEADER_WIDTH = 48;
 const COL_WIDTH = 112;
 const ROW_HEIGHT = 32;
 
-export default function SpreadsheetGrid({
-  sheet,
-  values,
-  display,
-  selection,
-  onSelectionChange,
-  onCellCommit,
-  onFormulaDrop,
-  rawAt,
-}: Props) {
+export default function SpreadsheetGrid() {
+  const sheet = useSheetStore((s) => s.sheet);
+  const selection = useSheetStore((s) => s.selection);
+  const setSelection = useSheetStore((s) => s.setSelection);
+  const commitCell = useSheetStore((s) => s.setCellRaw);
+  const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
+  const { values, display } = useComputedSheet();
+  const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
+
+  const onSelectionChange = setSelection;
+  const onCellCommit = commitCell;
+  const onFormulaDrop = (row: number, col: number, formulaId: string) => {
+    const def = FORMULA_BY_ID[formulaId];
+    if (!def) return;
+    setSelection(singleCellSelection(row, col));
+    openFormulaPanel(def, row, col);
+  };
+
   const [editing, setEditing] = useState<{ row: number; col: number; value: string } | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
   const isSelecting = useRef(false);

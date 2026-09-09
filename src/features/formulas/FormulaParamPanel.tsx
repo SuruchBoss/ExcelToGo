@@ -1,30 +1,20 @@
 "use client";
 
-import { FormulaDef } from "@/lib/formulaCatalog";
 import { ApplyScope } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
-import { SelectionRect, isSingleCell } from "@/types/sheet-ui";
+import { isSingleCell } from "@/types/sheet-ui";
+import { useSheetStore } from "@/store/sheetStore";
 import { Crosshair, X } from "lucide-react";
 import clsx from "clsx";
 
-export interface PendingFormula {
-  def: FormulaDef;
-  anchorRow: number;
-  anchorCol: number;
-  values: Record<string, string>;
-  pickingKey: string | null;
-  scope: ApplyScope;
-}
+export default function FormulaParamPanel() {
+  const pending = useSheetStore((s) => s.pending);
+  const selection = useSheetStore((s) => s.selection);
+  const onChange = useSheetStore((s) => s.updatePending);
+  const onInsert = useSheetStore((s) => s.insertPending);
+  const onCancel = useSheetStore((s) => s.cancelPending);
 
-interface Props {
-  pending: PendingFormula;
-  selection: SelectionRect;
-  onChange: (pending: PendingFormula) => void;
-  onInsert: () => void;
-  onCancel: () => void;
-}
-
-export default function FormulaParamPanel({ pending, selection, onChange, onInsert, onCancel }: Props) {
+  if (!pending) return null;
   const { def, values } = pending;
   const anchorAddress = cellRef(pending.anchorRow, pending.anchorCol);
   const selectionIsRange = !isSingleCell(selection);

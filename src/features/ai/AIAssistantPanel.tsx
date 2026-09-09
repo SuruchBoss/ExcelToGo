@@ -2,16 +2,12 @@
 
 import { useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
+import { useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 
 interface Suggestion {
   formula: string;
   explanation: string;
   source: "ai" | "heuristic";
-}
-
-interface Props {
-  selectionAddress: string;
-  onInsert: (formula: string) => void;
 }
 
 const EXAMPLES = [
@@ -21,7 +17,9 @@ const EXAMPLES = [
   "ค้นหาราคาสินค้าจากรหัสสินค้า",
 ];
 
-export default function AIAssistantPanel({ selectionAddress, onInsert }: Props) {
+export default function AIAssistantPanel() {
+  const selectionAddress = useSelectionAddress();
+  const onInsert = useSheetStore((s) => s.insertAIFormula);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
