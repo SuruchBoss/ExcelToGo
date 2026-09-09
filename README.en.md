@@ -248,6 +248,30 @@ a short explanation. One click inserts it into the selected cell.
 - **PDF**: the currently open sheet only, showing computed values with row/column headers — good for printing
   or sharing read-only.
 
+### 🔌 Live data from an API / CSV (prototype)
+
+<p align="center"><img src="docs/screenshots/08-live-data.png" width="820"></p>
+
+Split into two roles so the end user touches as little technology as possible:
+
+- **Tech sets it up once** ("Add data source" in the **Data** panel): enter a REST API URL or a CSV/Google
+  Sheets link, an auth header if needed, and a refresh interval, then "Test connection". Config and credentials
+  live on the server (`data/sources.json`, gitignored) and never reach the user's browser; the server does the
+  fetching, so CORS isn't the user's problem.
+- **Everyday users** see only a plain-language source name plus a **preview table** — the app converts the
+  JSON automatically (finds the largest array of records in the response, flattens nested objects into
+  `customer › name` columns) — then **drag "Whole table"** or **drag a single value** (total/average/count of a
+  numeric column, or each field of a KPI object) onto a cell.
+- Linked cells are tinted green with a status dot, read-only, and **refresh themselves on the source's
+  schedule** (polling). Regular formulas (`=A10*2`, `SUM`, `VLOOKUP`) and Excel/PDF export work on live data
+  immediately, because the app writes real values into the cells.
+- Refreshes **never enter the undo history** (zundo is paused during the write) — one Ctrl+Z undoes the whole
+  placed block.
+- Two demo sources are seeded so it works out of the box (`/api/demo/sales`, a table whose numbers drift
+  every 5s, and `/api/demo/summary`, a KPI-style object).
+
+> Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
+
 ### 🌐 Bilingual (Thai / English)
 
 Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 25 formula
@@ -385,6 +409,8 @@ src/
   app/
     page.tsx                 # Main page — just assembles components from store state (holds no state itself)
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
+    api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
+    api/demo/                # Self-drifting demo endpoints so live data can be tried without a real API
   store/
     sheetStore.ts            # Main Zustand store — sheets, activeSheetId, per-sheet selection/filters,
                               # the formula panel being filled in, which sidebar is open, plus every action —
@@ -408,6 +434,10 @@ src/
     formulas/FormulaPalette.tsx     # The formula list panel — search/category filter/drag
     formulas/FormulaParamPanel.tsx  # The parameter-entry panel — pick a range from the grid + choose a scope
     ai/AIAssistantPanel.tsx         # The "ask AI" chat panel
+    data/DataSourcePanel.tsx        # The "Data" panel: source list + blocks placed in this sheet
+    data/SourceCard.tsx             # One source: live status, preview, draggable table card / value chips
+    data/SourceSetupDialog.tsx      # Tech-side setup form + "test connection"
+    data/useLiveDataPolling.ts      # Root hook: loads sources + polls each on its own interval
     toolbar/Toolbar.tsx             # The top toolbar
     toolbar/FormatBar.tsx           # The cell-formatting bar + sort buttons
     toolbar/LanguageToggle.tsx      # The UI language switch button
@@ -423,6 +453,10 @@ src/
                               # inserting/deleting rows-columns
     sheetClipboard.ts        # Copy/cut/paste, converting to/from TSV (for cross-app pasting)
     sheetSort.ts             # Detecting the range to sort + the actual sort
+    liveBlocks.ts            # Writes a source's table into cells, tracks extent to clear shrinking data, sum/avg/count (tested)
+    dataSources/             # Types + jsonToTable.ts: turns any JSON/CSV into a table (tested)
+    server/                  # Server-only: sourceRepo.ts (config + credentials in data/sources.json),
+                              # executeSource.ts (does the actual fetch)
     excelIO.ts                # Importing/exporting a multi-sheet workbook (.xlsx) via exceljs, with cell formatting
     pdfExport.ts              # PDF export via jspdf + jspdf-autotable
   types/
@@ -573,6 +607,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **Mobile/tablet support** — currently designed primarily for a desktop screen; layout/touch for small
   screens isn't tuned yet
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
+- [x] **Live data from REST API / CSV** — done (prototype, see ✨ Features), polling-based refresh
+- [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
+- [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 
 **Deliberately out of scope:**
 

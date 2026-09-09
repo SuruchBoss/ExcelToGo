@@ -8,6 +8,8 @@ import SheetTabs from "@/features/grid/SheetTabs";
 import FormulaPalette from "@/features/formulas/FormulaPalette";
 import FormulaParamPanel from "@/features/formulas/FormulaParamPanel";
 import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
+import DataSourcePanel from "@/features/data/DataSourcePanel";
+import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 
@@ -16,6 +18,7 @@ export default function Home() {
   useHydrateLocaleStore();
   useUndoRedoShortcuts();
   useClipboardShortcuts();
+  useLiveDataPolling();
 
   const sidebarMode = useSheetStore((s) => s.sidebarMode);
   const hasPending = useSheetStore((s) => s.pending !== null);
@@ -35,7 +38,15 @@ export default function Home() {
         </div>
         {sidebarVisible && (
           <aside className="w-80 shrink-0 rounded-lg border border-zinc-200 bg-white p-3">
-            {hasPending ? <FormulaParamPanel /> : sidebarMode === "palette" ? <FormulaPalette /> : <AIAssistantPanel />}
+            {hasPending ? (
+              <FormulaParamPanel />
+            ) : sidebarMode === "palette" ? (
+              <FormulaPalette />
+            ) : sidebarMode === "data" ? (
+              <DataSourcePanel />
+            ) : (
+              <AIAssistantPanel />
+            )}
           </aside>
         )}
       </div>

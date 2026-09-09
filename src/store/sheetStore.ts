@@ -36,8 +36,10 @@ import { exportSheetToPdf } from "@/lib/pdfExport";
 import { FormulaDef } from "@/lib/formulaCatalog";
 import { isSingleCell, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
 import { getMessages } from "@/i18n";
+import { TableData } from "@/lib/dataSources/types";
+import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 
-export type SidebarMode = "palette" | "ai" | "none";
+export type SidebarMode = "palette" | "ai" | "data" | "none";
 export type { ApplyScope };
 
 export interface PendingFormula {
@@ -53,6 +55,8 @@ export interface SheetTab {
   id: string;
   name: string;
   sheet: SheetModel;
+  /** Regions fed by live data sources. Optional so tabs autosaved before this existed still load. */
+  liveBlocks?: LiveBlock[];
 }
 
 function seedSample(): SheetModel {
@@ -125,7 +129,16 @@ interface SheetState {
   insertColumnAtSelection: () => void;
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
-  toggleSidebar: (mode: "palette" | "ai") => void;
+  toggleSidebar: (mode: "palette" | "ai" | "data") => void;
+
+  /** Drops a live block at the active sheet's selection anchor and fills it right away if the
+   *  source's data is already cached. */
+  addLiveBlock: (block: Omit<LiveBlock, "id" | "rows" | "cols">, table: TableData | undefined) => void;
+  removeLiveBlock: (blockId: string) => void;
+  removeLiveBlocksForSource: (sourceId: string) => void;
+  /** Rewrites every block bound to `sourceId`, on every sheet, with fresh data. Not undoable —
+   *  a refresh isn't a user edit. */
+  applyLiveData: (sourceId: string, table: TableData) => void;
 
   clearSelection: () => void;
   copySelection: () => void;
@@ -406,6 +419,70 @@ export const useSheetStore = create<SheetState>()(
         setSidebarMode: (mode) => set({ sidebarMode: mode }),
         toggleSidebar: (mode) => set((s) => ({ sidebarMode: s.sidebarMode === mode ? "none" : mode })),
 
+        addLiveBlock: (input, table) =>
+          set((s) => ({
+            sheets: s.sheets.map((tab) => {
+              if (tab.id !== s.activeSheetId) return tab;
+              let block: LiveBlock = { ...input, id: `live-${Date.now().toString(36)}-${idCounter++}`, rows: 0, cols: 0 };
+              let sheet = tab.sheet;
+              if (table) {
+                const written = writeLiveBlock(sheet, block, liveBlockCells(block, table));
+                sheet = written.sheet;
+                block = { ...block, rows: written.rows, cols: written.cols };
+              }
+              return { ...tab, sheet, liveBlocks: [...(tab.liveBlocks ?? []), block] };
+            }),
+          })),
+
+        removeLiveBlock: (blockId) =>
+          set((s) => ({
+            sheets: s.sheets.map((tab) => {
+              const block = tab.liveBlocks?.find((b) => b.id === blockId);
+              if (!block) return tab;
+              return {
+                ...tab,
+                sheet: clearLiveBlock(tab.sheet, block),
+                liveBlocks: tab.liveBlocks!.filter((b) => b.id !== blockId),
+              };
+            }),
+          })),
+
+        removeLiveBlocksForSource: (sourceId) =>
+          set((s) => ({
+            sheets: s.sheets.map((tab) => {
+              const doomed = (tab.liveBlocks ?? []).filter((b) => b.sourceId === sourceId);
+              if (doomed.length === 0) return tab;
+              return {
+                ...tab,
+                sheet: doomed.reduce((sheet, b) => clearLiveBlock(sheet, b), tab.sheet),
+                liveBlocks: tab.liveBlocks!.filter((b) => b.sourceId !== sourceId),
+              };
+            }),
+          })),
+
+        applyLiveData: (sourceId, table) => {
+          const temporal = useSheetStore.temporal.getState();
+          temporal.pause();
+          try {
+            set((s) => ({
+              sheets: s.sheets.map((tab) => {
+                const blocks = tab.liveBlocks ?? [];
+                if (!blocks.some((b) => b.sourceId === sourceId)) return tab;
+                let sheet = tab.sheet;
+                const liveBlocks = blocks.map((b) => {
+                  if (b.sourceId !== sourceId) return b;
+                  const written = writeLiveBlock(sheet, b, liveBlockCells(b, table));
+                  sheet = written.sheet;
+                  return { ...b, rows: written.rows, cols: written.cols };
+                });
+                return { ...tab, sheet, liveBlocks };
+              }),
+            }));
+          } finally {
+            temporal.resume();
+          }
+        },
+
         openFormulaPanel: (def, anchorRow, anchorCol) => {
           const sel = activeSelectionOf(get());
           const values: Record<string, string> = {};
@@ -568,6 +645,19 @@ export function useAnchorFormat(): CellFormat {
     const selection = activeSelectionOf(s);
     return sheet.formats[selection.anchorRow]?.[selection.anchorCol] ?? EMPTY_FORMAT;
   });
+}
+
+const EMPTY_LIVE_BLOCKS: LiveBlock[] = [];
+
+/** The active sheet's live-data blocks (stable empty array when there are none). */
+export function useLiveBlocks(): LiveBlock[] {
+  return useSheetStore((s) => activeTab(s).liveBlocks ?? EMPTY_LIVE_BLOCKS);
+}
+
+/** "row,col" → block id for the active sheet, so the grid can tint and protect live cells. */
+export function useBoundCells(): Map<string, string> {
+  const blocks = useLiveBlocks();
+  return useMemo(() => boundCellsOf(blocks), [blocks]);
 }
 
 const EMPTY_FILTERS: Record<number, string[]> = {};

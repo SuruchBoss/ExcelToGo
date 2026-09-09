@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { selectActiveSelection, selectActiveSheet, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, selectActiveSheet, useBoundCells, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 import { singleCellSelection } from "@/types/sheet-ui";
 import { useT } from "@/i18n";
 
@@ -23,8 +23,10 @@ export default function FormulaBar() {
 
   const raw = sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "";
   const inputRef = useRef<HTMLInputElement>(null);
+  const bound = useBoundCells().has(`${selection.anchorRow},${selection.anchorCol}`);
 
   const commit = () => {
+    if (bound) return;
     const value = inputRef.current?.value ?? raw;
     if (value !== raw) setCellRaw(selection.anchorRow, selection.anchorCol, value);
   };
@@ -63,7 +65,9 @@ export default function FormulaBar() {
           }
         }}
         placeholder={t.formulaBar.placeholder}
-        className="flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-blue-500"
+        readOnly={bound}
+        title={bound ? t.data.liveCellReadOnly : undefined}
+        className={`flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-blue-500 ${bound ? "bg-emerald-50 text-emerald-800" : ""}`}
       />
     </div>
   );

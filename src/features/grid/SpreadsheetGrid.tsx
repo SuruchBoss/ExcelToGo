@@ -9,10 +9,14 @@ import {
   selectActiveSelection,
   selectActiveSheet,
   useActiveFilters,
+  useBoundCells,
   useComputedSheet,
   useHiddenRows,
+  useLiveBlocks,
   useSheetStore,
 } from "@/store/sheetStore";
+import { useDataSourceStore } from "@/store/dataSourceStore";
+import { readLiveDragData } from "@/features/data/dragTypes";
 import { getFormulaById } from "@/lib/formulaCatalog";
 import ColumnFilterPopover from "./ColumnFilterPopover";
 import { useHeaderContextMenu } from "./useHeaderContextMenu";
@@ -39,16 +43,37 @@ export default function SpreadsheetGrid() {
   const deleteSelectedColumn = useSheetStore((s) => s.deleteSelectedColumn);
   const insertRowAtSelection = useSheetStore((s) => s.insertRowAtSelection);
   const insertColumnAtSelection = useSheetStore((s) => s.insertColumnAtSelection);
+  const addLiveBlock = useSheetStore((s) => s.addLiveBlock);
   const { values, display } = useComputedSheet();
   const hiddenRows = useHiddenRows();
   const columnFilters = useActiveFilters();
+  const boundCells = useBoundCells();
+  const liveBlocks = useLiveBlocks();
+  const sources = useDataSourceStore((s) => s.sources);
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
+
+  const isBound = (row: number, col: number) => boundCells.has(`${row},${col}`);
+  const boundSourceName = (row: number, col: number) => {
+    const block = liveBlocks.find((b) => b.id === boundCells.get(`${row},${col}`));
+    return sources.find((s) => s.id === block?.sourceId)?.name ?? "";
+  };
 
   const onFormulaDrop = (row: number, col: number, formulaId: string) => {
     const def = getFormulaById(t, formulaId);
     if (!def) return;
     setSelection(singleCellSelection(row, col));
     openFormulaPanel(def, row, col);
+  };
+
+  const onLiveDrop = (row: number, col: number, e: React.DragEvent) => {
+    const payload = readLiveDragData(e);
+    if (!payload) return false;
+    setSelection(singleCellSelection(row, col));
+    addLiveBlock(
+      { sourceId: payload.sourceId, anchorRow: row, anchorCol: col, kind: payload.kind, column: payload.column, aggregate: payload.aggregate },
+      useDataSourceStore.getState().data[payload.sourceId]
+    );
+    return true;
   };
 
   const [editing, setEditing] = useState<{ row: number; col: number; value: string } | null>(null);
@@ -63,9 +88,10 @@ export default function SpreadsheetGrid() {
 
   const startEdit = useCallback(
     (row: number, col: number, initialValue?: string) => {
+      if (boundCells.has(`${row},${col}`)) return;
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
-    [rawAt]
+    [rawAt, boundCells]
   );
 
   const commitEdit = useCallback(() => {
@@ -131,7 +157,7 @@ export default function SpreadsheetGrid() {
         break;
       case "Delete":
       case "Backspace":
-        clearSelection();
+        if (!isBound(row, col)) clearSelection();
         e.preventDefault();
         break;
       case "F2":
@@ -238,6 +264,7 @@ export default function SpreadsheetGrid() {
                     onDrop={(e) => {
                       e.preventDefault();
                       setDragOverCell(null);
+                      if (onLiveDrop(r, c, e)) return;
                       const formulaId = e.dataTransfer.getData("text/formula-id");
                       if (formulaId) {
                         setSelection(singleCellSelection(r, c));
@@ -246,6 +273,7 @@ export default function SpreadsheetGrid() {
                     }}
                     className={clsx(
                       "relative border-b border-r border-zinc-200 px-2 text-sm outline-none",
+                      isBound(r, c) && "bg-emerald-50/70",
                       isActive(r, c) && "ring-2 ring-inset ring-blue-500",
                       !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
                       dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
@@ -253,8 +281,9 @@ export default function SpreadsheetGrid() {
                       isErr && "text-red-600"
                     )}
                     style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT, maxWidth: COL_WIDTH }}
-                    title={cellRef(r, c)}
+                    title={isBound(r, c) ? t.data.liveCellTitle(boundSourceName(r, c)) : cellRef(r, c)}
                   >
+                    {isBound(r, c) && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                     {editingHere ? (
                       <input
                         ref={inputRef}

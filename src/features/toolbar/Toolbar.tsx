@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save } from "lucide-react";
+import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database } from "lucide-react";
 import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import LanguageToggle from "./LanguageToggle";
@@ -24,6 +24,7 @@ export default function Toolbar() {
 
   const paletteOpen = sidebarMode === "palette" && !hasPending;
   const aiOpen = sidebarMode === "ai" && !hasPending;
+  const dataOpen = sidebarMode === "data" && !hasPending;
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2">
@@ -118,6 +119,14 @@ export default function Toolbar() {
           }`}
         >
           <Sparkles size={15} /> {t.toolbar.askAi}
+        </button>
+        <button
+          onClick={() => toggleSidebar("data")}
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+            dataOpen ? "bg-emerald-600 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+          }`}
+        >
+          <Database size={15} /> {t.toolbar.data}
         </button>
         <LanguageToggle />
       </div>
