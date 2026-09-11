@@ -534,6 +534,7 @@ src/
     page.tsx                 # Main page — just assembles components from store state (holds no state itself)
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
+                              # errorResponse.ts: failures → responses; a rate limit keeps a real 429 + its wait
     api/demo/                # Self-drifting demo endpoints so live data can be tried without a real API
                               # (sales, summary, and orders — paginated at 25 rows a page)
   store/
@@ -541,6 +542,9 @@ src/
                               # selection/filters, the formula panel being filled in, which sidebar is open,
                               # which data picker is raised, plus every action —
                               # wrapped in persist (autosave) + zundo (undo/redo) covering all sheets together
+    dataSourceStore.ts       # Live-data store — the source list, each source's latest table, errors, and a
+                              # per-source backoff (rate-limited, or repeatedly failing → stop calling for a
+                              # while). Neither persisted nor undoable: live data can always be re-fetched
     localeStore.ts           # Separate Zustand store for the selected UI language (th/en) — persisted the
                               # same way, but not tied to the sheet's undo/redo
   i18n/                      # All UI text, split by language (no off-the-shelf i18n library)
@@ -569,6 +573,7 @@ src/
     data/valueLabel.ts              # Turns (column, sum/avg/count) into readable text in the selected language
     data/SourceSetupDialog.tsx      # Tech-side setup form + "test connection"
     data/useLiveDataPolling.ts      # Root hook: loads sources + polls each on its own interval
+                                     # (a tick landing inside a backoff makes no request at all)
     toolbar/Toolbar.tsx             # The top toolbar
     toolbar/FormatBar.tsx           # The cell-formatting bar + sort buttons
     toolbar/LanguageToggle.tsx      # The UI language switch button

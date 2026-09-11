@@ -503,12 +503,16 @@ src/
     page.tsx                 # หน้าเว็บหลัก แค่ประกอบคอมโพเนนต์ตาม state จาก store (ไม่ถือ state เอง)
     api/ai/formula/route.ts  # API endpoint ให้ AI แนะนำสูตร (ใช้ Claude หรือ heuristic fallback)
     api/sources/             # CRUD แหล่งข้อมูล, /test (ทดสอบโดยไม่บันทึก), /[id]/data (ดึงข้อมูลเป็นตาราง)
+                              # errorResponse.ts: แปลง error เป็น response — rate limit ได้ 429 จริงพร้อมเวลาที่ต้องรอ
     api/demo/                # endpoint ตัวอย่างที่ตัวเลขขยับเอง สำหรับลองฟีเจอร์ข้อมูลสดโดยไม่ต้องมี API จริง
                               # (sales, summary, และ orders ที่แบ่งหน้า 25 แถว/หน้า)
   store/
     sheetStore.ts            # Zustand store หลัก — sheets (รวม liveBlocks), activeSheetId, selection/ตัวกรองต่อชีต,
                               # แผงสูตรที่กำลังกรอก, แถบข้างที่เปิดอยู่, หน้าต่างเลือกข้อมูล + action ทั้งหมด ต่อด้วย
                               # persist (บันทึกอัตโนมัติ) + zundo (undo/redo) ครอบคลุมทุกชีตร่วมกัน
+    dataSourceStore.ts       # Zustand store ของแหล่งข้อมูลสด — รายการแหล่ง, ตารางล่าสุดของแต่ละแหล่ง, error,
+                              # และ backoff ต่อแหล่ง (โดน rate limit หรือพลาดติดกันหลายครั้ง → หยุดยิงชั่วคราว)
+                              # ไม่ persist และไม่เข้า undo — ข้อมูลสดดึงใหม่ได้เสมอ
     localeStore.ts           # Zustand store แยกสำหรับภาษา UI ที่เลือก (th/en) — persist เหมือนกัน
                               # แต่ไม่ผูกกับ undo/redo ของตาราง
   i18n/                      # ข้อความ UI ทั้งหมด แยกตามภาษา (ไม่ใช้ไลบรารี i18n สำเร็จรูป)
@@ -537,6 +541,7 @@ src/
     data/valueLabel.ts              # แปลง (คอลัมน์, รวม/เฉลี่ย/นับ) เป็นข้อความอ่านง่ายตามภาษาที่เลือก
     data/SourceSetupDialog.tsx      # ฟอร์มตั้งค่าแหล่งข้อมูล (ฝ่าย tech) + ทดสอบการเชื่อมต่อ
     data/useLiveDataPolling.ts      # hook ที่ root: โหลดรายการแหล่งข้อมูล + polling ตามรอบของแต่ละแหล่ง
+                                     # (รอบที่ตรงกับช่วง backoff จะไม่ยิง request ออกไปเลย)
     toolbar/Toolbar.tsx             # แถบเครื่องมือด้านบน
     toolbar/FormatBar.tsx           # แถบจัดรูปแบบเซลล์ + ปุ่มเรียงลำดับ
     toolbar/LanguageToggle.tsx      # ปุ่มสลับภาษา UI
