@@ -114,6 +114,9 @@ interface SheetState {
   sidebarMode: SidebarMode;
   busy: string | null;
   clipboard: ClipboardState | null;
+  /** Which source the "what do you want to insert" dialog is open for, and whether it's changing
+   *  an existing block rather than adding one. Opened from the panel and from a block's toolbar. */
+  dataPicker: { sourceId: string; replacingBlockId?: string } | null;
 
   setActiveSheet: (id: string) => void;
   addSheet: () => void;
@@ -134,8 +137,12 @@ interface SheetState {
   /** Drops a live block at the active sheet's selection anchor and fills it right away if the
    *  source's data is already cached. */
   addLiveBlock: (block: Omit<LiveBlock, "id" | "rows" | "cols">, table: TableData | undefined) => void;
+  /** Swaps what a placed block shows (table ⇄ value, or a different column) in one undoable step. */
+  replaceLiveBlock: (blockId: string, block: Omit<LiveBlock, "id" | "rows" | "cols">, table: TableData | undefined) => void;
   removeLiveBlock: (blockId: string) => void;
   removeLiveBlocksForSource: (sourceId: string) => void;
+  openDataPicker: (picker: { sourceId: string; replacingBlockId?: string }) => void;
+  closeDataPicker: () => void;
   /** Rewrites every block bound to `sourceId`, on every sheet, with fresh data. Not undoable —
    *  a refresh isn't a user edit. */
   applyLiveData: (sourceId: string, table: TableData) => void;
@@ -231,6 +238,10 @@ export const useSheetStore = create<SheetState>()(
         sidebarMode: "palette",
         busy: null,
         clipboard: null,
+        dataPicker: null,
+
+        openDataPicker: (picker) => set({ dataPicker: picker }),
+        closeDataPicker: () => set({ dataPicker: null }),
 
         setActiveSheet: (id) => set({ activeSheetId: id }),
 
@@ -431,6 +442,22 @@ export const useSheetStore = create<SheetState>()(
                 block = { ...block, rows: written.rows, cols: written.cols };
               }
               return { ...tab, sheet, liveBlocks: [...(tab.liveBlocks ?? []), block] };
+            }),
+          })),
+
+        replaceLiveBlock: (blockId, input, table) =>
+          set((s) => ({
+            sheets: s.sheets.map((tab) => {
+              const old = tab.liveBlocks?.find((b) => b.id === blockId);
+              if (!old) return tab;
+              let sheet = clearLiveBlock(tab.sheet, old);
+              let next: LiveBlock = { ...input, id: old.id, rows: 0, cols: 0 };
+              if (table) {
+                const written = writeLiveBlock(sheet, next, liveBlockCells(next, table));
+                sheet = written.sheet;
+                next = { ...next, rows: written.rows, cols: written.cols };
+              }
+              return { ...tab, sheet, liveBlocks: tab.liveBlocks!.map((b) => (b.id === blockId ? next : b)) };
             }),
           })),
 
@@ -654,8 +681,8 @@ export function useLiveBlocks(): LiveBlock[] {
   return useSheetStore((s) => activeTab(s).liveBlocks ?? EMPTY_LIVE_BLOCKS);
 }
 
-/** "row,col" → block id for the active sheet, so the grid can tint and protect live cells. */
-export function useBoundCells(): Map<string, string> {
+/** "row,col" → owning block for the active sheet, so the grid can tint, outline and protect live cells. */
+export function useBoundCells(): Map<string, LiveBlock> {
   const blocks = useLiveBlocks();
   return useMemo(() => boundCellsOf(blocks), [blocks]);
 }

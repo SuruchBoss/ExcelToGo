@@ -9,6 +9,7 @@ import FormulaPalette from "@/features/formulas/FormulaPalette";
 import FormulaParamPanel from "@/features/formulas/FormulaParamPanel";
 import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
 import DataSourcePanel from "@/features/data/DataSourcePanel";
+import DataPicker from "@/features/data/DataPicker";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
 import { useHydrateLocaleStore } from "@/store/localeStore";
@@ -50,6 +51,7 @@ export default function Home() {
           </aside>
         )}
       </div>
+      <DataPicker />
     </div>
   );
 }

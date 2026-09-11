@@ -12,11 +12,11 @@ import {
   useBoundCells,
   useComputedSheet,
   useHiddenRows,
-  useLiveBlocks,
   useSheetStore,
 } from "@/store/sheetStore";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { readLiveDragData } from "@/features/data/dragTypes";
+import LiveBlockToolbar from "@/features/data/LiveBlockToolbar";
 import { getFormulaById } from "@/lib/formulaCatalog";
 import ColumnFilterPopover from "./ColumnFilterPopover";
 import { useHeaderContextMenu } from "./useHeaderContextMenu";
@@ -44,19 +44,19 @@ export default function SpreadsheetGrid() {
   const insertRowAtSelection = useSheetStore((s) => s.insertRowAtSelection);
   const insertColumnAtSelection = useSheetStore((s) => s.insertColumnAtSelection);
   const addLiveBlock = useSheetStore((s) => s.addLiveBlock);
+  const removeLiveBlock = useSheetStore((s) => s.removeLiveBlock);
+  const openDataPicker = useSheetStore((s) => s.openDataPicker);
   const { values, display } = useComputedSheet();
   const hiddenRows = useHiddenRows();
   const columnFilters = useActiveFilters();
   const boundCells = useBoundCells();
-  const liveBlocks = useLiveBlocks();
   const sources = useDataSourceStore((s) => s.sources);
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
+  const blockAt = (row: number, col: number) => boundCells.get(`${row},${col}`);
   const isBound = (row: number, col: number) => boundCells.has(`${row},${col}`);
-  const boundSourceName = (row: number, col: number) => {
-    const block = liveBlocks.find((b) => b.id === boundCells.get(`${row},${col}`));
-    return sources.find((s) => s.id === block?.sourceId)?.name ?? "";
-  };
+  const sourceNameOf = (sourceId: string) => sources.find((s) => s.id === sourceId)?.name ?? "";
+  const selectedBlock = blockAt(selection.anchorRow, selection.anchorCol);
 
   const onFormulaDrop = (row: number, col: number, formulaId: string) => {
     const def = getFormulaById(t, formulaId);
@@ -80,6 +80,7 @@ export default function SpreadsheetGrid() {
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
   const isSelecting = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -188,7 +189,7 @@ export default function SpreadsheetGrid() {
   };
 
   return (
-    <div className="relative h-full overflow-auto bg-white" tabIndex={-1}>
+    <div ref={scrollRef} className="relative h-full overflow-auto bg-white" tabIndex={-1}>
       <table className="border-separate border-spacing-0 select-none" style={{ tableLayout: "fixed" }}>
         <thead>
           <tr>
@@ -248,10 +249,13 @@ export default function SpreadsheetGrid() {
                 const isErr = value instanceof FormulaError;
                 const editingHere = editing?.row === r && editing?.col === c;
                 const format = sheet.formats[r]?.[c];
+                const block = blockAt(r, c);
                 return (
                   <td
                     key={c}
                     tabIndex={0}
+                    data-row={r}
+                    data-col={c}
                     onMouseDown={(e) => handleMouseDown(r, c, e.shiftKey)}
                     onMouseEnter={() => handleMouseEnter(r, c)}
                     onDoubleClick={() => startEdit(r, c)}
@@ -273,7 +277,14 @@ export default function SpreadsheetGrid() {
                     }}
                     className={clsx(
                       "relative border-b border-r border-zinc-200 px-2 text-sm outline-none",
-                      isBound(r, c) && "bg-emerald-50/70",
+                      // A live block reads as one object: tinted fill, a green outline on its edges,
+                      // and its header row set apart from the values below it.
+                      block && "bg-emerald-50/70",
+                      block && block.kind === "table" && r === block.anchorRow && "font-semibold text-emerald-800",
+                      block && r === block.anchorRow && "border-t-2 border-t-emerald-200",
+                      block && c === block.anchorCol && "border-l-2 border-l-emerald-200",
+                      block && c === block.anchorCol + block.cols - 1 && "border-r-2 border-r-emerald-200",
+                      block && r === block.anchorRow + block.rows - 1 && "border-b-2 border-b-emerald-200",
                       isActive(r, c) && "ring-2 ring-inset ring-blue-500",
                       !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
                       dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
@@ -281,9 +292,8 @@ export default function SpreadsheetGrid() {
                       isErr && "text-red-600"
                     )}
                     style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT, maxWidth: COL_WIDTH }}
-                    title={isBound(r, c) ? t.data.liveCellTitle(boundSourceName(r, c)) : cellRef(r, c)}
+                    title={block ? t.data.liveCellTitle(sourceNameOf(block.sourceId)) : cellRef(r, c)}
                   >
-                    {isBound(r, c) && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                     {editingHere ? (
                       <input
                         ref={inputRef}
@@ -323,6 +333,19 @@ export default function SpreadsheetGrid() {
           ))}
         </tbody>
       </table>
+
+      {selectedBlock && (
+        <LiveBlockToolbar
+          key={selectedBlock.id}
+          block={selectedBlock}
+          sourceName={sourceNameOf(selectedBlock.sourceId)}
+          refreshSec={sources.find((s) => s.id === selectedBlock.sourceId)?.refreshSec ?? 0}
+          containerRef={scrollRef}
+          onRefresh={() => void useDataSourceStore.getState().refresh(selectedBlock.sourceId)}
+          onChange={() => openDataPicker({ sourceId: selectedBlock.sourceId, replacingBlockId: selectedBlock.id })}
+          onRemove={() => removeLiveBlock(selectedBlock.id)}
+        />
+      )}
 
       {contextMenu && (
         <div

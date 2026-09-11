@@ -46,23 +46,43 @@ export interface Messages {
     error: string;
     loading: string;
     updatedAgo: (seconds: number) => string;
+    /** "5 รายการ · 6 คอลัมน์" for a multi-row source. */
+    itemCount: (rows: number, cols: number) => string;
+    /** "4 ค่า" for a single-row (KPI) source. */
+    valueCount: (values: number) => string;
+    use: string;
+    options: string;
     refresh: string;
     edit: string;
     remove: string;
     confirmRemove: (name: string) => string;
-    wholeTable: string;
-    wholeTableHint: string;
-    singleValues: string;
-    singleValuesHint: string;
-    aggregate: { first: string; sum: string; avg: string; count: string };
-    rowCount: (rows: number, cols: number) => string;
-    preview: string;
-    placedHere: string;
-    placedTable: string;
-    placedValue: (label: string) => string;
+    inSheet: string;
+    inSheetEmpty: string;
     unlink: string;
     liveCellTitle: (source: string) => string;
     liveCellReadOnly: string;
+    aggregate: { first: string; sum: string; avg: string; count: string };
+    picker: {
+      subtitle: string;
+      wholeTable: string;
+      wholeTableHint: (rows: number, cols: number) => string;
+      summaryValue: string;
+      summaryValueHint: string;
+      target: string;
+      area: (rows: number, cols: number) => string;
+      areaOverwrite: (rows: number, cols: number) => string;
+      invalidCell: string;
+      insert: string;
+      cancel: string;
+    };
+    blockTool: {
+      rows: (rows: number) => string;
+      singleValue: string;
+      every: (seconds: number) => string;
+      refresh: string;
+      change: string;
+      remove: string;
+    };
     setup: {
       newTitle: string;
       editTitle: string;

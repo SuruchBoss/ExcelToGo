@@ -14,14 +14,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-78%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-103%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 78 automated tests.
+workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 103 automated tests.
 
 ---
 
@@ -125,7 +125,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 78-case Vitest suite |
+| `npm test` | Run the 103-case Vitest suite |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -254,19 +254,48 @@ a short explanation. One click inserts it into the selected cell.
 
 Split into two roles so the end user touches as little technology as possible:
 
-- **Tech sets it up once** ("Add data source" in the **Data** panel): enter a REST API URL or a CSV/Google
-  Sheets link, an auth header if needed, and a refresh interval, then "Test connection". Config and credentials
-  live on the server (`data/sources.json`, gitignored) and never reach the user's browser; the server does the
-  fetching, so CORS isn't the user's problem.
-- **Everyday users** see only a plain-language source name plus a **preview table** — the app converts the
-  JSON automatically (finds the largest array of records in the response, flattens nested objects into
-  `customer › name` columns) — then **drag "Whole table"** or **drag a single value** (total/average/count of a
-  numeric column, or each field of a KPI object) onto a cell.
-- Linked cells are tinted green with a status dot, read-only, and **refresh themselves on the source's
-  schedule** (polling). Regular formulas (`=A10*2`, `SUM`, `VLOOKUP`) and Excel/PDF export work on live data
-  immediately, because the app writes real values into the cells.
+**1) Tech sets it up once** — "Connect new data" in the **Data** panel: enter a REST API URL or a CSV/Google
+Sheets link, an auth header if needed, and a refresh interval, then "Test connection" to see how many rows and
+columns come back before saving. Config and credentials live on the server (`data/sources.json`, gitignored)
+and never reach the user's browser; the server does the fetching, so CORS isn't the user's problem.
+
+<p align="center"><img src="docs/screenshots/09-source-setup.png" width="700"></p>
+
+**2) Everyday users: three clicks, no jargon** — no JSON, no API keys, no aggregate function names.
+
+| Step | What the user sees |
+|---|---|
+| 1. Select the target cell, click **"Insert into sheet"** | One primary button per source — nothing else to decide yet |
+| 2. Choose **"Whole table"** or **"A single summary number"** | A full-width preview table, or cards showing the **actual live numbers** (e.g. `9,510 · Sum of total`) — no need to know what "sum" means in the abstract |
+| 3. Confirm the target cell and click **"Insert into sheet"** | It states up front how many rows × columns it will use, and warns if that would overwrite existing content |
+
+<table>
+<tr>
+<td align="center"><b>Whole table — preview before placing</b><br>
+<img src="docs/screenshots/10-picker-table.png" width="410"></td>
+<td align="center"><b>Single value — real numbers to pick from</b><br>
+<img src="docs/screenshots/12-picker-values.png" width="410"></td>
+</tr>
+</table>
+
+**Once placed**, clicking a live block floats a toolbar right above it showing which source it came from and how
+often it updates, with **Refresh / Change / Remove** buttons — no trip back to the side panel required.
+
+<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+
+Behind the scenes:
+
+- The app converts JSON into a table on its own (finds the largest array of records in the response, flattens
+  nested objects into `customer › name` columns). A single-row KPI object is broken out into individual values
+  you can pick field by field.
+- Linked cells are tinted green with a border around the block and a bold header row, are read-only, and
+  **refresh themselves on the source's schedule** (polling). Regular formulas (`=A10*2`, `SUM`, `VLOOKUP`) and
+  Excel/PDF export work on live data immediately, because the app writes real values into the cells.
 - Refreshes **never enter the undo history** (zundo is paused during the write) — one Ctrl+Z undoes the whole
-  placed block.
+  placed block, and "Change" (clear the old block + place the new one) counts as a single step too.
+- **Drag and drop still works** for people who prefer it, it's just no longer the primary path.
+- The side panel keeps a "Live data in this sheet" list showing what is placed where, each with its own remove
+  button.
 - Two demo sources are seeded so it works out of the box (`/api/demo/sales`, a table whose numbers drift
   every 5s, and `/api/demo/summary`, a KPI-style object).
 
@@ -303,7 +332,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine and sort logic (78 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion and live blocks (103 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -435,7 +464,11 @@ src/
     formulas/FormulaParamPanel.tsx  # The parameter-entry panel — pick a range from the grid + choose a scope
     ai/AIAssistantPanel.tsx         # The "ask AI" chat panel
     data/DataSourcePanel.tsx        # The "Data" panel: source list + blocks placed in this sheet
-    data/SourceCard.tsx             # One source: live status, preview, draggable table card / value chips
+    data/SourceRow.tsx              # One compact source row: live status, ⋮ menu, primary "Insert into sheet" (also draggable)
+    data/DataPicker.tsx             # Raises the picker from store state, so the panel and a block both can open it
+    data/DataPickerDialog.tsx       # The picker: whole table / single value + preview + target cell + overwrite warning
+    data/LiveBlockToolbar.tsx       # Toolbar floating above the selected block: refresh / change / remove
+    data/valueLabel.ts              # Turns (column, sum/avg/count) into readable text in the selected language
     data/SourceSetupDialog.tsx      # Tech-side setup form + "test connection"
     data/useLiveDataPolling.ts      # Root hook: loads sources + polls each on its own interval
     toolbar/Toolbar.tsx             # The top toolbar
@@ -567,10 +600,10 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 78 cases across 7 files, via Vitest
+npm test      # 103 cases across 9 files, via Vitest
 ```
 
-Testing is focused on the **formula engine and sort logic** — pure functions with no React/DOM dependency, so
+Testing is focused on the **formula engine, sort logic, JSON-to-table conversion and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence. UI/interaction behavior was verified manually with Playwright during
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
@@ -584,6 +617,8 @@ tool, not a permanent regression suite).
 | `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
+| `jsonToTable.test.ts` | 10 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects |
+| `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
 CI: `npm run lint` → `npm run build` (which also type-checks the whole project, including the two languages'
 `Messages` parity) → `npm test` — run by hand before every commit (no GitHub Actions workflow yet, see

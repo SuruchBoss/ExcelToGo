@@ -12,14 +12,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-78%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-103%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 **English TL;DR** — A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
-detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 78 automated tests.
+detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 103 automated tests.
 
 ---
 
@@ -118,7 +118,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 78 เคสด้วย Vitest |
+| `npm test` | รัน unit test 103 เคสด้วย Vitest |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -238,16 +238,46 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 
 แบ่งเป็น 2 บทบาท เพื่อให้ผู้ใช้ปลายทางแตะเทคโนโลยีน้อยที่สุด:
 
-- **ฝ่าย tech ตั้งค่าครั้งเดียว** (ปุ่ม "เพิ่มแหล่งข้อมูล" ในแถบ **"ข้อมูล"**): ใส่ URL ของ REST API หรือลิงก์ CSV/Google
-  Sheets, header สำหรับยืนยันตัวตน (ถ้ามี), ความถี่รีเฟรช แล้วกด "ทดสอบการเชื่อมต่อ" — config และ credential
-  เก็บฝั่งเซิร์ฟเวอร์ (`data/sources.json`, อยู่ใน `.gitignore`) ไม่ส่งไปเบราว์เซอร์ผู้ใช้ และเซิร์ฟเวอร์เป็นคนดึงข้อมูลแทน
-  จึงไม่ติด CORS
-- **ผู้ใช้ทั่วไป**: เห็นแค่ชื่อแหล่งข้อมูลภาษาคน + **ตารางพรีวิว** — ระบบแปลง JSON ให้เองอัตโนมัติ (หา array ของ record
-  ที่ใหญ่สุดในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์ `customer › name`) แล้ว **ลาก "ทั้งตาราง"** หรือ **ลากค่าเดี่ยว**
-  (รวม/เฉลี่ย/จำนวน ของคอลัมน์ตัวเลข หรือแต่ละ field ถ้าเป็น KPI object) ไปวางในเซลล์
-- เซลล์ที่เชื่อมจะระบายสีเขียวอ่อน มีจุดสถานะ แก้ไขเองไม่ได้ และ **อัปเดตเองตามรอบรีเฟรช** (polling) — สูตรปกติ
-  (`=A10*2`, `SUM`, `VLOOKUP`), ส่งออก Excel/PDF ใช้กับข้อมูลสดได้ทันที เพราะเบื้องหลังเขียนเป็น "ค่าจริง" ลงเซลล์
+**1) ฝ่าย tech ตั้งค่าครั้งเดียว** — ปุ่ม "เชื่อมต่อข้อมูลใหม่" ในแถบ **"ข้อมูล"**: ใส่ URL ของ REST API หรือลิงก์
+CSV/Google Sheets, header สำหรับยืนยันตัวตน (ถ้ามี), ความถี่รีเฟรช แล้วกด "ทดสอบการเชื่อมต่อ" เพื่อดูว่าได้กี่แถว
+กี่คอลัมน์ก่อนบันทึก — config และ credential เก็บฝั่งเซิร์ฟเวอร์ (`data/sources.json`, อยู่ใน `.gitignore`)
+ไม่ส่งไปเบราว์เซอร์ผู้ใช้ และเซิร์ฟเวอร์เป็นคนดึงข้อมูลแทนจึงไม่ติด CORS
+
+<p align="center"><img src="docs/screenshots/09-source-setup.png" width="700"></p>
+
+**2) ผู้ใช้ทั่วไป: คลิก 3 ครั้งจบ** — ไม่ต้องรู้จัก JSON, API key หรือชื่อ aggregate ใดๆ
+
+| ขั้นตอน | ผู้ใช้เห็นอะไร |
+|---|---|
+| 1. เลือกเซลล์ที่อยากวาง แล้วกด **"ใส่ลงตาราง"** | แถบข้อมูลมีแหล่งละ 1 ปุ่มหลัก ไม่มีตัวเลือกให้สับสน |
+| 2. เลือก **"ตารางทั้งหมด"** หรือ **"ตัวเลขสรุปค่าเดียว"** | เห็นตารางพรีวิวเต็มความกว้าง / เห็น**ตัวเลขจริง**ของแต่ละตัวเลือกเลย (เช่น การ์ด `9,510 · รวม total`) ไม่ต้องเดาว่า "sum" แปลว่าอะไร |
+| 3. ยืนยันช่องที่จะวาง แล้วกด **"ใส่ลงตาราง"** | บอกล่วงหน้าว่าใช้พื้นที่กี่แถว × กี่คอลัมน์ และเตือนถ้าจะเขียนทับข้อมูลเดิม |
+
+<table>
+<tr>
+<td align="center"><b>เลือกทั้งตาราง — พรีวิวก่อนวาง</b><br>
+<img src="docs/screenshots/10-picker-table.png" width="410"></td>
+<td align="center"><b>เลือกค่าเดียว — เห็นตัวเลขจริงก่อนเลือก</b><br>
+<img src="docs/screenshots/12-picker-values.png" width="410"></td>
+</tr>
+</table>
+
+**หลังวางแล้ว** คลิกที่บล็อกข้อมูลสด จะมีแถบเครื่องมือลอยขึ้นมาเหนือบล็อกนั้นเลย บอกว่ามาจากแหล่งไหน อัปเดตทุกกี่วินาที
+พร้อมปุ่ม **รีเฟรช / เปลี่ยน / เอาออก** — ไม่ต้องกลับไปหาที่แถบด้านขวา
+
+<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+
+รายละเอียดเบื้องหลัง:
+
+- ระบบแปลง JSON เป็นตารางให้เอง (หา array ของ record ที่ใหญ่สุดในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์
+  `customer › name`) ถ้าเป็น KPI object แถวเดียวก็แตกเป็นค่าเดี่ยวให้เลือกทีละ field
+- เซลล์ที่เชื่อมจะระบายสีเขียวอ่อน มีเส้นขอบรอบบล็อก หัวตารางตัวหนา แก้ไขเองไม่ได้ และ **อัปเดตเองตามรอบรีเฟรช**
+  (polling) — สูตรปกติ (`=A10*2`, `SUM`, `VLOOKUP`) และการส่งออก Excel/PDF ใช้กับข้อมูลสดได้ทันที
+  เพราะเบื้องหลังเขียนเป็น "ค่าจริง" ลงเซลล์
 - การรีเฟรช**ไม่ปนเข้าประวัติ undo** (หยุด zundo ชั่วคราวระหว่างเขียน) กด Ctrl+Z ครั้งเดียวจะย้อนการวางทั้งบล็อก
+  และปุ่ม "เปลี่ยน" (ล้างของเดิม + วางของใหม่) ก็นับเป็น 1 ขั้นตอนเดียวเช่นกัน
+- ยัง**ลากวางได้เหมือนเดิม**สำหรับคนที่ถนัดลาก แต่ไม่ใช่ทางหลักอีกต่อไป
+- แถบด้านขวามีรายการ "ข้อมูลสดในชีตนี้" บอกว่าตอนนี้วางอะไรไว้ที่เซลล์ไหนบ้าง พร้อมปุ่มเอาออกทีละอัน
 - มี 2 แหล่งข้อมูลตัวอย่างให้เล่นทันที (`/api/demo/sales` ตารางที่ตัวเลขขยับทุก 5 วิ, `/api/demo/summary` แบบ KPI object)
 
 > ฐานข้อมูล (Postgres/MySQL) อยู่ในเฟสถัดไป — ปุ่มมีให้เห็นในฟอร์มแล้วแต่ยังกดไม่ได้
@@ -282,7 +312,7 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตรและตรรกะเรียงข้อมูล (78 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง และบล็อกข้อมูลสด (103 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -414,7 +444,11 @@ src/
     formulas/FormulaParamPanel.tsx  # แผงกรอกพารามิเตอร์สูตร + เลือกช่วงจากตาราง + เลือก scope
     ai/AIAssistantPanel.tsx         # แชทถาม AI หาสูตร
     data/DataSourcePanel.tsx        # แถบ "ข้อมูล": รายการแหล่งข้อมูล + บล็อกที่วางไว้ในชีตนี้
-    data/SourceCard.tsx             # การ์ดแหล่งข้อมูล: สถานะสด, พรีวิว, การ์ด/ชิปที่ลากได้
+    data/SourceRow.tsx              # แถวแหล่งข้อมูลแบบกระชับ: สถานะสด, เมนู ⋮, ปุ่มหลัก "ใส่ลงตาราง" (ลากได้ด้วย)
+    data/DataPicker.tsx             # ตัวเปิดหน้าต่างเลือกข้อมูล อ่านสถานะจาก store ให้ทั้งแถบและบล็อกเรียกใช้ได้
+    data/DataPickerDialog.tsx       # หน้าต่างเลือก: ตารางทั้งหมด/ค่าเดียว + พรีวิว + ช่องปลายทาง + เตือนเขียนทับ
+    data/LiveBlockToolbar.tsx       # แถบเครื่องมือลอยเหนือบล็อกที่เลือก: รีเฟรช / เปลี่ยน / เอาออก
+    data/valueLabel.ts              # แปลง (คอลัมน์, รวม/เฉลี่ย/นับ) เป็นข้อความอ่านง่ายตามภาษาที่เลือก
     data/SourceSetupDialog.tsx      # ฟอร์มตั้งค่าแหล่งข้อมูล (ฝ่าย tech) + ทดสอบการเชื่อมต่อ
     data/useLiveDataPolling.ts      # hook ที่ root: โหลดรายการแหล่งข้อมูล + polling ตามรอบของแต่ละแหล่ง
     toolbar/Toolbar.tsx             # แถบเครื่องมือด้านบน
@@ -537,10 +571,10 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 78 เคส ใน 7 ไฟล์ ด้วย Vitest
+npm test      # 103 เคส ใน 9 ไฟล์ ด้วย Vitest
 ```
 
-โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตรและตรรกะเรียงข้อมูล** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
+โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง ส่วน UI/interaction verify ด้วย Playwright แบบ manual ระหว่างพัฒนาแต่ละฟีเจอร์
 (ไม่ได้ commit สคริปต์ไว้ในโปรเจกต์ เพราะเป็นเครื่องมือช่วยตรวจสอบชั่วคราว ไม่ใช่ regression suite ถาวร)
 
@@ -553,6 +587,8 @@ npm test      # 78 เคส ใน 7 ไฟล์ ด้วย Vitest
 | `shift.test.ts` | 8 | การเลื่อนอ้างอิงแบบ relative ตอนคัดลอก/วาง, absolute ไม่เลื่อน |
 | `structuralShift.test.ts` | 15 | การปรับอ้างอิงตอนแทรก/ลบแถว-คอลัมน์ รวม `#REF!` และการขยาย/หดของช่วง |
 | `sheetSort.test.ts` | 7 | ฮิวริสติกตรวจจับขอบเขต+หัวตาราง และการเรียงลำดับ (รวมกรณีค่าว่าง, จำกัดคอลัมน์ที่ย้าย) |
+| `jsonToTable.test.ts` | 10 | หา array ของ record ในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์, ตรวจจับคอลัมน์ตัวเลข, KPI object แถวเดียว |
+| `liveBlocks.test.ts` | 15 | เขียน/ล้างบล็อกข้อมูลสด, ขอบเขตที่หดลง, รวม/เฉลี่ย/นับ, ตัวเลือกค่าเดียวที่เสนอให้, ตรวจพื้นที่ทับซ้อน |
 
 CI: `npm run lint` → `npm run build` (บังคับ type-check เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) →
 `npm test` — รันด้วยมือทุกครั้งก่อน commit (ยังไม่ได้ตั้ง GitHub Actions อัตโนมัติ ดู [สิ่งที่จะทำต่อ](#-สิ่งที่จะทำต่อ))

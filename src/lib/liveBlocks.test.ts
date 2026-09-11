@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { createEmptySheet } from "./sheet";
 import { TableData } from "./dataSources/types";
-import { aggregateColumn, boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "./liveBlocks";
+import {
+  aggregateColumn,
+  blockExtent,
+  boundCellsOf,
+  clearLiveBlock,
+  LiveBlock,
+  liveBlockCells,
+  regionHasContent,
+  valueOptionsFor,
+  writeLiveBlock,
+} from "./liveBlocks";
 
 const table: TableData = {
   columns: [
@@ -77,10 +87,65 @@ describe("writeLiveBlock", () => {
 });
 
 describe("boundCellsOf", () => {
-  it("maps every cell in each block's extent to the block id", () => {
-    const map = boundCellsOf([{ ...tableBlock, rows: 2, cols: 2 }]);
-    expect(map.get("1,1")).toBe("b1");
-    expect(map.get("2,2")).toBe("b1");
+  it("maps every cell in each block's extent to its block", () => {
+    const block = { ...tableBlock, rows: 2, cols: 2 };
+    const map = boundCellsOf([block]);
+    expect(map.get("1,1")).toBe(block);
+    expect(map.get("2,2")).toBe(block);
     expect(map.has("3,3")).toBe(false);
+  });
+});
+
+describe("valueOptionsFor", () => {
+  it("offers each field directly for a single-row (KPI) payload", () => {
+    const kpi: TableData = { ...table, rows: [["กาแฟ", 3]] };
+    expect(valueOptionsFor(kpi)).toEqual([
+      { column: "name", aggregate: "first" },
+      { column: "qty", aggregate: "first" },
+    ]);
+  });
+
+  it("offers total and average per numeric column plus a row count for a multi-row table", () => {
+    expect(valueOptionsFor(table)).toEqual([
+      { column: "qty", aggregate: "sum" },
+      { column: "qty", aggregate: "avg" },
+      { column: "name", aggregate: "count" },
+    ]);
+  });
+
+  it("returns nothing for a table with no columns", () => {
+    expect(valueOptionsFor({ columns: [], rows: [], fetchedAt: "" })).toEqual([]);
+  });
+});
+
+describe("blockExtent", () => {
+  it("counts the header row for a table and one cell for a value", () => {
+    expect(blockExtent("table", table)).toEqual({ rows: 3, cols: 2 });
+    expect(blockExtent("value", table)).toEqual({ rows: 1, cols: 1 });
+  });
+});
+
+describe("regionHasContent", () => {
+  const sheet = (() => {
+    const s = createEmptySheet(8, 8);
+    s.cells[2][2] = "เดิม";
+    return s;
+  })();
+
+  it("detects existing text in the target region", () => {
+    expect(regionHasContent(sheet, 1, 1, 3, 3, [])).toBe(true);
+    expect(regionHasContent(sheet, 4, 4, 2, 2, [])).toBe(false);
+  });
+
+  it("detects an overlapping block even where its cells are blank", () => {
+    const existing: LiveBlock = { ...tableBlock, id: "other", anchorRow: 5, anchorCol: 5, rows: 2, cols: 2 };
+    expect(regionHasContent(sheet, 4, 4, 2, 2, [existing])).toBe(true);
+  });
+
+  it("ignores the block being replaced", () => {
+    const self: LiveBlock = { ...tableBlock, anchorRow: 4, anchorCol: 4, rows: 2, cols: 2 };
+    const withText = createEmptySheet(8, 8);
+    withText.cells[4][4] = "ค่าเดิมของบล็อกนี้";
+    expect(regionHasContent(withText, 4, 4, 2, 2, [self], self)).toBe(false);
   });
 });

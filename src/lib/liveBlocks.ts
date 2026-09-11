@@ -83,13 +83,70 @@ export function clearLiveBlock(sheet: SheetModel, block: LiveBlock): SheetModel 
   return writeLiveBlock(sheet, block, []).sheet;
 }
 
-/** "row,col" → block id, for every cell currently owned by a block. */
-export function boundCellsOf(blocks: LiveBlock[]): Map<string, string> {
-  const map = new Map<string, string>();
+/** "row,col" → the block owning that cell, for every cell currently owned by a block. */
+export function boundCellsOf(blocks: LiveBlock[]): Map<string, LiveBlock> {
+  const map = new Map<string, LiveBlock>();
   for (const b of blocks) {
     for (let r = 0; r < b.rows; r++) {
-      for (let c = 0; c < b.cols; c++) map.set(`${b.anchorRow + r},${b.anchorCol + c}`, b.id);
+      for (let c = 0; c < b.cols; c++) map.set(`${b.anchorRow + r},${b.anchorCol + c}`, b);
     }
   }
   return map;
+}
+
+export interface ValueOption {
+  column: string;
+  aggregate: LiveAggregate;
+}
+
+/**
+ * The single-value choices worth offering for a table. A one-row payload (a KPI object) exposes
+ * each field as-is; a multi-row table exposes a total and an average per numeric column plus a
+ * row count — the numbers a non-technical user actually wants in one cell, rather than every
+ * possible column/aggregate combination.
+ */
+export function valueOptionsFor(table: TableData): ValueOption[] {
+  if (table.columns.length === 0) return [];
+  if (table.rows.length <= 1) return table.columns.map((c) => ({ column: c.key, aggregate: "first" as const }));
+  const numeric = table.columns.filter((c) => c.numeric);
+  return [
+    ...numeric.map((c) => ({ column: c.key, aggregate: "sum" as const })),
+    ...numeric.map((c) => ({ column: c.key, aggregate: "avg" as const })),
+    { column: table.columns[0].key, aggregate: "count" as const },
+  ];
+}
+
+/** How many cells a block of this kind would occupy (a table adds its header row). */
+export function blockExtent(kind: LiveBlock["kind"], table: TableData): { rows: number; cols: number } {
+  return kind === "value" ? { rows: 1, cols: 1 } : { rows: table.rows.length + 1, cols: table.columns.length };
+}
+
+/** True when placing a block here would overwrite something — so the user can be warned before
+ *  they commit. Cells belonging to `ignore` (the block being replaced) don't count. */
+export function regionHasContent(
+  sheet: SheetModel,
+  anchorRow: number,
+  anchorCol: number,
+  rows: number,
+  cols: number,
+  blocks: LiveBlock[],
+  ignore?: LiveBlock
+): boolean {
+  const owned = boundCellsOf(ignore ? [ignore] : []);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${anchorRow + r},${anchorCol + c}`;
+      if (owned.has(key)) continue;
+      if ((sheet.cells[anchorRow + r]?.[anchorCol + c] ?? "") !== "") return true;
+    }
+  }
+  // A block sitting here with no text yet (an empty API response) still counts as occupied.
+  return blocks.some(
+    (b) =>
+      b !== ignore &&
+      b.anchorRow < anchorRow + rows &&
+      b.anchorRow + b.rows > anchorRow &&
+      b.anchorCol < anchorCol + cols &&
+      b.anchorCol + b.cols > anchorCol
+  );
 }
