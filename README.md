@@ -1,6 +1,11 @@
-# 📊 ExcelToGo — แปลงตาราง Excel ให้เป็น UI กรอกง่าย
+# 📊 ExcelToGo — เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์
 
 **ภาษา:** ไทย · [English](README.en.md)
+
+### ▶ [ลองใช้เลย — ไม่ต้องติดตั้ง](https://excel-to-go.vercel.app)
+
+เปิดในเบราว์เซอร์ได้ทันที ข้อมูลอยู่ในเครื่องคุณเท่านั้น
+(บน demo สาธารณะปิดฟีเจอร์ข้อมูลสดไว้ — [เหตุผล](SECURITY.md))
 
 > **เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์ ไม่ต้องติดตั้ง ไม่ต้องสมัครสมาชิก** — ไฟล์ `.xlsx`
 > เปิดมาแล้วหน้าตายังเหมือนเดิม (แถบสี เซลล์ที่ merge เส้นขอบ ความสูงแถว) จากนั้น**เลือกสูตรจากรายการ
@@ -18,6 +23,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
+  <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
   <img alt="Vitest" src="https://img.shields.io/badge/tests-283%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>

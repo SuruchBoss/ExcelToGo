@@ -1,6 +1,11 @@
-# 📊 ExcelToGo — Turn an Excel Sheet into an Easy-to-Fill UI
+# 📊 ExcelToGo — open an Excel file and keep working, in the browser
 
 **Language:** [ไทย](README.md) · English
+
+### ▶ [Try it — nothing to install](https://excel-to-go.vercel.app)
+
+Runs in your browser; your data stays on your machine.
+(The live-data feature is switched off on the public demo — [why](SECURITY.md).)
 
 > **Open an Excel file and keep working, in the browser — no install, no account.** A `.xlsx` opens
 > still looking like itself (colour bands, merged cells, borders, row heights), and from there you can
@@ -20,6 +25,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
+  <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
   <img alt="Vitest" src="https://img.shields.io/badge/tests-283%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>

@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/SuruchBoss/ExcelToGo.git"
   },
-  "homepage": "https://github.com/SuruchBoss/ExcelToGo#readme",
+  "homepage": "https://excel-to-go.vercel.app",
   "bugs": {
     "url": "https://github.com/SuruchBoss/ExcelToGo/issues"
   },
