@@ -7,6 +7,12 @@
 > that: a spreadsheet-style grid with **drag-and-drop formulas** instead of memorizing syntax, an **AI assistant**
 > that suggests formulas from a plain-language question, and a **hand-written formula engine** (no third-party
 > library) covering the Excel features people actually use day to day.
+>
+> Three things build on that: **[live data from an API/CSV](#-live-data-from-an-api--csv-prototype)** that keeps
+> cells current on its own (following paginated APIs and backing off when rate-limited),
+> **[imported files keeping their look](#-it-looks-like-the-file-you-opened)** (colour bands, large type,
+> borders, merged cells), and **[templates read straight out of an Excel file](#-templates-from-an-excel-file)**
+> that already know which cells are yours to fill in.
 
 <p align="center">
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white">
@@ -75,6 +81,22 @@ with no trip back to the side panel</p>
 - [Why this project](#-why-this-project)
 - [Getting started](#-getting-started)
 - [Features](#-features)
+  - [Spreadsheet grid](#-spreadsheet-grid)
+  - [Autosave + Undo/Redo](#-autosave--undoredo)
+  - [Copy / Cut / Paste](#️-copy--cut--paste)
+  - [Cell formatting](#-cell-formatting)
+  - [Insert/delete rows & columns](#-insertdelete-rows--columns)
+  - [Sort and filter](#-sort-and-filter)
+  - [Multiple sheets in one file](#-multiple-sheets-in-one-file)
+  - [Import an existing Excel file](#-import-an-existing-excel-file)
+  - [Drag-and-drop formulas](#-drag-and-drop-formulas)
+  - [Ask AI for a formula](#-ask-ai-for-a-formula)
+  - [Export](#-export)
+  - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
+  - [It looks like the file you opened](#-it-looks-like-the-file-you-opened)
+  - [Templates from an Excel file](#-templates-from-an-excel-file)
+  - [A landing page that explains the app](#-a-landing-page-that-explains-the-app)
+  - [Bilingual (Thai / English)](#-bilingual-thai--english)
 - [Tech stack](#-tech-stack)
 - [Architecture](#-architecture)
 - [Project structure](#-project-structure)

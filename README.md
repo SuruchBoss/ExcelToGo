@@ -5,6 +5,11 @@
 > Excel บนคอมกรอกยาก จำสูตรไม่ได้ ลากจอไปมาแล้วงงว่าอยู่แถว/คอลัมน์ไหน — โปรเจกต์นี้แก้ตรงนั้น:
 > ตารางกรอกข้อมูลแบบ Excel พร้อม**สูตรลากวาง**แทนการจำสูตร, **ผู้ช่วย AI** แนะนำสูตรจากคำถามภาษาคน,
 > และ**เอนจินคำนวณสูตรที่เขียนขึ้นเอง** (ไม่พึ่งไลบรารีสำเร็จรูป) รองรับ Excel ทุกฟีเจอร์หลักที่ใช้จริง
+>
+> ต่อยอดไปอีก 3 อย่าง: **[ข้อมูลสดจาก API/CSV](#-ข้อมูลสดจาก-api--csv-prototype)** ที่อัปเดตเองในเซลล์
+> (ไล่ดึง API ที่แบ่งหน้าและถอยเองเมื่อโดน rate limit), **[เปิดไฟล์แล้วหน้าตาเหมือนเดิม](#-เปิดไฟล์มาแล้วหน้าตาเหมือนเดิม)**
+> (แถบสี ตัวอักษรใหญ่ เส้นขอบ เซลล์ที่ merge) และ **[แม่แบบจากไฟล์ Excel](#-แม่แบบ-template-จากไฟล์-excel)**
+> ที่รู้เองว่าช่องไหนให้กรอก
 
 <p align="center">
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white">
@@ -19,7 +24,10 @@
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
-detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 207 automated tests.
+detection and multi-sheet workbooks. Imported .xlsx files keep their look — colour bands, font sizes, borders,
+merged cells — and a protected file is read as a fill-in template that knows which cells are yours. Cells can
+also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
+when data came back incomplete. Bilingual UI (Thai/English), 207 automated tests.
 
 ---
 
@@ -73,6 +81,22 @@ detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual 
 - [ทำไมถึงทำโปรเจกต์นี้](#-ทำไมถึงทำโปรเจกต์นี้)
 - [วิธีรัน](#-วิธีรัน)
 - [ฟีเจอร์](#-ฟีเจอร์)
+  - [ตารางกรอกข้อมูล (Spreadsheet Grid)](#-ตารางกรอกข้อมูล-spreadsheet-grid)
+  - [บันทึกอัตโนมัติ + Undo/Redo](#-บันทึกอัตโนมัติ--undoredo)
+  - [คัดลอก / ตัด / วาง](#️-คัดลอก--ตัด--วาง)
+  - [จัดรูปแบบเซลล์](#-จัดรูปแบบเซลล์)
+  - [แทรก/ลบแถว-คอลัมน์](#-แทรกลบแถว-คอลัมน์)
+  - [เรียงลำดับและกรองข้อมูล](#-เรียงลำดับและกรองข้อมูล)
+  - [หลายชีตในไฟล์เดียว](#-หลายชีตในไฟล์เดียว)
+  - [นำเข้าไฟล์ Excel ที่มีอยู่แล้ว](#-นำเข้าไฟล์-excel-ที่มีอยู่แล้ว)
+  - [ใส่สูตรแบบลากวาง](#-ใส่สูตรแบบลากวาง)
+  - [ถาม AI หาสูตร](#-ถาม-ai-หาสูตร)
+  - [ส่งออกไฟล์](#-ส่งออกไฟล์)
+  - [ข้อมูลสดจาก API / CSV (prototype)](#-ข้อมูลสดจาก-api--csv-prototype)
+  - [เปิดไฟล์มาแล้วหน้าตาเหมือนเดิม](#-เปิดไฟล์มาแล้วหน้าตาเหมือนเดิม)
+  - [แม่แบบ (Template) จากไฟล์ Excel](#-แม่แบบ-template-จากไฟล์-excel)
+  - [หน้า landing อธิบายแอป](#-หน้า-landing-อธิบายแอป)
+  - [สองภาษา (ไทย / English)](#-สองภาษา-ไทย--english)
 - [เทคโนโลยีที่ใช้](#-เทคโนโลยีที่ใช้)
 - [สถาปัตยกรรม](#-สถาปัตยกรรม)
 - [โครงสร้างโปรเจกต์](#-โครงสร้างโปรเจกต์)
