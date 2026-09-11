@@ -167,6 +167,8 @@ npm run dev
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
 | `npm test` | รัน unit test 207 เคสด้วย Vitest |
+| `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
+| `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -669,6 +671,8 @@ src/
     pdfExport.ts              # ส่งออก PDF ด้วย jspdf + jspdf-autotable
   types/
     sheet-ui.ts               # types สำหรับ selection ของตารางฝั่ง UI
+scripts/
+  check-readme.mjs           # ตรวจ README ก่อน push (ไม่มี dependency) — ดูกติกาที่ AGENTS.md
 public/
   screenshots/               # ภาพหน้าจอจากแอปจริง — ใช้ทั้งใน landing page และใน README นี้ (ไฟล์ชุดเดียวกัน)
 ```
@@ -795,8 +799,8 @@ npm test      # 207 เคส ใน 15 ไฟล์ ด้วย Vitest
 | `excelIO.test.ts` | 16 | สร้างไฟล์ .xlsx จริงแล้ววนครบรอบ: อ่านช่องกรอก/dropdown/ความกว้าง, ไฟล์ที่ไม่ protect ไม่ใช่แม่แบบ, export แล้ว import กลับได้เหมือนเดิม, และรูปแบบ (แถบสี/ขนาดตัวอักษร/เส้นขอบ/ความสูงแถว/merge) ครบรอบ |
 | `liveBlocks.test.ts` | 15 | เขียน/ล้างบล็อกข้อมูลสด, ขอบเขตที่หดลง, รวม/เฉลี่ย/นับ, ตัวเลือกค่าเดียวที่เสนอให้, ตรวจพื้นที่ทับซ้อน |
 
-CI: `npm run lint` → `npm run build` (บังคับ type-check เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) →
-`npm test` — รันด้วยมือทุกครั้งก่อน commit (ยังไม่ได้ตั้ง GitHub Actions อัตโนมัติ ดู [สิ่งที่จะทำต่อ](#-สิ่งที่จะทำต่อ))
+CI: `npm run verify` รวมทุกอย่างไว้แล้ว — `lint` → `check:readme` → `test` → `build` (build บังคับ type-check
+เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) **ต้องเขียวก่อน push ทุกครั้ง** ดูกติกาเต็มที่ `AGENTS.md` (ยังไม่ได้ตั้ง GitHub Actions อัตโนมัติ ดู [สิ่งที่จะทำต่อ](#-สิ่งที่จะทำต่อ))
 
 ---
 

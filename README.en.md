@@ -173,6 +173,8 @@ Other available commands:
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
 | `npm test` | Run the 207-case Vitest suite |
+| `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
+| `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -708,6 +710,8 @@ src/
     pdfExport.ts              # PDF export via jspdf + jspdf-autotable
   types/
     sheet-ui.ts               # Types for the grid's selection state
+scripts/
+  check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
 public/
   screenshots/               # Screenshots from the running app — used by both the landing page and this README
 ```
@@ -842,8 +846,9 @@ tool, not a permanent regression suite).
 | `excelIO.test.ts` | 16 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
-CI: `npm run lint` → `npm run build` (which also type-checks the whole project, including the two languages'
-`Messages` parity) → `npm test` — run by hand before every commit (no GitHub Actions workflow yet, see
+CI: `npm run verify` bundles it — `lint` → `check:readme` → `test` → `build` (the build also type-checks the
+whole project, including the two languages' `Messages` parity). **It has to be green before every push**; the
+full rule lives in `AGENTS.md` (no GitHub Actions workflow yet, see
 [What's next](#-whats-next)).
 
 ---
