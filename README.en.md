@@ -249,8 +249,10 @@ formatting, but **undo/redo and autosave cover every sheet together**.
 
 ### 📥 Import an existing Excel file
 
-Reads every cell's value, plus its **original formulas and formatting**, straight into the grid and recomputes
-everything immediately. A multi-sheet file imports as separate tabs.
+Reads every cell's value plus its **original formulas** into the grid and recomputes everything immediately; a
+multi-sheet file imports as separate tabs. The file's **look** comes too — colour bands, font sizes, borders,
+row heights, merged cells — see [It looks like the file you opened](#-it-looks-like-the-file-you-opened), and
+if the file was built as a form, [Templates from an Excel file](#-templates-from-an-excel-file).
 
 ### 🧩 Drag-and-drop formulas
 
@@ -268,8 +270,9 @@ a short explanation. One click inserts it into the selected cell.
 
 ### 📤 Export
 
-- **Excel**: a single `.xlsx` with **every sheet** included, original formulas and formatting intact (opens and
-  keeps working in Excel/Google Sheets).
+- **Excel**: a single `.xlsx` with **every sheet** included — original formulas, formatting (fills, font sizes,
+  borders, row heights, column widths, merged cells) and a template's locking all intact, so it opens in
+  Excel/Google Sheets as the file it was rather than as computed numbers.
 - **PDF**: the currently open sheet only, showing computed values with row/column headers — good for printing
   or sharing read-only.
 
@@ -664,7 +667,8 @@ src/
                               # each with a matching *.test.ts run by Vitest
     formulaCatalog.ts        # The ready-made formula catalog's structure (id/params/how to build it) — the
                               # actual displayed name/description/labels come from src/i18n/th.ts,en.ts
-    cellFormat.ts            # Cell formatting (bold/color/alignment/number format) + conversion to/from Excel numFmt
+    cellFormat.ts            # Cell formatting (bold/italic/underline/color/fill/font size/borders/alignment/
+                              # number format) + pt↔px conversion and to/from Excel numFmt
     aiHeuristic.ts           # Keyword-based formula suggestion logic (used with no ANTHROPIC_API_KEY), bilingual
     sheet.ts                 # The core sheet data model, whole-sheet computation, applying a formula by scope,
                               # inserting/deleting rows-columns
