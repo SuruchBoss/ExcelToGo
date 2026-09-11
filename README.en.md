@@ -1011,7 +1011,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
 
 ## 👤 Author
 
-Built by **Suruch Boss** — [github.com/SuruchBoss](https://github.com/SuruchBoss)
+Built by **Suruch Boss**
+
+- GitHub — [github.com/SuruchBoss](https://github.com/SuruchBoss)
+- LinkedIn — [linkedin.com/in/suruchboss](https://www.linkedin.com/in/suruchboss)
 
 If this project is useful to you, or you'd like to talk about work, do get in touch.
 

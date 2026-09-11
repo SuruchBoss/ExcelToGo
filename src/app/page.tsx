@@ -9,6 +9,7 @@ import { useHydrateLocaleStore } from "@/store/localeStore";
 
 const REPO_URL = "https://github.com/SuruchBoss/ExcelToGo";
 const AUTHOR_URL = "https://github.com/SuruchBoss";
+const LINKEDIN_URL = "https://www.linkedin.com/in/suruchboss";
 
 /** Paired by index with `t.landing.features`. Kept out of the message dictionaries because a file
  *  path and its pixel size are the same in every language — only the alt text needs translating. */
@@ -182,6 +183,11 @@ export default function Landing() {
           <span className="text-zinc-300">·</span>
           <span>{t.landing.footerNote}</span>
           <div className="flex-1" />
+          {/* No lucide icon for LinkedIn — this version dropped its brand icons — and a plain text
+              link avoids reproducing a trademarked mark for no gain. */}
+          <a href={LINKEDIN_URL} target="_blank" rel="noreferrer" className="hover:text-zinc-800">
+            LinkedIn
+          </a>
           <a href={REPO_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-zinc-800">
             <Code2 size={14} /> GitHub
           </a>

@@ -948,7 +948,10 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
 
 ## 👤 ผู้เขียน
 
-สร้างโดย **Suruch Boss** — [github.com/SuruchBoss](https://github.com/SuruchBoss)
+สร้างโดย **Suruch Boss**
+
+- GitHub — [github.com/SuruchBoss](https://github.com/SuruchBoss)
+- LinkedIn — [linkedin.com/in/suruchboss](https://www.linkedin.com/in/suruchboss)
 
 สนใจโปรเจกต์นี้ อยากคุยเรื่องงาน หรือมีคำถาม ทักมาได้เลยครับ
 
