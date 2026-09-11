@@ -149,6 +149,18 @@ export interface Messages {
     backToApp: string;
     home: string;
   };
+  template: {
+    /** Banner shown when the open sheet came from a protected .xlsx template. */
+    title: string;
+    fieldCount: (fields: number) => string;
+    hint: string;
+    lockedCell: string;
+    unlock: string;
+    confirmUnlock: string;
+    unlocked: string;
+    structureLocked: string;
+    choosePlaceholder: string;
+  };
   formatBar: {
     label: string;
     boldTitle: string;

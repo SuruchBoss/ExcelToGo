@@ -160,6 +160,17 @@ export const en: Messages = {
     backToApp: "Open the app",
     home: "Home",
   },
+  template: {
+    title: "Template from a file",
+    fieldCount: (fields) => `${fields} fields to fill in`,
+    hint: "Fields you can fill in have an amber outline; everything else is the template's structure",
+    lockedCell: "This cell is part of the template's structure — click \"Unlock the sheet\" to change it",
+    unlock: "Unlock the sheet",
+    confirmUnlock: "Unlock this template? Every cell becomes editable like an ordinary sheet and the dropdowns are dropped (Ctrl+Z undoes it).",
+    unlocked: "Unlocked — every cell is editable",
+    structureLocked: "The template locks its structure, so rows and columns can't be added or removed — unlock the sheet first",
+    choosePlaceholder: "— choose —",
+  },
   formatBar: {
     label: "Format:",
     boldTitle: "Bold",

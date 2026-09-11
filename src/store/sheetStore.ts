@@ -38,6 +38,7 @@ import { isSingleCell, singleCellSelection, SelectionRect } from "@/types/sheet-
 import { getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
+import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
 export type SidebarMode = "palette" | "ai" | "data" | "none";
 export type { ApplyScope };
@@ -130,6 +131,9 @@ interface SheetState {
   deleteSelectedColumn: () => void;
   insertRowAtSelection: () => void;
   insertColumnAtSelection: () => void;
+  /** Drops an imported template's protection, making every cell editable. Undoable, since the
+   *  template lives inside `sheets`. */
+  unlockTemplate: () => void;
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   toggleSidebar: (mode: "palette" | "ai" | "data") => void;
@@ -211,6 +215,21 @@ function clampSelectionToBounds(sheet: SheetModel, selection: SelectionRect): Se
   return singleCellSelection(Math.min(selection.anchorRow, sheet.rows - 1), Math.min(selection.anchorCol, sheet.cols - 1));
 }
 
+/** A template exists to stop the form being broken by accident, so operations that would write
+ *  over its fixed cells are refused rather than partially applied — and the user is told why,
+ *  since silently doing nothing reads as the app being broken. */
+function refusedByTemplate(sheet: SheetModel, startRow: number, startCol: number, endRow: number, endCol: number): boolean {
+  if (!rangeHasLockedCells(sheet.template, startRow, startCol, endRow, endCol)) return false;
+  alert(getMessages().template.lockedCell);
+  return true;
+}
+
+function refusedStructuralChange(sheet: SheetModel): boolean {
+  if (!sheet.template) return false;
+  alert(getMessages().template.structureLocked);
+  return true;
+}
+
 function applySelectionFormat(sheet: SheetModel, selection: SelectionRect, patch: Partial<CellFormat>): SheetModel {
   return setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, patch);
 }
@@ -268,13 +287,31 @@ export const useSheetStore = create<SheetState>()(
         },
 
         setCellRaw: (row, col, raw) =>
-          set((s) => ({ sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) })),
-        addRow: () => set((s) => ({ sheets: withActiveSheet(s, (tab) => addRow(tab.sheet)) })),
-        addColumn: () => set((s) => ({ sheets: withActiveSheet(s, (tab) => addColumn(tab.sheet)) })),
+          set((s) => {
+            // Covers the formula bar as well as the grid, so there's one place a locked cell
+            // can't be written rather than a guard per entry point.
+            if (isTemplateLocked(activeTab(s).sheet.template, row, col)) return {};
+            return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
+          }),
+        addRow: () =>
+          set((s) => (refusedStructuralChange(activeTab(s).sheet) ? {} : { sheets: withActiveSheet(s, (tab) => addRow(tab.sheet)) })),
+        addColumn: () =>
+          set((s) => (refusedStructuralChange(activeTab(s).sheet) ? {} : { sheets: withActiveSheet(s, (tab) => addColumn(tab.sheet)) })),
+
+        unlockTemplate: () =>
+          set((s) => ({
+            sheets: withActiveSheet(s, (tab) => {
+              if (!tab.sheet.template) return tab.sheet;
+              const next = { ...tab.sheet };
+              delete next.template;
+              return next;
+            }),
+          })),
 
         deleteSelectedRow: () =>
           set((s) => {
             const { sheet } = activeTab(s);
+            if (refusedStructuralChange(sheet)) return {};
             const selection = activeSelectionOf(s);
             const next = deleteRow(sheet, selection.anchorRow);
             return {
@@ -286,6 +323,7 @@ export const useSheetStore = create<SheetState>()(
         deleteSelectedColumn: () =>
           set((s) => {
             const { sheet } = activeTab(s);
+            if (refusedStructuralChange(sheet)) return {};
             const selection = activeSelectionOf(s);
             const next = deleteColumn(sheet, selection.anchorCol);
             return {
@@ -295,19 +333,29 @@ export const useSheetStore = create<SheetState>()(
           }),
 
         insertRowAtSelection: () =>
-          set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => insertRowBefore(sheet, selection.anchorRow)) })),
+          set((s) =>
+            refusedStructuralChange(activeTab(s).sheet)
+              ? {}
+              : { sheets: updateActiveSheet(s, (sheet, selection) => insertRowBefore(sheet, selection.anchorRow)) }
+          ),
 
         insertColumnAtSelection: () =>
-          set((s) => ({
-            sheets: updateActiveSheet(s, (sheet, selection) => insertColumnBefore(sheet, selection.anchorCol)),
-          })),
+          set((s) =>
+            refusedStructuralChange(activeTab(s).sheet)
+              ? {}
+              : { sheets: updateActiveSheet(s, (sheet, selection) => insertColumnBefore(sheet, selection.anchorCol)) }
+          ),
 
         clearSelection: () =>
-          set((s) => ({
-            sheets: updateActiveSheet(s, (sheet, selection) =>
-              clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol)
-            ),
-          })),
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            if (refusedByTemplate(activeTab(s).sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            return {
+              sheets: updateActiveSheet(s, (sheet, selection) =>
+                clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol)
+              ),
+            };
+          }),
 
         copySelection: () => {
           const s = get();
@@ -331,6 +379,14 @@ export const useSheetStore = create<SheetState>()(
           set((s) => {
             const { sheet } = activeTab(s);
             const selection = activeSelectionOf(s);
+            if (sheet.template) {
+              // Size the guard to what would actually be written, not just the selected cell.
+              const height = s.clipboard?.rows.length ?? parseTsv(externalText ?? "").length;
+              const width = s.clipboard?.rows[0]?.length ?? parseTsv(externalText ?? "")[0]?.length ?? 1;
+              const endRow = selection.anchorRow + Math.max(0, height - 1);
+              const endCol = selection.anchorCol + Math.max(0, width - 1);
+              if (refusedByTemplate(sheet, selection.anchorRow, selection.anchorCol, endRow, endCol)) return {};
+            }
             const { clipboard } = s;
             const targetRow = selection.anchorRow;
             const targetCol = selection.anchorCol;
@@ -369,13 +425,16 @@ export const useSheetStore = create<SheetState>()(
         clearClipboard: () => set({ clipboard: null }),
 
         sortSelection: (ascending) =>
-          set((s) => ({
+          set((s) => {
+            if (refusedStructuralChange(activeTab(s).sheet)) return {};
+            return {
             sheets: updateActiveSheet(s, (sheet, selection) => {
               const computed = computeSheet(sheet);
               const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
               return sortRange(sheet, computed, range, selection.anchorCol, ascending);
             }),
-          })),
+            };
+          }),
 
         setColumnFilter: (col, values) =>
           set((s) => ({

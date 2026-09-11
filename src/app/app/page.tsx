@@ -3,6 +3,7 @@
 import Toolbar from "@/features/toolbar/Toolbar";
 import FormatBar from "@/features/toolbar/FormatBar";
 import FormulaBar from "@/features/grid/FormulaBar";
+import TemplateBar from "@/features/grid/TemplateBar";
 import SpreadsheetGrid from "@/features/grid/SpreadsheetGrid";
 import SheetTabs from "@/features/grid/SheetTabs";
 import FormulaPalette from "@/features/formulas/FormulaPalette";
@@ -30,6 +31,7 @@ export default function Home() {
       <Toolbar />
       <FormatBar />
       <FormulaBar />
+      <TemplateBar />
       <div className="flex min-h-0 flex-1 gap-3 p-3">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white">
           <div className="min-h-0 flex-1">

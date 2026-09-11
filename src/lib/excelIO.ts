@@ -2,6 +2,8 @@ import ExcelJS from "exceljs";
 import { ComputedSheet, SheetModel, createEmptySheet } from "./sheet";
 import { isError } from "./formulaEngine/types";
 import { CellAlign, EXCEL_NUM_FMT, numberFormatFromExcelNumFmt } from "./cellFormat";
+import { cellKey, excelWidthToPx, parseValidationList, pxToExcelWidth, SheetTemplate } from "./sheetTemplate";
+import { parseRangeRef } from "./formulaEngine/address";
 
 function hexToArgb(hex: string): string {
   return `FF${hex.replace("#", "").toUpperCase()}`;
@@ -47,6 +49,23 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
   return "";
 }
 
+/** Reads the values a dropdown points at, for a validation list given as a range instead of an
+ *  inline list. Runs after the cells are in, so it reads the sheet we just built. */
+function rangeReader(sheet: SheetModel) {
+  return (ref: string): string[] => {
+    const range = parseRangeRef(ref.replace(/^.*!/, ""));
+    if (!range) return [];
+    const out: string[] = [];
+    for (let r = range.startRow; r <= Math.min(range.endRow, sheet.rows - 1); r++) {
+      for (let c = range.startCol; c <= Math.min(range.endCol, sheet.cols - 1); c++) {
+        const v = sheet.cells[r]?.[c];
+        if (v) out.push(v);
+      }
+    }
+    return out;
+  };
+}
+
 function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
   const rowCount = Math.max(worksheet.actualRowCount || 0, 1);
   const colCount = Math.max(worksheet.actualColumnCount || 0, 1);
@@ -54,6 +73,12 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
   const cols = Math.max(colCount, 10);
 
   const sheet = createEmptySheet(rows, cols);
+  // Only a protected sheet makes "locked" mean anything: that's the file telling us it was built
+  // as a form, with the unlocked cells as the fields. An unprotected file is just a spreadsheet.
+  const isTemplate = (worksheet as unknown as { sheetProtection?: { sheet?: boolean } }).sheetProtection?.sheet === true;
+  const inputs: Record<string, true> = {};
+  const validations: { key: string; formulae: unknown[] }[] = [];
+
   worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
       const r = rowNumber - 1;
@@ -74,6 +99,44 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
       }
     });
   });
+
+  // A template's input cells are precisely the ones still empty, waiting to be filled — and
+  // `eachCell` skips empty cells. So protection and validation get their own pass over the used
+  // range; scanning only the cells that already hold a value would find almost no fields at all.
+  if (isTemplate) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = worksheet.getCell(r + 1, c + 1);
+        // Excel omits `protection` entirely for the default (locked), so only an explicit
+        // `locked: false` marks an input field.
+        if (cell.protection?.locked === false) inputs[cellKey(r, c)] = true;
+        const dv = cell.dataValidation;
+        if (dv?.type === "list" && Array.isArray(dv.formulae)) validations.push({ key: cellKey(r, c), formulae: dv.formulae });
+      }
+    }
+  }
+
+  const widths: (number | undefined)[] = [];
+  let anyWidth = false;
+  for (let c = 0; c < cols; c++) {
+    const px = excelWidthToPx(worksheet.getColumn(c + 1)?.width);
+    widths[c] = px;
+    if (px !== undefined) anyWidth = true;
+  }
+  if (anyWidth) sheet.colWidths = widths;
+
+  if (isTemplate) {
+    const readRange = rangeReader(sheet);
+    const choices: Record<string, string[]> = {};
+    for (const v of validations) {
+      const options = parseValidationList(v.formulae, readRange);
+      if (options) choices[v.key] = options;
+    }
+    const template: SheetTemplate = { inputs, choices };
+    // A protected sheet with nothing unlocked is a locked-down report, not a form to fill in —
+    // treating it as a template would leave the user staring at a sheet they cannot touch.
+    if (Object.keys(inputs).length > 0) sheet.template = template;
+  }
   return sheet;
 }
 
@@ -96,7 +159,7 @@ export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[
   }));
 }
 
-function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
+async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
   for (let r = 0; r < sheet.rows; r++) {
     for (let c = 0; c < sheet.cols; c++) {
       const raw = sheet.cells[r][c];
@@ -126,8 +189,32 @@ function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetModel, 
       }
     }
   }
-  worksheet.columns.forEach((col) => {
-    col.width = 16;
+  // Carry a template's structure back out, so a file that came in as a form goes out as one.
+  const template = sheet.template;
+  if (template) {
+    for (let r = 0; r < sheet.rows; r++) {
+      for (let c = 0; c < sheet.cols; c++) {
+        if (template.inputs[cellKey(r, c)]) {
+          const cell = worksheet.getCell(r + 1, c + 1);
+          cell.protection = { locked: false };
+          const options = template.choices[cellKey(r, c)];
+          if (options) {
+            cell.dataValidation = {
+              type: "list",
+              allowBlank: true,
+              formulae: [`"${options.join(",")}"`],
+            };
+          }
+        }
+      }
+    }
+    // Without protecting the sheet the unlocked flags are inert — Excel would let anyone type
+    // anywhere, which is the one thing the template exists to prevent.
+    await worksheet.protect("", { selectLockedCells: true, selectUnlockedCells: true });
+  }
+
+  worksheet.columns.forEach((col, i) => {
+    col.width = pxToExcelWidth(sheet.colWidths?.[i]) ?? 16;
   });
 }
 
@@ -143,7 +230,7 @@ export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promi
   const usedNames = new Set<string>();
   for (const { name, sheet, computed } of sheets) {
     const worksheet = workbook.addWorksheet(sanitizeSheetName(name, usedNames));
-    writeSheetToWorksheet(worksheet, sheet, computed);
+    await writeSheetToWorksheet(worksheet, sheet, computed);
   }
   const buffer = await workbook.xlsx.writeBuffer();
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

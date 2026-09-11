@@ -6,6 +6,7 @@ import { cellRef, colToLetters } from "./formulaEngine/address";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
 import { CellFormat, formatNumberForDisplay } from "./cellFormat";
+import { SheetTemplate } from "./sheetTemplate";
 
 export const DEFAULT_ROWS = 30;
 export const DEFAULT_COLS = 10;
@@ -16,6 +17,11 @@ export interface SheetModel {
   cells: string[][];
   /** Sparse — a cell with no entry (or an empty object) uses default formatting. */
   formats: (CellFormat | undefined)[][];
+  /** Per-column pixel widths carried over from an imported file. Sparse; a missing entry uses the
+   *  grid's default width. */
+  colWidths?: (number | undefined)[];
+  /** Present only while an imported template's sheet protection is in force. See sheetTemplate.ts. */
+  template?: SheetTemplate;
 }
 
 export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): SheetModel {
@@ -32,6 +38,9 @@ export function cloneSheet(sheet: SheetModel): SheetModel {
     ...sheet,
     cells: sheet.cells.map((row) => [...row]),
     formats: sheet.formats.map((row) => [...row]),
+    colWidths: sheet.colWidths ? [...sheet.colWidths] : undefined,
+    // `template` is replaced wholesale (imported, or removed when unlocked), never edited in
+    // place, so sharing the reference is safe and keeps clones cheap.
   };
 }
 
@@ -78,6 +87,7 @@ export function addColumn(sheet: SheetModel): SheetModel {
     cols: sheet.cols + 1,
     cells: sheet.cells.map((r) => [...r, ""]),
     formats: sheet.formats.map((r) => [...r, undefined]),
+    colWidths: sheet.colWidths ? [...sheet.colWidths, undefined] : undefined,
   };
 }
 
@@ -229,6 +239,7 @@ export function deleteColumn(sheet: SheetModel, col: number): SheetModel {
     cols: adjusted.cols - 1,
     cells: adjusted.cells.map((r) => [...r.slice(0, col), ...r.slice(col + 1)]),
     formats: adjusted.formats.map((r) => [...r.slice(0, col), ...r.slice(col + 1)]),
+    colWidths: adjusted.colWidths ? [...adjusted.colWidths.slice(0, col), ...adjusted.colWidths.slice(col + 1)] : undefined,
   };
 }
 
@@ -239,11 +250,13 @@ export function insertColumnBefore(sheet: SheetModel, col: number): SheetModel {
     cols: adjusted.cols + 1,
     cells: adjusted.cells.map((r) => [...r.slice(0, col), "", ...r.slice(col)]),
     formats: adjusted.formats.map((r) => [...r.slice(0, col), undefined, ...r.slice(col)]),
+    colWidths: adjusted.colWidths ? [...adjusted.colWidths.slice(0, col), undefined, ...adjusted.colWidths.slice(col)] : undefined,
   };
 }
 
 export { cellRef, colToLetters };
 export type { CellFormat, CellAlign, NumberFormat } from "./cellFormat";
+export type { SheetTemplate } from "./sheetTemplate";
 
 // Re-exported so `@/lib/sheet` stays the one import surface for sheet operations, even though
 // clipboard and sort logic live in their own focused modules.

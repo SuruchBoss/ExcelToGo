@@ -24,6 +24,7 @@ import { useColumnFilterPopoverState } from "./useColumnFilterPopoverState";
 import { useT } from "@/i18n";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
+import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
 
 const ROW_HEADER_WIDTH = 48;
 const COL_WIDTH = 112;
@@ -90,9 +91,10 @@ export default function SpreadsheetGrid() {
   const startEdit = useCallback(
     (row: number, col: number, initialValue?: string) => {
       if (boundCells.has(`${row},${col}`)) return;
+      if (isTemplateLocked(sheet.template, row, col)) return;
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
-    [rawAt, boundCells]
+    [rawAt, boundCells, sheet.template]
   );
 
   const commitEdit = useCallback(() => {
@@ -206,7 +208,10 @@ export default function SpreadsheetGrid() {
                   "sticky top-0 z-20 cursor-pointer border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
                   c >= selection.startCol && c <= selection.endCol ? "bg-blue-100 text-blue-800" : "bg-zinc-100"
                 )}
-                style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT }}
+                style={(() => {
+                  const w = sheet.colWidths?.[c] ?? COL_WIDTH;
+                  return { width: w, minWidth: w, height: ROW_HEIGHT };
+                })()}
               >
                 <div className="flex items-center justify-center gap-1">
                   <span>{colToLetters(c)}</span>
@@ -250,6 +255,9 @@ export default function SpreadsheetGrid() {
                 const editingHere = editing?.row === r && editing?.col === c;
                 const format = sheet.formats[r]?.[c];
                 const block = blockAt(r, c);
+                const locked = isTemplateLocked(sheet.template, r, c);
+                const choices = templateChoices(sheet.template, r, c);
+                const isField = sheet.template !== undefined && !locked;
                 return (
                   <td
                     key={c}
@@ -285,16 +293,47 @@ export default function SpreadsheetGrid() {
                       block && c === block.anchorCol && "border-l-2 border-l-emerald-200",
                       block && c === block.anchorCol + block.cols - 1 && "border-r-2 border-r-emerald-200",
                       block && r === block.anchorRow + block.rows - 1 && "border-b-2 border-b-emerald-200",
+                      // A template should read at a glance: its fixed structure recedes, the
+                      // cells someone is meant to fill in are the ones that catch the eye.
+                      locked && "bg-zinc-50/80 text-zinc-600",
+                      isField && "bg-amber-50/60 ring-1 ring-inset ring-amber-300",
                       isActive(r, c) && "ring-2 ring-inset ring-blue-500",
                       !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
                       dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
                       isInClipboard(r, c) && (clipboard?.cut ? "outline-dashed outline-2 outline-orange-400 -outline-offset-2" : "outline-dashed outline-2 outline-blue-400 -outline-offset-2"),
                       isErr && "text-red-600"
                     )}
-                    style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT, maxWidth: COL_WIDTH }}
-                    title={block ? t.data.liveCellTitle(sourceNameOf(block.sourceId)) : cellRef(r, c)}
+                    style={(() => {
+                      const w = sheet.colWidths?.[c] ?? COL_WIDTH;
+                      return { width: w, minWidth: w, height: ROW_HEIGHT, maxWidth: w };
+                    })()}
+                    title={
+                      block
+                        ? t.data.liveCellTitle(sourceNameOf(block.sourceId))
+                        : locked
+                          ? t.template.lockedCell
+                          : cellRef(r, c)
+                    }
                   >
-                    {editingHere ? (
+                    {editingHere && choices ? (
+                      <select
+                        autoFocus
+                        className="absolute inset-0 z-40 h-full w-full border-2 border-amber-500 bg-white px-1 text-sm outline-none"
+                        value={editing.value}
+                        onChange={(e) => {
+                          commitCell(r, c, e.target.value);
+                          setEditing(null);
+                        }}
+                        onBlur={() => setEditing(null)}
+                      >
+                        <option value="">{t.template.choosePlaceholder}</option>
+                        {choices.map((choice) => (
+                          <option key={choice} value={choice}>
+                            {choice}
+                          </option>
+                        ))}
+                      </select>
+                    ) : editingHere ? (
                       <input
                         ref={inputRef}
                         className="absolute inset-0 z-40 h-full w-full border-2 border-blue-500 bg-white px-2 text-sm outline-none"

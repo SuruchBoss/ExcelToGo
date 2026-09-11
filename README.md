@@ -12,14 +12,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-162%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-185%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 **English TL;DR** — A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
-detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 162 automated tests.
+detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 185 automated tests.
 
 ---
 
@@ -142,7 +142,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 162 เคสด้วย Vitest |
+| `npm test` | รัน unit test 185 เคสด้วย Vitest |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -350,6 +350,37 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 
 > ฐานข้อมูล (Postgres/MySQL) อยู่ในเฟสถัดไป — ปุ่มมีให้เห็นในฟอร์มแล้วแต่ยังกดไม่ได้
 
+### 📋 แม่แบบ (Template) จากไฟล์ Excel
+
+<p align="center"><img src="public/screenshots/15-template.png" width="820"></p>
+
+ไฟล์ฟอร์มที่ทำไว้ใน Excel อยู่แล้ว (ใบเสนอราคา, ใบเบิกของ, แบบกรอกข้อมูล) **บอกอยู่แล้วว่าช่องไหนให้กรอก** —
+Excel ล็อกทุกเซลล์เป็นค่าเริ่มต้น แล้วคนทำฟอร์มจะปลดล็อกเฉพาะช่องที่ตั้งใจให้กรอก ระบบอ่านตรงนั้นกลับมาใช้เลย
+**ไม่ต้องมาทำเครื่องหมายอะไรใหม่**
+
+| ในไฟล์ | ในแอป |
+|---|---|
+| sheet ถูก protect | เข้าโหมดแม่แบบ มีแถบสีเหลืองบอกว่ากรอกได้กี่ช่อง |
+| เซลล์ที่ปลดล็อกไว้ | ช่องกรอก — กรอบสีเหลือง พิมพ์ได้ |
+| เซลล์ที่ล็อก | โครงของแม่แบบ — สีจาง แก้ไม่ได้ |
+| dropdown (data validation) | คลิกแล้วเลือกจากรายการ ไม่ใช่ช่องพิมพ์เปล่า |
+| ความกว้างคอลัมน์ | ใช้ตามไฟล์ ฟอร์มจึงยังหน้าตาเหมือนเดิม |
+| สูตรในฟอร์ม | คำนวณตามที่กรอกทันที (`=B5*B6` → `=B7*1.07` ต่อกันเป็นทอด) |
+
+<p align="center"><img src="public/screenshots/16-template-dropdown.png" width="820"></p>
+
+**กันพลาดครบทุกทาง** ไม่ใช่แค่ห้ามพิมพ์: กด Delete, วางทับ (Ctrl+V), เรียงลำดับ, เพิ่ม/ลบแถว-คอลัมน์ —
+ถูกปฏิเสธหมดพร้อมบอกเหตุผล เพราะการเงียบๆ ไม่ทำอะไรมันอ่านเหมือนแอปพัง ไม่ใช่แม่แบบทำงาน
+
+**แต่ไม่ได้ขังไว้** — ปุ่ม "ปลดล็อกทั้งชีต" ทำให้แก้ได้ทุกช่องเหมือนตารางทั่วไป และกด Ctrl+Z ย้อนกลับมาเป็น
+แม่แบบได้ (สถานะแม่แบบอยู่ใน `sheets` จึงอยู่ใต้ undo/บันทึกอัตโนมัติเหมือนข้อมูลอื่น)
+
+**ส่งออกกลับเป็นแม่แบบ** — กด "ส่งออก Excel" จะได้ไฟล์ที่ protect ไว้เหมือนเดิม ช่องกรอกยังปลดล็อก
+dropdown ยังอยู่ ความกว้างคอลัมน์ยังอยู่ เอาไปเปิดใน Excel แล้วใช้เป็นฟอร์มต่อได้
+
+> **ยังไม่รองรับในเฟสนี้:** เซลล์ที่ merge (ต้องรื้อการ render ของตารางทั้งก้อน), conditional formatting,
+> และการ*สร้าง*แม่แบบขึ้นเองในแอป — ตอนนี้อ่านแม่แบบจากไฟล์ที่ทำมาแล้วเท่านั้น
+
 ### 🏠 หน้า landing อธิบายแอป
 
 เปิด `localhost:3000` จะเจอหน้าอธิบายว่าแอปทำอะไรได้บ้างก่อน แล้วค่อยกด **"เปิดแอป"** เข้า `/app` — เดิมเปิดมา
@@ -386,7 +417,7 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit และบล็อกข้อมูลสด (162 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ และบล็อกข้อมูลสด (185 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -544,6 +575,7 @@ src/
     grid/useClickAway.ts            # hook กลาง: ปิดป็อปอัป/เมนูเมื่อคลิกหรือ scroll ออกนอกพื้นที่
     grid/FormulaBar.tsx             # แถบสูตรด้านบนตาราง
     grid/SheetTabs.tsx              # แถบแท็บชีตด้านล่างตาราง
+    grid/TemplateBar.tsx            # แถบบอกว่าชีตนี้เป็นแม่แบบ กรอกได้กี่ช่อง + ปุ่มปลดล็อก
     grid/ColumnFilterPopover.tsx    # ป็อปอัปตัวกรองต่อคอลัมน์
     formulas/FormulaPalette.tsx     # แถบรายการสูตร ค้นหา/กรองหมวดหมู่/ลากวาง
     formulas/FormulaParamPanel.tsx  # แผงกรอกพารามิเตอร์สูตร + เลือกช่วงจากตาราง + เลือก scope
@@ -571,6 +603,7 @@ src/
     sheet.ts                 # โมเดลข้อมูลตารางหลัก, คำนวณค่าทั้งชีต, ใส่สูตรตาม scope ต่างๆ, แทรก/ลบแถว-คอลัมน์
     sheetClipboard.ts        # คัดลอก/ตัด/วาง, แปลงเป็น/จาก TSV (สำหรับ paste ข้ามแอป)
     sheetSort.ts             # ตรวจจับช่วงที่จะเรียง + เรียงลำดับข้อมูล
+    sheetTemplate.ts         # แม่แบบจากไฟล์: เซลล์ไหนกรอกได้, ตัวเลือก dropdown, แปลงหน่วยความกว้างคอลัมน์ (มี test)
     liveBlocks.ts            # เขียนตารางจากแหล่งข้อมูลลงเซลล์, จำขอบเขตเพื่อล้างเมื่อข้อมูลหด, รวม/เฉลี่ย/นับ (มี test)
     dataSources/             # types + jsonToTable.ts (แปลง JSON/CSV อะไรก็ได้เป็นตาราง) +
                               # paginate.ts (หาหน้าถัดไปจาก Link header/ฟิลด์ next/cursor/พารามิเตอร์) +
@@ -682,10 +715,10 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 162 เคส ใน 12 ไฟล์ ด้วย Vitest
+npm test      # 185 เคส ใน 14 ไฟล์ ด้วย Vitest
 ```
 
-โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
+โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง ส่วน UI/interaction verify ด้วย Playwright แบบ manual ระหว่างพัฒนาแต่ละฟีเจอร์
 (ไม่ได้ commit สคริปต์ไว้ในโปรเจกต์ เพราะเป็นเครื่องมือช่วยตรวจสอบชั่วคราว ไม่ใช่ regression suite ถาวร)
 
@@ -702,6 +735,8 @@ npm test      # 162 เคส ใน 12 ไฟล์ ด้วย Vitest
 | `paginate.test.ts` | 19 | ตรวจจับหน้าถัดไปจาก Link header / ฟิลด์ next / cursor / พารามิเตอร์ใน URL, การหยุดเมื่อ next เป็น null, ค่าที่ไม่ใช่ลิงก์ |
 | `executeSource.test.ts` | 20 | ลูปไล่ดึงหน้าจริง (stub fetch): ขีดจำกัดแถว, เพดาน 20 หน้า, กันลูปวน, หน้ากลางพัง, รวมคอลัมน์ข้ามหน้า, auth header ทุกหน้า, 429 กลางทาง |
 | `rateLimit.test.ts` | 20 | อ่าน `Retry-After` (วินาที/HTTP date) และ `X-RateLimit-Reset` ทุกรูปแบบ, แยก 403 ที่โควตาหมดออกจาก 403 ธรรมดา, การคำนวณ backoff |
+| `sheetTemplate.test.ts` | 14 | เซลล์ไหนล็อก/กรอกได้, ตัวเลือก dropdown แบบ inline และแบบอ้างช่วง, แปลงความกว้างคอลัมน์ |
+| `excelIO.test.ts` | 9 | สร้างไฟล์ .xlsx จริงแล้ววนครบรอบ: อ่านช่องกรอก/dropdown/ความกว้าง, ไฟล์ที่ไม่ protect ไม่ใช่แม่แบบ, export แล้ว import กลับได้เหมือนเดิม |
 | `liveBlocks.test.ts` | 15 | เขียน/ล้างบล็อกข้อมูลสด, ขอบเขตที่หดลง, รวม/เฉลี่ย/นับ, ตัวเลือกค่าเดียวที่เสนอให้, ตรวจพื้นที่ทับซ้อน |
 
 CI: `npm run lint` → `npm run build` (บังคับ type-check เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) →
@@ -724,14 +759,9 @@ CI: `npm run lint` → `npm run build` (บังคับ type-check เต็�
 - [ ] **รองรับมือถือ/แท็บเล็ต** — ตอนนี้ออกแบบมาสำหรับหน้าจอคอมพิวเตอร์เป็นหลัก ยังไม่ได้ปรับ layout/touch
   สำหรับจอเล็ก
 - [ ] **Import/Export CSV** โดยตรง (ตอนนี้ผ่าน `.xlsx` เท่านั้น)
-- [ ] **รองรับ Template จากไฟล์ที่ import เข้ามา** — กรณีเปิดไฟล์ `.xlsx` ที่ทำเป็นแม่แบบไว้แล้ว (หัวตาราง,
-      สูตร, รูปแบบ, ช่องที่ให้กรอก) แล้วให้ ExcelToGo รักษาโครงนั้นไว้ ผู้ใช้กรอกเฉพาะช่องที่ตั้งใจให้กรอก
-      ไม่พังเลย์เอาต์ และส่งออกกลับมาได้เหมือนเดิม
-      ตอนนี้ import เก็บ **ค่า, สูตร, ตัวหนา/สี/การจัดตำแหน่ง/รูปแบบตัวเลข และทุกชีต** มาแล้ว แต่ยัง**ไม่เก็บ**
-      ความกว้างคอลัมน์ (export ตั้งเป็น 16 ตายตัว), เซลล์ที่ merge, dropdown/data validation, conditional
-      formatting, การล็อกเซลล์ (protection) และ named range — ซึ่งเป็นของที่แม่แบบจริงมักใช้
-      **ยังต้องเคาะก่อนเริ่ม:** "template" หมายถึงแค่รักษาโครงไฟล์ให้ครบ หรือต้องมีแนวคิดแม่แบบจริงๆ
-      (ล็อกช่องที่ห้ามแก้ + ระบุช่องที่ให้กรอก + เอาไปสร้างชีตใหม่ซ้ำได้) และข้อมูลสดควรผูกลงช่องของแม่แบบได้ไหม
+- [x] **รองรับ Template จากไฟล์ที่ import เข้ามา** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): อ่านการล็อกเซลล์,
+      dropdown และความกว้างคอลัมน์จากไฟล์ที่ protect ไว้ กันการแก้โครงทุกทาง และส่งออกกลับเป็นแม่แบบได้
+      ยังเหลือ: เซลล์ที่ merge, conditional formatting และการสร้างแม่แบบขึ้นเองในแอป
 - [x] **ข้อมูลสดจาก REST API / CSV** — ทำแล้ว (prototype, ดูหัวข้อ ✨ ฟีเจอร์) รีเฟรชแบบ polling
 - [x] **ไล่ดึง API ที่แบ่งหน้า (pagination)** — ทำแล้ว: ตรวจจับเองจาก Link header / ฟิลด์ next / cursor /
       พารามิเตอร์ใน URL พร้อมบอกผู้ใช้เมื่อดึงมาไม่ครบ
