@@ -380,6 +380,13 @@ Behind the scenes:
 
 > Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
 
+### 🏠 A landing page that explains the app
+
+`localhost:3000` now opens on a page describing what the app does, with an **"Open the app"** button through
+to `/app` — where before you landed straight in a bare grid with nothing telling you how to use it. Every
+screenshot on it comes from the running app rather than a mockup, and it goes through the same message
+dictionary as the app, so the language you choose there carries through with you.
+
 ### 🌐 Bilingual (Thai / English)
 
 Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 25 formula
@@ -609,6 +616,8 @@ src/
     pdfExport.ts              # PDF export via jspdf + jspdf-autotable
   types/
     sheet-ui.ts               # Types for the grid's selection state
+public/
+  screenshots/               # Screenshots from the running app — used by both the landing page and this README
 ```
 
 Every component under `features/` reads/writes state via `useSheetStore` directly (never through props passed
