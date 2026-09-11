@@ -8,6 +8,7 @@ import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralSh
 import { CellFormat, formatNumberForDisplay } from "./cellFormat";
 import { SheetTemplate } from "./sheetTemplate";
 import { MergeRange, shiftMerges } from "./sheetMerges";
+import { CfRule, shiftConditionalRules } from "./conditionalFormat";
 
 export const DEFAULT_ROWS = 30;
 export const DEFAULT_COLS = 10;
@@ -27,6 +28,8 @@ export interface SheetModel {
   merges?: MergeRange[];
   /** Present only while an imported template's sheet protection is in force. See sheetTemplate.ts. */
   template?: SheetTemplate;
+  /** Rules that restyle cells from their current values. See conditionalFormat.ts. */
+  conditionalRules?: CfRule[];
 }
 
 export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): SheetModel {
@@ -45,6 +48,9 @@ export function cloneSheet(sheet: SheetModel): SheetModel {
     formats: sheet.formats.map((row) => [...row]),
     colWidths: sheet.colWidths ? [...sheet.colWidths] : undefined,
     rowHeights: sheet.rowHeights ? [...sheet.rowHeights] : undefined,
+    // Rules are replaced as whole objects when edited, never mutated, so copying the array is
+    // enough to stop one sheet's edits reaching another's history entry.
+    conditionalRules: sheet.conditionalRules ? [...sheet.conditionalRules] : undefined,
     // `template` is replaced wholesale (imported, or removed when unlocked), never edited in
     // place, so sharing the reference is safe and keeps clones cheap.
   };
@@ -224,6 +230,7 @@ export function deleteRow(sheet: SheetModel, row: number): SheetModel {
     formats: [...adjusted.formats.slice(0, row), ...adjusted.formats.slice(row + 1)],
     rowHeights: adjusted.rowHeights ? [...adjusted.rowHeights.slice(0, row), ...adjusted.rowHeights.slice(row + 1)] : undefined,
     merges: shiftMerges(adjusted.merges, "row", row, -1),
+    conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "row", row, -1),
   };
 }
 
@@ -238,6 +245,7 @@ export function insertRowBefore(sheet: SheetModel, row: number): SheetModel {
     formats: [...adjusted.formats.slice(0, row), blankFormats, ...adjusted.formats.slice(row)],
     rowHeights: adjusted.rowHeights ? [...adjusted.rowHeights.slice(0, row), undefined, ...adjusted.rowHeights.slice(row)] : undefined,
     merges: shiftMerges(adjusted.merges, "row", row, 1),
+    conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "row", row, 1),
   };
 }
 
@@ -252,6 +260,7 @@ export function deleteColumn(sheet: SheetModel, col: number): SheetModel {
     formats: adjusted.formats.map((r) => [...r.slice(0, col), ...r.slice(col + 1)]),
     colWidths: adjusted.colWidths ? [...adjusted.colWidths.slice(0, col), ...adjusted.colWidths.slice(col + 1)] : undefined,
     merges: shiftMerges(adjusted.merges, "col", col, -1),
+    conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "col", col, -1),
   };
 }
 
@@ -264,6 +273,7 @@ export function insertColumnBefore(sheet: SheetModel, col: number): SheetModel {
     formats: adjusted.formats.map((r) => [...r.slice(0, col), undefined, ...r.slice(col)]),
     colWidths: adjusted.colWidths ? [...adjusted.colWidths.slice(0, col), undefined, ...adjusted.colWidths.slice(col)] : undefined,
     merges: shiftMerges(adjusted.merges, "col", col, 1),
+    conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "col", col, 1),
   };
 }
 
@@ -271,6 +281,7 @@ export { cellRef, colToLetters };
 export type { CellFormat, CellAlign, NumberFormat } from "./cellFormat";
 export type { SheetTemplate } from "./sheetTemplate";
 export type { MergeRange } from "./sheetMerges";
+export type { CfRule, CfRange, CfTest, CfStyle, CfVisual } from "./conditionalFormat";
 
 // Re-exported so `@/lib/sheet` stays the one import surface for sheet operations, even though
 // clipboard and sort logic live in their own focused modules.

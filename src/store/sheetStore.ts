@@ -9,7 +9,11 @@ import {
   ApplyScope,
   CellAlign,
   CellFormat,
+  CfStyle,
+  CfRule,
+  CfTest,
   clearRange,
+  cloneSheet,
   ClipboardBlock,
   computeSheet,
   copyRange,
@@ -40,7 +44,7 @@ import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
-export type SidebarMode = "palette" | "ai" | "data" | "none";
+export type SidebarMode = "palette" | "ai" | "data" | "cf" | "none";
 export type { ApplyScope };
 
 export interface PendingFormula {
@@ -140,7 +144,7 @@ interface SheetState {
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   toggleFormatBar: () => void;
-  toggleSidebar: (mode: "palette" | "ai" | "data") => void;
+  toggleSidebar: (mode: "palette" | "ai" | "data" | "cf") => void;
 
   /** Drops a live block at the active sheet's selection anchor and fills it right away if the
    *  source's data is already cached. */
@@ -165,6 +169,10 @@ interface SheetState {
   setColumnFilter: (col: number, values: string[]) => void;
   clearColumnFilter: (col: number) => void;
   clearAllFilters: () => void;
+
+  addConditionalRule: (test: CfTest, style?: CfStyle) => void;
+  removeConditionalRule: (id: string) => void;
+  clearConditionalRules: () => void;
 
   toggleBold: () => void;
   setAlign: (align: CellAlign) => void;
@@ -469,6 +477,37 @@ export const useSheetStore = create<SheetState>()(
 
         setAlign: (align) =>
           set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { align })) })),
+
+        // A rule is written for whatever is selected when it's created, the way Excel's ribbon
+        // works — the selection is the question the user is already looking at.
+        addConditionalRule: (test, style) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const rule: CfRule = {
+                id: `cf-${Date.now().toString(36)}-${idCounter++}`,
+                range: {
+                  startRow: selection.startRow,
+                  startCol: selection.startCol,
+                  endRow: selection.endRow,
+                  endCol: selection.endCol,
+                },
+                test,
+                style,
+              };
+              return { ...cloneSheet(sheet), conditionalRules: [...(sheet.conditionalRules ?? []), rule] };
+            }),
+          })),
+
+        removeConditionalRule: (id) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet) => {
+              const kept = (sheet.conditionalRules ?? []).filter((r) => r.id !== id);
+              return { ...cloneSheet(sheet), conditionalRules: kept.length > 0 ? kept : undefined };
+            }),
+          })),
+
+        clearConditionalRules: () =>
+          set((s) => ({ sheets: updateActiveSheet(s, (sheet) => ({ ...cloneSheet(sheet), conditionalRules: undefined })) })),
 
         setTextColor: (color) =>
           set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { color })) })),

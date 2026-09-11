@@ -12,8 +12,9 @@ import {
   pxToPt,
 } from "./cellFormat";
 import { cellKey, excelWidthToPx, parseValidationList, pxToExcelWidth, SheetTemplate } from "./sheetTemplate";
-import { parseRangeRef, parseCellRef } from "./formulaEngine/address";
+import { parseRangeRef, parseCellRef, rangeRefString } from "./formulaEngine/address";
 import { MergeRange, parseMergeRef } from "./sheetMerges";
+import { CfRule, CfComparison, CfTest } from "./conditionalFormat";
 
 function hexToArgb(hex: string): string {
   return `FF${hex.replace("#", "").toUpperCase()}`;
@@ -82,6 +83,216 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
 
 /** Reads the values a dropdown points at, for a validation list given as a range instead of an
  *  inline list. Runs after the cells are in, so it reads the sheet we just built. */
+
+/**
+ * Conditional formatting, translated to and from the shapes ExcelJS writes.
+ *
+ * Worth carrying across: a sheet whose colours came from rules loses its whole point when it
+ * opens as a flat grid in Excel, and a file that arrives with rules should behave here the way it
+ * does there rather than looking subtly wrong.
+ */
+
+/** OOXML's `cellIs` operators. ExcelJS's own type lists only four of them while its serializer
+ *  writes whatever it is given, so the wider real set is declared here and cast at the boundary. */
+const CF_OPERATOR_TO_EXCEL: Record<CfComparison, string> = {
+  gt: "greaterThan",
+  lt: "lessThan",
+  gte: "greaterThanOrEqual",
+  lte: "lessThanOrEqual",
+  eq: "equal",
+  ne: "notEqual",
+  between: "between",
+};
+
+const CF_OPERATOR_FROM_EXCEL: Record<string, CfComparison> = Object.fromEntries(
+  Object.entries(CF_OPERATOR_TO_EXCEL).map(([ours, theirs]) => [theirs, ours as CfComparison])
+);
+
+function cfStyleToExcel(rule: CfRule): Partial<ExcelJS.Style> | undefined {
+  if (!rule.style) return undefined;
+  const style: Partial<ExcelJS.Style> = {};
+  if (rule.style.bold || rule.style.color) {
+    style.font = {
+      bold: rule.style.bold || undefined,
+      color: rule.style.color ? { argb: hexToArgb(rule.style.color) } : undefined,
+    } as ExcelJS.Font;
+  }
+  if (rule.style.fill) {
+    // A conditional format's fill lives in a dxf record, where Excel reads the *background*
+    // colour of the pattern — setting only fgColor gives a rule that highlights nothing.
+    style.fill = {
+      type: "pattern",
+      pattern: "solid",
+      bgColor: { argb: hexToArgb(rule.style.fill) },
+      fgColor: { argb: hexToArgb(rule.style.fill) },
+    };
+  }
+  return Object.keys(style).length > 0 ? style : undefined;
+}
+
+function writeConditionalFormats(worksheet: ExcelJS.Worksheet, sheet: SheetModel) {
+  const rules = sheet.conditionalRules ?? [];
+  rules.forEach((rule, i) => {
+    const ref = rangeRefString(rule.range.startRow, rule.range.startCol, rule.range.endRow, rule.range.endCol);
+    const style = cfStyleToExcel(rule);
+    // Excel treats priority 1 as the top of the list and applies it last-word-wins in reverse,
+    // so a rule later in our list — which overrides the ones above it here — gets a lower number.
+    const priority = rules.length - i;
+    const test = rule.test;
+    switch (test.kind) {
+      case "compare":
+        worksheet.addConditionalFormatting({
+          ref,
+          rules: [
+            {
+              type: "cellIs",
+              priority,
+              operator: CF_OPERATOR_TO_EXCEL[test.op] as ExcelJS.CellIsRuleType["operator"],
+              formulae: test.op === "between" ? [String(test.value), String(test.value2 ?? test.value)] : [String(test.value)],
+              style,
+            },
+          ],
+        });
+        break;
+      case "textContains":
+        worksheet.addConditionalFormatting({
+          ref,
+          rules: [{ type: "containsText", priority, operator: "containsText", text: test.text, style }],
+        });
+        break;
+      case "rank":
+        worksheet.addConditionalFormatting({
+          ref,
+          rules: [{ type: "top10", priority, rank: test.count, percent: false, bottom: test.bottom, style }],
+        });
+        break;
+      case "colorScale":
+        worksheet.addConditionalFormatting({
+          ref,
+          rules: [
+            {
+              type: "colorScale",
+              priority,
+              cfvo: test.mid
+                ? [{ type: "min" }, { type: "percentile", value: 50 }, { type: "max" }]
+                : [{ type: "min" }, { type: "max" }],
+              color: (test.mid ? [test.min, test.mid, test.max] : [test.min, test.max]).map((c) => ({ argb: hexToArgb(c) })),
+            },
+          ],
+        });
+        break;
+      case "dataBar":
+        worksheet.addConditionalFormatting({
+          ref,
+          rules: [
+            {
+              type: "dataBar",
+              priority,
+              cfvo: [{ type: "min" }, { type: "max" }],
+              color: { argb: hexToArgb(test.color) },
+            } as ExcelJS.DataBarRuleType,
+          ],
+        });
+        break;
+    }
+  });
+}
+
+/** ExcelJS exposes rules read back from a file on the worksheet, but doesn't declare them. */
+interface ReadableConditionalFormatting {
+  ref?: string;
+  rules?: Record<string, unknown>[];
+}
+
+function readConditionalFormats(worksheet: ExcelJS.Worksheet): CfRule[] | undefined {
+  const formattings = (worksheet as unknown as { conditionalFormattings?: ReadableConditionalFormatting[] }).conditionalFormattings;
+  if (!Array.isArray(formattings)) return undefined;
+
+  const out: CfRule[] = [];
+  formattings.forEach((formatting, fi) => {
+    // A single ref can list several areas ("A1:A5 C1:C5"); each becomes its own rule here.
+    const refs = String(formatting.ref ?? "").split(/\s+/).filter(Boolean);
+    for (const refPart of refs) {
+      const range = parseRangeRef(refPart.replace(/\$/g, ""));
+      if (!range) continue;
+      (formatting.rules ?? []).forEach((raw, ri) => {
+        const test = excelRuleToTest(raw);
+        if (!test) return;
+        out.push({
+          id: `cf-import-${fi}-${ri}-${refPart}`,
+          range,
+          test,
+          style: excelRuleToStyle(raw),
+        });
+      });
+    }
+  });
+  return out.length > 0 ? out : undefined;
+}
+
+function firstNumber(formulae: unknown): number | null {
+  if (!Array.isArray(formulae) || formulae.length === 0) return null;
+  const n = Number(formulae[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function excelRuleToTest(raw: Record<string, unknown>): CfTest | null {
+  switch (raw.type) {
+    case "cellIs": {
+      const op = CF_OPERATOR_FROM_EXCEL[String(raw.operator)];
+      const value = firstNumber(raw.formulae);
+      if (!op || value === null) return null;
+      const second = Array.isArray(raw.formulae) ? Number(raw.formulae[1]) : NaN;
+      return { kind: "compare", op, value, value2: Number.isFinite(second) ? second : undefined };
+    }
+    case "containsText": {
+      // OOXML stores the search term twice: as a `text` attribute and inside the formula Excel
+      // actually evaluates. ExcelJS hands back only the formula, so the term is read out of
+      // `SEARCH("…",B1)` — without this the rule imports with nothing to search for and silently
+      // matches no cell.
+      const fromAttribute = typeof raw.text === "string" ? raw.text : "";
+      const formula = Array.isArray(raw.formulae) ? String(raw.formulae[0] ?? "") : "";
+      const fromFormula = /SEARCH\(\s*"((?:[^"]|"")*)"/i.exec(formula)?.[1]?.replace(/""/g, '"') ?? "";
+      const text = fromAttribute || fromFormula;
+      return text === "" ? null : { kind: "textContains", text };
+    }
+    case "top10": {
+      const rank = Number(raw.rank);
+      // A percent-based top 10 asks a different question than a count and would import as a lie.
+      if (!Number.isFinite(rank) || raw.percent === true) return null;
+      return { kind: "rank", bottom: raw.bottom === true, count: rank };
+    }
+    case "colorScale": {
+      const colors = Array.isArray(raw.color) ? raw.color.map((c) => argbToHex((c as ExcelJS.Color)?.argb)) : [];
+      const usable = colors.filter((c): c is string => Boolean(c));
+      if (usable.length < 2) return null;
+      return usable.length >= 3
+        ? { kind: "colorScale", min: usable[0], mid: usable[1], max: usable[usable.length - 1] }
+        : { kind: "colorScale", min: usable[0], max: usable[1] };
+    }
+    case "dataBar": {
+      const color = argbToHex((raw.color as ExcelJS.Color)?.argb);
+      return { kind: "dataBar", color: color ?? "#6ee7b7" };
+    }
+    default:
+      // Icon sets, above-average and time-period rules have no equivalent here. Dropping one is
+      // better than importing it as something it isn't.
+      return null;
+  }
+}
+
+function excelRuleToStyle(raw: Record<string, unknown>): CfRule["style"] {
+  const style = raw.style as Partial<ExcelJS.Style> | undefined;
+  if (!style) return undefined;
+  const fillColor = style.fill && style.fill.type === "pattern" ? style.fill.bgColor?.argb ?? style.fill.fgColor?.argb : undefined;
+  const out = {
+    fill: argbToHex(fillColor),
+    color: argbToHex(style.font?.color?.argb),
+    bold: style.font?.bold || undefined,
+  };
+  return out.fill || out.color || out.bold ? out : undefined;
+}
+
 function rangeReader(sheet: SheetModel) {
   return (ref: string): string[] => {
     const range = parseRangeRef(ref.replace(/^.*!/, ""));
@@ -193,6 +404,8 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
     // treating it as a template would leave the user staring at a sheet they cannot touch.
     if (Object.keys(inputs).length > 0) sheet.template = template;
   }
+
+  sheet.conditionalRules = readConditionalFormats(worksheet);
   return sheet;
 }
 
@@ -290,6 +503,8 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
   for (const m of sheet.merges ?? []) {
     worksheet.mergeCells(m.startRow + 1, m.startCol + 1, m.endRow + 1, m.endCol + 1);
   }
+
+  writeConditionalFormats(worksheet, sheet);
 
   worksheet.columns.forEach((col, i) => {
     col.width = pxToExcelWidth(sheet.colWidths?.[i]) ?? 16;

@@ -1,7 +1,8 @@
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
-import { computeSheet, SheetModel } from "./sheet";
+import { computeSheet, createEmptySheet, SheetModel } from "./sheet";
+import { evaluateConditionalFormats } from "./conditionalFormat";
 import { cellKey } from "./sheetTemplate";
 
 /** Builds a real .xlsx in memory the way someone would hand-build a form in Excel. */
@@ -188,5 +189,83 @@ describe("exporting a styled sheet", () => {
     expect(again.merges).toEqual(sheet.merges);
     expect(again.rowHeights?.[0]).toBe(sheet.rowHeights?.[0]);
     expect(again.formats[2][0]?.borders?.bottom).toBe("#ff0000");
+  });
+});
+
+describe("conditional formatting round-trip", () => {
+  /** A plain sheet carrying one rule of each kind we claim to support. */
+  function ruledSheet(): SheetModel {
+    const sheet = createEmptySheet(6, 3);
+    for (let r = 0; r < 6; r++) sheet.cells[r][0] = String((r + 1) * 10);
+    sheet.cells[0][1] = "กรุงเทพ";
+    sheet.conditionalRules = [
+      { id: "a", range: { startRow: 0, startCol: 0, endRow: 5, endCol: 0 }, test: { kind: "compare", op: "gt", value: 30 }, style: { fill: "#fee2e2", color: "#991b1b", bold: true } },
+      { id: "b", range: { startRow: 0, startCol: 1, endRow: 5, endCol: 1 }, test: { kind: "textContains", text: "กรุงเทพ" }, style: { fill: "#dbeafe" } },
+      { id: "c", range: { startRow: 0, startCol: 0, endRow: 5, endCol: 0 }, test: { kind: "rank", bottom: false, count: 2 }, style: { fill: "#dcfce7" } },
+      { id: "d", range: { startRow: 0, startCol: 2, endRow: 5, endCol: 2 }, test: { kind: "colorScale", min: "#fca5a5", mid: "#fde68a", max: "#86efac" } },
+      { id: "e", range: { startRow: 0, startCol: 2, endRow: 5, endCol: 2 }, test: { kind: "dataBar", color: "#6ee7b7" } },
+    ];
+    return sheet;
+  }
+
+  it("writes one Excel rule per rule, with the ranges intact", async () => {
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(ruledSheet(), "ยอดขาย")));
+    const cfs = (ws as unknown as { conditionalFormattings: { ref: string; rules: { type: string }[] }[] }).conditionalFormattings;
+
+    expect(cfs).toHaveLength(5);
+    expect(cfs.map((c) => c.rules[0].type)).toEqual(["cellIs", "containsText", "top10", "colorScale", "dataBar"]);
+    expect(cfs[0].ref).toBe("A1:A6");
+    expect(cfs[1].ref).toBe("B1:B6");
+  });
+
+  it("keeps operators Excel's own typings leave out, like ≥", async () => {
+    const sheet = createEmptySheet(3, 1);
+    sheet.conditionalRules = [
+      { id: "a", range: { startRow: 0, startCol: 0, endRow: 2, endCol: 0 }, test: { kind: "compare", op: "gte", value: 5 }, style: { fill: "#fee2e2" } },
+    ];
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet, "s"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+
+    expect(again.conditionalRules?.[0].test).toEqual({ kind: "compare", op: "gte", value: 5, value2: undefined });
+  });
+
+  it("survives import → export → import with every rule's meaning unchanged", async () => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(ruledSheet(), "ยอดขาย"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+
+    const tests = (again.conditionalRules ?? []).map((r) => r.test);
+    expect(tests).toContainEqual({ kind: "compare", op: "gt", value: 30, value2: undefined });
+    expect(tests).toContainEqual({ kind: "textContains", text: "กรุงเทพ" });
+    expect(tests).toContainEqual({ kind: "rank", bottom: false, count: 2 });
+    expect(tests).toContainEqual({ kind: "colorScale", min: "#fca5a5", mid: "#fde68a", max: "#86efac" });
+    expect(tests).toContainEqual({ kind: "dataBar", color: "#6ee7b7" });
+  });
+
+  it("brings the highlight colours back, not just the conditions", async () => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(ruledSheet(), "ยอดขาย"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+
+    const compare = (again.conditionalRules ?? []).find((r) => r.test.kind === "compare");
+    expect(compare?.style).toEqual({ fill: "#fee2e2", color: "#991b1b", bold: true });
+  });
+
+  it("re-evaluates to the same highlighted cells after the round-trip", async () => {
+    const before = ruledSheet();
+    const blob = await exportWorkbookToXlsxBlob(exportable(before, "ยอดขาย"));
+    const [{ sheet: after }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+
+    // Import pads a sheet out to a minimum size, so compare only the region that held data —
+    // otherwise the assertion fails on the blank padding rather than on any rule.
+    const evalOf = (s: SheetModel) =>
+      evaluateConditionalFormats(s.conditionalRules, computeSheet(s).values, s.rows, s.cols)
+        .slice(0, 6)
+        .map((row) => row.slice(0, 3).map((v) => v?.fill ?? ""));
+    expect(evalOf(after)).toEqual(evalOf(before));
+  });
+
+  it("leaves a sheet with no rules free of conditional formatting", async () => {
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(createEmptySheet(3, 3), "ว่าง")));
+    const cfs = (ws as unknown as { conditionalFormattings: unknown[] }).conditionalFormattings;
+    expect(cfs).toHaveLength(0);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bold, AlignLeft, AlignCenter, AlignRight, ArrowDownAZ, ArrowDownZA } from "lucide-react";
+import { Bold, AlignLeft, AlignCenter, AlignRight, ArrowDownAZ, ArrowDownZA, Palette } from "lucide-react";
 import { NumberFormat } from "@/lib/sheet";
 import { useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
@@ -14,6 +14,8 @@ export default function FormatBar() {
   const setTextColor = useSheetStore((s) => s.setTextColor);
   const setNumberFormat = useSheetStore((s) => s.setNumberFormat);
   const sortSelection = useSheetStore((s) => s.sortSelection);
+  const toggleSidebar = useSheetStore((s) => s.toggleSidebar);
+  const cfOpen = useSheetStore((s) => s.sidebarMode === "cf");
   // Three stacked bars ate a fifth of a 768px laptop screen before a single grid row appeared.
   // Formatting is the least-used of the three, so the whole row folds away — hiding only its
   // contents saved 14px and not one extra row, which is decoration rather than a fix.
@@ -97,6 +99,21 @@ export default function FormatBar() {
         className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
       >
         <ArrowDownZA size={14} />
+      </button>
+
+      <div className="mx-1 h-5 w-px bg-zinc-200" />
+
+      {/* Lives here rather than in the top toolbar: this is formatting, and the toolbar's four
+          buttons were already the widest row on a small laptop. */}
+      <button
+        onClick={() => toggleSidebar("cf")}
+        title={t.conditionalFormat.openTitle}
+        className={clsx(
+          "flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs font-medium",
+          cfOpen ? "border-emerald-600 bg-emerald-700 text-white" : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+        )}
+      >
+        <Palette size={14} /> {t.conditionalFormat.title}
       </button>
       </div>
     </div>

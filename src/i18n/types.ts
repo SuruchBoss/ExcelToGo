@@ -1,4 +1,5 @@
 import { NumberFormat } from "@/lib/cellFormat";
+import { CfComparison, CfTest } from "@/lib/conditionalFormat";
 
 export type Locale = "th" | "en";
 
@@ -160,6 +161,36 @@ export interface Messages {
     unlocked: string;
     structureLocked: string;
     choosePlaceholder: string;
+  };
+  conditionalFormat: {
+    /** Sidebar panel where value-driven styling rules are written and listed. */
+    title: string;
+    subtitle: string;
+    openTitle: string;
+    appliesTo: (range: string) => string;
+    selectFirst: string;
+    kindLabel: string;
+    kinds: { compare: string; textContains: string; rank: string; colorScale: string; dataBar: string };
+    operators: Record<CfComparison, string>;
+    valueLabel: string;
+    value2Label: string;
+    textLabel: string;
+    countLabel: string;
+    topLabel: string;
+    bottomLabel: string;
+    scaleLabel: string;
+    scales: { redGreen: string; greenRed: string; whiteBlue: string };
+    styleLabel: string;
+    styleNames: { red: string; amber: string; green: string; blue: string };
+    add: string;
+    ruleCount: (n: number) => string;
+    empty: string;
+    remove: string;
+    clearAll: string;
+    confirmClear: string;
+    /** One-line plain-language summary of a rule, shown in the list. */
+    describe: (test: CfTest) => string;
+    orderNote: string;
   };
   formatBar: {
     /** Collapses the formatting row to give the grid back its vertical space. */

@@ -10,6 +10,7 @@ import FormulaPalette from "@/features/formulas/FormulaPalette";
 import FormulaParamPanel from "@/features/formulas/FormulaParamPanel";
 import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
 import DataSourcePanel from "@/features/data/DataSourcePanel";
+import ConditionalFormatPanel from "@/features/grid/ConditionalFormatPanel";
 import DataPicker from "@/features/data/DataPicker";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
@@ -47,6 +48,8 @@ export default function Home() {
               <FormulaPalette />
             ) : sidebarMode === "data" ? (
               <DataSourcePanel />
+            ) : sidebarMode === "cf" ? (
+              <ConditionalFormatPanel />
             ) : (
               <AIAssistantPanel />
             )}

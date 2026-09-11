@@ -20,7 +20,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-207%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-246%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -28,7 +28,8 @@ A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 207 automated tests.
+workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
+export. Bilingual UI (Thai/English), 246 automated tests.
 
 ---
 
@@ -87,6 +88,7 @@ underneath rather than covering the column headers.</p>
   - [Autosave + Undo/Redo](#-autosave--undoredo)
   - [Copy / Cut / Paste](#️-copy--cut--paste)
   - [Cell formatting](#-cell-formatting)
+  - [Conditional formatting](#-conditional-formatting)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Sort and filter](#-sort-and-filter)
   - [Multiple sheets in one file](#-multiple-sheets-in-one-file)
@@ -177,7 +179,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 207-case Vitest suite |
+| `npm test` | Run the 246-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -261,6 +263,36 @@ currency ฿) — travels with the cell on copy/paste and survives Excel export 
 
 The formatting row **folds away** (the brush button at the end of the formula bar). On a 1366×768 laptop the
 three stacked bars ate 150px before a single grid row appeared; folded, that's 107px.
+
+### 🌡 Conditional formatting
+
+Colours that follow the numbers, instead of being painted on once and going stale the moment a
+value changes. Select a range, hit **Conditional formatting** in the format bar, and add one of
+five rules:
+
+| Rule | What it does |
+|---|---|
+| **Compare to a number** | `>`, `<`, `≥`, `≤`, `=`, `≠`, between — highlights the cells that qualify |
+| **Text contains** | Substring search, case-insensitive, Thai included |
+| **Top / bottom N** | Ranks within the selected range; ties are all included rather than cut off arbitrarily |
+| **Colour scale** | Two or three stops across the range's spread — a whole column readable at a glance |
+| **Data bar** | A bar inside the cell, always measured from zero so negatives stay on the scale |
+
+![Conditional formatting](public/screenshots/18-conditional-format.png)
+
+Rules are re-evaluated from the computed values on every render rather than stored as colours, so
+editing a number repaints it on the same frame. Because the rules live in the sheet, they sit in
+the **undo/redo history** and **shift with inserted or deleted rows and columns**.
+
+They're written into `.xlsx` as genuine Excel conditional formatting (`cellIs`, `containsText`,
+`top10`, `colorScale`, `dataBar`) and read back on import, so a file that already had rules opens
+here showing what it shows in Excel.
+
+**Deliberate limits:** Excel's icon sets, above-average and time-period rules aren't supported —
+on import they're skipped rather than converted into something they aren't. Rule colours **don't
+reach the PDF export** (neither do fills or bold, which it doesn't carry either). And where
+several rules hit one cell, **the lower rule wins** — the opposite of Excel's top-priority-wins
+order. That's chosen so a rule you just added visibly does something instead of silently nothing.
 
 ### ➕ Insert/delete rows & columns
 
@@ -439,7 +471,7 @@ as bare numbers and people don't recognise their own file. The screenshot above 
 
 All of it **exports back to `.xlsx`**, so the file opens in Excel as the file it was.
 
-> **Not supported:** conditional formatting, images and charts in the sheet, specific font families
+> **Not supported:** images and charts in the sheet, specific font families
 > (the system font is used), and arrowing into a cell a merge has swallowed — that cell no longer
 > exists in the DOM, though the merged band itself clicks normally.
 
@@ -475,9 +507,9 @@ under undo and autosave like any other content).
 cells unlocked, the dropdowns re-attached and the column widths intact — open it in Excel and it's
 still a form.
 
-> **Not in this phase:** merged cells (a grid-rendering change large enough to stand on its own),
-> conditional formatting, and *authoring* a template inside the app — this reads templates from
-> files that already are one.
+> **Not supported:** *authoring* a template inside the app — this reads templates from files that
+> already are one. (Merged cells and conditional formatting were both on this list once; both have
+> since shipped.)
 
 ### 🏠 A landing page that explains the app
 
@@ -517,7 +549,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity and live blocks (207 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (246 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -730,6 +762,8 @@ src/
     sheetClipboard.ts        # Copy/cut/paste, converting to/from TSV (for cross-app pasting)
     sheetSort.ts             # Detecting the range to sort + the actual sort
     sheetMerges.ts           # Merged cells: which cell renders, which are swallowed, shifting on edits (tested)
+    conditionalFormat.ts     # Conditional formatting rules: compare/text/rank/colour scale/data bar, the
+                              # per-cell styling they produce, and range shifting on edits (tested)
     sheetTemplate.ts         # Templates from a file: which cells are fields, dropdown options, width units (tested)
     liveBlocks.ts            # Writes a source's table into cells, tracks extent to clear shrinking data, sum/avg/count (tested)
     dataSources/             # Types + jsonToTable.ts (turns any JSON/CSV into a table) + paginate.ts
@@ -853,7 +887,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 207 cases across 15 files, via Vitest
+npm test      # 246 cases across 16 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -876,7 +910,8 @@ tool, not a permanent regression suite).
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `excelIO.test.ts` | 16 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips |
+| `excelIO.test.ts` | 22 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule |
+| `conditionalFormat.test.ts` | 33 | Compare/text/rank rules (ties included), colour scales (including an all-equal range), data bars (including negatives), stacked rules, range shifting on insert/delete |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
 CI: `npm run verify` bundles it — `lint` → `check:readme` → `test` → `build` (the build also type-checks the
@@ -905,7 +940,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
   Excel" is the way to move it (no user accounts or server-side database in the current scope)
 - [ ] **Charts/graphs** from the sheet's data
 - [ ] **Merged cells** and freezing beyond the already-sticky header row/column
-- [ ] **Cell comments** and conditional formatting (highlight-by-condition)
+- [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
+      written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
+- [ ] **Cell comments**
 - [ ] **More functions** such as `INDEX`/`MATCH`, multi-condition `SUMIFS`/`COUNTIFS`, date-difference functions
   (`DATEDIF`, etc.)
 - [ ] **Mobile/tablet support** — currently designed primarily for a desktop screen; layout/touch for small
@@ -915,7 +952,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       widths are read from a protected file, every route into the structure is guarded, and export puts the
       template back together
 - [x] **Imported files keep their look** — done: fills, font sizes, borders, row heights and merged cells.
-      Still open: conditional formatting, images/charts, and authoring a template in-app
+      Still open: images/charts, and authoring a template in-app
 - [x] **Live data from REST API / CSV** — done (prototype, see ✨ Features), polling-based refresh
 - [x] **Following paginated APIs** — done: auto-detected from a Link header / next field / cursor / a param
       already in the URL, and the user is told when the data came back incomplete

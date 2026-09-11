@@ -1,4 +1,5 @@
 import { Messages } from "./types";
+import { CfComparison, CfTest } from "@/lib/conditionalFormat";
 
 export const en: Messages = {
   app: {
@@ -170,6 +171,77 @@ export const en: Messages = {
     unlocked: "Unlocked — every cell is editable",
     structureLocked: "The template locks its structure, so rows and columns can't be added or removed — unlock the sheet first",
     choosePlaceholder: "— choose —",
+  },
+  conditionalFormat: {
+    title: "Conditional formatting",
+    subtitle: "Let the colours follow the numbers instead of being painted on",
+    openTitle: "Conditional formatting",
+    appliesTo: (range: string) => `Applies to ${range}`,
+    selectFirst: "Select a range in the grid first, then add a rule",
+    kindLabel: "Condition",
+    kinds: {
+      compare: "Compare to a number",
+      textContains: "Text contains",
+      rank: "Top / bottom N",
+      colorScale: "Colour scale",
+      dataBar: "Data bar",
+    },
+    operators: {
+      gt: "greater than",
+      lt: "less than",
+      gte: "greater than or equal to",
+      lte: "less than or equal to",
+      eq: "equal to",
+      ne: "not equal to",
+      between: "between",
+    },
+    valueLabel: "Value",
+    value2Label: "and",
+    textLabel: "Search text",
+    countLabel: "How many",
+    topLabel: "Top",
+    bottomLabel: "Bottom",
+    scaleLabel: "Colours",
+    scales: {
+      redGreen: "Red → yellow → green (higher is better)",
+      greenRed: "Green → yellow → red (lower is better)",
+      whiteBlue: "White → blue",
+    },
+    styleLabel: "Highlight colour",
+    styleNames: { red: "Red", amber: "Amber", green: "Green", blue: "Blue" },
+    add: "Add rule",
+    ruleCount: (n: number) => `${n} rule${n === 1 ? "" : "s"} on this sheet`,
+    empty: "No rules on this sheet yet",
+    remove: "Delete this rule",
+    clearAll: "Delete all",
+    confirmClear: "Delete every conditional formatting rule on this sheet?",
+    describe: (test: CfTest) => {
+      switch (test.kind) {
+        case "compare": {
+          const names: Record<CfComparison, string> = {
+            gt: ">",
+            lt: "<",
+            gte: "≥",
+            lte: "≤",
+            eq: "=",
+            ne: "≠",
+            between: "between",
+          };
+          return test.op === "between"
+            ? `between ${test.value} and ${test.value2 ?? test.value}`
+            : `${names[test.op]} ${test.value}`;
+        }
+        case "textContains":
+          return `text contains "${test.text}"`;
+        case "rank":
+          return test.bottom ? `bottom ${test.count}` : `top ${test.count}`;
+        case "colorScale":
+          return "colour scale";
+        case "dataBar":
+          return "data bar";
+      }
+    },
+    orderNote: "A lower rule overrides one above it where they clash",
   },
   formatBar: {
     hide: "Hide the formatting bar",

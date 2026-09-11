@@ -1,4 +1,5 @@
 import { Messages } from "./types";
+import { CfComparison, CfTest } from "@/lib/conditionalFormat";
 
 export const th: Messages = {
   app: {
@@ -170,6 +171,77 @@ export const th: Messages = {
     unlocked: "ปลดล็อกแล้ว — แก้ได้ทุกช่อง",
     structureLocked: "แม่แบบล็อกโครงไว้ เพิ่ม/ลบแถวหรือคอลัมน์ไม่ได้ — กด \"ปลดล็อกทั้งชีต\" ก่อน",
     choosePlaceholder: "— เลือก —",
+  },
+  conditionalFormat: {
+    title: "จัดรูปแบบตามเงื่อนไข",
+    subtitle: "ให้สีเปลี่ยนตามตัวเลข ไม่ใช่ทาสีทิ้งไว้",
+    openTitle: "จัดรูปแบบตามเงื่อนไข",
+    appliesTo: (range: string) => `ใช้กับช่วง ${range}`,
+    selectFirst: "เลือกช่วงในตารางก่อน แล้วค่อยเพิ่มกฎ",
+    kindLabel: "เงื่อนไข",
+    kinds: {
+      compare: "เทียบกับตัวเลข",
+      textContains: "ข้อความมีคำว่า",
+      rank: "สูงสุด/ต่ำสุด N อันดับ",
+      colorScale: "ไล่สีตามค่า",
+      dataBar: "แถบยาวตามค่า",
+    },
+    operators: {
+      gt: "มากกว่า",
+      lt: "น้อยกว่า",
+      gte: "มากกว่าหรือเท่ากับ",
+      lte: "น้อยกว่าหรือเท่ากับ",
+      eq: "เท่ากับ",
+      ne: "ไม่เท่ากับ",
+      between: "อยู่ระหว่าง",
+    },
+    valueLabel: "ค่า",
+    value2Label: "ถึง",
+    textLabel: "คำที่ค้นหา",
+    countLabel: "จำนวนอันดับ",
+    topLabel: "สูงสุด",
+    bottomLabel: "ต่ำสุด",
+    scaleLabel: "ชุดสี",
+    scales: {
+      redGreen: "แดง → เหลือง → เขียว (มากยิ่งดี)",
+      greenRed: "เขียว → เหลือง → แดง (น้อยยิ่งดี)",
+      whiteBlue: "ขาว → น้ำเงิน",
+    },
+    styleLabel: "สีที่จะไฮไลต์",
+    styleNames: { red: "แดง", amber: "เหลือง", green: "เขียว", blue: "น้ำเงิน" },
+    add: "เพิ่มกฎ",
+    ruleCount: (n: number) => `${n} กฎในชีตนี้`,
+    empty: "ยังไม่มีกฎในชีตนี้",
+    remove: "ลบกฎนี้",
+    clearAll: "ลบทั้งหมด",
+    confirmClear: "ลบกฎจัดรูปแบบตามเงื่อนไขทั้งหมดในชีตนี้?",
+    describe: (test: CfTest) => {
+      switch (test.kind) {
+        case "compare": {
+          const names: Record<CfComparison, string> = {
+            gt: "มากกว่า",
+            lt: "น้อยกว่า",
+            gte: "≥",
+            lte: "≤",
+            eq: "เท่ากับ",
+            ne: "ไม่เท่ากับ",
+            between: "อยู่ระหว่าง",
+          };
+          return test.op === "between"
+            ? `อยู่ระหว่าง ${test.value} ถึง ${test.value2 ?? test.value}`
+            : `${names[test.op]} ${test.value}`;
+        }
+        case "textContains":
+          return `ข้อความมีคำว่า "${test.text}"`;
+        case "rank":
+          return test.bottom ? `ต่ำสุด ${test.count} อันดับ` : `สูงสุด ${test.count} อันดับ`;
+        case "colorScale":
+          return "ไล่สีตามค่า";
+        case "dataBar":
+          return "แถบยาวตามค่า";
+      }
+    },
+    orderNote: "กฎล่างทับกฎบนเมื่อชนกัน",
   },
   formatBar: {
     hide: "ซ่อนแถบรูปแบบ",

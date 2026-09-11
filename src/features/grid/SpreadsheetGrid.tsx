@@ -26,6 +26,7 @@ import { Filter } from "lucide-react";
 import clsx from "clsx";
 import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
 import { mergeLookup } from "@/lib/sheetMerges";
+import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 
 const ROW_HEADER_WIDTH = 48;
@@ -57,6 +58,12 @@ export default function SpreadsheetGrid() {
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
   const merges = useMemo(() => mergeLookup(sheet.merges), [sheet.merges]);
+  // Recomputed from values, not stored: that is the whole point — edit a number and its colour
+  // follows on the same render.
+  const cfVisuals = useMemo(
+    () => evaluateConditionalFormats(sheet.conditionalRules, values, sheet.rows, sheet.cols),
+    [sheet.conditionalRules, values, sheet.rows, sheet.cols]
+  );
   /** Columns with at least one non-empty cell. Only those can meaningfully be filtered. */
   const columnsWithContent = useMemo(() => {
     const out = new Set<number>();
@@ -295,6 +302,7 @@ export default function SpreadsheetGrid() {
                 const isErr = value instanceof FormulaError;
                 const editingHere = editing?.row === r && editing?.col === c;
                 const format = sheet.formats[r]?.[c];
+                const cf = cfVisuals[r]?.[c];
                 const block = blockAt(r, c);
                 // A cell swallowed by a merge isn't rendered at all — its space belongs to the
                 // merge's top-left cell, which carries the span.
@@ -372,11 +380,21 @@ export default function SpreadsheetGrid() {
                         borderLeftWidth: edge(b?.left)?.width,
                         borderLeftColor: b?.left,
                       };
+                      // A rule's fill replaces the painted-on one: the value is the more current
+                      // answer, and showing the stale colour underneath would just muddy it.
+                      const background = cf?.fill ?? format?.fill;
+                      // A data bar is drawn as a hard-edged gradient rather than a child element,
+                      // so it sits behind the text without disturbing the cell's layout.
+                      const bar = cf?.bar
+                        ? {
+                            backgroundImage: `linear-gradient(to right, ${cf.bar.color} ${cf.bar.fraction * 100}%, transparent ${cf.bar.fraction * 100}%)`,
+                          }
+                        : undefined;
                       // A merged cell's box comes from the columns and rows it spans, so pinning
                       // it to a single column's width would squash it back to one cell.
-                      if (merge) return { height: h, backgroundColor: format?.fill, ...borders };
+                      if (merge) return { height: h, backgroundColor: background, ...bar, ...borders };
                       const w = sheet.colWidths?.[c] ?? COL_WIDTH;
-                      return { width: w, minWidth: w, maxWidth: w, height: h, backgroundColor: format?.fill, ...borders };
+                      return { width: w, minWidth: w, maxWidth: w, height: h, backgroundColor: background, ...bar, ...borders };
                     })()}
                     title={
                       block
@@ -436,12 +454,12 @@ export default function SpreadsheetGrid() {
                         <span
                           className="overflow-hidden text-ellipsis whitespace-nowrap"
                           style={{
-                            fontWeight: format?.bold ? 700 : undefined,
+                            fontWeight: format?.bold || cf?.bold ? 700 : undefined,
                             fontStyle: format?.italic ? "italic" : undefined,
                             textDecoration: format?.underline ? "underline" : undefined,
                             fontSize: format?.fontSize ? `${format.fontSize / DEFAULT_FONT_SIZE}em` : undefined,
                             lineHeight: 1.25,
-                            color: isErr ? undefined : format?.color,
+                            color: isErr ? undefined : cf?.color ?? format?.color,
                             textAlign: format?.align,
                           }}
                         >
