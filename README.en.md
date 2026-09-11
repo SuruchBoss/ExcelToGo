@@ -719,6 +719,16 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **Mobile/tablet support** — currently designed primarily for a desktop screen; layout/touch for small
   screens isn't tuned yet
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
+- [ ] **Template support for imported files** — opening an `.xlsx` someone already built as a template
+      (headings, formulas, formatting, the cells meant to be filled in) and having ExcelToGo keep that
+      structure intact: the user fills only the intended cells, the layout survives, and it exports back
+      unchanged.
+      Import already keeps **values, formulas, bold/color/alignment/number format, and every sheet**, but
+      not column widths (export hardcodes 16), merged cells, dropdowns/data validation, conditional
+      formatting, cell protection, or named ranges — exactly the things real templates lean on.
+      **To settle before starting:** does "template" mean faithfully preserving the file's structure, or a
+      real template concept (locked cells + designated input fields + reusable as a starting point for new
+      sheets), and should live-data blocks be bindable into a template's slots?
 - [x] **Live data from REST API / CSV** — done (prototype, see ✨ Features), polling-based refresh
 - [x] **Following paginated APIs** — done: auto-detected from a Link header / next field / cursor / a param
       already in the URL, and the user is told when the data came back incomplete
