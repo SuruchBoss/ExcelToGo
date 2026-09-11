@@ -95,6 +95,7 @@ underneath rather than covering the column headers.</p>
   - [Copy / Cut / Paste](#️-copy--cut--paste)
   - [Cell formatting](#-cell-formatting)
   - [Conditional formatting](#-conditional-formatting)
+  - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Sort and filter](#-sort-and-filter)
   - [Multiple sheets in one file](#-multiple-sheets-in-one-file)
@@ -314,6 +315,28 @@ on import they're skipped rather than converted into something they aren't. Rule
 reach the PDF export** (neither do fills or bold, which it doesn't carry either). And where
 several rules hit one cell, **the lower rule wins** — the opposite of Excel's top-priority-wins
 order. That's chosen so a rule you just added visibly does something instead of silently nothing.
+
+### 📱 Works on a phone
+
+Opening this on a phone used to show **not one cell of the spreadsheet** — the 320px side panel
+squeezed the grid down to its row numbers, and the toolbar wrapped into three rows that ate 380px
+of an 844px screen before the grid began. All three are fixed:
+
+| Thing | What it does on a phone |
+|---|---|
+| **Formula / AI / data panels** | Cover the screen with a close button instead of competing with the grid, and **start closed** so the sheet is what you see first |
+| **Toolbar** | Icons only, labels hidden — three rows down to two |
+| **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all |
+| **Tap targets** | 44px, up from 28px |
+
+![On a phone](public/screenshots/19-mobile.png)
+
+Desktop behaviour is **unchanged**: the panel still sits beside the grid, and clicking an already
+selected cell still does *not* start editing — you double-click, as in Excel. The tap-again rule is
+tied to `pointerType === "touch"` rather than guessed from screen width.
+
+**Not supported yet:** dragging across cells with a finger (tap them individually instead), and the
+row/column context menu needs a long press, which some mobile browsers answer with their own menu.
 
 ### ➕ Insert/delete rows & columns
 

@@ -20,6 +20,8 @@ export interface FormulaMessage {
 
 export interface Messages {
   app: {
+    /** Closes the sidebar panel when it covers the screen on a phone. */
+    close: string;
     brand: string;
     /** Shows the *other* language's name — clicking it switches to that language. */
     languageToggleLabel: string;

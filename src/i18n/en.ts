@@ -3,6 +3,7 @@ import { CfComparison, CfTest } from "@/lib/conditionalFormat";
 
 export const en: Messages = {
   app: {
+    close: "Close",
     brand: "ExcelToGo",
     languageToggleLabel: "TH",
   },

@@ -104,6 +104,9 @@ export default function SpreadsheetGrid() {
   const [editing, setEditing] = useState<{ row: number; col: number; value: string } | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
   const isSelecting = useRef(false);
+  /** Whether the cell a touch landed on was already the selected one, sampled before the tap
+   *  changes the selection. See the pointer handlers on each cell for why. */
+  const tappedAlreadySelected = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -322,6 +325,18 @@ export default function SpreadsheetGrid() {
                     onMouseDown={(e) => handleMouseDown(r, c, e.shiftKey)}
                     onMouseEnter={() => handleMouseEnter(r, c)}
                     onDoubleClick={() => startEdit(r, c)}
+                    // Touch has no keyboard to start typing into and no comfortable double-tap, so
+                    // a second tap on the cell already selected opens the editor — the pattern
+                    // every mobile spreadsheet uses. Sampled on pointerdown because mousedown has
+                    // already moved the selection by the time pointerup runs, which would make the
+                    // very first tap open the editor.
+                    onPointerDown={(e) => {
+                      if (e.pointerType === "touch") tappedAlreadySelected.current = isActive(r, c);
+                    }}
+                    onPointerUp={(e) => {
+                      if (e.pointerType !== "touch" || !tappedAlreadySelected.current) return;
+                      if (!editingHere && !locked) startEdit(r, c);
+                    }}
                     onKeyDown={(e) => handleKeyDown(e, r, c)}
                     onDragOver={(e) => {
                       e.preventDefault();

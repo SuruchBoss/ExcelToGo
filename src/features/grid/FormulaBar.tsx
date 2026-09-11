@@ -48,7 +48,7 @@ export default function FormulaBar() {
   });
 
   return (
-    <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-1.5">
+    <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">
       <span className="w-16 shrink-0 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-center text-xs font-medium text-zinc-600">
         {address}
       </span>

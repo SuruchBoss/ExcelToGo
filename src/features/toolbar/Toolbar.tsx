@@ -29,7 +29,7 @@ export default function Toolbar() {
   const dataOpen = sidebarMode === "data" && !hasPending;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2">
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-zinc-200 bg-white px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-2">
       {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
       <Link href="/" title={t.landing.home} className="mr-2 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}
@@ -37,9 +37,9 @@ export default function Toolbar() {
 
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
-        <FileUp size={15} /> {t.toolbar.importExcel}
+        <FileUp size={15} /> <span className="hidden sm:inline">{t.toolbar.importExcel}</span>
       </button>
       <input
         ref={fileInputRef}
@@ -55,16 +55,16 @@ export default function Toolbar() {
 
       <button
         onClick={exportXlsx}
-        className="flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
-        <FileDown size={15} /> {t.toolbar.exportExcel}
+        <FileDown size={15} /> <span className="hidden sm:inline">{t.toolbar.exportExcel}</span>
       </button>
 
       <button
         onClick={exportPdf}
-        className="flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
-        <FileText size={15} /> {t.toolbar.exportPdf}
+        <FileText size={15} /> <span className="hidden sm:inline">{t.toolbar.exportPdf}</span>
       </button>
 
       <div className="mx-1 h-5 w-px bg-zinc-200" />
@@ -73,7 +73,7 @@ export default function Toolbar() {
         onClick={undoSheet}
         disabled={!canUndo}
         title={t.toolbar.undoTitle}
-        className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Undo2 size={15} />
       </button>
@@ -81,7 +81,7 @@ export default function Toolbar() {
         onClick={redoSheet}
         disabled={!canRedo}
         title={t.toolbar.redoTitle}
-        className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Redo2 size={15} />
       </button>
@@ -90,51 +90,51 @@ export default function Toolbar() {
 
       <button
         onClick={addRow}
-        className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
       >
-        <Plus size={14} /> {t.toolbar.addRow}
+        <Plus size={14} /> <span className="hidden sm:inline">{t.toolbar.addRow}</span>
       </button>
       <button
         onClick={addColumn}
-        className="flex items-center gap-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
       >
-        <Plus size={14} /> {t.toolbar.addColumn}
+        <Plus size={14} /> <span className="hidden sm:inline">{t.toolbar.addColumn}</span>
       </button>
 
       <div className="ml-auto flex items-center gap-2">
         {busy ? (
           <span className="text-xs text-zinc-500">{busy}</span>
         ) : (
-          <span title={t.toolbar.autosaveTitle} className="flex items-center gap-1 text-xs text-zinc-500">
+          <span title={t.toolbar.autosaveTitle} className="hidden items-center gap-1 text-xs text-zinc-500 sm:flex">
             <Save size={13} /> {t.toolbar.autosaveLabel}
           </span>
         )}
         <button
           onClick={() => toggleSidebar("palette")}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+          className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
             paletteOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
-          <Sigma size={15} /> {t.toolbar.formulas}
+          <Sigma size={15} /> <span className="hidden sm:inline">{t.toolbar.formulas}</span>
         </button>
         <button
           onClick={() => toggleSidebar("ai")}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+          className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
             aiOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
-          <Sparkles size={15} /> {t.toolbar.askAi}
+          <Sparkles size={15} /> <span className="hidden sm:inline">{t.toolbar.askAi}</span>
         </button>
         {/* Hidden rather than disabled on a public demo: the feature is off server-side too, so a
             button that could only fail is worse than no button. See src/lib/demoMode.ts. */}
         {!DEMO_MODE && (
           <button
             onClick={() => toggleSidebar("data")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+            className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
               dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
           >
-            <Database size={15} /> {t.toolbar.data}
+            <Database size={15} /> <span className="hidden sm:inline">{t.toolbar.data}</span>
           </button>
         )}
         <LanguageToggle />

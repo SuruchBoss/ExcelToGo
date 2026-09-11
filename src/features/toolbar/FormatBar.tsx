@@ -23,15 +23,15 @@ export default function FormatBar() {
   if (!open) return null;
 
   return (
-    <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-1.5">
-      <span className="text-xs font-medium text-zinc-500">{t.formatBar.label}</span>
-      <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">
+      <span className="hidden shrink-0 text-xs font-medium text-zinc-500 sm:inline">{t.formatBar.label}</span>
+      <div className="flex shrink-0 items-center gap-2">
 
       <button
         onClick={toggleBold}
         title={t.formatBar.boldTitle}
         className={clsx(
-          "flex h-7 w-7 items-center justify-center rounded-md border",
+          "flex h-11 w-11 items-center justify-center rounded-md border sm:h-7 sm:w-7",
           format.bold ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
         )}
       >
@@ -51,7 +51,7 @@ export default function FormatBar() {
             onClick={() => setAlign(v)}
             title={t.formatBar.alignTitle[v]}
             className={clsx(
-              "flex h-7 w-7 items-center justify-center border-r border-zinc-300 last:border-r-0",
+              "flex h-11 w-11 items-center justify-center border-r border-zinc-300 last:border-r-0 sm:h-7 sm:w-7",
               (format.align ?? "left") === v ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50"
             )}
           >
@@ -60,7 +60,7 @@ export default function FormatBar() {
         ))}
       </div>
 
-      <label title={t.formatBar.colorTitle} className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-zinc-300 hover:bg-zinc-50">
+      <label title={t.formatBar.colorTitle} className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-zinc-300 hover:bg-zinc-50 sm:h-7 sm:w-7">
         <span className="text-xs font-bold" style={{ color: format.color ?? "#18181b" }}>
           A
         </span>
@@ -75,7 +75,7 @@ export default function FormatBar() {
       <select
         value={format.numberFormat ?? "general"}
         onChange={(e) => setNumberFormat(e.target.value as NumberFormat)}
-        className="h-7 rounded-md border border-zinc-300 px-1.5 text-xs text-zinc-700 outline-none focus:border-emerald-500"
+        className="h-11 rounded-md border border-zinc-300 px-1.5 text-xs text-zinc-700 outline-none focus:border-emerald-500 sm:h-7"
       >
         {Object.entries(t.numberFormats).map(([value, label]) => (
           <option key={value} value={value}>
@@ -89,14 +89,14 @@ export default function FormatBar() {
       <button
         onClick={() => sortSelection(true)}
         title={t.formatBar.sortAscTitle}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+        className="flex h-11 w-11 items-center justify-center rounded-md border sm:h-7 sm:w-7 border-zinc-300 text-zinc-600 hover:bg-zinc-50"
       >
         <ArrowDownAZ size={14} />
       </button>
       <button
         onClick={() => sortSelection(false)}
         title={t.formatBar.sortDescTitle}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+        className="flex h-11 w-11 items-center justify-center rounded-md border sm:h-7 sm:w-7 border-zinc-300 text-zinc-600 hover:bg-zinc-50"
       >
         <ArrowDownZA size={14} />
       </button>
@@ -109,7 +109,7 @@ export default function FormatBar() {
         onClick={() => toggleSidebar("cf")}
         title={t.conditionalFormat.openTitle}
         className={clsx(
-          "flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs font-medium",
+          "flex h-11 items-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7",
           cfOpen ? "border-emerald-600 bg-emerald-700 text-white" : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
         )}
       >

@@ -23,7 +23,7 @@ export default function SheetTabs() {
   };
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto border-t border-zinc-200 bg-zinc-50 px-2 py-1.5">
+    <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-zinc-200 bg-zinc-50 px-2 py-1.5">
       {sheets.map((tab) => (
         <div
           key={tab.id}
