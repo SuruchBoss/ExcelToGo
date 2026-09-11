@@ -49,6 +49,22 @@ detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual 
 <p align="center"><b>สลับภาษาได้ทั้งแอปในคลิกเดียว</b> — เมนู ปุ่ม ชื่อ/คำอธิบายสูตร และคำตอบจาก AI เปลี่ยนตามทันที</p>
 <p align="center"><img src="docs/screenshots/07-english-ui.png" width="820"></p>
 
+<p align="center"><b>ข้อมูลสดจาก API / CSV</b> — เลือกช่อง กด "ใส่ลงตาราง" แล้วเลือกว่าจะเอาทั้งตารางหรือตัวเลขสรุปค่าเดียว
+โดยเห็นตัวเลขจริงก่อนตัดสินใจ</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><b>เลือกทั้งตาราง</b><br><sub>พรีวิวเต็มความกว้าง บอกว่าจะใช้พื้นที่กี่แถว × กี่คอลัมน์</sub><br><br>
+<img src="docs/screenshots/10-picker-table.png" width="380"></td>
+<td width="50%" align="center"><b>เลือกตัวเลขสรุปค่าเดียว</b><br><sub>การ์ดโชว์ค่าจริง เช่น <code>9,510 · รวม total</code> ไม่ต้องเดาว่า "sum" ได้เลขอะไร</sub><br><br>
+<img src="docs/screenshots/12-picker-values.png" width="380"></td>
+</tr>
+</table>
+
+<p align="center"><b>คลิกบล็อกข้อมูลสด → แถบเครื่องมือลอยขึ้นมาเหนือบล็อกนั้นเลย</b> — รีเฟรช / เปลี่ยน / เอาออก
+ไม่ต้องกลับไปหาที่แถบด้านขวา</p>
+<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+
 ---
 
 ## 📋 สารบัญ
@@ -331,8 +347,11 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 
 ### ภาพรวมระบบ
 
-แอปนี้เป็น **client-rendered ล้วน** (ทุกหน้าคือ `"use client"`) มีจุดเดียวที่แตะเซิร์ฟเวอร์จริงๆ คือ endpoint
-ผู้ช่วย AI — ข้อมูลตารางทั้งหมดอยู่ในเบราว์เซอร์ ไม่มีฐานข้อมูลฝั่งเซิร์ฟเวอร์
+แอปนี้เป็น **client-rendered ล้วน** (ทุกหน้าคือ `"use client"`) ข้อมูลตารางทั้งหมดอยู่ในเบราว์เซอร์
+ไม่มีฐานข้อมูลฝั่งเซิร์ฟเวอร์ เซิร์ฟเวอร์ถูกใช้แค่ 2 เรื่องที่ทำในเบราว์เซอร์ไม่ได้ (หรือไม่ควรทำ):
+
+1. **ถาม AI หาสูตร** — API key ของ Claude ต้องไม่หลุดไปฝั่งผู้ใช้
+2. **ดึงข้อมูลสดจาก API/CSV ภายนอก** — credential ต้องอยู่ฝั่งเซิร์ฟเวอร์ และการดึงจากเซิร์ฟเวอร์ทำให้ไม่ติด CORS
 
 ```mermaid
 flowchart LR
@@ -344,10 +363,13 @@ flowchart LR
     end
 
     subgraph server["Next.js Server"]
-        API["/api/ai/formula<br/>(จุดเดียวที่มี server-side logic)"]
+        API["/api/ai/formula"]
+        SRC["/api/sources/*<br/>CRUD + test + :id/data"]
+        Repo[("data/sources.json<br/>config + credential<br/>— gitignored")]
     end
 
     Claude[("Claude API")]
+    Ext[("REST API / CSV<br/>ภายนอก")]
 
     UI <--> Store
     Store <--> LS
@@ -358,7 +380,16 @@ flowchart LR
     Claude --> API
     Heuristic --> API
     API -->|"สูตร + คำอธิบาย"| UI
+
+    UI -->|"polling ตามรอบของแต่ละแหล่ง"| SRC
+    SRC <--> Repo
+    SRC -->|"fetch + auth header"| Ext
+    Ext -->|"JSON / CSV ดิบ"| SRC
+    SRC -->|"TableData ที่แปลงแล้ว<br/>(ไม่มี credential ติดไปด้วย)"| UI
 ```
+
+> ผู้ใช้ไม่เคยเห็น URL, token หรือ JSON ดิบเลย — สิ่งที่ส่งกลับมาถึงเบราว์เซอร์คือตารางที่แปลงเรียบร้อยแล้ว
+> (`columns` + `rows`) เท่านั้น ส่วน `authHeader` ถูกมาสก์เป็น `••••••••` ทุกครั้งที่อ่าน config กลับมา
 
 ### State management
 
@@ -372,7 +403,7 @@ flowchart TB
 
     subgraph sheetStore["sheetStore"]
         direction TB
-        Full["state เต็ม: sheets, activeSheetId,<br/>selectionBySheetId, filtersBySheetId,<br/>pending, clipboard, sidebarMode, busy"]
+        Full["state เต็ม: sheets, activeSheetId,<br/>selectionBySheetId, filtersBySheetId,<br/>pending, clipboard, sidebarMode,<br/>dataPicker, busy"]
         Temporal["temporal (zundo) เห็นแค่: sheets<br/>→ ประวัติ undo/redo"]
         Persist["persist เห็นแค่: sheets, activeSheetId<br/>→ บันทึกอัตโนมัติ"]
     end
@@ -390,6 +421,15 @@ flowchart TB
 ก็ถูกนับเป็นประวัติ undo** (เพราะ zundo มองว่า state เปลี่ยน) แก้โดยย้าย `selectionBySheetId`/`filtersBySheetId`
 ออกมาเป็น field แยกนอก `sheets` แล้วให้ `partialize` ของทั้ง `temporal` และ `persist` มองเห็นเฉพาะ `sheets`
 (และ `activeSheetId` สำหรับ persist) เท่านั้น
+
+**ข้อมูลสดเข้ากับโครงนี้ยังไง:** `liveBlocks` (ว่าบล็อกไหนมาจากแหล่งไหน วางที่เซลล์อะไร กินพื้นที่เท่าไหร่) เก็บ
+**ไว้ใน `sheets`** เพราะมันคือเนื้อหาของชีตจริงๆ — การวาง/เปลี่ยน/เอาออกบล็อกจึงย้อนด้วย Ctrl+Z ได้และถูกบันทึก
+อัตโนมัติเหมือนข้อมูลอื่น ส่วน `dataPicker` (หน้าต่างเลือกที่เปิดค้างอยู่) เป็น UI ชั่วคราว จึงอยู่นอก `sheets`
+
+ปัญหาที่ตามมาคือ **รอบรีเฟรชก็เขียนลง `sheets` เหมือนกัน** ถ้าปล่อยไว้ ทุก 5 วินาทีจะกลายเป็นประวัติ undo
+ชิ้นใหม่ กด Ctrl+Z ทีก็ได้แค่ย้อนไปค่าเก่าของตัวเลขเดิม แก้โดยให้ `applyLiveData` ครอบการเขียนด้วย
+`temporal.pause()` / `temporal.resume()` — ข้อมูลอัปเดตตามปกติแต่ไม่แตะประวัติเลย ส่วนปุ่ม "เปลี่ยน"
+(`replaceLiveBlock`) ทำ "ล้างของเดิม + วางของใหม่" ใน action เดียว จึงนับเป็น 1 ขั้น undo ไม่ใช่ 2
 
 ### Clean layering ของ `src/lib/`
 
@@ -421,8 +461,8 @@ src/
     api/sources/             # CRUD แหล่งข้อมูล, /test (ทดสอบโดยไม่บันทึก), /[id]/data (ดึงข้อมูลเป็นตาราง)
     api/demo/                # endpoint ตัวอย่างที่ตัวเลขขยับเอง สำหรับลองฟีเจอร์ข้อมูลสดโดยไม่ต้องมี API จริง
   store/
-    sheetStore.ts            # Zustand store หลัก — sheets, activeSheetId, selection/ตัวกรองต่อชีต,
-                              # แผงสูตรที่กำลังกรอก, แถบข้างที่เปิดอยู่ + action ทั้งหมด ต่อด้วย
+    sheetStore.ts            # Zustand store หลัก — sheets (รวม liveBlocks), activeSheetId, selection/ตัวกรองต่อชีต,
+                              # แผงสูตรที่กำลังกรอก, แถบข้างที่เปิดอยู่, หน้าต่างเลือกข้อมูล + action ทั้งหมด ต่อด้วย
                               # persist (บันทึกอัตโนมัติ) + zundo (undo/redo) ครอบคลุมทุกชีตร่วมกัน
     localeStore.ts           # Zustand store แยกสำหรับภาษา UI ที่เลือก (th/en) — persist เหมือนกัน
                               # แต่ไม่ผูกกับ undo/redo ของตาราง
@@ -433,7 +473,8 @@ src/
     index.ts                  # useT()/useLocale() (hook สำหรับ component) + getMessages() (ใช้ใน store)
   features/
     grid/SpreadsheetGrid.tsx        # ตารางหลัก (เลือกเซลล์, แก้ไข, sticky header, คลิกขวาแทรก/ลบแถว-คอลัมน์,
-                                     # ซ่อนแถวที่ถูกกรอง, drag-drop รับสูตร)
+                                     # ซ่อนแถวที่ถูกกรอง, drag-drop รับสูตร/ข้อมูลสด,
+                                     # วาดขอบบล็อกข้อมูลสด + แถบเครื่องมือลอยของบล็อกที่เลือก)
     grid/useHeaderContextMenu.ts    # hook: state + เปิด/ปิดเมนูคลิกขวาที่หัวแถว/คอลัมน์
     grid/useColumnFilterPopoverState.ts # hook: state + เปิด/ปิด/สลับป็อปอัปตัวกรองคอลัมน์
     grid/useClickAway.ts            # hook กลาง: ปิดป็อปอัป/เมนูเมื่อคลิกหรือ scroll ออกนอกพื้นที่

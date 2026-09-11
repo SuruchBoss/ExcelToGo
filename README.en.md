@@ -51,6 +51,22 @@ workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 103 
 <p align="center"><b>Switch languages in one click</b> — menus, buttons, formula names/descriptions, and AI replies all update instantly</p>
 <p align="center"><img src="docs/screenshots/07-english-ui.png" width="820"></p>
 
+<p align="center"><b>Live data from an API / CSV</b> — select a cell, click "Insert into sheet", then choose the
+whole table or a single summary number, seeing the real values before deciding</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><b>Whole table</b><br><sub>Full-width preview, stating the rows × columns it will use</sub><br><br>
+<img src="docs/screenshots/10-picker-table.png" width="380"></td>
+<td width="50%" align="center"><b>A single summary number</b><br><sub>Cards show the actual value, e.g. <code>9,510 · Sum of total</code> — no guessing what "sum" returns</sub><br><br>
+<img src="docs/screenshots/12-picker-values.png" width="380"></td>
+</tr>
+</table>
+
+<p align="center"><b>Click a live block and its toolbar floats right above it</b> — refresh / change / remove,
+with no trip back to the side panel</p>
+<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+
 ---
 
 ## 📋 Table of Contents
@@ -351,8 +367,13 @@ architecture behind it.
 
 ### System overview
 
-The app is **entirely client-rendered** (every page is `"use client"`) with exactly one point that touches a
-real server: the AI assistant endpoint. All sheet data lives in the browser — there's no server-side database.
+The app is **entirely client-rendered** (every page is `"use client"`) and all sheet data lives in the browser —
+there's no server-side database. The server is used for exactly two things that can't (or shouldn't) happen in
+the browser:
+
+1. **Asking AI for a formula** — the Claude API key must never reach the user's side.
+2. **Fetching live data from an external API/CSV** — credentials belong on the server, and fetching server-side
+   means CORS is never the user's problem.
 
 ```mermaid
 flowchart LR
@@ -364,10 +385,13 @@ flowchart LR
     end
 
     subgraph server["Next.js Server"]
-        API["/api/ai/formula<br/>(the only server-side logic)"]
+        API["/api/ai/formula"]
+        SRC["/api/sources/*<br/>CRUD + test + :id/data"]
+        Repo[("data/sources.json<br/>config + credentials<br/>— gitignored")]
     end
 
     Claude[("Claude API")]
+    Ext[("External<br/>REST API / CSV")]
 
     UI <--> Store
     Store <--> LS
@@ -378,6 +402,12 @@ flowchart LR
     Claude --> API
     Heuristic --> API
     API -->|"formula + explanation"| UI
+
+    UI -->|"polls on each source's interval"| SRC
+    SRC <--> Repo
+    SRC -->|"fetch + auth header"| Ext
+    Ext -->|"raw JSON / CSV"| SRC
+    SRC -->|"normalized TableData<br/>(no credentials attached)"| UI
 ```
 
 ### State management
@@ -392,7 +422,7 @@ flowchart TB
 
     subgraph sheetStore["sheetStore"]
         direction TB
-        Full["full state: sheets, activeSheetId,<br/>selectionBySheetId, filtersBySheetId,<br/>pending, clipboard, sidebarMode, busy"]
+        Full["full state: sheets, activeSheetId,<br/>selectionBySheetId, filtersBySheetId,<br/>pending, clipboard, sidebarMode,<br/>dataPicker, busy"]
         Temporal["temporal (zundo) only sees: sheets<br/>→ undo/redo history"]
         Persist["persist only sees: sheets, activeSheetId<br/>→ autosave"]
     end
@@ -410,6 +440,17 @@ flowchart TB
 result: **merely clicking to select a cell counted as an undo-history entry** (zundo saw the state change).
 Fixed by moving `selectionBySheetId`/`filtersBySheetId` out into their own top-level fields, so both `temporal`'s
 and `persist`'s `partialize` only ever see `sheets` (plus `activeSheetId` for persist).
+
+**How live data fits in:** `liveBlocks` (which block came from which source, where it sits, how much space it
+takes) is stored **inside `sheets`**, because it genuinely is sheet content — placing, changing or removing a
+block is undoable with Ctrl+Z and autosaved like anything else. `dataPicker` (which picker dialog is open) is
+transient UI, so it stays outside `sheets`.
+
+That creates a problem: **refreshes write into `sheets` too.** Left alone, every 5 seconds would push a new
+undo entry, and Ctrl+Z would only step back through old values of the same number. `applyLiveData` therefore
+wraps its writes in `temporal.pause()` / `temporal.resume()` — data still updates, the history never sees it.
+The "Change" button (`replaceLiveBlock`) does "clear the old + place the new" inside a single action, so it
+counts as one undo step rather than two.
 
 ### Clean layering of `src/lib/`
 
@@ -441,8 +482,9 @@ src/
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
     api/demo/                # Self-drifting demo endpoints so live data can be tried without a real API
   store/
-    sheetStore.ts            # Main Zustand store — sheets, activeSheetId, per-sheet selection/filters,
-                              # the formula panel being filled in, which sidebar is open, plus every action —
+    sheetStore.ts            # Main Zustand store — sheets (incl. liveBlocks), activeSheetId, per-sheet
+                              # selection/filters, the formula panel being filled in, which sidebar is open,
+                              # which data picker is raised, plus every action —
                               # wrapped in persist (autosave) + zundo (undo/redo) covering all sheets together
     localeStore.ts           # Separate Zustand store for the selected UI language (th/en) — persisted the
                               # same way, but not tied to the sheet's undo/redo
@@ -453,7 +495,8 @@ src/
     index.ts                  # useT()/useLocale() (hooks for components) + getMessages() (used in the store)
   features/
     grid/SpreadsheetGrid.tsx        # The main grid (cell selection/editing, sticky headers, right-click
-                                     # insert/delete row-column, hides filtered rows, accepts formula drops)
+                                     # insert/delete row-column, hides filtered rows, accepts formula and
+                                     # live-data drops, draws live-block borders + the selected block's toolbar)
     grid/useHeaderContextMenu.ts    # Hook: state + open/close for the row/column header right-click menu
     grid/useColumnFilterPopoverState.ts # Hook: state + open/close/toggle for the column filter popover
     grid/useClickAway.ts            # Shared hook: closes a popover/menu on an outside click or scroll
