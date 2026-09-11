@@ -24,7 +24,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-283%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-299%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 283 automated tests.
+(Thai/English), 299 automated tests.
 
 ---
 
@@ -181,7 +181,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 283 เคสด้วย Vitest |
+| `npm test` | รัน unit test 299 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
@@ -551,7 +551,7 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (283 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (299 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -798,7 +798,7 @@ flowchart LR
     Raw["สูตรดิบ<br/>เช่น =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>แยกเป็น token"]
     Tok --> Par["parser.ts<br/>สร้าง AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>เดิน AST คำนวณผล"]
-    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>45 ฟังก์ชัน"]
+    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>47 ฟังก์ชัน"]
     Eval -->|"getCell(row, col)"| Sheet[("ค่า/สูตรของ<br/>เซลล์อื่นในชีต")]
     Sheet -.-> Eval
     Eval --> Result["ค่าตัวเลข/ข้อความ<br/>หรือ FormulaError"]
@@ -826,13 +826,13 @@ flowchart LR
 
 ### ฟังก์ชันที่รองรับ
 
-แถบสูตรที่ลากวางได้แสดงแค่ **28 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **45 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
+แถบสูตรที่ลากวางได้แสดงแค่ **30 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **47 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
 ในเซลล์ได้เลยแม้ไม่มีการ์ดในแถบสูตร (เช่น `=MID(...)`, `=YEAR(...)`, `=PROPER(...)`):
 
-| หมวดหมู่ | อยู่ในแถบสูตร (28) | พิมพ์ตรงในเซลล์ได้เพิ่ม |
+| หมวดหมู่ | อยู่ในแถบสูตร (30) | พิมพ์ตรงในเซลล์ได้เพิ่ม |
 |---|---|---|
 | คณิตศาสตร์ | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
-| สถิติ | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` | `COUNTBLANK` |
+| สถิติ | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` |
 | ตรรกะ | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
 | ข้อความ | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` |
 | วันที่ | `TODAY` `NOW` | `DAY` `MONTH` `YEAR` |
@@ -864,8 +864,13 @@ flowchart LR
 ที่ว่างเปล่า) และพิมพ์ `>100` ได้ `">100"` ซึ่งเป็นรูปแบบเดียวที่ใช้ได้จริง ถ้าต้องการให้เงื่อนไขมาจากเซลล์
 ให้เขียนแบบ Excel คือต่อสตริง เช่น `">"&F1` หรือ `""&F1`
 
-**ยังไม่รองรับ:** wildcard (`*`, `?`) ในเงื่อนไข · `COUNTIFS`/`AVERAGEIFS` (ใช้ `SUMIFS` แทนได้บางกรณี) ·
-`MATCH` ต้องเป็นช่วงแถวเดียวหรือคอลัมน์เดียว ถ้าส่งช่วงสองมิติจะได้ `#N/A` แทนการเดาตำแหน่งให้
+**เงื่อนไขใส่ wildcard ได้** — `*` แทนตัวอักษรกี่ตัวก็ได้ `?` แทนหนึ่งตัว และ `~` ใช้ escape เมื่ออยากหา
+เครื่องหมายนั้นจริงๆ (เช่น `"10~*20"` หา `10*20`) ใช้ได้กับทุกฟังก์ชันตระกูล IF: `SUMIF`, `COUNTIF`,
+`AVERAGEIF`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS` — ไม่สนตัวพิมพ์เล็ก/ใหญ่ และเทียบกับทั้งช่อง
+ไม่ใช่แค่บางส่วน ถ้าอยากได้แบบ "มีคำนี้อยู่ข้างใน" ให้ครอบด้วย `*` ทั้งสองข้าง
+
+**ยังไม่รองรับ:** `MATCH` ต้องเป็นช่วงแถวเดียวหรือคอลัมน์เดียว ถ้าส่งช่วงสองมิติจะได้ `#N/A`
+แทนการเดาตำแหน่งให้
 
 รองรับตัวดำเนินการคำนวณ/เปรียบเทียบ/ต่อข้อความครบ (`+ - * / ^ = <> < > <= >= &`) และแจ้ง error แบบ Excel:
 `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`
@@ -908,7 +913,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 283 เคส ใน 17 ไฟล์ ด้วย Vitest
+npm test      # 299 เคส ใน 17 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -920,7 +925,7 @@ npm test      # 283 เคส ใน 17 ไฟล์ ด้วย Vitest
 | `tokenizer.test.ts` | 8 | literal, cell/range ref (รวม absolute `$`), operator, การ escape string, token `#REF!` |
 | `parser.test.ts` | 14 | ลำดับความสำคัญ/associativity ของตัวดำเนินการ, range, function call, syntax error |
 | `evaluator.test.ts` | 10 | เลขคณิต, เปรียบเทียบ, ต่อข้อความ, อ่านค่าเซลล์/ช่วง, การกระจาย error |
-| `functions.test.ts` | 41 | ฟังก์ชันกลุ่มรวม/ปัดเศษ/ตรรกะ/ข้อความ/ค้นหา ทั้งไลบรารี รวม INDEX/MATCH (ค้นย้อนซ้าย, ทั้งแถว/คอลัมน์, ข้อมูลไม่เรียง) และ SUMIFS (หลายเงื่อนไข, ช่วงไม่เท่ากัน) |
+| `functions.test.ts` | 57 | ฟังก์ชันกลุ่มรวม/ปัดเศษ/ตรรกะ/ข้อความ/ค้นหา ทั้งไลบรารี รวม INDEX/MATCH (ค้นย้อนซ้าย, ทั้งแถว/คอลัมน์, ข้อมูลไม่เรียง) และ SUMIFS (หลายเงื่อนไข, ช่วงไม่เท่ากัน) |
 | `formulaCatalog.test.ts` | 12 | สูตรที่แถบลากวางสร้างออกมาจริง: การใส่เครื่องหมายคำพูดให้เงื่อนไข, เงื่อนไขที่ 2 ที่กรอกไม่ครบ, และทุกสูตรมีคำแปลครบสองภาษา |
 | `shift.test.ts` | 8 | การเลื่อนอ้างอิงแบบ relative ตอนคัดลอก/วาง, absolute ไม่เลื่อน |
 | `structuralShift.test.ts` | 15 | การปรับอ้างอิงตอนแทรก/ลบแถว-คอลัมน์ รวม `#REF!` และการขยาย/หดของช่วง |
@@ -961,10 +966,9 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
 - [x] **จัดรูปแบบตามเงื่อนไข (conditional formatting)** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): เทียบค่า/ข้อความ/
       อันดับ/ไล่สี/แถบยาว เขียนและอ่านกลับจาก `.xlsx` ได้ ยังเหลือ: icon set และกฎแบบสูตรเอง
 - [ ] **คอมเมนต์ในเซลล์**
-- [x] **`INDEX`/`MATCH` และ `SUMIFS`** — ทำแล้ว (ดูหัวข้อ ฟังก์ชันที่รองรับ): ค้นหาย้อนทางซ้ายได้
-      และรวมแบบหลายเงื่อนไข ยังเหลือ: `COUNTIFS`/`AVERAGEIFS` และ wildcard (`*`, `?`) ในเงื่อนไข
-- [ ] **ฟังก์ชันเพิ่มเติม** เช่น `XLOOKUP`, `COUNTIFS`/`AVERAGEIFS`, ฟังก์ชันวันที่แบบคำนวณ
-  ระยะห่าง (`DATEDIF` ฯลฯ)
+- [x] **`INDEX`/`MATCH`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS` และ wildcard ในเงื่อนไข** — ทำแล้ว
+      (ดูหัวข้อ ฟังก์ชันที่รองรับ): ค้นหาย้อนทางซ้ายได้ และนับ/รวม/เฉลี่ยแบบหลายเงื่อนไข
+- [ ] **ฟังก์ชันเพิ่มเติม** เช่น `XLOOKUP`, ฟังก์ชันวันที่แบบคำนวณระยะห่าง (`DATEDIF` ฯลฯ)
 - [x] **รองรับมือถือ/แท็บเล็ต** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): พาเนลเปิดทับจอ, แถบเครื่องมือเหลือไอคอน,
       แตะซ้ำเพื่อแก้เซลล์, ปุ่มขนาด 44px ยังเหลือ: ลากเลือกหลายเซลล์ด้วยนิ้ว
 - [ ] **Import/Export CSV** โดยตรง (ตอนนี้ผ่าน `.xlsx` เท่านั้น)

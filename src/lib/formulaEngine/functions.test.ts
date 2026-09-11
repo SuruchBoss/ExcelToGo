@@ -236,3 +236,86 @@ describe("SUMIFS", () => {
     expect(calc('SUMIFS(A2:A6,B2:B6,"Q1")', sales)).toBe(0);
   });
 });
+
+describe("COUNTIFS and AVERAGEIFS", () => {
+  it("counts the rows meeting every condition", () => {
+    expect(calc('COUNTIFS(A2:A6,"กรุงเทพ")', sales)).toBe(2);
+    expect(calc('COUNTIFS(A2:A6,"กรุงเทพ",B2:B6,"Q2")', sales)).toBe(1);
+  });
+
+  it("counts from the first range, with no separate range to aggregate", () => {
+    // This is COUNTIFS' shape, and it differs from SUMIFS/AVERAGEIFS: pairs start at argument one.
+    expect(calc('COUNTIFS(C2:C6,">100")', sales)).toBe(3);
+  });
+
+  it("is zero rather than an error when nothing matches", () => {
+    expect(calc('COUNTIFS(A2:A6,"ขอนแก่น")', sales)).toBe(0);
+  });
+
+  it("averages only the rows meeting every condition", () => {
+    expect(calc('AVERAGEIFS(C2:C6,B2:B6,"Q1")', sales)).toBeCloseTo(82.5);
+    expect(calc('AVERAGEIFS(C2:C6,A2:A6,"กรุงเทพ",B2:B6,"Q2")', sales)).toBe(260);
+  });
+
+  it("skips text and blanks in the averaged range instead of counting them as zero", () => {
+    const mixed = [["a", 10], ["a", "n/a"], ["a", 20]];
+    expect(calc('AVERAGEIFS(B1:B3,A1:A3,"a")', mixed)).toBe(15);
+  });
+
+  it("is #DIV/0! when no row matches, because there is nothing to average", () => {
+    expect(isError(calc('AVERAGEIFS(C2:C6,A2:A6,"ขอนแก่น")', sales))).toBe(true);
+  });
+
+  it("refuses ranges that don't line up", () => {
+    expect(isError(calc('COUNTIFS(A2:A6,"กรุงเทพ",B2:B4,"Q2")', sales))).toBe(true);
+    expect(isError(calc('AVERAGEIFS(C2:C6,A2:A4,"กรุงเทพ")', sales))).toBe(true);
+  });
+
+  it("refuses a criteria range with no criteria after it", () => {
+    expect(isError(calc("COUNTIFS(A2:A6)", sales))).toBe(true);
+    expect(isError(calc("AVERAGEIFS(C2:C6,A2:A6)", sales))).toBe(true);
+  });
+});
+
+describe("wildcards in criteria", () => {
+  const branches = [["กรุงเทพ", 1], ["กรุงเทพมหานคร", 2], ["เชียงใหม่", 4], ["Bangkok Bank", 8]];
+
+  it("* stands for any run of characters", () => {
+    expect(calc('SUMIF(A1:A4,"กรุงเทพ*",B1:B4)', branches)).toBe(3);
+  });
+
+  it("? stands for exactly one character", () => {
+    expect(calc('COUNTIF(A1:A4,"เชียงใหม?")', branches)).toBe(1);
+    expect(calc('COUNTIF(A1:A4,"เชียง?")', branches)).toBe(0);
+  });
+
+  it("matches without regard to case", () => {
+    expect(calc('SUMIF(A1:A4,"bangkok*",B1:B4)', branches)).toBe(8);
+  });
+
+  it("a plain criteria still has to match the whole cell", () => {
+    // Without a wildcard this is equality, not "contains" — the behaviour before wildcards existed.
+    expect(calc('COUNTIF(A1:A4,"กรุงเทพ")', branches)).toBe(1);
+  });
+
+  it("~ escapes a wildcard so it matches the character itself", () => {
+    const literal = [["10*20", 1], ["1020", 2]];
+    expect(calc('COUNTIF(A1:A2,"10~*20")', literal)).toBe(1);
+  });
+
+  it("works through a comparison operator too", () => {
+    expect(calc('COUNTIF(A1:A4,"<>กรุงเทพ*")', branches)).toBe(2);
+  });
+
+  it("regular expression characters in a criteria are matched literally", () => {
+    // "." and "+" must not behave as regex syntax just because wildcards are compiled to one.
+    const odd = [["a.c", 1], ["abc", 2]];
+    expect(calc('COUNTIF(A1:A2,"a.c")', odd)).toBe(1);
+    expect(calc('COUNTIF(A1:A2,"a*c")', odd)).toBe(2);
+  });
+
+  it("carries into the multi-condition functions", () => {
+    expect(calc('SUMIFS(B1:B4,A1:A4,"กรุงเทพ*")', branches)).toBe(3);
+    expect(calc('COUNTIFS(A1:A4,"*ใหม่")', branches)).toBe(1);
+  });
+});

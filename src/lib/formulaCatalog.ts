@@ -159,6 +159,32 @@ const FORMULA_SPECS: FormulaSpec[] = [
     },
   },
   {
+    id: "COUNTIFS",
+    categoryKey: "stats",
+    syntax: "COUNTIFS(criteria_range1, criteria1, [criteria_range2, criteria2])",
+    params: [req("critRange1", "range"), req("criteria1", "text"), opt("critRange2", "range"), opt("criteria2", "text")],
+    build: (v) => {
+      const second = v.critRange2?.trim() && v.criteria2?.trim() ? `,${v.critRange2},${quoteCriteria(v.criteria2)}` : "";
+      return `COUNTIFS(${v.critRange1},${quoteCriteria(v.criteria1)}${second})`;
+    },
+  },
+  {
+    id: "AVERAGEIFS",
+    categoryKey: "stats",
+    syntax: "AVERAGEIFS(average_range, criteria_range1, criteria1, [criteria_range2, criteria2])",
+    params: [
+      req("avgRange", "range"),
+      req("critRange1", "range"),
+      req("criteria1", "text"),
+      opt("critRange2", "range"),
+      opt("criteria2", "text"),
+    ],
+    build: (v) => {
+      const second = v.critRange2?.trim() && v.criteria2?.trim() ? `,${v.critRange2},${quoteCriteria(v.criteria2)}` : "";
+      return `AVERAGEIFS(${v.avgRange},${v.critRange1},${quoteCriteria(v.criteria1)}${second})`;
+    },
+  },
+  {
     id: "MATCH",
     categoryKey: "lookup",
     syntax: "MATCH(lookup_value, range, [match_type])",

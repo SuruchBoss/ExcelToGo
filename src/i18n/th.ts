@@ -107,7 +107,7 @@ export const th: Messages = {
     },
   },
   landing: {
-    eyebrow: "โปรเจกต์ทดลอง · เอนจินคำนวณสูตรเขียนเอง · 283 เทสต์",
+    eyebrow: "โปรเจกต์ทดลอง · เอนจินคำนวณสูตรเขียนเอง · 299 เทสต์",
     headline: "เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์",
     subheadline:
       "ไม่ต้องติดตั้ง ไม่ต้องสมัครสมาชิก — เปิดไฟล์ .xlsx แล้วหน้าตายังเหมือนเดิม ทั้งแถบสี เซลล์ที่ merge และเส้นขอบ จากนั้นเลือกสูตรจากรายการแทนการจำ หรือถาม AI เป็นภาษาคน ทุกอย่างคำนวณในเบราว์เซอร์ ข้อมูลไม่ออกจากเครื่องคุณ",
@@ -153,7 +153,7 @@ export const th: Messages = {
     stats: [
       { value: "25", label: "สูตรพร้อมใช้" },
       { value: "42", label: "ฟังก์ชันในเอนจิน" },
-      { value: "283", label: "เทสต์อัตโนมัติ" },
+      { value: "299", label: "เทสต์อัตโนมัติ" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],
     closingTitle: "ลองเลย ไม่ต้องสมัคร",
@@ -455,6 +455,29 @@ export const th: Messages = {
         sumRange: { label: "ช่วงตัวเลขที่จะบวก", placeholder: "เช่น C2:C100" },
         critRange1: { label: "ช่วงเงื่อนไขที่ 1", placeholder: "เช่น A2:A100" },
         criteria1: { label: "เงื่อนไขที่ 1", placeholder: 'เช่น กรุงเทพ หรือ ">100"' },
+        critRange2: { label: "ช่วงเงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น B2:B100" },
+        criteria2: { label: "เงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น Q2" },
+      },
+    },
+    COUNTIFS: {
+      name: "COUNTIFS - นับแบบหลายเงื่อนไข",
+      description: "นับจำนวนแถวที่เข้าเงื่อนไขครบทุกข้อ ใช้ * แทนตัวอักษรกี่ตัวก็ได้ เช่น กรุงเทพ*",
+      example: '=COUNTIFS(A2:A100,"กรุงเทพ",B2:B100,"Q2")',
+      params: {
+        critRange1: { label: "ช่วงเงื่อนไขที่ 1", placeholder: "เช่น A2:A100" },
+        criteria1: { label: "เงื่อนไขที่ 1", placeholder: 'เช่น กรุงเทพ* หรือ ">100"' },
+        critRange2: { label: "ช่วงเงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น B2:B100" },
+        criteria2: { label: "เงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น Q2" },
+      },
+    },
+    AVERAGEIFS: {
+      name: "AVERAGEIFS - เฉลี่ยแบบหลายเงื่อนไข",
+      description: "หาค่าเฉลี่ยเฉพาะแถวที่เข้าเงื่อนไขครบทุกข้อ (ข้ามช่องว่างและข้อความ ไม่นับเป็นศูนย์)",
+      example: '=AVERAGEIFS(C2:C100,A2:A100,"กรุงเทพ",B2:B100,"Q2")',
+      params: {
+        avgRange: { label: "ช่วงตัวเลขที่จะเฉลี่ย", placeholder: "เช่น C2:C100" },
+        critRange1: { label: "ช่วงเงื่อนไขที่ 1", placeholder: "เช่น A2:A100" },
+        criteria1: { label: "เงื่อนไขที่ 1", placeholder: 'เช่น กรุงเทพ* หรือ ">100"' },
         critRange2: { label: "ช่วงเงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น B2:B100" },
         criteria2: { label: "เงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น Q2" },
       },

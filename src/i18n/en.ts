@@ -107,7 +107,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 283 tests",
+    eyebrow: "A side project · hand-written formula engine · 299 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -153,7 +153,7 @@ export const en: Messages = {
     stats: [
       { value: "25", label: "ready-made formulas" },
       { value: "42", label: "engine functions" },
-      { value: "283", label: "automated tests" },
+      { value: "299", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     closingTitle: "Try it — nothing to sign up for",
@@ -455,6 +455,29 @@ export const en: Messages = {
         sumRange: { label: "Range of numbers to add", placeholder: "e.g. C2:C100" },
         critRange1: { label: "First condition's range", placeholder: "e.g. A2:A100" },
         criteria1: { label: "First condition", placeholder: 'e.g. Bangkok or ">100"' },
+        critRange2: { label: "Second condition's range (optional)", placeholder: "e.g. B2:B100" },
+        criteria2: { label: "Second condition (optional)", placeholder: "e.g. Q2" },
+      },
+    },
+    COUNTIFS: {
+      name: "COUNTIFS - count on several conditions",
+      description: "Counts the rows meeting every condition. Use * for any run of characters, e.g. Bangkok*",
+      example: '=COUNTIFS(A2:A100,"Bangkok",B2:B100,"Q2")',
+      params: {
+        critRange1: { label: "First condition's range", placeholder: "e.g. A2:A100" },
+        criteria1: { label: "First condition", placeholder: 'e.g. Bangkok* or ">100"' },
+        critRange2: { label: "Second condition's range (optional)", placeholder: "e.g. B2:B100" },
+        criteria2: { label: "Second condition (optional)", placeholder: "e.g. Q2" },
+      },
+    },
+    AVERAGEIFS: {
+      name: "AVERAGEIFS - average on several conditions",
+      description: "Averages only the rows meeting every condition (blanks and text are skipped, not counted as zero)",
+      example: '=AVERAGEIFS(C2:C100,A2:A100,"Bangkok",B2:B100,"Q2")',
+      params: {
+        avgRange: { label: "Range of numbers to average", placeholder: "e.g. C2:C100" },
+        critRange1: { label: "First condition's range", placeholder: "e.g. A2:A100" },
+        criteria1: { label: "First condition", placeholder: 'e.g. Bangkok* or ">100"' },
         critRange2: { label: "Second condition's range (optional)", placeholder: "e.g. B2:B100" },
         criteria2: { label: "Second condition (optional)", placeholder: "e.g. Q2" },
       },

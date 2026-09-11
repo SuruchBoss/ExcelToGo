@@ -29,6 +29,45 @@ function firstError(values: FormulaValue[]): FormulaError | null {
   return null;
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Turns an Excel criteria pattern into a regular expression, or null when it holds no wildcard.
+ *
+ * `*` stands for any run of characters and `?` for exactly one, and `~` escapes either (so `~*`
+ * matches a literal asterisk). Returning null for a plain string keeps the common case on the
+ * cheaper equality path.
+ */
+function wildcardToRegExp(pattern: string): RegExp | null {
+  // Any of the three is enough to need compiling: an escape has to be unwrapped even when the
+  // pattern holds no live wildcard, or "10~*20" would be compared literally, tilde and all.
+  if (!/[*?~]/.test(pattern)) return null;
+  let out = "";
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    if (ch === "~" && (pattern[i + 1] === "*" || pattern[i + 1] === "?" || pattern[i + 1] === "~")) {
+      out += escapeRegExp(pattern[++i]);
+    } else if (ch === "*") {
+      out += "[\\s\\S]*";
+    } else if (ch === "?") {
+      out += "[\\s\\S]";
+    } else {
+      out += escapeRegExp(ch);
+    }
+  }
+  return new RegExp(`^${out}$`, "iu");
+}
+
+/** Compares a cell against a text criteria, honouring wildcards. Case-insensitive either way,
+ *  which is how Excel treats text criteria. */
+function textMatches(value: FormulaValue, pattern: string): boolean {
+  const text = toDisplayString(value);
+  const re = wildcardToRegExp(pattern);
+  return re ? re.test(text) : text.toLowerCase() === pattern.toLowerCase();
+}
+
 function matchCriteria(value: FormulaValue, criteria: FormulaValue): boolean {
   const critStr = toDisplayString(criteria).trim();
   const m = /^(<>|>=|<=|>|<|=)(.*)$/.exec(critStr);
@@ -54,8 +93,8 @@ function matchCriteria(value: FormulaValue, criteria: FormulaValue): boolean {
           return lhs !== rhsNum;
       }
     }
-    if (op === "=") return toDisplayString(value).toLowerCase() === rhsRaw.toLowerCase();
-    if (op === "<>") return toDisplayString(value).toLowerCase() !== rhsRaw.toLowerCase();
+    if (op === "=") return textMatches(value, rhsRaw);
+    if (op === "<>") return !textMatches(value, rhsRaw);
     return false;
   }
   const numCriteria = Number(critStr);
@@ -63,7 +102,7 @@ function matchCriteria(value: FormulaValue, criteria: FormulaValue): boolean {
     const n = toNumber(value);
     return !isError(n) && n === numCriteria;
   }
-  return toDisplayString(value).toLowerCase() === critStr.toLowerCase();
+  return textMatches(value, critStr);
 }
 
 /**
@@ -456,6 +495,49 @@ export const FUNCTIONS: Record<string, FnImpl> = {
    * there. That is Excel's own inconsistency, kept because a formula copied out of a real
    * workbook has to behave the same way here.
    */
+  /**
+   * COUNTIFS(criteria_range1, criteria1, …) — counts the cells meeting every condition.
+   *
+   * Unlike SUMIFS there is no separate range to aggregate: the first criteria range is both the
+   * thing being tested and the thing being counted, so the pairs start at the first argument.
+   */
+  COUNTIFS: (args) => {
+    if (args.length === 0) return ERR_VALUE;
+    const shape = requireRange(args[0]);
+    const pairs = criteriaPairs(args, shape, 0);
+    if (isError(pairs)) return pairs;
+    let count = 0;
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) count++;
+      }
+    }
+    return count;
+  },
+  /** AVERAGEIFS(average_range, criteria_range1, criteria1, …) — argument order follows SUMIFS. */
+  AVERAGEIFS: (args) => {
+    const target = requireRange(args[0]);
+    const pairs = criteriaPairs(args, target);
+    if (isError(pairs)) return pairs;
+    let total = 0;
+    let count = 0;
+    for (let r = 0; r < target.length; r++) {
+      for (let c = 0; c < target[r].length; c++) {
+        if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
+        const v = target[r][c];
+        // Blanks and text inside the averaged range are skipped rather than counted as zero,
+        // which would drag the average down towards it.
+        if (isBlank(v) || typeof v === "string") continue;
+        const n = toNumber(v);
+        if (!isError(n)) {
+          total += n;
+          count++;
+        }
+      }
+    }
+    if (count === 0) return ERR_DIV0;
+    return total / count;
+  },
   SUMIFS: (args) => {
     const target = requireRange(args[0]);
     const pairs = criteriaPairs(args, target);
@@ -482,11 +564,12 @@ export const FUNCTIONS: Record<string, FnImpl> = {
  */
 function criteriaPairs(
   args: EvalResult[],
-  target: FormulaValue[][]
+  target: FormulaValue[][],
+  start = 1
 ): { range: FormulaValue[][]; criteria: FormulaValue }[] | FormulaError {
-  if (args.length < 3 || (args.length - 1) % 2 !== 0) return ERR_VALUE;
+  if (args.length < start + 2 || (args.length - start) % 2 !== 0) return ERR_VALUE;
   const pairs: { range: FormulaValue[][]; criteria: FormulaValue }[] = [];
-  for (let i = 1; i < args.length; i += 2) {
+  for (let i = start; i < args.length; i += 2) {
     const range = requireRange(args[i]);
     if (!sameShape(range, target)) return ERR_VALUE;
     const criteria = scalarOf(args[i + 1]);

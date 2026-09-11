@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-283%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-299%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export. Bilingual UI (Thai/English), 283 automated tests.
+export. Bilingual UI (Thai/English), 299 automated tests.
 
 ---
 
@@ -186,7 +186,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 283-case Vitest suite |
+| `npm test` | Run the 299-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -593,7 +593,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (283 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (299 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -846,7 +846,7 @@ flowchart LR
     Raw["Raw formula text<br/>e.g. =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>splits into tokens"]
     Tok --> Par["parser.ts<br/>builds an AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>walks the AST to compute a result"]
-    Eval -->|"calls"| Fn["functions.ts<br/>45 functions"]
+    Eval -->|"calls"| Fn["functions.ts<br/>47 functions"]
     Eval -->|"getCell(row, col)"| Sheet[("other cells' values/formulas<br/>in the sheet")]
     Sheet -.-> Eval
     Eval --> Result["a number/text value,<br/>or a FormulaError"]
@@ -876,14 +876,14 @@ thing:
 
 ### Supported functions
 
-The drag-and-drop palette shows only the **28 most commonly used** formulas, but the engine itself supports
-**45 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
+The drag-and-drop palette shows only the **30 most commonly used** formulas, but the engine itself supports
+**47 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
 `=YEAR(...)`, `=PROPER(...)`):
 
-| Category | In the palette (28) | Also available by typing |
+| Category | In the palette (30) | Also available by typing |
 |---|---|---|
 | Math | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
-| Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` | `COUNTBLANK` |
+| Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` |
 | Logic | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
 | Text | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` |
 | Date | `TODAY` `NOW` | `DAY` `MONTH` `YEAR` |
@@ -919,8 +919,13 @@ the empty cell Q2), and `>100` becomes `">100"`, which is the only form that par
 criteria that should come from a cell, write it Excel's way by concatenating: `">"&F1`, or
 `""&F1` for the value alone.
 
-**Not supported:** wildcards (`*`, `?`) in criteria; `COUNTIFS`/`AVERAGEIFS`; and `MATCH` over a
-two-dimensional range — that returns `#N/A` rather than guessing a position inside a block.
+**Criteria take wildcards** — `*` for any run of characters, `?` for exactly one, and `~` to escape
+either when you mean the character itself (`"10~*20"` finds `10*20`). They work across the whole IF
+family: `SUMIF`, `COUNTIF`, `AVERAGEIF`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`. Matching ignores case
+and covers the whole cell, so wrap a term in `*` on both sides for "contains".
+
+**Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
+position inside a block.
 
 Full support for arithmetic/comparison/concatenation operators (`+ - * / ^ = <> < > <= >= &`) and Excel-style
 error values: `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`.
@@ -965,7 +970,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 283 cases across 17 files, via Vitest
+npm test      # 299 cases across 17 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -978,7 +983,7 @@ tool, not a permanent regression suite).
 | `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
 | `parser.test.ts` | 14 | Operator precedence/associativity, ranges, function calls, syntax errors |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 41 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data) and SUMIFS (several conditions, mismatched ranges) |
+| `functions.test.ts` | 57 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data) and SUMIFS (several conditions, mismatched ranges) |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
@@ -1022,11 +1027,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
 - [ ] **Cell comments**
-- [x] **`INDEX`/`MATCH` and `SUMIFS`** — done (see Supported functions): lookups that can read
-      leftwards, and sums on several conditions. Still open: `COUNTIFS`/`AVERAGEIFS`, and
-      wildcards (`*`, `?`) in criteria
-- [ ] **More functions** such as `XLOOKUP`, `COUNTIFS`/`AVERAGEIFS`, date-difference functions
-  (`DATEDIF`, etc.)
+- [x] **`INDEX`/`MATCH`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS` and wildcards in criteria** — done
+      (see Supported functions): lookups that read leftwards, and counting/summing/averaging on
+      several conditions at once
+- [ ] **More functions** such as `XLOOKUP`, date-difference functions (`DATEDIF`, etc.)
 - [ ] **Mobile/tablet support** — currently designed primarily for a desktop screen; layout/touch for small
   screens isn't tuned yet
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
