@@ -85,7 +85,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
             <h2 className="text-base font-semibold text-zinc-800">{source ? t.data.setup.editTitle : t.data.setup.newTitle}</h2>
             <p className="mt-0.5 text-xs text-zinc-500">{t.data.setup.intro}</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+          <button onClick={onClose} className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600">
             <X size={16} />
           </button>
         </div>
@@ -138,7 +138,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
 
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <p className={labelCls}>{t.data.setup.auth}</p>
-            <p className="mb-2 text-[11px] text-zinc-400">{t.data.setup.authHint}</p>
+            <p className="mb-2 text-[11px] text-zinc-500">{t.data.setup.authHint}</p>
             <div className="grid grid-cols-[1fr_2fr] gap-2">
               <input
                 value={draft.authHeader?.name ?? ""}
@@ -160,7 +160,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
             <label className="flex flex-col gap-1">
               <span className={labelCls}>{t.data.setup.jsonPath}</span>
               <input value={draft.jsonPath ?? ""} onChange={(e) => patch({ jsonPath: e.target.value })} placeholder="data.items" className={clsx(inputCls, "font-mono text-xs")} />
-              <span className="text-[11px] text-zinc-400">{t.data.setup.jsonPathHint}</span>
+              <span className="text-[11px] text-zinc-500">{t.data.setup.jsonPathHint}</span>
             </label>
           )}
 
@@ -179,7 +179,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
                 />
                 <span className="text-xs text-zinc-500">{t.data.setup.maxRowsUnit}</span>
               </div>
-              <span className="text-[11px] text-zinc-400">{t.data.setup.maxRowsHint}</span>
+              <span className="text-[11px] text-zinc-500">{t.data.setup.maxRowsHint}</span>
             </label>
           )}
 
@@ -231,7 +231,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
           <button
             onClick={() => void save()}
             disabled={!canSubmit || saving}
-            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {saving ? t.data.setup.saving : t.data.setup.save}
           </button>

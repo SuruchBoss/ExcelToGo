@@ -254,6 +254,9 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 Bold, text alignment (left/center/right), text color, number format (general / 2 decimal places / percent /
 currency ฿) — travels with the cell on copy/paste and survives Excel export too.
 
+The formatting row **folds away** (the brush button at the end of the formula bar). On a 1366×768 laptop the
+three stacked bars ate 150px before a single grid row appeared; folded, that's 107px.
+
 ### ➕ Insert/delete rows & columns
 
 Right-click a row/column header to insert or delete. The app **automatically rewrites every formula in the
@@ -611,6 +614,28 @@ undo entry, and Ctrl+Z would only step back through old values of the same numbe
 wraps its writes in `temporal.pause()` / `temporal.resume()` — data still updates, the history never sees it.
 The "Change" button (`replaceLiveBlock`) does "clear the old + place the new" inside a single action, so it
 counts as one undo step rather than two.
+
+### Colour system
+
+Colours mean fixed things rather than whatever each screen reached for. There used to be four accents
+(blue/violet/emerald/amber) split by *when the code was written*, which left three adjacent toolbar buttons
+lighting up in three different colours.
+
+| Colour | Means | Where |
+|---|---|---|
+| **Emerald** | Brand, primary actions, the open sidebar, live data | Every primary action in the app |
+| **Blue** | **Where you are**, and nothing else | Selected cell, selected headers, the edit box, copy marching-ants |
+| **Amber** | **Warnings**, and nothing else | Partial data, rate-limited |
+| **Red** | Errors | Failed connection, `#REF!` |
+| **Zinc** | Everything else | Including a template's read-only structure |
+
+Blue stays separate deliberately: the selection has to stay legible over every background, live-data green
+included, and it's the colour both Excel and Google Sheets use for the same job. Template input cells **no
+longer use amber** — a form with twenty fields read as twenty alerts. They follow paper instead: the printed
+parts are grey, the blanks are white.
+
+Every piece of text clears WCAG AA: primary buttons are `emerald-700` (white on it is 5.48:1 — `emerald-600`
+managed only 3.77 and failed), and hint text is `zinc-500` (4.83:1, where `zinc-400` was 2.56).
 
 ### Clean layering of `src/lib/`
 

@@ -33,10 +33,10 @@ export default function ColumnFilterPopover({ col, x, y, onClose }: Props) {
       onClick={(e) => e.stopPropagation()}
     >
       <div className="mb-1.5 flex gap-3 text-xs">
-        <button className="text-blue-600 hover:underline" onClick={() => setDraft(new Set(values))}>
+        <button className="text-emerald-600 hover:underline" onClick={() => setDraft(new Set(values))}>
           {t.filterPopover.selectAll}
         </button>
-        <button className="text-blue-600 hover:underline" onClick={() => setDraft(new Set())}>
+        <button className="text-emerald-600 hover:underline" onClick={() => setDraft(new Set())}>
           {t.filterPopover.clearAll}
         </button>
       </div>
@@ -47,7 +47,7 @@ export default function ColumnFilterPopover({ col, x, y, onClose }: Props) {
             <span className="truncate text-zinc-700">{v === "" ? t.filterPopover.blank : v}</span>
           </label>
         ))}
-        {values.length === 0 && <p className="px-1 py-2 text-center text-xs text-zinc-400">{t.filterPopover.noData}</p>}
+        {values.length === 0 && <p className="px-1 py-2 text-center text-xs text-zinc-500">{t.filterPopover.noData}</p>}
       </div>
       <div className="mt-2 flex gap-1.5 border-t border-zinc-100 pt-2">
         <button
@@ -65,7 +65,7 @@ export default function ColumnFilterPopover({ col, x, y, onClose }: Props) {
             setColumnFilter(col, Array.from(draft));
             onClose();
           }}
-          className="flex-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
+          className="flex-1 rounded bg-emerald-700 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-800"
         >
           {t.filterPopover.ok}
         </button>

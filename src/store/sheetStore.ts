@@ -113,6 +113,9 @@ interface SheetState {
   filtersBySheetId: Record<string, Record<number, string[]>>;
   pending: PendingFormula | null;
   sidebarMode: SidebarMode;
+  /** Whether the formatting row is showing. UI-only: outside both the undo and autosave slices,
+   *  since folding a toolbar away isn't sheet content. */
+  formatBarOpen: boolean;
   busy: string | null;
   clipboard: ClipboardState | null;
   /** Which source the "what do you want to insert" dialog is open for, and whether it's changing
@@ -136,6 +139,7 @@ interface SheetState {
   unlockTemplate: () => void;
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
+  toggleFormatBar: () => void;
   toggleSidebar: (mode: "palette" | "ai" | "data") => void;
 
   /** Drops a live block at the active sheet's selection anchor and fills it right away if the
@@ -255,6 +259,7 @@ export const useSheetStore = create<SheetState>()(
         filtersBySheetId: {},
         pending: null,
         sidebarMode: "palette",
+        formatBarOpen: true,
         busy: null,
         clipboard: null,
         dataPicker: null,
@@ -487,6 +492,7 @@ export const useSheetStore = create<SheetState>()(
           }),
 
         setSidebarMode: (mode) => set({ sidebarMode: mode }),
+        toggleFormatBar: () => set((s) => ({ formatBarOpen: !s.formatBarOpen })),
         toggleSidebar: (mode) => set((s) => ({ sidebarMode: s.sidebarMode === mode ? "none" : mode })),
 
         addLiveBlock: (input, table) =>

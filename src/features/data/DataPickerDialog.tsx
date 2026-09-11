@@ -31,6 +31,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
   const blocks = useLiveBlocks();
   const addLiveBlock = useSheetStore((s) => s.addLiveBlock);
   const replaceLiveBlock = useSheetStore((s) => s.replaceLiveBlock);
+  const setSidebarMode = useSheetStore((s) => s.setSidebarMode);
 
   const singleRow = !table || table.rows.length <= 1;
   const [kind, setKind] = useState<"table" | "value">(replacing?.kind ?? (singleRow ? "value" : "table"));
@@ -62,6 +63,10 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
     };
     if (replacing) replaceLiveBlock(replacing.id, input, table);
     else addLiveBlock(input, table);
+    // The panel that launched this is 320px wide and sits over the very columns a table lands in
+    // — leaving it open hid five of seven columns of the thing the user just placed. A single
+    // value is one cell and always visible, so the panel stays put for that.
+    if (kind === "table") setSidebarMode("none");
     onClose();
   };
 
@@ -82,7 +87,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
             </h2>
             <p className="mt-0.5 text-[13px] text-zinc-500">{t.data.picker.subtitle}</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+          <button onClick={onClose} className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600">
             <X size={16} />
           </button>
         </div>
@@ -112,7 +117,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
                   kind === v ? "border-emerald-600 bg-emerald-50 ring-1 ring-inset ring-emerald-600" : "border-zinc-200 hover:border-emerald-200 hover:bg-emerald-50/50"
                 )}
               >
-                <span className={clsx("grid h-8 w-8 shrink-0 place-items-center rounded-lg", kind === v ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700")}>
+                <span className={clsx("grid h-8 w-8 shrink-0 place-items-center rounded-lg", kind === v ? "bg-emerald-700 text-white" : "bg-emerald-50 text-emerald-700")}>
                   <Icon size={16} />
                 </span>
                 <span className="min-w-0">
@@ -202,7 +207,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
             <button
               onClick={insert}
               disabled={!anchor}
-              className="rounded-md bg-emerald-600 px-4.5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-md bg-emerald-700 px-4.5 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t.data.picker.insert}
             </button>

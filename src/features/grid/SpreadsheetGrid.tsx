@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { colToLetters } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
@@ -57,6 +57,20 @@ export default function SpreadsheetGrid() {
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
   const merges = useMemo(() => mergeLookup(sheet.merges), [sheet.merges]);
+  /** Columns with at least one non-empty cell. Only those can meaningfully be filtered. */
+  const columnsWithContent = useMemo(() => {
+    const out = new Set<number>();
+    for (let c = 0; c < sheet.cols; c++) {
+      for (let r = 0; r < sheet.rows; r++) {
+        if (sheet.cells[r]?.[c]) {
+          out.add(c);
+          break;
+        }
+      }
+    }
+    return out;
+  }, [sheet]);
+  const hasContent = (col: number) => columnsWithContent.has(col);
   const blockAt = (row: number, col: number) => boundCells.get(`${row},${col}`);
   const isBound = (row: number, col: number) => boundCells.has(`${row},${col}`);
   const sourceNameOf = (sourceId: string) => sources.find((s) => s.id === sourceId)?.name ?? "";
@@ -90,6 +104,24 @@ export default function SpreadsheetGrid() {
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [editing?.row, editing?.col]);
+
+  // Placing a block wide enough to run past the right edge used to leave the user staring at its
+  // first two columns with no sign the rest existed. Scroll just far enough to show the whole
+  // block, and never so far that its left edge leaves the screen.
+  const placedBlockId = selectedBlock?.id;
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !selectedBlock) return;
+    const first = container.querySelector<HTMLElement>(`td[data-row="${selectedBlock.anchorRow}"][data-col="${selectedBlock.anchorCol}"]`);
+    const last = container.querySelector<HTMLElement>(
+      `td[data-row="${selectedBlock.anchorRow}"][data-col="${selectedBlock.anchorCol + selectedBlock.cols - 1}"]`
+    );
+    if (!first || !last) return;
+    const overflowRight = last.offsetLeft + last.offsetWidth - (container.scrollLeft + container.clientWidth);
+    if (overflowRight <= 0) return;
+    container.scrollLeft = Math.min(container.scrollLeft + overflowRight + 8, first.offsetLeft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on a newly selected block, not on every refresh that resizes it
+  }, [placedBlockId]);
 
   const startEdit = useCallback(
     (row: number, col: number, initialValue?: string) => {
@@ -216,21 +248,27 @@ export default function SpreadsheetGrid() {
                   return { width: w, minWidth: w, height: ROW_HEIGHT };
                 })()}
               >
-                <div className="flex items-center justify-center gap-1">
+                <div className="group flex items-center justify-center gap-1">
                   <span>{colToLetters(c)}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFilterPopover(e, c);
-                    }}
-                    title={t.grid.filterColumnTitle}
-                    className={clsx(
-                      "rounded p-0.5 hover:bg-zinc-300/50",
-                      columnFilters[c] ? "text-blue-600" : "text-zinc-400"
-                    )}
-                  >
-                    <Filter size={10} />
-                  </button>
+                  {(hasContent(c) || columnFilters[c]) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFilterPopover(e, c);
+                      }}
+                      title={t.grid.filterColumnTitle}
+                      className={clsx(
+                        // 14px of icon was a 14px target. The padding makes it 24px without
+                        // making the glyph any louder.
+                        "-m-1 rounded p-1.5 hover:bg-zinc-300/60",
+                        columnFilters[c]
+                          ? "text-emerald-700"
+                          : "text-zinc-500 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                      )}
+                    >
+                      <Filter size={11} />
+                    </button>
+                  )}
                 </div>
               </th>
             ))}
@@ -302,10 +340,11 @@ export default function SpreadsheetGrid() {
                       block && c === block.anchorCol && "border-l-2 border-l-emerald-200",
                       block && c === block.anchorCol + block.cols - 1 && "border-r-2 border-r-emerald-200",
                       block && r === block.anchorRow + block.rows - 1 && "border-b-2 border-b-emerald-200",
-                      // A template should read at a glance: its fixed structure recedes, the
-                      // cells someone is meant to fill in are the ones that catch the eye.
-                      locked && "bg-zinc-50/80 text-zinc-600",
-                      isField && "bg-amber-50/60 ring-1 ring-inset ring-amber-300",
+                      // A form reads the way a paper one does: the printed parts are flat and
+                      // grey, the blanks are white. Amber is kept for warnings alone — dressing
+                      // twenty ordinary input cells in it made a form look like twenty alerts.
+                      locked && "bg-zinc-100 text-zinc-500",
+                      isField && "bg-white ring-1 ring-inset ring-emerald-400",
                       isActive(r, c) && "ring-2 ring-inset ring-blue-500",
                       !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
                       dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
@@ -350,7 +389,7 @@ export default function SpreadsheetGrid() {
                     {editingHere && choices ? (
                       <select
                         autoFocus
-                        className="absolute inset-0 z-40 h-full w-full border-2 border-amber-500 bg-white px-1 text-sm outline-none"
+                        className="absolute inset-0 z-40 h-full w-full border-2 border-emerald-500 bg-white px-1 text-sm outline-none"
                         value={editing.value}
                         onChange={(e) => {
                           commitCell(r, c, e.target.value);

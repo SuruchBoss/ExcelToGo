@@ -38,7 +38,7 @@ export default function FormulaParamPanel() {
           <h2 className="text-sm font-semibold text-zinc-800">{def.name}</h2>
           <code className="text-xs text-zinc-500">{def.syntax}</code>
         </div>
-        <button onClick={onCancel} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+        <button onClick={onCancel} className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600">
           <X size={16} />
         </button>
       </div>
@@ -46,7 +46,7 @@ export default function FormulaParamPanel() {
       <p className="text-xs text-zinc-500">{def.description}</p>
 
       <div className="rounded-md bg-zinc-50 p-2 text-xs text-zinc-600">
-        {t.paramPanel.insertingAt} <span className="font-semibold text-blue-700">{anchorAddress}</span>
+        {t.paramPanel.insertingAt} <span className="font-semibold text-emerald-700">{anchorAddress}</span>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -60,7 +60,7 @@ export default function FormulaParamPanel() {
               <select
                 value={values[p.key] ?? p.defaultValue ?? ""}
                 onChange={(e) => onChange({ ...pending, values: { ...values, [p.key]: e.target.value } })}
-                className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm outline-none focus:border-emerald-500"
               >
                 {p.options.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -74,7 +74,7 @@ export default function FormulaParamPanel() {
                   value={values[p.key] ?? ""}
                   onChange={(e) => onChange({ ...pending, values: { ...values, [p.key]: e.target.value } })}
                   placeholder={p.placeholder}
-                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm outline-none focus:border-emerald-500"
                 />
                 {(p.type === "range" || p.type === "cell") && (
                   <button
@@ -96,7 +96,7 @@ export default function FormulaParamPanel() {
             )}
           </div>
         ))}
-        {def.params.length === 0 && <p className="text-xs text-zinc-400">{t.paramPanel.noParams}</p>}
+        {def.params.length === 0 && <p className="text-xs text-zinc-500">{t.paramPanel.noParams}</p>}
         {pending.pickingKey && (
           <p className="rounded bg-emerald-50 p-2 text-xs text-emerald-700">{t.paramPanel.pickingHint}</p>
         )}
@@ -121,7 +121,7 @@ export default function FormulaParamPanel() {
                 "rounded-md border px-2 py-1.5 text-xs font-medium",
                 opt.disabled && "cursor-not-allowed opacity-40",
                 pending.scope === opt.v && !opt.disabled
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                   : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
               )}
             >
@@ -132,7 +132,7 @@ export default function FormulaParamPanel() {
       </div>
 
       <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-400">{t.paramPanel.previewLabel}</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-500">{t.paramPanel.previewLabel}</p>
         <code className="text-sm text-zinc-800">{preview}</code>
       </div>
 
@@ -146,7 +146,7 @@ export default function FormulaParamPanel() {
         <button
           onClick={onInsert}
           disabled={missingRequired}
-          className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex-1 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {t.paramPanel.insert}
         </button>

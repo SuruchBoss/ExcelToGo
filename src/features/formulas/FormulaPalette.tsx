@@ -40,7 +40,7 @@ export default function FormulaPalette() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t.palette.searchPlaceholder}
-        className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500"
+        className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-500"
       />
       <div className="flex flex-wrap gap-1">
         {(["all", ...CATEGORY_KEYS] as const).map((cat) => (
@@ -49,7 +49,7 @@ export default function FormulaPalette() {
             onClick={() => setActiveCategory(cat)}
             className={clsx(
               "rounded-full px-2.5 py-1 text-xs font-medium",
-              activeCategory === cat ? "bg-blue-600 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              activeCategory === cat ? "bg-emerald-700 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
             )}
           >
             {cat === "all" ? t.palette.allCategory : t.categories[cat]}
@@ -67,7 +67,7 @@ export default function FormulaPalette() {
                 e.dataTransfer.effectAllowed = "copy";
               }}
               onClick={() => onPick(f)}
-              className="cursor-grab rounded-md border border-zinc-200 bg-white p-2.5 text-left shadow-sm transition hover:border-blue-400 hover:shadow active:cursor-grabbing"
+              className="cursor-grab rounded-md border border-zinc-200 bg-white p-2.5 text-left shadow-sm transition hover:border-emerald-400 hover:shadow active:cursor-grabbing"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-zinc-800">{f.name}</span>
@@ -76,10 +76,10 @@ export default function FormulaPalette() {
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-zinc-500">{f.description}</p>
-              <code className="mt-1 block truncate text-[11px] text-blue-600">{f.example}</code>
+              <code className="mt-1 block truncate text-[11px] text-emerald-600">{f.example}</code>
             </div>
           ))}
-          {filtered.length === 0 && <p className="p-4 text-center text-xs text-zinc-400">{t.palette.notFound}</p>}
+          {filtered.length === 0 && <p className="p-4 text-center text-xs text-zinc-500">{t.palette.notFound}</p>}
         </div>
       </div>
     </div>

@@ -31,7 +31,21 @@ export default function LiveBlockToolbar({ block, sourceName, refreshSec, contai
     if (!cell) return;
     const maxLeft = container.scrollLeft + container.clientWidth - el.offsetWidth - 8;
     el.style.left = `${Math.max(container.scrollLeft + 4, Math.min(cell.offsetLeft, maxLeft))}px`;
-    el.style.top = `${Math.max(0, cell.offsetTop - 34)}px`;
+
+    // Above the block by default, but a block starting on row 1 has no room there — the toolbar
+    // would sit on the sticky column headers and hide the letters the user navigates by. In that
+    // case it goes under the block instead.
+    const headerHeight = container.querySelector<HTMLElement>("thead")?.offsetHeight ?? 0;
+    const above = cell.offsetTop - el.offsetHeight - 4;
+    if (above >= headerHeight) {
+      el.style.top = `${above}px`;
+      return;
+    }
+    const lastCell = container.querySelector<HTMLElement>(
+      `td[data-row="${block.anchorRow + Math.max(1, block.rows) - 1}"][data-col="${block.anchorCol}"]`
+    );
+    const bottom = lastCell ? lastCell.offsetTop + lastCell.offsetHeight : cell.offsetTop + cell.offsetHeight;
+    el.style.top = `${bottom + 4}px`;
   });
 
   const size = block.kind === "table" ? t.data.blockTool.rows(Math.max(0, block.rows - 1)) : t.data.blockTool.singleValue;

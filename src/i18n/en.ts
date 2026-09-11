@@ -163,7 +163,7 @@ export const en: Messages = {
   template: {
     title: "Template from a file",
     fieldCount: (fields) => `${fields} fields to fill in`,
-    hint: "Fields you can fill in have an amber outline; everything else is the template's structure",
+    hint: "The white cells are yours to fill in; the grey ones are the template's structure",
     lockedCell: "This cell is part of the template's structure — click \"Unlock the sheet\" to change it",
     unlock: "Unlock the sheet",
     confirmUnlock: "Unlock this template? Every cell becomes editable like an ordinary sheet and the dropdowns are dropped (Ctrl+Z undoes it).",
@@ -172,6 +172,8 @@ export const en: Messages = {
     choosePlaceholder: "— choose —",
   },
   formatBar: {
+    hide: "Hide the formatting bar",
+    show: "Show the formatting bar",
     label: "Format:",
     boldTitle: "Bold",
     alignTitle: {

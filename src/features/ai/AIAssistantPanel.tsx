@@ -46,7 +46,7 @@ export default function AIAssistantPanel() {
     <div className="flex h-full flex-col gap-3">
       <div>
         <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
-          <Sparkles size={16} className="text-violet-600" /> {t.ai.title}
+          <Sparkles size={16} className="text-emerald-600" /> {t.ai.title}
         </h2>
         <p className="text-xs text-zinc-500">{t.ai.subtitle}</p>
       </div>
@@ -66,13 +66,13 @@ export default function AIAssistantPanel() {
         }}
         placeholder={t.ai.textareaPlaceholder}
         rows={3}
-        className="w-full resize-none rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+        className="w-full resize-none rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
       />
 
       <button
         onClick={() => ask(question)}
         disabled={loading || !question.trim()}
-        className="flex items-center justify-center gap-1.5 rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {t.ai.askButton}
@@ -96,15 +96,15 @@ export default function AIAssistantPanel() {
       {error && <p className="rounded bg-red-50 p-2 text-xs text-red-600">{error}</p>}
 
       {suggestion && (
-        <div className="mt-1 flex flex-col gap-2 rounded-md border border-violet-200 bg-violet-50 p-3">
-          <code className="text-sm font-semibold text-violet-900">{suggestion.formula}</code>
-          <p className="text-xs text-violet-700">{suggestion.explanation}</p>
+        <div className="mt-1 flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3">
+          <code className="text-sm font-semibold text-emerald-900">{suggestion.formula}</code>
+          <p className="text-xs text-emerald-700">{suggestion.explanation}</p>
           {suggestion.source === "heuristic" && (
-            <p className="text-[10px] text-violet-400">{t.ai.heuristicNote}</p>
+            <p className="text-[10px] text-emerald-400">{t.ai.heuristicNote}</p>
           )}
           <button
             onClick={() => onInsert(suggestion.formula)}
-            className="rounded-md bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700"
+            className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
           >
             {t.ai.insertAt(selectionAddress.split(":")[0])}
           </button>

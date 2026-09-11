@@ -40,7 +40,7 @@ export default function Landing() {
     <main className="flex-1 bg-white text-zinc-800">
       <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
-          <span className="flex items-center gap-2 text-lg font-bold text-blue-700">
+          <span className="flex items-center gap-2 text-lg font-bold text-emerald-700">
             <Table2 size={20} className="text-emerald-600" />
             {t.app.brand}
           </span>
@@ -48,7 +48,7 @@ export default function Landing() {
           <LanguageToggle />
           <Link
             href="/app"
-            className="rounded-md bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="rounded-md bg-emerald-700 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-emerald-800"
           >
             {t.landing.backToApp}
           </Link>
@@ -67,7 +67,7 @@ export default function Landing() {
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               href="/app"
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-[15px] font-semibold text-white shadow-sm hover:bg-emerald-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-3 text-[15px] font-semibold text-white shadow-sm hover:bg-emerald-800"
             >
               {t.landing.ctaPrimary} <ArrowRight size={17} />
             </Link>
@@ -161,7 +161,7 @@ export default function Landing() {
           <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-zinc-600">{t.landing.closingBody}</p>
           <Link
             href="/app"
-            className="mt-7 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-emerald-700"
+            className="mt-7 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-emerald-800"
           >
             {t.landing.ctaPrimary} <ArrowRight size={18} />
           </Link>

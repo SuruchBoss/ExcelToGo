@@ -162,6 +162,9 @@ export interface Messages {
     choosePlaceholder: string;
   };
   formatBar: {
+    /** Collapses the formatting row to give the grid back its vertical space. */
+    hide: string;
+    show: string;
     label: string;
     boldTitle: string;
     alignTitle: { left: string; center: string; right: string };

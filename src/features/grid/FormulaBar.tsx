@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { Paintbrush } from "lucide-react";
 import { selectActiveSelection, selectActiveSheet, useBoundCells, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 import { singleCellSelection } from "@/types/sheet-ui";
 import { useT } from "@/i18n";
@@ -20,6 +21,8 @@ export default function FormulaBar() {
   const setCellRaw = useSheetStore((s) => s.setCellRaw);
   const setSelection = useSheetStore((s) => s.setSelection);
   const address = useSelectionAddress();
+  const formatBarOpen = useSheetStore((s) => s.formatBarOpen);
+  const toggleFormatBar = useSheetStore((s) => s.toggleFormatBar);
 
   const raw = sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "";
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,8 +70,19 @@ export default function FormulaBar() {
         placeholder={t.formulaBar.placeholder}
         readOnly={bound}
         title={bound ? t.data.liveCellReadOnly : undefined}
-        className={`flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-blue-500 ${bound ? "bg-emerald-50 text-emerald-800" : ""}`}
+        className={`flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-emerald-500 ${bound ? "bg-emerald-50 text-emerald-800" : ""}`}
       />
+      {/* The formatting row's switch lives here because this bar is always present — putting it
+          on the row it hides would take the way back with it. */}
+      <button
+        onClick={toggleFormatBar}
+        title={formatBarOpen ? t.formatBar.hide : t.formatBar.show}
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
+          formatBarOpen ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-300 text-zinc-500 hover:bg-zinc-50"
+        }`}
+      >
+        <Paintbrush size={14} />
+      </button>
     </div>
   );
 }

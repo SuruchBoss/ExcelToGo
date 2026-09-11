@@ -16,18 +16,18 @@ export default function TemplateBar() {
   if (!template) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-      <span className="flex items-center gap-1.5 font-semibold">
-        <FileLock2 size={14} /> {t.template.title}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs text-zinc-700">
+      <span className="flex items-center gap-1.5 font-semibold text-zinc-800">
+        <FileLock2 size={14} className="text-emerald-700" /> {t.template.title}
       </span>
-      <span className="rounded bg-amber-200/70 px-1.5 py-0.5 font-medium">{t.template.fieldCount(inputCount(template))}</span>
-      <span className="text-amber-700">{t.template.hint}</span>
+      <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-800">{t.template.fieldCount(inputCount(template))}</span>
+      <span className="text-zinc-500">{t.template.hint}</span>
       <div className="flex-1" />
       <button
         onClick={() => {
           if (confirm(t.template.confirmUnlock)) unlockTemplate();
         }}
-        className="flex items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1 font-medium text-amber-900 hover:bg-amber-100"
+        className="flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-2.5 py-1 font-medium text-zinc-700 hover:bg-zinc-100"
       >
         <Unlock size={13} /> {t.template.unlock}
       </button>

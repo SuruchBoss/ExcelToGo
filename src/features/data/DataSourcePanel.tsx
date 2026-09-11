@@ -34,7 +34,7 @@ export default function DataSourcePanel() {
       </div>
 
       <div className="flex flex-col gap-2 overflow-y-auto pr-1">
-        {sources.length === 0 && <p className="p-4 text-center text-xs text-zinc-400">{t.data.empty}</p>}
+        {sources.length === 0 && <p className="p-4 text-center text-xs text-zinc-500">{t.data.empty}</p>}
         {sources.map((src) => (
           <SourceRow
             key={src.id}
@@ -53,9 +53,9 @@ export default function DataSourcePanel() {
       </button>
 
       <div className="mt-auto border-t border-zinc-100 pt-2.5">
-        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">{t.data.inSheet}</p>
+        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">{t.data.inSheet}</p>
         {blocks.length === 0 ? (
-          <p className="text-xs text-zinc-400">{t.data.inSheetEmpty}</p>
+          <p className="text-xs text-zinc-500">{t.data.inSheetEmpty}</p>
         ) : (
           <ul className="flex max-h-32 flex-col gap-1 overflow-y-auto">
             {blocks.map((b) => (
@@ -72,7 +72,7 @@ export default function DataSourcePanel() {
                 <button
                   onClick={() => removeLiveBlock(b.id)}
                   title={t.data.unlink}
-                  className="rounded p-0.5 text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                  className="rounded p-0.5 text-zinc-500 hover:bg-red-50 hover:text-red-600"
                 >
                   <X size={12} />
                 </button>

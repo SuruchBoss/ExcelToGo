@@ -30,7 +30,7 @@ export default function Toolbar() {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2">
       {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
-      <Link href="/" title={t.landing.home} className="mr-2 text-lg font-bold text-blue-700 hover:text-blue-800">
+      <Link href="/" title={t.landing.home} className="mr-2 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}
       </Link>
 
@@ -102,16 +102,16 @@ export default function Toolbar() {
 
       <div className="ml-auto flex items-center gap-2">
         {busy ? (
-          <span className="text-xs text-zinc-400">{busy}</span>
+          <span className="text-xs text-zinc-500">{busy}</span>
         ) : (
-          <span title={t.toolbar.autosaveTitle} className="flex items-center gap-1 text-xs text-zinc-400">
+          <span title={t.toolbar.autosaveTitle} className="flex items-center gap-1 text-xs text-zinc-500">
             <Save size={13} /> {t.toolbar.autosaveLabel}
           </span>
         )}
         <button
           onClick={() => toggleSidebar("palette")}
           className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-            paletteOpen ? "bg-blue-600 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            paletteOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
           <Sigma size={15} /> {t.toolbar.formulas}
@@ -119,7 +119,7 @@ export default function Toolbar() {
         <button
           onClick={() => toggleSidebar("ai")}
           className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-            aiOpen ? "bg-violet-600 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            aiOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
           <Sparkles size={15} /> {t.toolbar.askAi}
@@ -127,7 +127,7 @@ export default function Toolbar() {
         <button
           onClick={() => toggleSidebar("data")}
           className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-            dataOpen ? "bg-emerald-600 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
           <Database size={15} /> {t.toolbar.data}

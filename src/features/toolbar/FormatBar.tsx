@@ -14,17 +14,23 @@ export default function FormatBar() {
   const setTextColor = useSheetStore((s) => s.setTextColor);
   const setNumberFormat = useSheetStore((s) => s.setNumberFormat);
   const sortSelection = useSheetStore((s) => s.sortSelection);
+  // Three stacked bars ate a fifth of a 768px laptop screen before a single grid row appeared.
+  // Formatting is the least-used of the three, so the whole row folds away — hiding only its
+  // contents saved 14px and not one extra row, which is decoration rather than a fix.
+  const open = useSheetStore((s) => s.formatBarOpen);
+  if (!open) return null;
 
   return (
     <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-1.5">
-      <span className="text-xs font-medium text-zinc-400">{t.formatBar.label}</span>
+      <span className="text-xs font-medium text-zinc-500">{t.formatBar.label}</span>
+      <div className="flex items-center gap-2">
 
       <button
         onClick={toggleBold}
         title={t.formatBar.boldTitle}
         className={clsx(
           "flex h-7 w-7 items-center justify-center rounded-md border",
-          format.bold ? "border-blue-500 bg-blue-50 text-blue-700" : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+          format.bold ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
         )}
       >
         <Bold size={14} />
@@ -44,7 +50,7 @@ export default function FormatBar() {
             title={t.formatBar.alignTitle[v]}
             className={clsx(
               "flex h-7 w-7 items-center justify-center border-r border-zinc-300 last:border-r-0",
-              (format.align ?? "left") === v ? "bg-blue-50 text-blue-700" : "text-zinc-600 hover:bg-zinc-50"
+              (format.align ?? "left") === v ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50"
             )}
           >
             <Icon size={14} />
@@ -67,7 +73,7 @@ export default function FormatBar() {
       <select
         value={format.numberFormat ?? "general"}
         onChange={(e) => setNumberFormat(e.target.value as NumberFormat)}
-        className="h-7 rounded-md border border-zinc-300 px-1.5 text-xs text-zinc-700 outline-none focus:border-blue-500"
+        className="h-7 rounded-md border border-zinc-300 px-1.5 text-xs text-zinc-700 outline-none focus:border-emerald-500"
       >
         {Object.entries(t.numberFormats).map(([value, label]) => (
           <option key={value} value={value}>
@@ -92,6 +98,7 @@ export default function FormatBar() {
       >
         <ArrowDownZA size={14} />
       </button>
+      </div>
     </div>
   );
 }

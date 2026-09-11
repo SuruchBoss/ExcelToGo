@@ -60,13 +60,13 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
         <button
           onClick={() => setMenuOpen((o) => !o)}
           title={t.data.options}
-          className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+          className="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
         >
           <MoreVertical size={14} />
         </button>
       </div>
 
-      <p className="mt-0.5 text-[11px] text-zinc-400">
+      <p className="mt-0.5 text-[11px] text-zinc-500">
         {size}
         {table && (table.pageCount ?? 1) > 1 && ` · ${t.data.pages(table.pageCount ?? 1)}`}
         {table && ` · ${t.data.updatedAgo(ago)}`}
@@ -101,8 +101,8 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
         onDragStart={(e) => setLiveDragData(e, { sourceId: source.id, kind: "table" })}
         disabled={!table}
         className={clsx(
-          "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-[13px] font-semibold text-white",
-          table ? "hover:bg-emerald-700" : "cursor-not-allowed opacity-40"
+          "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-[13px] font-semibold text-white",
+          table ? "hover:bg-emerald-800" : "cursor-not-allowed opacity-40"
         )}
       >
         <Plus size={15} /> {t.data.use}

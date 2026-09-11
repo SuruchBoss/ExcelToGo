@@ -32,7 +32,7 @@ export default function SheetTabs() {
           className={clsx(
             "group flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm",
             tab.id === activeSheetId
-              ? "bg-white font-medium text-blue-700 shadow-sm"
+              ? "bg-white font-medium text-emerald-700 shadow-sm"
               : "text-zinc-600 hover:bg-zinc-100"
           )}
         >
@@ -47,7 +47,7 @@ export default function SheetTabs() {
                 if (e.key === "Enter") commitRename();
                 else if (e.key === "Escape") setRenaming(null);
               }}
-              className="w-24 rounded border border-blue-400 px-1 text-sm outline-none"
+              className="w-24 rounded border border-emerald-400 px-1 text-sm outline-none"
             />
           ) : (
             <span className="cursor-pointer select-none">{tab.name}</span>
