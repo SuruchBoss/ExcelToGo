@@ -124,21 +124,57 @@ const FORMULA_SPECS: FormulaSpec[] = [
     categoryKey: "math",
     syntax: "SUMIF(range, criteria, sum_range)",
     params: [req("range", "range"), req("criteria", "text"), req("sumRange", "range")],
-    build: (v) => `SUMIF(${v.range},${quoteIfNeeded(v.criteria)},${v.sumRange})`,
+    build: (v) => `SUMIF(${v.range},${quoteCriteria(v.criteria)},${v.sumRange})`,
   },
   {
     id: "COUNTIF",
     categoryKey: "stats",
     syntax: "COUNTIF(range, criteria)",
     params: [req("range", "range"), req("criteria", "text")],
-    build: (v) => `COUNTIF(${v.range},${quoteIfNeeded(v.criteria)})`,
+    build: (v) => `COUNTIF(${v.range},${quoteCriteria(v.criteria)})`,
   },
   {
     id: "AVERAGEIF",
     categoryKey: "stats",
     syntax: "AVERAGEIF(range, criteria, average_range)",
     params: [req("range", "range"), req("criteria", "text"), req("avgRange", "range")],
-    build: (v) => `AVERAGEIF(${v.range},${quoteIfNeeded(v.criteria)},${v.avgRange})`,
+    build: (v) => `AVERAGEIF(${v.range},${quoteCriteria(v.criteria)},${v.avgRange})`,
+  },
+  {
+    id: "SUMIFS",
+    categoryKey: "math",
+    syntax: "SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2])",
+    params: [
+      req("sumRange", "range"),
+      req("critRange1", "range"),
+      req("criteria1", "text"),
+      opt("critRange2", "range"),
+      opt("criteria2", "text"),
+    ],
+    // The second condition is dropped entirely when either half is blank: a criteria range with
+    // no criteria after it is a #VALUE!, not a formula the palette should be able to produce.
+    build: (v) => {
+      const second = v.critRange2?.trim() && v.criteria2?.trim() ? `,${v.critRange2},${quoteCriteria(v.criteria2)}` : "";
+      return `SUMIFS(${v.sumRange},${v.critRange1},${quoteCriteria(v.criteria1)}${second})`;
+    },
+  },
+  {
+    id: "MATCH",
+    categoryKey: "lookup",
+    syntax: "MATCH(lookup_value, range, [match_type])",
+    params: [
+      req("lookup", "cell"),
+      req("range", "range"),
+      { key: "matchType", type: "number", optional: true, defaultValue: "0", optionValues: ["0", "1", "-1"] },
+    ],
+    build: (v) => `MATCH(${v.lookup},${v.range},${v.matchType || "0"})`,
+  },
+  {
+    id: "INDEX",
+    categoryKey: "lookup",
+    syntax: "INDEX(range, row_num, [col_num])",
+    params: [req("range", "range"), req("rowNum", "number"), opt("colNum", "number")],
+    build: (v) => `INDEX(${v.range},${v.rowNum}${v.colNum?.trim() ? `,${v.colNum}` : ""})`,
   },
   {
     id: "VLOOKUP",
@@ -237,6 +273,29 @@ const FORMULA_SPECS: FormulaSpec[] = [
     build: () => `NOW()`,
   },
 ];
+
+/**
+ * Quotes a *criteria* value — the thing a SUMIF/SUMIFS-style function matches against.
+ *
+ * Two traps live here, both of which produced a broken formula from a perfectly reasonable entry:
+ *
+ * - A bare token shaped like a cell reference ("Q2", "A1", "B12") is a quarter, a grade or a
+ *   product code far more often than it is a reference. Passing it through made the formula match
+ *   an empty cell and quietly total zero.
+ * - A comparison has to be quoted to be a criteria at all: `SUMIF(A1:A9,>100,B1:B9)` is not
+ *   valid syntax, in this engine or in Excel. `">100"` is.
+ *
+ * A criteria that really should read from a cell is written Excel's own way, by concatenating —
+ * `">"&F1`, or `""&F1` for the value alone — so anything containing `&` is left untouched.
+ */
+function quoteCriteria(text: string | undefined): string {
+  const t = (text ?? "").trim();
+  if (t === "") return '""';
+  if (/^".*"$/.test(t)) return t;
+  if (/^-?\d+(\.\d+)?$/.test(t)) return t;
+  if (t.includes("&")) return t;
+  return `"${t.replace(/"/g, '""')}"`;
+}
 
 function quoteIfNeeded(text: string | undefined): string {
   const t = (text ?? "").trim();

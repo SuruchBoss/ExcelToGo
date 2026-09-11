@@ -66,12 +66,35 @@ function matchCriteria(value: FormulaValue, criteria: FormulaValue): boolean {
   return toDisplayString(value).toLowerCase() === critStr.toLowerCase();
 }
 
+/**
+ * Flattens a range that is one row or one column into a list, keeping its order.
+ *
+ * MATCH is defined over a one-dimensional range; a block like A1:C5 has no single "position N"
+ * to return, so it is refused rather than being silently flattened row-major into an answer that
+ * would look plausible and mean nothing.
+ */
+function toVector(rows: FormulaValue[][]): FormulaValue[] | null {
+  if (rows.length === 0) return null;
+  if (rows.length === 1) return [...rows[0]];
+  if (rows.every((r) => r.length === 1)) return rows.map((r) => r[0]);
+  return null;
+}
+
+function sameShape(a: FormulaValue[][], b: FormulaValue[][]): boolean {
+  return a.length === b.length && a.every((row, i) => row.length === b[i].length);
+}
+
 function requireRange(arg: EvalResult): FormulaValue[][] {
   if (arg.kind === "range") return arg.rows;
   return [[arg.value]];
 }
 
-type FnImpl = (args: EvalResult[]) => FormulaValue;
+/**
+ * Most functions answer with a single value. INDEX is the exception: `INDEX(A1:C5, 0, 2)` means
+ * "all of column 2", which only means something if a function can hand a range back for SUM or
+ * another function to consume. So an implementation may return either.
+ */
+type FnImpl = (args: EvalResult[]) => FormulaValue | EvalResult;
 
 export const FUNCTIONS: Record<string, FnImpl> = {
   SUM: (args) => {
@@ -332,7 +355,146 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     }
     return best ? best[colIndex - 1] ?? ERR_NA : ERR_NA;
   },
+  /**
+   * MATCH(lookup, range, [match_type]) — the position of a value within a one-dimensional range.
+   *
+   * Paired with INDEX this replaces VLOOKUP without VLOOKUP's two weaknesses: the lookup column
+   * doesn't have to be the leftmost one, and inserting a column doesn't silently break a hard-coded
+   * column number.
+   */
+  MATCH: (args) => {
+    const lookup = scalarOf(args[0]);
+    if (isError(lookup)) return lookup;
+    const vector = toVector(requireRange(args[1]));
+    if (!vector) return ERR_NA;
+    const typeArg = args[2] ? toNumber(scalarOf(args[2])) : 1;
+    if (isError(typeArg)) return typeArg;
+    const matchType = typeArg > 0 ? 1 : typeArg < 0 ? -1 : 0;
+
+    const lookupNum = toNumber(lookup);
+    const lookupIsNum = !isError(lookupNum);
+    const lookupText = toDisplayString(lookup).toLowerCase();
+
+    if (matchType === 0) {
+      for (let i = 0; i < vector.length; i++) {
+        const v = vector[i];
+        if (isError(v)) continue;
+        if (lookupIsNum && typeof v !== "string") {
+          const n = toNumber(v);
+          if (!isError(n) && n === lookupNum) return i + 1;
+          continue;
+        }
+        if (toDisplayString(v).toLowerCase() === lookupText) return i + 1;
+      }
+      return ERR_NA;
+    }
+
+    // Approximate match walks the range and keeps the last value on the right side of the
+    // lookup. Excel assumes the range is sorted and gives a wrong answer when it isn't; doing
+    // the same here would be a silent wrong number, so the walk stops at the first value that
+    // breaks the expected order.
+    let best: number | null = null;
+    for (let i = 0; i < vector.length; i++) {
+      const v = vector[i];
+      if (isBlank(v) || isError(v)) continue;
+      let cmp: number;
+      if (lookupIsNum && typeof v !== "string") {
+        const n = toNumber(v);
+        if (isError(n)) continue;
+        cmp = n === lookupNum ? 0 : n < lookupNum ? -1 : 1;
+      } else {
+        const text = toDisplayString(v).toLowerCase();
+        cmp = text === lookupText ? 0 : text < lookupText ? -1 : 1;
+      }
+      if (cmp === 0) return i + 1;
+      if (matchType === 1 && cmp < 0) best = i + 1;
+      if (matchType === 1 && cmp > 0) break;
+      if (matchType === -1 && cmp > 0) best = i + 1;
+      if (matchType === -1 && cmp < 0) break;
+    }
+    return best ?? ERR_NA;
+  },
+  /**
+   * INDEX(range, row_num, [col_num]) — the value at a position inside a range.
+   *
+   * A row or column number of 0 means "the whole of it", which is why this may return a range.
+   * For a range that is a single row or column, one index is enough and it counts along that
+   * line, matching how people actually write `INDEX(A1:A20, MATCH(...))`.
+   */
+  INDEX: (args) => {
+    const rows = requireRange(args[0]);
+    if (rows.length === 0) return ERR_REF_LOCAL;
+    const height = rows.length;
+    const width = Math.max(...rows.map((r) => r.length));
+
+    const firstArg = args[1] ? toNumber(scalarOf(args[1])) : 0;
+    if (isError(firstArg)) return firstArg;
+    const secondArg = args[2] ? toNumber(scalarOf(args[2])) : null;
+    if (secondArg !== null && isError(secondArg)) return secondArg;
+
+    let rowNum = Math.trunc(firstArg);
+    let colNum = secondArg === null ? 0 : Math.trunc(secondArg);
+    // One index into a single-row range counts across it, not down it.
+    if (secondArg === null && height === 1 && width > 1) {
+      colNum = rowNum;
+      rowNum = 1;
+    }
+    if (rowNum < 0 || colNum < 0 || rowNum > height || colNum > width) return ERR_REF_LOCAL;
+
+    if (rowNum === 0 && colNum === 0) return { kind: "range", rows, startRow: 0, startCol: 0 };
+    if (rowNum === 0) {
+      const column = rows.map((r) => [r[colNum - 1] ?? null]);
+      return { kind: "range", rows: column, startRow: 0, startCol: 0 };
+    }
+    if (colNum === 0) return { kind: "range", rows: [[...(rows[rowNum - 1] ?? [])]], startRow: 0, startCol: 0 };
+    return rows[rowNum - 1]?.[colNum - 1] ?? null;
+  },
+  /**
+   * SUMIFS(sum_range, criteria_range1, criteria1, …) — sums the cells meeting every condition.
+   *
+   * Note the argument order is not SUMIF's: the range being summed comes first here and last
+   * there. That is Excel's own inconsistency, kept because a formula copied out of a real
+   * workbook has to behave the same way here.
+   */
+  SUMIFS: (args) => {
+    const target = requireRange(args[0]);
+    const pairs = criteriaPairs(args, target);
+    if (isError(pairs)) return pairs;
+    let total = 0;
+    for (let r = 0; r < target.length; r++) {
+      for (let c = 0; c < target[r].length; c++) {
+        if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
+        const n = toNumber(target[r][c] ?? 0);
+        if (!isError(n)) total += n;
+      }
+    }
+    return total;
+  },
 };
+
+/**
+ * Reads the (range, criteria) argument pairs of a *IFS function and checks each range lines up
+ * with the range being aggregated.
+ *
+ * Excel refuses mismatched shapes with #VALUE! rather than lining them up from the top-left,
+ * because a criteria range one row short would otherwise test the wrong row for every cell after
+ * it — a wrong total that looks entirely reasonable.
+ */
+function criteriaPairs(
+  args: EvalResult[],
+  target: FormulaValue[][]
+): { range: FormulaValue[][]; criteria: FormulaValue }[] | FormulaError {
+  if (args.length < 3 || (args.length - 1) % 2 !== 0) return ERR_VALUE;
+  const pairs: { range: FormulaValue[][]; criteria: FormulaValue }[] = [];
+  for (let i = 1; i < args.length; i += 2) {
+    const range = requireRange(args[i]);
+    if (!sameShape(range, target)) return ERR_VALUE;
+    const criteria = scalarOf(args[i + 1]);
+    if (isError(criteria)) return criteria;
+    pairs.push({ range, criteria });
+  }
+  return pairs;
+}
 
 const ERR_REF_LOCAL = new FormulaError("#REF!");
 

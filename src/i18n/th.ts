@@ -440,6 +440,45 @@ export const th: Messages = {
         avgRange: { label: "ช่วงที่ต้องการเฉลี่ย" },
       },
     },
+    SUMIFS: {
+      name: "SUMIFS - รวมแบบหลายเงื่อนไข",
+      description: "บวกเฉพาะแถวที่เข้าเงื่อนไขครบทุกข้อ เช่น สาขากรุงเทพ และไตรมาส Q2",
+      example: '=SUMIFS(C2:C100,A2:A100,"กรุงเทพ",B2:B100,"Q2")',
+      params: {
+        sumRange: { label: "ช่วงตัวเลขที่จะบวก", placeholder: "เช่น C2:C100" },
+        critRange1: { label: "ช่วงเงื่อนไขที่ 1", placeholder: "เช่น A2:A100" },
+        criteria1: { label: "เงื่อนไขที่ 1", placeholder: 'เช่น กรุงเทพ หรือ ">100"' },
+        critRange2: { label: "ช่วงเงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น B2:B100" },
+        criteria2: { label: "เงื่อนไขที่ 2 (ไม่บังคับ)", placeholder: "เช่น Q2" },
+      },
+    },
+    MATCH: {
+      name: "MATCH - หาว่าอยู่ลำดับที่เท่าไร",
+      description: "บอกว่าค่าที่ค้นหาอยู่ตำแหน่งที่เท่าไรในช่วง (นับจาก 1) มักใช้คู่กับ INDEX",
+      example: '=MATCH("ภูเก็ต",A2:A100,0)',
+      params: {
+        lookup: { label: "ค่าที่ต้องการค้นหา", placeholder: "เช่น A2 หรือ ภูเก็ต" },
+        range: { label: "ช่วงที่จะค้นหา (แถวเดียวหรือคอลัมน์เดียว)", placeholder: "เช่น A2:A100" },
+        matchType: { label: "รูปแบบการค้นหา" },
+      },
+      options: {
+        matchType: {
+          "0": "ตรงทั้งหมด (แนะนำ)",
+          "1": "ใกล้เคียง — ข้อมูลเรียงน้อยไปมาก",
+          "-1": "ใกล้เคียง — ข้อมูลเรียงมากไปน้อย",
+        },
+      },
+    },
+    INDEX: {
+      name: "INDEX - ดึงค่าตามตำแหน่ง",
+      description: "ดึงค่าจากช่วงตามลำดับแถว/คอลัมน์ที่ระบุ — คู่กับ MATCH ใช้แทน VLOOKUP ได้ และค้นย้อนทางซ้ายได้ด้วย",
+      example: '=INDEX(D2:D100,MATCH("ภูเก็ต",A2:A100,0))',
+      params: {
+        range: { label: "ช่วงข้อมูล", placeholder: "เช่น D2:D100" },
+        rowNum: { label: "ลำดับแถว (ใส่ 0 = ทั้งคอลัมน์)", placeholder: "เช่น 3" },
+        colNum: { label: "ลำดับคอลัมน์ (ไม่บังคับ, 0 = ทั้งแถว)", placeholder: "เช่น 2" },
+      },
+    },
     VLOOKUP: {
       name: "VLOOKUP - ค้นหาแนวตั้ง",
       description: "ค้นหาค่าจากคอลัมน์แรกของตาราง แล้วดึงค่าจากคอลัมน์ที่ต้องการในแถวเดียวกัน",

@@ -17,7 +17,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-246%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-283%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -30,7 +30,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 246 automated tests.
+(Thai/English), 283 automated tests.
 
 ---
 
@@ -173,7 +173,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 246 เคสด้วย Vitest |
+| `npm test` | รัน unit test 283 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
@@ -509,7 +509,7 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (246 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (283 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -755,7 +755,7 @@ flowchart LR
     Raw["สูตรดิบ<br/>เช่น =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>แยกเป็น token"]
     Tok --> Par["parser.ts<br/>สร้าง AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>เดิน AST คำนวณผล"]
-    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>42 ฟังก์ชัน"]
+    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>45 ฟังก์ชัน"]
     Eval -->|"getCell(row, col)"| Sheet[("ค่า/สูตรของ<br/>เซลล์อื่นในชีต")]
     Sheet -.-> Eval
     Eval --> Result["ค่าตัวเลข/ข้อความ<br/>หรือ FormulaError"]
@@ -783,17 +783,46 @@ flowchart LR
 
 ### ฟังก์ชันที่รองรับ
 
-แถบสูตรที่ลากวางได้แสดงแค่ **25 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **42 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
+แถบสูตรที่ลากวางได้แสดงแค่ **28 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **45 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
 ในเซลล์ได้เลยแม้ไม่มีการ์ดในแถบสูตร (เช่น `=MID(...)`, `=YEAR(...)`, `=PROPER(...)`):
 
-| หมวดหมู่ | อยู่ในแถบสูตร (25) | พิมพ์ตรงในเซลล์ได้เพิ่ม |
+| หมวดหมู่ | อยู่ในแถบสูตร (28) | พิมพ์ตรงในเซลล์ได้เพิ่ม |
 |---|---|---|
-| คณิตศาสตร์ | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
+| คณิตศาสตร์ | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
 | สถิติ | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` | `COUNTBLANK` |
 | ตรรกะ | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
 | ข้อความ | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` |
 | วันที่ | `TODAY` `NOW` | `DAY` `MONTH` `YEAR` |
-| ค้นหา | `VLOOKUP` | — |
+| ค้นหา | `VLOOKUP` `INDEX` `MATCH` | — |
+
+**`INDEX` + `MATCH` แทน `VLOOKUP` ได้ และทำสิ่งที่ VLOOKUP ทำไม่ได้** — `VLOOKUP` ค้นได้เฉพาะจากคอลัมน์ซ้ายสุด
+ของตาราง และผูกกับ "ลำดับคอลัมน์ที่เท่าไร" ซึ่งพังเงียบๆ เมื่อมีคนแทรกคอลัมน์:
+
+```
+=INDEX(D2:D100,MATCH("ภูเก็ต",A2:A100,0))   ดึงค่าคอลัมน์ D โดยค้นจากคอลัมน์ A
+=INDEX(A2:A100,MATCH(150,C2:C100,0))        ค้นจากคอลัมน์ C แล้วย้อนไปเอาคอลัมน์ A — VLOOKUP ทำไม่ได้
+```
+
+`INDEX` ใส่ 0 ในช่องลำดับแถวจะได้ทั้งคอลัมน์ (หรือ 0 ในช่องคอลัมน์ = ทั้งแถว) ส่งต่อให้ฟังก์ชันอื่นได้
+เช่น `=SUM(INDEX(A1:D6,0,3))`
+
+**`SUMIFS` สลับลำดับพารามิเตอร์กับ `SUMIF`** — `SUMIF` เอาช่วงที่จะบวกไว้*ท้าย* แต่ `SUMIFS` เอาไว้*หน้า*สุด
+(เป็นความไม่สม่ำเสมอของ Excel เอง ที่ทำตามเพราะสูตรที่ก๊อปมาจากไฟล์จริงต้องทำงานเหมือนกัน):
+
+```
+=SUMIF(A2:A100,"กรุงเทพ",C2:C100)                    เงื่อนไขเดียว — ช่วงที่บวกอยู่ท้าย
+=SUMIFS(C2:C100,A2:A100,"กรุงเทพ",B2:B100,"Q2")     หลายเงื่อนไข — ช่วงที่บวกอยู่หน้า
+```
+
+ช่วงเงื่อนไขต้องมีขนาดเท่ากับช่วงที่บวก ไม่งั้นได้ `#VALUE!` — ถ้าไล่จับคู่จากมุมซ้ายบนแทน จะได้ยอดรวมที่
+ดูสมเหตุสมผลแต่ผิด เพราะทุกแถวหลังจากช่วงที่สั้นกว่าจะไปเทียบผิดแถว
+
+**เงื่อนไขที่พิมพ์ในแถบสูตรจะถูกใส่เครื่องหมายคำพูดให้อัตโนมัติ** — พิมพ์ `Q2` ได้ `"Q2"` (ไม่ใช่การอ้างอิงเซลล์ Q2
+ที่ว่างเปล่า) และพิมพ์ `>100` ได้ `">100"` ซึ่งเป็นรูปแบบเดียวที่ใช้ได้จริง ถ้าต้องการให้เงื่อนไขมาจากเซลล์
+ให้เขียนแบบ Excel คือต่อสตริง เช่น `">"&F1` หรือ `""&F1`
+
+**ยังไม่รองรับ:** wildcard (`*`, `?`) ในเงื่อนไข · `COUNTIFS`/`AVERAGEIFS` (ใช้ `SUMIFS` แทนได้บางกรณี) ·
+`MATCH` ต้องเป็นช่วงแถวเดียวหรือคอลัมน์เดียว ถ้าส่งช่วงสองมิติจะได้ `#N/A` แทนการเดาตำแหน่งให้
 
 รองรับตัวดำเนินการคำนวณ/เปรียบเทียบ/ต่อข้อความครบ (`+ - * / ^ = <> < > <= >= &`) และแจ้ง error แบบ Excel:
 `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`
@@ -836,7 +865,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 246 เคส ใน 16 ไฟล์ ด้วย Vitest
+npm test      # 283 เคส ใน 17 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -848,7 +877,8 @@ npm test      # 246 เคส ใน 16 ไฟล์ ด้วย Vitest
 | `tokenizer.test.ts` | 8 | literal, cell/range ref (รวม absolute `$`), operator, การ escape string, token `#REF!` |
 | `parser.test.ts` | 14 | ลำดับความสำคัญ/associativity ของตัวดำเนินการ, range, function call, syntax error |
 | `evaluator.test.ts` | 10 | เลขคณิต, เปรียบเทียบ, ต่อข้อความ, อ่านค่าเซลล์/ช่วง, การกระจาย error |
-| `functions.test.ts` | 16 | ฟังก์ชันกลุ่มรวม/ปัดเศษ/ตรรกะ/ข้อความ/ค้นหา ทั้งไลบรารี (SUM, VLOOKUP, SUMIF, IFERROR ฯลฯ) |
+| `functions.test.ts` | 41 | ฟังก์ชันกลุ่มรวม/ปัดเศษ/ตรรกะ/ข้อความ/ค้นหา ทั้งไลบรารี รวม INDEX/MATCH (ค้นย้อนซ้าย, ทั้งแถว/คอลัมน์, ข้อมูลไม่เรียง) และ SUMIFS (หลายเงื่อนไข, ช่วงไม่เท่ากัน) |
+| `formulaCatalog.test.ts` | 12 | สูตรที่แถบลากวางสร้างออกมาจริง: การใส่เครื่องหมายคำพูดให้เงื่อนไข, เงื่อนไขที่ 2 ที่กรอกไม่ครบ, และทุกสูตรมีคำแปลครบสองภาษา |
 | `shift.test.ts` | 8 | การเลื่อนอ้างอิงแบบ relative ตอนคัดลอก/วาง, absolute ไม่เลื่อน |
 | `structuralShift.test.ts` | 15 | การปรับอ้างอิงตอนแทรก/ลบแถว-คอลัมน์ รวม `#REF!` และการขยาย/หดของช่วง |
 | `sheetSort.test.ts` | 7 | ฮิวริสติกตรวจจับขอบเขต+หัวตาราง และการเรียงลำดับ (รวมกรณีค่าว่าง, จำกัดคอลัมน์ที่ย้าย) |
@@ -888,7 +918,9 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
 - [x] **จัดรูปแบบตามเงื่อนไข (conditional formatting)** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): เทียบค่า/ข้อความ/
       อันดับ/ไล่สี/แถบยาว เขียนและอ่านกลับจาก `.xlsx` ได้ ยังเหลือ: icon set และกฎแบบสูตรเอง
 - [ ] **คอมเมนต์ในเซลล์**
-- [ ] **ฟังก์ชันเพิ่มเติม** เช่น `INDEX`/`MATCH`, `SUMIFS`/`COUNTIFS` (หลายเงื่อนไข), ฟังก์ชันวันที่แบบคำนวณ
+- [x] **`INDEX`/`MATCH` และ `SUMIFS`** — ทำแล้ว (ดูหัวข้อ ฟังก์ชันที่รองรับ): ค้นหาย้อนทางซ้ายได้
+      และรวมแบบหลายเงื่อนไข ยังเหลือ: `COUNTIFS`/`AVERAGEIFS` และ wildcard (`*`, `?`) ในเงื่อนไข
+- [ ] **ฟังก์ชันเพิ่มเติม** เช่น `XLOOKUP`, `COUNTIFS`/`AVERAGEIFS`, ฟังก์ชันวันที่แบบคำนวณ
   ระยะห่าง (`DATEDIF` ฯลฯ)
 - [ ] **รองรับมือถือ/แท็บเล็ต** — ตอนนี้ออกแบบมาสำหรับหน้าจอคอมพิวเตอร์เป็นหลัก ยังไม่ได้ปรับ layout/touch
   สำหรับจอเล็ก

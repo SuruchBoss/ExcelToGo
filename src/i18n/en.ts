@@ -440,6 +440,45 @@ export const en: Messages = {
         avgRange: { label: "Range to average" },
       },
     },
+    SUMIFS: {
+      name: "SUMIFS - sum on several conditions",
+      description: "Adds up only the rows that meet every condition — e.g. the Bangkok branch AND Q2",
+      example: '=SUMIFS(C2:C100,A2:A100,"Bangkok",B2:B100,"Q2")',
+      params: {
+        sumRange: { label: "Range of numbers to add", placeholder: "e.g. C2:C100" },
+        critRange1: { label: "First condition's range", placeholder: "e.g. A2:A100" },
+        criteria1: { label: "First condition", placeholder: 'e.g. Bangkok or ">100"' },
+        critRange2: { label: "Second condition's range (optional)", placeholder: "e.g. B2:B100" },
+        criteria2: { label: "Second condition (optional)", placeholder: "e.g. Q2" },
+      },
+    },
+    MATCH: {
+      name: "MATCH - find the position",
+      description: "Returns where a value sits in a range, counting from 1. Usually paired with INDEX",
+      example: '=MATCH("Phuket",A2:A100,0)',
+      params: {
+        lookup: { label: "Value to look for", placeholder: "e.g. A2 or Phuket" },
+        range: { label: "Range to search (one row or one column)", placeholder: "e.g. A2:A100" },
+        matchType: { label: "Match type" },
+      },
+      options: {
+        matchType: {
+          "0": "Exact match (recommended)",
+          "1": "Approximate — data sorted ascending",
+          "-1": "Approximate — data sorted descending",
+        },
+      },
+    },
+    INDEX: {
+      name: "INDEX - value at a position",
+      description: "Reads a value out of a range by row/column number. With MATCH it replaces VLOOKUP, and it can look leftwards too",
+      example: '=INDEX(D2:D100,MATCH("Phuket",A2:A100,0))',
+      params: {
+        range: { label: "Range of data", placeholder: "e.g. D2:D100" },
+        rowNum: { label: "Row number (0 = the whole column)", placeholder: "e.g. 3" },
+        colNum: { label: "Column number (optional, 0 = the whole row)", placeholder: "e.g. 2" },
+      },
+    },
     VLOOKUP: {
       name: "VLOOKUP - Vertical lookup",
       description: "Looks up a value in the table's first column, then returns a value from the matching row",

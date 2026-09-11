@@ -44,7 +44,9 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
       if (!fn) return scalar(ERR_NAME);
       const args = node.args.map((a) => evaluate(a, ctx));
       try {
-        return scalar(fn(args));
+        const out = fn(args);
+        // INDEX can answer with a whole row or column; everything else answers with one value.
+        return typeof out === "object" && out !== null && "kind" in out ? out : scalar(out);
       } catch {
         return scalar(ERR_VALUE);
       }
