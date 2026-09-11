@@ -10,13 +10,10 @@
  * back the other way would be a cycle. Evaluation takes the computed values it needs instead.
  */
 import { FormulaValue } from "./formulaEngine/types";
+import { SheetRange, shiftRange } from "./sheetRange";
 
-export interface CfRange {
-  startRow: number;
-  startCol: number;
-  endRow: number;
-  endCol: number;
-}
+/** A conditional rule covers a rectangle like anything else that pins itself to the sheet. */
+export type CfRange = SheetRange;
 
 export type CfComparison = "gt" | "lt" | "gte" | "lte" | "eq" | "ne" | "between";
 
@@ -246,26 +243,8 @@ export function shiftConditionalRules(
 
   const out: CfRule[] = [];
   for (const rule of rules) {
-    const start = axis === "row" ? rule.range.startRow : rule.range.startCol;
-    const end = axis === "row" ? rule.range.endRow : rule.range.endCol;
-
-    let nextStart = start;
-    let nextEnd = end;
-    if (delta === 1) {
-      if (start >= index) nextStart = start + 1;
-      if (end >= index) nextEnd = end + 1;
-    } else {
-      if (start > index) nextStart = start - 1;
-      if (end >= index) nextEnd = end - 1;
-    }
-    // Only when the range has no lines left at all does the rule cease to mean anything.
-    if (nextEnd < nextStart) continue;
-
-    const range: CfRange =
-      axis === "row"
-        ? { ...rule.range, startRow: nextStart, endRow: nextEnd }
-        : { ...rule.range, startCol: nextStart, endCol: nextEnd };
-    out.push({ ...rule, range });
+    const range = shiftRange(rule.range, axis, index, delta);
+    if (range) out.push({ ...rule, range });
   }
   return out.length > 0 ? out : undefined;
 }

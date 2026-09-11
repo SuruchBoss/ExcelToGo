@@ -1,5 +1,6 @@
 import { NumberFormat } from "@/lib/cellFormat";
 import { CfComparison, CfTest } from "@/lib/conditionalFormat";
+import { ChartKind } from "@/lib/charts";
 
 export type Locale = "th" | "en";
 
@@ -167,6 +168,19 @@ export interface Messages {
     unlocked: string;
     structureLocked: string;
     choosePlaceholder: string;
+  };
+  charts: {
+    /** Sidebar panel that draws charts from a range of the sheet. */
+    title: string;
+    subtitle: string;
+    openTitle: string;
+    fromRange: (range: string) => string;
+    rangeHint: string;
+    kinds: Record<ChartKind, string>;
+    count: (n: number) => string;
+    empty: string;
+    remove: string;
+    noNumbers: string;
   };
   conditionalFormat: {
     /** Sidebar panel where value-driven styling rules are written and listed. */

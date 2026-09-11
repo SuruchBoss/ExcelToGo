@@ -12,6 +12,8 @@ import {
   CfStyle,
   CfRule,
   CfTest,
+  ChartKind,
+  ChartSpec,
   clearRange,
   cloneSheet,
   ClipboardBlock,
@@ -44,7 +46,7 @@ import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
-export type SidebarMode = "palette" | "ai" | "data" | "cf" | "none";
+export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "none";
 export type { ApplyScope };
 
 export interface PendingFormula {
@@ -144,7 +146,7 @@ interface SheetState {
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   toggleFormatBar: () => void;
-  toggleSidebar: (mode: "palette" | "ai" | "data" | "cf") => void;
+  toggleSidebar: (mode: "palette" | "ai" | "data" | "cf" | "chart") => void;
 
   /** Drops a live block at the active sheet's selection anchor and fills it right away if the
    *  source's data is already cached. */
@@ -169,6 +171,10 @@ interface SheetState {
   setColumnFilter: (col: number, values: string[]) => void;
   clearColumnFilter: (col: number) => void;
   clearAllFilters: () => void;
+
+  addChart: (kind: ChartKind) => void;
+  removeChart: (id: string) => void;
+  setChartKind: (id: string, kind: ChartKind) => void;
 
   addConditionalRule: (test: CfTest, style?: CfStyle) => void;
   removeConditionalRule: (id: string) => void;
@@ -477,6 +483,40 @@ export const useSheetStore = create<SheetState>()(
 
         setAlign: (align) =>
           set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { align })) })),
+
+        // A chart reads whatever is selected when it's made, like Excel's "insert chart".
+        addChart: (kind) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const chart: ChartSpec = {
+                id: `chart-${Date.now().toString(36)}-${idCounter++}`,
+                kind,
+                range: {
+                  startRow: selection.startRow,
+                  startCol: selection.startCol,
+                  endRow: selection.endRow,
+                  endCol: selection.endCol,
+                },
+              };
+              return { ...cloneSheet(sheet), charts: [...(sheet.charts ?? []), chart] };
+            }),
+          })),
+
+        removeChart: (id) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet) => {
+              const kept = (sheet.charts ?? []).filter((c) => c.id !== id);
+              return { ...cloneSheet(sheet), charts: kept.length > 0 ? kept : undefined };
+            }),
+          })),
+
+        setChartKind: (id, kind) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet) => ({
+              ...cloneSheet(sheet),
+              charts: (sheet.charts ?? []).map((c) => (c.id === id ? { ...c, kind } : c)),
+            })),
+          })),
 
         // A rule is written for whatever is selected when it's created, the way Excel's ribbon
         // works — the selection is the question the user is already looking at.
