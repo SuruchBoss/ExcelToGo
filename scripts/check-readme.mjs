@@ -11,8 +11,11 @@
  */
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+// Not `import.meta.dirname`: that only exists from Node 20.11, and package.json declares 20.9 as the
+// floor. CI runs the floor, which is how the difference surfaced.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const READMES = ["README.md", "README.en.md"];
 const problems = [];
 const notes = [];

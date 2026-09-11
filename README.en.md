@@ -885,6 +885,10 @@ full rule lives in `AGENTS.md`.
 across **Node 20.9 and 22** — 20.9 being Next 16's floor, so the claim is tested rather than asserted. They run
 as separate steps so the run summary names the gate that failed instead of showing one opaque red cross.
 
+Testing the actual floor paid for itself on the first run: `check:readme` passed on 22 and failed on 20.9,
+because the script used `import.meta.dirname`, which only exists from Node 20.11. On a machine matching what
+this README asks for, that script could not run at all.
+
 ---
 
 ## 🔭 What's next
