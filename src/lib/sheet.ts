@@ -7,6 +7,7 @@ import { shiftFormulaRefs } from "./formulaEngine/shift";
 import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
 import { CellFormat, formatNumberForDisplay } from "./cellFormat";
 import { SheetTemplate } from "./sheetTemplate";
+import { MergeRange, shiftMerges } from "./sheetMerges";
 
 export const DEFAULT_ROWS = 30;
 export const DEFAULT_COLS = 10;
@@ -20,6 +21,10 @@ export interface SheetModel {
   /** Per-column pixel widths carried over from an imported file. Sparse; a missing entry uses the
    *  grid's default width. */
   colWidths?: (number | undefined)[];
+  /** Per-row pixel heights carried over from an imported file. Sparse, like `colWidths`. */
+  rowHeights?: (number | undefined)[];
+  /** Merged cell ranges from an imported file. See sheetMerges.ts. */
+  merges?: MergeRange[];
   /** Present only while an imported template's sheet protection is in force. See sheetTemplate.ts. */
   template?: SheetTemplate;
 }
@@ -39,6 +44,7 @@ export function cloneSheet(sheet: SheetModel): SheetModel {
     cells: sheet.cells.map((row) => [...row]),
     formats: sheet.formats.map((row) => [...row]),
     colWidths: sheet.colWidths ? [...sheet.colWidths] : undefined,
+    rowHeights: sheet.rowHeights ? [...sheet.rowHeights] : undefined,
     // `template` is replaced wholesale (imported, or removed when unlocked), never edited in
     // place, so sharing the reference is safe and keeps clones cheap.
   };
@@ -78,6 +84,7 @@ export function addRow(sheet: SheetModel): SheetModel {
     rows: sheet.rows + 1,
     cells: [...sheet.cells.map((r) => [...r]), Array.from({ length: sheet.cols }, () => "")],
     formats: [...sheet.formats.map((r) => [...r]), Array.from({ length: sheet.cols }, () => undefined)],
+    rowHeights: sheet.rowHeights ? [...sheet.rowHeights, undefined] : undefined,
   };
 }
 
@@ -215,6 +222,8 @@ export function deleteRow(sheet: SheetModel, row: number): SheetModel {
     rows: adjusted.rows - 1,
     cells: [...adjusted.cells.slice(0, row), ...adjusted.cells.slice(row + 1)],
     formats: [...adjusted.formats.slice(0, row), ...adjusted.formats.slice(row + 1)],
+    rowHeights: adjusted.rowHeights ? [...adjusted.rowHeights.slice(0, row), ...adjusted.rowHeights.slice(row + 1)] : undefined,
+    merges: shiftMerges(adjusted.merges, "row", row, -1),
   };
 }
 
@@ -227,6 +236,8 @@ export function insertRowBefore(sheet: SheetModel, row: number): SheetModel {
     rows: adjusted.rows + 1,
     cells: [...adjusted.cells.slice(0, row), blankCells, ...adjusted.cells.slice(row)],
     formats: [...adjusted.formats.slice(0, row), blankFormats, ...adjusted.formats.slice(row)],
+    rowHeights: adjusted.rowHeights ? [...adjusted.rowHeights.slice(0, row), undefined, ...adjusted.rowHeights.slice(row)] : undefined,
+    merges: shiftMerges(adjusted.merges, "row", row, 1),
   };
 }
 
@@ -240,6 +251,7 @@ export function deleteColumn(sheet: SheetModel, col: number): SheetModel {
     cells: adjusted.cells.map((r) => [...r.slice(0, col), ...r.slice(col + 1)]),
     formats: adjusted.formats.map((r) => [...r.slice(0, col), ...r.slice(col + 1)]),
     colWidths: adjusted.colWidths ? [...adjusted.colWidths.slice(0, col), ...adjusted.colWidths.slice(col + 1)] : undefined,
+    merges: shiftMerges(adjusted.merges, "col", col, -1),
   };
 }
 
@@ -251,12 +263,14 @@ export function insertColumnBefore(sheet: SheetModel, col: number): SheetModel {
     cells: adjusted.cells.map((r) => [...r.slice(0, col), "", ...r.slice(col)]),
     formats: adjusted.formats.map((r) => [...r.slice(0, col), undefined, ...r.slice(col)]),
     colWidths: adjusted.colWidths ? [...adjusted.colWidths.slice(0, col), undefined, ...adjusted.colWidths.slice(col)] : undefined,
+    merges: shiftMerges(adjusted.merges, "col", col, 1),
   };
 }
 
 export { cellRef, colToLetters };
 export type { CellFormat, CellAlign, NumberFormat } from "./cellFormat";
 export type { SheetTemplate } from "./sheetTemplate";
+export type { MergeRange } from "./sheetMerges";
 
 // Re-exported so `@/lib/sheet` stays the one import surface for sheet operations, even though
 // clipboard and sort logic live in their own focused modules.

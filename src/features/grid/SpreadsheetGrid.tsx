@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { colToLetters } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
@@ -25,6 +25,8 @@ import { useT } from "@/i18n";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
+import { mergeLookup } from "@/lib/sheetMerges";
+import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 
 const ROW_HEADER_WIDTH = 48;
 const COL_WIDTH = 112;
@@ -54,6 +56,7 @@ export default function SpreadsheetGrid() {
   const sources = useDataSourceStore((s) => s.sources);
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
+  const merges = useMemo(() => mergeLookup(sheet.merges), [sheet.merges]);
   const blockAt = (row: number, col: number) => boundCells.get(`${row},${col}`);
   const isBound = (row: number, col: number) => boundCells.has(`${row},${col}`);
   const sourceNameOf = (sourceId: string) => sources.find((s) => s.id === sourceId)?.name ?? "";
@@ -255,6 +258,10 @@ export default function SpreadsheetGrid() {
                 const editingHere = editing?.row === r && editing?.col === c;
                 const format = sheet.formats[r]?.[c];
                 const block = blockAt(r, c);
+                // A cell swallowed by a merge isn't rendered at all — its space belongs to the
+                // merge's top-left cell, which carries the span.
+                if (merges.covered.has(`${r},${c}`)) return null;
+                const merge = merges.anchors.get(`${r},${c}`);
                 const locked = isTemplateLocked(sheet.template, r, c);
                 const choices = templateChoices(sheet.template, r, c);
                 const isField = sheet.template !== undefined && !locked;
@@ -264,6 +271,8 @@ export default function SpreadsheetGrid() {
                     tabIndex={0}
                     data-row={r}
                     data-col={c}
+                    rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
+                    colSpan={merge ? merge.endCol - merge.startCol + 1 : undefined}
                     onMouseDown={(e) => handleMouseDown(r, c, e.shiftKey)}
                     onMouseEnter={() => handleMouseEnter(r, c)}
                     onDoubleClick={() => startEdit(r, c)}
@@ -304,8 +313,31 @@ export default function SpreadsheetGrid() {
                       isErr && "text-red-600"
                     )}
                     style={(() => {
+                      const h = sheet.rowHeights?.[r] ?? ROW_HEIGHT;
+                      // Where the file drew a border, it replaces the grid's own faint line —
+                      // a 1px default would otherwise hide the heavy rule under a table heading.
+                      const b = format?.borders;
+                      const edge = (color: string | undefined) =>
+                        color ? { style: "solid" as const, width: 2, color } : undefined;
+                      const borders = {
+                        borderTopStyle: edge(b?.top)?.style,
+                        borderTopWidth: edge(b?.top)?.width,
+                        borderTopColor: b?.top,
+                        borderRightStyle: edge(b?.right)?.style,
+                        borderRightWidth: edge(b?.right)?.width,
+                        borderRightColor: b?.right,
+                        borderBottomStyle: edge(b?.bottom)?.style,
+                        borderBottomWidth: edge(b?.bottom)?.width,
+                        borderBottomColor: b?.bottom,
+                        borderLeftStyle: edge(b?.left)?.style,
+                        borderLeftWidth: edge(b?.left)?.width,
+                        borderLeftColor: b?.left,
+                      };
+                      // A merged cell's box comes from the columns and rows it spans, so pinning
+                      // it to a single column's width would squash it back to one cell.
+                      if (merge) return { height: h, backgroundColor: format?.fill, ...borders };
                       const w = sheet.colWidths?.[c] ?? COL_WIDTH;
-                      return { width: w, minWidth: w, height: ROW_HEIGHT, maxWidth: w };
+                      return { width: w, minWidth: w, maxWidth: w, height: h, backgroundColor: format?.fill, ...borders };
                     })()}
                     title={
                       block
@@ -355,14 +387,27 @@ export default function SpreadsheetGrid() {
                       />
                     ) : (
                       <div
-                        className="overflow-hidden text-ellipsis whitespace-nowrap leading-8"
+                        className="flex h-full overflow-hidden"
                         style={{
-                          fontWeight: format?.bold ? 700 : undefined,
-                          color: isErr ? undefined : format?.color,
-                          textAlign: format?.align,
+                          alignItems: format?.valign === "top" ? "flex-start" : format?.valign === "bottom" ? "flex-end" : "center",
+                          justifyContent:
+                            format?.align === "center" ? "center" : format?.align === "right" ? "flex-end" : "flex-start",
                         }}
                       >
-                        {display[r]?.[c]}
+                        <span
+                          className="overflow-hidden text-ellipsis whitespace-nowrap"
+                          style={{
+                            fontWeight: format?.bold ? 700 : undefined,
+                            fontStyle: format?.italic ? "italic" : undefined,
+                            textDecoration: format?.underline ? "underline" : undefined,
+                            fontSize: format?.fontSize ? `${format.fontSize / DEFAULT_FONT_SIZE}em` : undefined,
+                            lineHeight: 1.25,
+                            color: isErr ? undefined : format?.color,
+                            textAlign: format?.align,
+                          }}
+                        >
+                          {display[r]?.[c]}
+                        </span>
                       </div>
                     )}
                   </td>

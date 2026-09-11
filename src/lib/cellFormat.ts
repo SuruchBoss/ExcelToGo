@@ -1,11 +1,43 @@
 export type NumberFormat = "general" | "number2" | "percent" | "currency";
 export type CellAlign = "left" | "center" | "right";
+export type CellVAlign = "top" | "middle" | "bottom";
+
+/** Which edges of a cell carry a visible border, and in what colour. */
+export interface CellBorders {
+  top?: string;
+  right?: string;
+  bottom?: string;
+  left?: string;
+}
 
 export interface CellFormat {
   bold?: boolean;
   color?: string;
   align?: CellAlign;
   numberFormat?: NumberFormat;
+  /** Background colour as #rrggbb. The coloured bands across a form's headings are the most
+   *  recognisable thing about it, so a file that has them has to keep them. */
+  fill?: string;
+  /** Font size in points, as Excel stores it. */
+  fontSize?: number;
+  italic?: boolean;
+  underline?: boolean;
+  valign?: CellVAlign;
+  borders?: CellBorders;
+}
+
+/** Excel's default body font size, used as the baseline the grid renders at. */
+export const DEFAULT_FONT_SIZE = 11;
+
+/** Excel measures row heights and font sizes in points; the browser wants pixels. */
+export function ptToPx(pt: number | undefined): number | undefined {
+  if (pt === undefined || !Number.isFinite(pt) || pt <= 0) return undefined;
+  return Math.round((pt * 96) / 72);
+}
+
+export function pxToPt(px: number | undefined): number | undefined {
+  if (px === undefined || !Number.isFinite(px) || px <= 0) return undefined;
+  return Math.round(((px * 72) / 96) * 100) / 100;
 }
 
 /**

@@ -14,14 +14,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-185%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-207%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 185 automated tests.
+workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 207 automated tests.
 
 ---
 
@@ -150,7 +150,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 185-case Vitest suite |
+| `npm test` | Run the 207-case Vitest suite |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -380,6 +380,33 @@ Behind the scenes:
 
 > Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
 
+### 🎨 It looks like the file you opened
+
+<p align="center"><img src="public/screenshots/17-styled-import.png" width="820"></p>
+
+Real Excel files lean on **coloured header bands, large type, rules and row banding**. Import that
+as bare numbers and people don't recognise their own file. The screenshot above is an imported
+`.xlsx` with no formatting applied inside the app at all.
+
+| From the file | Read in |
+|---|---|
+| Background fills (colour bands) | ✅ including alternate-row banding |
+| Font size | ✅ large or small, as the file has it |
+| Bold / italic / underline | ✅ |
+| Font colour | ✅ |
+| Borders (top/right/bottom/left) | ✅ with their colour — a rule from the file wins over the grid's own faint line |
+| Vertical alignment | ✅ top / middle / bottom |
+| Row heights · column widths | ✅ |
+| **Merged cells** | ✅ a heading spanning several columns stays one band instead of breaking apart |
+| Number formats (currency/%) | ✅ (already supported) |
+| Original formulas | ✅ (already supported) recomputed immediately |
+
+All of it **exports back to `.xlsx`**, so the file opens in Excel as the file it was.
+
+> **Not supported:** conditional formatting, images and charts in the sheet, specific font families
+> (the system font is used), and arrowing into a cell a merge has swallowed — that cell no longer
+> exists in the DOM, though the merged band itself clicks normally.
+
 ### 📋 Templates from an Excel file
 
 <p align="center"><img src="public/screenshots/15-template.png" width="820"></p>
@@ -454,7 +481,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates and live blocks (185 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity and live blocks (207 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -643,6 +670,7 @@ src/
                               # inserting/deleting rows-columns
     sheetClipboard.ts        # Copy/cut/paste, converting to/from TSV (for cross-app pasting)
     sheetSort.ts             # Detecting the range to sort + the actual sort
+    sheetMerges.ts           # Merged cells: which cell renders, which are swallowed, shifting on edits (tested)
     sheetTemplate.ts         # Templates from a file: which cells are fields, dropdown options, width units (tested)
     liveBlocks.ts            # Writes a source's table into cells, tracks extent to clear shrinking data, sum/avg/count (tested)
     dataSources/             # Types + jsonToTable.ts (turns any JSON/CSV into a table) + paginate.ts
@@ -762,7 +790,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 185 cases across 14 files, via Vitest
+npm test      # 207 cases across 15 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -783,8 +811,9 @@ tool, not a permanent regression suite).
 | `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
 | `executeSource.test.ts` | 20 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, auth header on every page, a mid-chain 429 |
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
+| `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `excelIO.test.ts` | 9 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical |
+| `excelIO.test.ts` | 16 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
 CI: `npm run lint` → `npm run build` (which also type-checks the whole project, including the two languages'
@@ -811,7 +840,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
 - [x] **Template support for imported files** — done (see ✨ Features): cell locking, dropdowns and column
       widths are read from a protected file, every route into the structure is guarded, and export puts the
-      template back together. Still open: merged cells, conditional formatting, and authoring a template in-app
+      template back together
+- [x] **Imported files keep their look** — done: fills, font sizes, borders, row heights and merged cells.
+      Still open: conditional formatting, images/charts, and authoring a template in-app
 - [x] **Live data from REST API / CSV** — done (prototype, see ✨ Features), polling-based refresh
 - [x] **Following paginated APIs** — done: auto-detected from a Link header / next field / cursor / a param
       already in the URL, and the user is told when the data came back incomplete

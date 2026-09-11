@@ -12,14 +12,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-185%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-207%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 **English TL;DR** — A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
-detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 185 automated tests.
+detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 207 automated tests.
 
 ---
 
@@ -142,7 +142,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 185 เคสด้วย Vitest |
+| `npm test` | รัน unit test 207 เคสด้วย Vitest |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -350,6 +350,31 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 
 > ฐานข้อมูล (Postgres/MySQL) อยู่ในเฟสถัดไป — ปุ่มมีให้เห็นในฟอร์มแล้วแต่ยังกดไม่ได้
 
+### 🎨 เปิดไฟล์มาแล้วหน้าตาเหมือนเดิม
+
+<p align="center"><img src="public/screenshots/17-styled-import.png" width="820"></p>
+
+ไฟล์ Excel ที่ใช้งานจริงมักมี**แถบสีหัวเรื่อง ตัวหนังสือใหญ่ เส้นคั่น แถวสลับสี** — ถ้านำเข้ามาแล้วเหลือแต่ตัวเลข
+เปล่าๆ ผู้ใช้จะจำไฟล์ตัวเองไม่ได้ ภาพด้านบนคือไฟล์ `.xlsx` จริงที่นำเข้ามา ไม่ได้จัดรูปแบบเพิ่มในแอปเลยสักอย่าง
+
+| จากไฟล์ | อ่านเข้ามา |
+|---|---|
+| สีพื้นหลัง (แถบสี) | ✅ รวมถึงแถวสลับสี |
+| ขนาดตัวอักษร | ✅ ใหญ่/เล็กตามไฟล์ |
+| ตัวหนา / ตัวเอียง / ขีดเส้นใต้ | ✅ |
+| สีตัวอักษร | ✅ |
+| เส้นขอบ (บน/ล่าง/ซ้าย/ขวา) | ✅ พร้อมสีของเส้น — เส้นจากไฟล์ทับเส้นตารางจางๆ ของแอป |
+| การจัดตำแหน่งแนวตั้ง | ✅ บน / กลาง / ล่าง |
+| ความสูงแถว · ความกว้างคอลัมน์ | ✅ |
+| **เซลล์ที่ merge** | ✅ หัวเรื่องที่รวมหลายคอลัมน์ยังเป็นแถบเดียว ไม่แตกกลับเป็นช่องๆ |
+| รูปแบบตัวเลข (สกุลเงิน/%) | ✅ (มีอยู่เดิม) |
+| สูตรต้นฉบับ | ✅ (มีอยู่เดิม) คำนวณใหม่ให้ทันที |
+
+ทั้งหมดนี้**ส่งออกกลับเป็น `.xlsx` ได้ครบ** เปิดใน Excel แล้วยังเป็นไฟล์เดิม
+
+> **ยังไม่รองรับ:** conditional formatting, รูปภาพ/กราฟในชีต, ฟอนต์เฉพาะ (ใช้ฟอนต์ของระบบ) และการกดลูกศร
+> เข้าไปใน "ช่องที่ถูก merge กลืนไป" (ช่องนั้นไม่มีอยู่ใน DOM แล้ว — คลิกที่แถบ merge ได้ตามปกติ)
+
 ### 📋 แม่แบบ (Template) จากไฟล์ Excel
 
 <p align="center"><img src="public/screenshots/15-template.png" width="820"></p>
@@ -417,7 +442,7 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ และบล็อกข้อมูลสด (185 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (207 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -603,6 +628,7 @@ src/
     sheet.ts                 # โมเดลข้อมูลตารางหลัก, คำนวณค่าทั้งชีต, ใส่สูตรตาม scope ต่างๆ, แทรก/ลบแถว-คอลัมน์
     sheetClipboard.ts        # คัดลอก/ตัด/วาง, แปลงเป็น/จาก TSV (สำหรับ paste ข้ามแอป)
     sheetSort.ts             # ตรวจจับช่วงที่จะเรียง + เรียงลำดับข้อมูล
+    sheetMerges.ts           # เซลล์ที่ merge: ช่องไหนวาด ช่องไหนถูกกลืน + เลื่อนตามตอนแทรก/ลบ (มี test)
     sheetTemplate.ts         # แม่แบบจากไฟล์: เซลล์ไหนกรอกได้, ตัวเลือก dropdown, แปลงหน่วยความกว้างคอลัมน์ (มี test)
     liveBlocks.ts            # เขียนตารางจากแหล่งข้อมูลลงเซลล์, จำขอบเขตเพื่อล้างเมื่อข้อมูลหด, รวม/เฉลี่ย/นับ (มี test)
     dataSources/             # types + jsonToTable.ts (แปลง JSON/CSV อะไรก็ได้เป็นตาราง) +
@@ -715,7 +741,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 185 เคส ใน 14 ไฟล์ ด้วย Vitest
+npm test      # 207 เคส ใน 15 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -735,8 +761,9 @@ npm test      # 185 เคส ใน 14 ไฟล์ ด้วย Vitest
 | `paginate.test.ts` | 19 | ตรวจจับหน้าถัดไปจาก Link header / ฟิลด์ next / cursor / พารามิเตอร์ใน URL, การหยุดเมื่อ next เป็น null, ค่าที่ไม่ใช่ลิงก์ |
 | `executeSource.test.ts` | 20 | ลูปไล่ดึงหน้าจริง (stub fetch): ขีดจำกัดแถว, เพดาน 20 หน้า, กันลูปวน, หน้ากลางพัง, รวมคอลัมน์ข้ามหน้า, auth header ทุกหน้า, 429 กลางทาง |
 | `rateLimit.test.ts` | 20 | อ่าน `Retry-After` (วินาที/HTTP date) และ `X-RateLimit-Reset` ทุกรูปแบบ, แยก 403 ที่โควตาหมดออกจาก 403 ธรรมดา, การคำนวณ backoff |
+| `sheetMerges.test.ts` | 15 | ช่องไหนถูก merge กลืน, การเลื่อน merge ตอนแทรก/ลบแถว-คอลัมน์, merge ที่เหลือช่องเดียวถูกทิ้ง |
 | `sheetTemplate.test.ts` | 14 | เซลล์ไหนล็อก/กรอกได้, ตัวเลือก dropdown แบบ inline และแบบอ้างช่วง, แปลงความกว้างคอลัมน์ |
-| `excelIO.test.ts` | 9 | สร้างไฟล์ .xlsx จริงแล้ววนครบรอบ: อ่านช่องกรอก/dropdown/ความกว้าง, ไฟล์ที่ไม่ protect ไม่ใช่แม่แบบ, export แล้ว import กลับได้เหมือนเดิม |
+| `excelIO.test.ts` | 16 | สร้างไฟล์ .xlsx จริงแล้ววนครบรอบ: อ่านช่องกรอก/dropdown/ความกว้าง, ไฟล์ที่ไม่ protect ไม่ใช่แม่แบบ, export แล้ว import กลับได้เหมือนเดิม, และรูปแบบ (แถบสี/ขนาดตัวอักษร/เส้นขอบ/ความสูงแถว/merge) ครบรอบ |
 | `liveBlocks.test.ts` | 15 | เขียน/ล้างบล็อกข้อมูลสด, ขอบเขตที่หดลง, รวม/เฉลี่ย/นับ, ตัวเลือกค่าเดียวที่เสนอให้, ตรวจพื้นที่ทับซ้อน |
 
 CI: `npm run lint` → `npm run build` (บังคับ type-check เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) →
@@ -761,7 +788,8 @@ CI: `npm run lint` → `npm run build` (บังคับ type-check เต็�
 - [ ] **Import/Export CSV** โดยตรง (ตอนนี้ผ่าน `.xlsx` เท่านั้น)
 - [x] **รองรับ Template จากไฟล์ที่ import เข้ามา** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): อ่านการล็อกเซลล์,
       dropdown และความกว้างคอลัมน์จากไฟล์ที่ protect ไว้ กันการแก้โครงทุกทาง และส่งออกกลับเป็นแม่แบบได้
-      ยังเหลือ: เซลล์ที่ merge, conditional formatting และการสร้างแม่แบบขึ้นเองในแอป
+- [x] **เปิดไฟล์แล้วหน้าตาเหมือนเดิม** — ทำแล้ว: แถบสี, ขนาดตัวอักษร, เส้นขอบ, ความสูงแถว และเซลล์ที่ merge
+      ยังเหลือ: conditional formatting, รูปภาพ/กราฟ และการสร้างแม่แบบขึ้นเองในแอป
 - [x] **ข้อมูลสดจาก REST API / CSV** — ทำแล้ว (prototype, ดูหัวข้อ ✨ ฟีเจอร์) รีเฟรชแบบ polling
 - [x] **ไล่ดึง API ที่แบ่งหน้า (pagination)** — ทำแล้ว: ตรวจจับเองจาก Link header / ฟิลด์ next / cursor /
       พารามิเตอร์ใน URL พร้อมบอกผู้ใช้เมื่อดึงมาไม่ครบ

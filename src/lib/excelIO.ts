@@ -1,9 +1,19 @@
 import ExcelJS from "exceljs";
 import { ComputedSheet, SheetModel, createEmptySheet } from "./sheet";
 import { isError } from "./formulaEngine/types";
-import { CellAlign, EXCEL_NUM_FMT, numberFormatFromExcelNumFmt } from "./cellFormat";
+import {
+  CellAlign,
+  CellBorders,
+  CellVAlign,
+  DEFAULT_FONT_SIZE,
+  EXCEL_NUM_FMT,
+  numberFormatFromExcelNumFmt,
+  ptToPx,
+  pxToPt,
+} from "./cellFormat";
 import { cellKey, excelWidthToPx, parseValidationList, pxToExcelWidth, SheetTemplate } from "./sheetTemplate";
-import { parseRangeRef } from "./formulaEngine/address";
+import { parseRangeRef, parseCellRef } from "./formulaEngine/address";
+import { MergeRange, parseMergeRef } from "./sheetMerges";
 
 function hexToArgb(hex: string): string {
   return `FF${hex.replace("#", "").toUpperCase()}`;
@@ -26,6 +36,27 @@ function sanitizeSheetName(name: string, usedNames: Set<string>): string {
   }
   usedNames.add(unique);
   return unique;
+}
+
+/** A solid pattern fill is what a coloured band actually is in Excel. Gradient and pattern fills
+ *  have no single colour to show, so they're left alone rather than guessed at. */
+function fillColorOf(cell: ExcelJS.Cell): string | undefined {
+  const fill = cell.fill;
+  if (!fill || fill.type !== "pattern" || fill.pattern !== "solid") return undefined;
+  return argbToHex(fill.fgColor?.argb);
+}
+
+const BORDER_DEFAULT = "#94a3b8";
+
+function bordersOf(cell: ExcelJS.Cell): CellBorders | undefined {
+  const b = cell.border;
+  if (!b) return undefined;
+  const out: CellBorders = {};
+  for (const edge of ["top", "right", "bottom", "left"] as const) {
+    const side = b[edge];
+    if (side?.style) out[edge] = argbToHex(side.color?.argb) ?? BORDER_DEFAULT;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function cellValueToRaw(cell: ExcelJS.Cell): string {
@@ -86,12 +117,21 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
       if (r < sheet.rows && c < sheet.cols) {
         sheet.cells[r][c] = cellValueToRaw(cell);
         const align = cell.alignment?.horizontal;
+        const valign = cell.alignment?.vertical;
         const format = {
           bold: cell.font?.bold || undefined,
           color: argbToHex(cell.font?.color?.argb),
           align: align === "left" || align === "center" || align === "right" ? (align as CellAlign) : undefined,
           numberFormat:
             cell.numFmt && cell.numFmt !== "General" ? numberFormatFromExcelNumFmt(cell.numFmt) : undefined,
+          fill: fillColorOf(cell),
+          // Only carry a size that differs from Excel's default, so a plain file doesn't end up
+          // with an explicit font size on every single cell.
+          fontSize: cell.font?.size && cell.font.size !== DEFAULT_FONT_SIZE ? cell.font.size : undefined,
+          italic: cell.font?.italic || undefined,
+          underline: cell.font?.underline ? true : undefined,
+          valign: valign === "top" || valign === "middle" || valign === "bottom" ? (valign as CellVAlign) : undefined,
+          borders: bordersOf(cell),
         };
         if (Object.values(format).some((v) => v !== undefined)) {
           sheet.formats[r][c] = format;
@@ -124,6 +164,22 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
     if (px !== undefined) anyWidth = true;
   }
   if (anyWidth) sheet.colWidths = widths;
+
+  const heights: (number | undefined)[] = [];
+  let anyHeight = false;
+  for (let r = 0; r < rows; r++) {
+    const px = ptToPx(worksheet.getRow(r + 1)?.height);
+    heights[r] = px;
+    if (px !== undefined) anyHeight = true;
+  }
+  if (anyHeight) sheet.rowHeights = heights;
+
+  // A form's title band is usually one cell merged across several columns; without this the
+  // title lands in column A and the band breaks up behind it.
+  const merges = (worksheet.model?.merges ?? [])
+    .map((ref) => parseMergeRef(ref, parseCellRef))
+    .filter((m): m is MergeRange => m !== null && m.endRow < rows && m.endCol < cols);
+  if (merges.length > 0) sheet.merges = merges;
 
   if (isTemplate) {
     const readRange = rangeReader(sheet);
@@ -178,14 +234,32 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
       }
 
       const format = sheet.formats[r]?.[c];
-      if (format?.bold || format?.color) {
-        cell.font = { bold: format.bold || undefined, color: format.color ? { argb: hexToArgb(format.color) } : undefined };
+      if (format?.bold || format?.color || format?.fontSize || format?.italic || format?.underline) {
+        cell.font = {
+          bold: format.bold || undefined,
+          italic: format.italic || undefined,
+          underline: format.underline || undefined,
+          size: format.fontSize,
+          color: format.color ? { argb: hexToArgb(format.color) } : undefined,
+        };
       }
-      if (format?.align) {
-        cell.alignment = { horizontal: format.align };
+      if (format?.align || format?.valign) {
+        cell.alignment = { horizontal: format.align, vertical: format.valign };
       }
       if (format?.numberFormat && EXCEL_NUM_FMT[format.numberFormat]) {
         cell.numFmt = EXCEL_NUM_FMT[format.numberFormat]!;
+      }
+      if (format?.fill) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: hexToArgb(format.fill) } };
+      }
+      if (format?.borders) {
+        const side = (color: string | undefined) => (color ? { style: "thin" as const, color: { argb: hexToArgb(color) } } : undefined);
+        cell.border = {
+          top: side(format.borders.top),
+          right: side(format.borders.right),
+          bottom: side(format.borders.bottom),
+          left: side(format.borders.left),
+        };
       }
     }
   }
@@ -213,8 +287,16 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
     await worksheet.protect("", { selectLockedCells: true, selectUnlockedCells: true });
   }
 
+  for (const m of sheet.merges ?? []) {
+    worksheet.mergeCells(m.startRow + 1, m.startCol + 1, m.endRow + 1, m.endCol + 1);
+  }
+
   worksheet.columns.forEach((col, i) => {
     col.width = pxToExcelWidth(sheet.colWidths?.[i]) ?? 16;
+  });
+  sheet.rowHeights?.forEach((px, i) => {
+    const pt = pxToPt(px);
+    if (pt !== undefined) worksheet.getRow(i + 1).height = pt;
   });
 }
 

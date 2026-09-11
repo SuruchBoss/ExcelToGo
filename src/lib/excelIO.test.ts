@@ -107,3 +107,86 @@ describe("exporting a template back to .xlsx", () => {
     expect((ws as unknown as { sheetProtection?: { sheet?: boolean } }).sheetProtection?.sheet).not.toBe(true);
   });
 });
+
+/** A file that leans on looks rather than protection: a coloured title band, big text, borders,
+ *  a taller header row. This is what "open it and it looks the same" has to survive. */
+async function styledFile(): Promise<File> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("รายงาน");
+  ws.mergeCells("A1:D1");
+  ws.getCell("A1").value = "รายงานยอดขายประจำเดือน";
+  ws.getCell("A1").font = { bold: true, size: 20, color: { argb: "FFFFFFFF" }, italic: true, underline: true };
+  ws.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F6FEB" } };
+  ws.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+  ws.getRow(1).height = 36;
+
+  ws.getCell("A3").value = "สินค้า";
+  ws.getCell("A3").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8F0FE" } };
+  ws.getCell("A3").border = { top: { style: "thin" }, bottom: { style: "medium", color: { argb: "FFFF0000" } } };
+  ws.getCell("A4").value = "กาแฟ";
+
+  const buf = await wb.xlsx.writeBuffer();
+  return new File([buf], "report.xlsx");
+}
+
+describe("importing a styled .xlsx", () => {
+  it("keeps the coloured band and the big text of a title", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await styledFile());
+    const title = sheet.formats[0][0]!;
+
+    expect(title.fill).toBe("#1f6feb");
+    expect(title.fontSize).toBe(20);
+    expect(title.bold).toBe(true);
+    expect(title.italic).toBe(true);
+    expect(title.underline).toBe(true);
+    expect(title.color).toBe("#ffffff");
+    expect(title.align).toBe("center");
+    expect(title.valign).toBe("middle");
+  });
+
+  it("keeps the merge that makes a title a band rather than one cell", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await styledFile());
+    expect(sheet.merges).toEqual([{ startRow: 0, startCol: 0, endRow: 0, endCol: 3 }]);
+  });
+
+  it("keeps borders, with the colour the file gave them", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await styledFile());
+    expect(sheet.formats[2][0]?.borders?.bottom).toBe("#ff0000");
+    expect(sheet.formats[2][0]?.borders?.top).toBeDefined();
+    expect(sheet.formats[2][0]?.borders?.left).toBeUndefined();
+  });
+
+  it("keeps a taller header row", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await styledFile());
+    expect(sheet.rowHeights?.[0]).toBe(48); // 36pt at 96dpi
+    expect(sheet.rowHeights?.[3]).toBeUndefined();
+  });
+
+  it("doesn't stamp a font size on cells that use Excel's default", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await styledFile());
+    expect(sheet.formats[3][0]?.fontSize).toBeUndefined();
+  });
+});
+
+describe("exporting a styled sheet", () => {
+  it("writes the fill, size and merge back", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await styledFile());
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(sheet, "รายงาน")));
+
+    expect(ws.getCell("A1").fill).toMatchObject({ type: "pattern", fgColor: { argb: "FF1F6FEB" } });
+    expect(ws.getCell("A1").font?.size).toBe(20);
+    expect(ws.model?.merges).toContain("A1:D1");
+  });
+
+  it("survives a full import → export → import cycle", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await styledFile());
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet, "รายงาน"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+
+    expect(again.formats[0][0]?.fill).toBe(sheet.formats[0][0]?.fill);
+    expect(again.formats[0][0]?.fontSize).toBe(20);
+    expect(again.merges).toEqual(sheet.merges);
+    expect(again.rowHeights?.[0]).toBe(sheet.rowHeights?.[0]);
+    expect(again.formats[2][0]?.borders?.bottom).toBe("#ff0000");
+  });
+});
