@@ -28,28 +28,28 @@ workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 162 
 ## 📸 Screenshots
 
 <p align="center"><b>Main screen</b> — the data grid with the drag-and-drop formula panel on the right</p>
-<p align="center"><img src="docs/screenshots/01-overview.png" width="820"></p>
+<p align="center"><img src="public/screenshots/01-overview.png" width="820"></p>
 
 <table>
 <tr>
 <td width="50%" align="center"><b>Formula parameter panel</b><br><sub>Pick range C2:C4 straight from the grid instead of typing the address</sub><br><br>
-<img src="docs/screenshots/02-formula-panel.png" width="380"></td>
+<img src="public/screenshots/02-formula-panel.png" width="380"></td>
 <td width="50%" align="center"><b>Result after inserting</b><br><sub>SUM(C2:C4) computes to 100 the moment you confirm</sub><br><br>
-<img src="docs/screenshots/03-after-insert.png" width="380"></td>
+<img src="public/screenshots/03-after-insert.png" width="380"></td>
 </tr>
 <tr>
 <td width="50%" align="center"><b>AI formula assistant</b><br><sub>Ask in a plain-language sentence, get a formula back with an explanation</sub><br><br>
-<img src="docs/screenshots/04-ai-assistant.png" width="380"></td>
+<img src="public/screenshots/04-ai-assistant.png" width="380"></td>
 <td width="50%" align="center"><b>Multiple sheets in one file</b><br><sub>Switch, add, or rename sheets from the tab bar</sub><br><br>
-<img src="docs/screenshots/05-sheet-tabs.png" width="380"></td>
+<img src="public/screenshots/05-sheet-tabs.png" width="380"></td>
 </tr>
 </table>
 
 <p align="center"><b>Cell formatting + column filters</b> — bold, number formats (currency), and per-column checkbox filters</p>
-<p align="center"><img src="docs/screenshots/06-format-filter.png" width="820"></p>
+<p align="center"><img src="public/screenshots/06-format-filter.png" width="820"></p>
 
 <p align="center"><b>Switch languages in one click</b> — menus, buttons, formula names/descriptions, and AI replies all update instantly</p>
-<p align="center"><img src="docs/screenshots/07-english-ui.png" width="820"></p>
+<p align="center"><img src="public/screenshots/07-english-ui.png" width="820"></p>
 
 <p align="center"><b>Live data from an API / CSV</b> — select a cell, click "Insert into sheet", then choose the
 whole table or a single summary number, seeing the real values before deciding</p>
@@ -57,15 +57,15 @@ whole table or a single summary number, seeing the real values before deciding</
 <table>
 <tr>
 <td width="50%" align="center"><b>Whole table</b><br><sub>Full-width preview, stating the rows × columns it will use</sub><br><br>
-<img src="docs/screenshots/10-picker-table.png" width="380"></td>
+<img src="public/screenshots/10-picker-table.png" width="380"></td>
 <td width="50%" align="center"><b>A single summary number</b><br><sub>Cards show the actual value, e.g. <code>9,510 · Sum of total</code> — no guessing what "sum" returns</sub><br><br>
-<img src="docs/screenshots/12-picker-values.png" width="380"></td>
+<img src="public/screenshots/12-picker-values.png" width="380"></td>
 </tr>
 </table>
 
 <p align="center"><b>Click a live block and its toolbar floats right above it</b> — refresh / change / remove,
 with no trip back to the side panel</p>
-<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
 ---
 
@@ -130,8 +130,17 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3000** — you'll see a working sample sheet immediately, no setup required (a small
-coffee/bread/milk sales sheet with real formulas, so you can see it working right away).
+Open **http://localhost:3000** and you land on a page explaining what the app does. Click
+**"Open the app"** to get to the real thing, or go straight to **http://localhost:3000/app**.
+
+| Route | What it is |
+|---|---|
+| `/` | The landing page — features with screenshots from the running app, bilingual like the app itself |
+| `/app` | The app itself, opening on a sample sheet with nothing to configure |
+
+(The sample data is a coffee/bread/milk receipt with real total formulas. Click **ExcelToGo** in the
+app's top-left corner to get back to the landing page.)
+
 
 Other available commands:
 
@@ -266,7 +275,7 @@ a short explanation. One click inserts it into the selected cell.
 
 ### 🔌 Live data from an API / CSV (prototype)
 
-<p align="center"><img src="docs/screenshots/08-live-data.png" width="820"></p>
+<p align="center"><img src="public/screenshots/08-live-data.png" width="820"></p>
 
 Split into two roles so the end user touches as little technology as possible:
 
@@ -275,7 +284,7 @@ Sheets link, an auth header if needed, and a refresh interval, then "Test connec
 columns come back before saving. Config and credentials live on the server (`data/sources.json`, gitignored)
 and never reach the user's browser; the server does the fetching, so CORS isn't the user's problem.
 
-<p align="center"><img src="docs/screenshots/09-source-setup.png" width="700"></p>
+<p align="center"><img src="public/screenshots/09-source-setup.png" width="700"></p>
 
 **2) Everyday users: three clicks, no jargon** — no JSON, no API keys, no aggregate function names.
 
@@ -288,16 +297,16 @@ and never reach the user's browser; the server does the fetching, so CORS isn't 
 <table>
 <tr>
 <td align="center"><b>Whole table — preview before placing</b><br>
-<img src="docs/screenshots/10-picker-table.png" width="410"></td>
+<img src="public/screenshots/10-picker-table.png" width="410"></td>
 <td align="center"><b>Single value — real numbers to pick from</b><br>
-<img src="docs/screenshots/12-picker-values.png" width="410"></td>
+<img src="public/screenshots/12-picker-values.png" width="410"></td>
 </tr>
 </table>
 
 **Once placed**, clicking a live block floats a toolbar right above it showing which source it came from and how
 often it updates, with **Refresh / Change / Remove** buttons — no trip back to the side panel required.
 
-<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
 **Paginated APIs** — most APIs hand back one page at a time, so a single fetch gets the user the
 first 25 rows and leaves them believing that's all the data. Following pages are therefore fetched
@@ -321,7 +330,7 @@ next link points back at a page already fetched, an empty page ends it, and if a
 through fails, **the rows already collected are still returned** rather than the whole refresh
 being thrown away.
 
-<p align="center"><img src="docs/screenshots/13-partial-data.png" width="820"></p>
+<p align="center"><img src="public/screenshots/13-partial-data.png" width="820"></p>
 
 **And when the data is incomplete, it says so.** A silently partial table is more dangerous than a
 small one the user knows about: a "Sum" card computed from the first 40 rows of a 120-row source
@@ -350,7 +359,7 @@ response guaranteed to keep the source broken. So:
 - The user sees plain language with a live countdown and a **"Try now"** button to override it — a
   manual refresh always goes through, because a person clicking is a deliberate act, not the poller.
 
-<p align="center"><img src="docs/screenshots/14-rate-limited.png" width="820"></p>
+<p align="center"><img src="public/screenshots/14-rate-limited.png" width="820"></p>
 
 Behind the scenes:
 
@@ -531,7 +540,8 @@ formulaEngine/ (tokenizer → parser → evaluator → functions)
 ```
 src/
   app/
-    page.tsx                 # Main page — just assembles components from store state (holds no state itself)
+    page.tsx                 # The landing page at / — features, screenshots, and the button into the app
+    app/page.tsx             # The app itself at /app — assembles components from store state (holds none)
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
                               # errorResponse.ts: failures → responses; a rate limit keeps a real 429 + its wait

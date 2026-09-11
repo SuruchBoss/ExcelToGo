@@ -5,6 +5,7 @@ import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save, 
 import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import LanguageToggle from "./LanguageToggle";
+import Link from "next/link";
 
 export default function Toolbar() {
   const t = useT();
@@ -28,7 +29,10 @@ export default function Toolbar() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2">
-      <span className="mr-2 text-lg font-bold text-blue-700">{t.app.brand}</span>
+      {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
+      <Link href="/" title={t.landing.home} className="mr-2 text-lg font-bold text-blue-700 hover:text-blue-800">
+        {t.app.brand}
+      </Link>
 
       <button
         onClick={() => fileInputRef.current?.click()}

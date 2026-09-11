@@ -13,8 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ExcelToGo",
-  description: "สร้างและนำเข้าตาราง Excel เป็น UI กรอกง่าย พร้อมสูตรลากวางและผู้ช่วย AI",
+  title: {
+    default: "ExcelToGo — ตารางแบบ Excel ที่ไม่ต้องจำสูตร",
+    template: "%s · ExcelToGo",
+  },
+  description:
+    "ตารางกรอกข้อมูลแบบ Excel พร้อมสูตรลากวางแทนการจำ syntax, ผู้ช่วย AI แนะนำสูตรจากคำถามภาษาคน และข้อมูลสดจาก API/CSV ที่อัปเดตเองในเซลล์",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

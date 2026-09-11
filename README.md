@@ -26,28 +26,28 @@ detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual 
 ## 📸 หน้าตาแอป
 
 <p align="center"><b>หน้าจอหลัก</b> — ตารางกรอกข้อมูลพร้อมแถบสูตรลากวางด้านขวา</p>
-<p align="center"><img src="docs/screenshots/01-overview.png" width="820"></p>
+<p align="center"><img src="public/screenshots/01-overview.png" width="820"></p>
 
 <table>
 <tr>
 <td width="50%" align="center"><b>แผงกรอกพารามิเตอร์สูตร</b><br><sub>เลือกช่วง C2:C4 จากตารางโดยตรง ไม่ต้องพิมพ์ที่อยู่เซลล์เอง</sub><br><br>
-<img src="docs/screenshots/02-formula-panel.png" width="380"></td>
+<img src="public/screenshots/02-formula-panel.png" width="380"></td>
 <td width="50%" align="center"><b>ผลลัพธ์หลังใส่สูตร</b><br><sub>SUM(C2:C4) คำนวณเป็น 100 ทันทีที่กดยืนยัน</sub><br><br>
-<img src="docs/screenshots/03-after-insert.png" width="380"></td>
+<img src="public/screenshots/03-after-insert.png" width="380"></td>
 </tr>
 <tr>
 <td width="50%" align="center"><b>ผู้ช่วย AI หาสูตร</b><br><sub>ถามเป็นประโยคภาษาคน ได้สูตรพร้อมคำอธิบายกลับมา</sub><br><br>
-<img src="docs/screenshots/04-ai-assistant.png" width="380"></td>
+<img src="public/screenshots/04-ai-assistant.png" width="380"></td>
 <td width="50%" align="center"><b>หลายชีตในไฟล์เดียว</b><br><sub>สลับ/เพิ่ม/เปลี่ยนชื่อชีตได้จากแถบด้านล่าง</sub><br><br>
-<img src="docs/screenshots/05-sheet-tabs.png" width="380"></td>
+<img src="public/screenshots/05-sheet-tabs.png" width="380"></td>
 </tr>
 </table>
 
 <p align="center"><b>จัดรูปแบบเซลล์ + กรองข้อมูล</b> — ตัวหนา, รูปแบบตัวเลข (สกุลเงิน), และตัวกรองแบบติ๊กเลือกค่าต่อคอลัมน์</p>
-<p align="center"><img src="docs/screenshots/06-format-filter.png" width="820"></p>
+<p align="center"><img src="public/screenshots/06-format-filter.png" width="820"></p>
 
 <p align="center"><b>สลับภาษาได้ทั้งแอปในคลิกเดียว</b> — เมนู ปุ่ม ชื่อ/คำอธิบายสูตร และคำตอบจาก AI เปลี่ยนตามทันที</p>
-<p align="center"><img src="docs/screenshots/07-english-ui.png" width="820"></p>
+<p align="center"><img src="public/screenshots/07-english-ui.png" width="820"></p>
 
 <p align="center"><b>ข้อมูลสดจาก API / CSV</b> — เลือกช่อง กด "ใส่ลงตาราง" แล้วเลือกว่าจะเอาทั้งตารางหรือตัวเลขสรุปค่าเดียว
 โดยเห็นตัวเลขจริงก่อนตัดสินใจ</p>
@@ -55,15 +55,15 @@ detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual 
 <table>
 <tr>
 <td width="50%" align="center"><b>เลือกทั้งตาราง</b><br><sub>พรีวิวเต็มความกว้าง บอกว่าจะใช้พื้นที่กี่แถว × กี่คอลัมน์</sub><br><br>
-<img src="docs/screenshots/10-picker-table.png" width="380"></td>
+<img src="public/screenshots/10-picker-table.png" width="380"></td>
 <td width="50%" align="center"><b>เลือกตัวเลขสรุปค่าเดียว</b><br><sub>การ์ดโชว์ค่าจริง เช่น <code>9,510 · รวม total</code> ไม่ต้องเดาว่า "sum" ได้เลขอะไร</sub><br><br>
-<img src="docs/screenshots/12-picker-values.png" width="380"></td>
+<img src="public/screenshots/12-picker-values.png" width="380"></td>
 </tr>
 </table>
 
 <p align="center"><b>คลิกบล็อกข้อมูลสด → แถบเครื่องมือลอยขึ้นมาเหนือบล็อกนั้นเลย</b> — รีเฟรช / เปลี่ยน / เอาออก
 ไม่ต้องกลับไปหาที่แถบด้านขวา</p>
-<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
 ---
 
@@ -123,8 +123,16 @@ npm install
 npm run dev
 ```
 
-เปิดเบราว์เซอร์ไปที่ **http://localhost:3000** จะเห็นตารางตัวอย่างพร้อมใช้งานทันที ไม่ต้องตั้งค่าอะไรเพิ่ม
-(ข้อมูลตัวอย่างเป็นบิลขายกาแฟ/ขนมปัง/นม พร้อมสูตรคำนวณยอดรวมให้ดูของจริง)
+เปิดเบราว์เซอร์ไปที่ **http://localhost:3000** จะเจอหน้า landing page ที่อธิบายว่าแอปทำอะไรได้บ้าง
+กดปุ่ม **"เปิดแอป"** เพื่อเข้าตัวโปรแกรมจริง หรือเข้าตรงที่ **http://localhost:3000/app** ก็ได้
+
+| เส้นทาง | คืออะไร |
+|---|---|
+| `/` | landing page — อธิบายฟีเจอร์พร้อมภาพจากแอปจริง สองภาษาเหมือนตัวแอป |
+| `/app` | ตัวโปรแกรมจริง เปิดมามีตารางตัวอย่างพร้อมใช้ทันที ไม่ต้องตั้งค่าอะไรเพิ่ม |
+
+(ข้อมูลตัวอย่างเป็นบิลขายกาแฟ/ขนมปัง/นม พร้อมสูตรคำนวณยอดรวมให้ดูของจริง กดชื่อ **ExcelToGo**
+มุมซ้ายบนในแอปเพื่อกลับมาหน้า landing)
 
 คำสั่งอื่นๆ ที่มีให้:
 
@@ -250,7 +258,7 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 
 ### 🔌 ข้อมูลสดจาก API / CSV (prototype)
 
-<p align="center"><img src="docs/screenshots/08-live-data.png" width="820"></p>
+<p align="center"><img src="public/screenshots/08-live-data.png" width="820"></p>
 
 แบ่งเป็น 2 บทบาท เพื่อให้ผู้ใช้ปลายทางแตะเทคโนโลยีน้อยที่สุด:
 
@@ -259,7 +267,7 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 กี่คอลัมน์ก่อนบันทึก — config และ credential เก็บฝั่งเซิร์ฟเวอร์ (`data/sources.json`, อยู่ใน `.gitignore`)
 ไม่ส่งไปเบราว์เซอร์ผู้ใช้ และเซิร์ฟเวอร์เป็นคนดึงข้อมูลแทนจึงไม่ติด CORS
 
-<p align="center"><img src="docs/screenshots/09-source-setup.png" width="700"></p>
+<p align="center"><img src="public/screenshots/09-source-setup.png" width="700"></p>
 
 **2) ผู้ใช้ทั่วไป: คลิก 3 ครั้งจบ** — ไม่ต้องรู้จัก JSON, API key หรือชื่อ aggregate ใดๆ
 
@@ -272,16 +280,16 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 <table>
 <tr>
 <td align="center"><b>เลือกทั้งตาราง — พรีวิวก่อนวาง</b><br>
-<img src="docs/screenshots/10-picker-table.png" width="410"></td>
+<img src="public/screenshots/10-picker-table.png" width="410"></td>
 <td align="center"><b>เลือกค่าเดียว — เห็นตัวเลขจริงก่อนเลือก</b><br>
-<img src="docs/screenshots/12-picker-values.png" width="410"></td>
+<img src="public/screenshots/12-picker-values.png" width="410"></td>
 </tr>
 </table>
 
 **หลังวางแล้ว** คลิกที่บล็อกข้อมูลสด จะมีแถบเครื่องมือลอยขึ้นมาเหนือบล็อกนั้นเลย บอกว่ามาจากแหล่งไหน อัปเดตทุกกี่วินาที
 พร้อมปุ่ม **รีเฟรช / เปลี่ยน / เอาออก** — ไม่ต้องกลับไปหาที่แถบด้านขวา
 
-<p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
+<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
 **API แบ่งหน้า (pagination)** — ปัญหาคือ API ส่วนใหญ่ส่งมาทีละหน้า ถ้าดึงแค่ครั้งเดียวผู้ใช้จะได้ 25 แถวแรก
 แล้วเข้าใจว่านั่นคือข้อมูลทั้งหมด ระบบจึงไล่ดึงหน้าถัดไปให้เอง โดย**ไม่ต้องตั้งค่าอะไรเพิ่ม** — อ่านสัญญาณที่ API
@@ -301,7 +309,7 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 ไม่เกิน 20 request ต่อรอบ, งบเวลารวม 45 วินาที, หยุดถ้าลิงก์หน้าถัดไปวนกลับไปหน้าที่ดึงมาแล้ว, หน้าว่างคือจบ,
 และถ้าหน้ากลางพัง**ก็ยังคืนแถวที่ได้มาแล้ว** ไม่ทิ้งทั้งก้อน
 
-<p align="center"><img src="docs/screenshots/13-partial-data.png" width="820"></p>
+<p align="center"><img src="public/screenshots/13-partial-data.png" width="820"></p>
 
 **และถ้าดึงมาไม่ครบ ระบบจะบอกตรงๆ** — ตารางที่ไม่ครบแบบเงียบๆ อันตรายกว่าตารางเล็กที่รู้ตัว เพราะการ์ด "รวม"
 ที่คำนวณจาก 40 แถวแรกของข้อมูล 120 แถว มันอ่านเหมือนยอดรวมจริงแต่ไม่ใช่ คำเตือนจึงขึ้นทั้งใน**แถบด้านขวา**,
@@ -324,7 +332,7 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 - ผู้ใช้เห็นเป็นภาษาคนพร้อมนับถอยหลัง และมีปุ่ม **"ลองตอนนี้"** ถ้าไม่อยากรอ (กดเองได้เสมอ — การกดเองคือเจตนา
   ของคน ไม่ใช่ poller)
 
-<p align="center"><img src="docs/screenshots/14-rate-limited.png" width="820"></p>
+<p align="center"><img src="public/screenshots/14-rate-limited.png" width="820"></p>
 
 รายละเอียดเบื้องหลัง:
 
@@ -500,7 +508,8 @@ formulaEngine/ (tokenizer → parser → evaluator → functions)
 ```
 src/
   app/
-    page.tsx                 # หน้าเว็บหลัก แค่ประกอบคอมโพเนนต์ตาม state จาก store (ไม่ถือ state เอง)
+    page.tsx                 # landing page ที่ / — ฟีเจอร์ + ภาพจากแอปจริง + ปุ่มเข้าแอป (สองภาษาเหมือนกัน)
+    app/page.tsx             # ตัวแอปจริงที่ /app แค่ประกอบคอมโพเนนต์ตาม state จาก store (ไม่ถือ state เอง)
     api/ai/formula/route.ts  # API endpoint ให้ AI แนะนำสูตร (ใช้ Claude หรือ heuristic fallback)
     api/sources/             # CRUD แหล่งข้อมูล, /test (ทดสอบโดยไม่บันทึก), /[id]/data (ดึงข้อมูลเป็นตาราง)
                               # errorResponse.ts: แปลง error เป็น response — rate limit ได้ 429 จริงพร้อมเวลาที่ต้องรอ

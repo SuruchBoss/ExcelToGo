@@ -126,6 +126,29 @@ export interface Messages {
       cancel: string;
     };
   };
+  landing: {
+    /** Small line above the headline. */
+    eyebrow: string;
+    headline: string;
+    subheadline: string;
+    ctaPrimary: string;
+    ctaSecondary: string;
+    ctaNote: string;
+    screenshotAlt: string;
+    problemTitle: string;
+    problems: { title: string; body: string }[];
+    featuresTitle: string;
+    featuresSubtitle: string;
+    /** Paired by index with the screenshots listed in the landing page component. */
+    features: { title: string; body: string; alt: string; points: string[] }[];
+    statsTitle: string;
+    stats: { value: string; label: string }[];
+    closingTitle: string;
+    closingBody: string;
+    footerNote: string;
+    backToApp: string;
+    home: string;
+  };
   formatBar: {
     label: string;
     boldTitle: string;
