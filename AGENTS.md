@@ -10,6 +10,11 @@ Run one command and get it green before committing:
 npm run verify     # lint → check:readme → test → build
 ```
 
+GitHub Actions รันสี่ด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.9 + 22) —
+รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
+GitHub Actions runs the same four gates on every push and PR (Node 20.9 + 22) — running them yourself
+first is still faster than waiting for CI to tell you.
+
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:
 `npm run check:readme` is dependency-free and catches what the eye misses:
 

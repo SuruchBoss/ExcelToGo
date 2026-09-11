@@ -18,6 +18,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <img alt="Vitest" src="https://img.shields.io/badge/tests-207%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
 **English TL;DR** — A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
@@ -141,7 +142,8 @@ cd ExcelToGo
 
 ### ขั้นที่ 1 — ติดตั้งและรัน
 
-**ต้องมี:** [Node.js](https://nodejs.org) 18.18 ขึ้นไป (แนะนำ 20 หรือ 22) และ npm
+**ต้องมี:** [Node.js](https://nodejs.org) **20.9 ขึ้นไป** (แนะนำ 22) และ npm — Next 16 ระบุขั้นต่ำไว้เท่านี้
+และ `package.json` มี `engines` บังคับไว้แล้ว CI ก็ทดสอบทั้ง 20.9 และ 22 จริง
 
 ```bash
 npm install
@@ -485,7 +487,7 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 
 ### เครื่องมือ
 
-- **Node.js 18.18+** (แนะนำ 20 หรือ 22) และ npm
+- **Node.js 20.9+** (แนะนำ 22) และ npm — ตามที่ Next 16 กำหนด
 - **ESLint 9** (`eslint-config-next`) ตรวจโค้ด, รวมกฎเฉพาะของ React 19 (`react-hooks/set-state-in-effect`, `react-hooks/refs`)
 - **Vitest 3** unit test
 - ไม่ต้องมีฐานข้อมูลหรือ backend แยก — ทุกอย่างรันใน Next.js เดียว
@@ -697,6 +699,8 @@ src/
     pdfExport.ts              # ส่งออก PDF ด้วย jspdf + jspdf-autotable
   types/
     sheet-ui.ts               # types สำหรับ selection ของตารางฝั่ง UI
+.github/workflows/
+  ci.yml                     # CI: lint → check:readme → test → build ทุก push/PR บน Node 20.9 และ 22
 scripts/
   check-readme.mjs           # ตรวจ README ก่อน push (ไม่มี dependency) — ดูกติกาที่ AGENTS.md
 public/
@@ -826,7 +830,11 @@ npm test      # 207 เคส ใน 15 ไฟล์ ด้วย Vitest
 | `liveBlocks.test.ts` | 15 | เขียน/ล้างบล็อกข้อมูลสด, ขอบเขตที่หดลง, รวม/เฉลี่ย/นับ, ตัวเลือกค่าเดียวที่เสนอให้, ตรวจพื้นที่ทับซ้อน |
 
 CI: `npm run verify` รวมทุกอย่างไว้แล้ว — `lint` → `check:readme` → `test` → `build` (build บังคับ type-check
-เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) **ต้องเขียวก่อน push ทุกครั้ง** ดูกติกาเต็มที่ `AGENTS.md` (ยังไม่ได้ตั้ง GitHub Actions อัตโนมัติ ดู [สิ่งที่จะทำต่อ](#-สิ่งที่จะทำต่อ))
+เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) **ต้องเขียวก่อน push ทุกครั้ง** ดูกติกาเต็มที่ `AGENTS.md`
+
+**GitHub Actions** (`.github/workflows/ci.yml`) รันสี่ด่านเดียวกันนี้ทุก push และทุก PR บน **Node 20.9 และ 22**
+— 20.9 คือขั้นต่ำที่ Next 16 กำหนด จึงได้ทดสอบจริงแทนที่จะเขียนไว้เฉยๆ แยกเป็นคนละ step เพื่อให้เห็นทันทีว่า
+ด่านไหนแดง ไม่ใช่กากบาทแดงอันเดียวที่ไม่บอกอะไร
 
 ---
 
@@ -834,7 +842,7 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
 
 สิ่งที่ยังไม่ได้ทำและเหตุผล — เพื่อให้เห็นว่ารู้ตัวว่าอะไรยังขาด ไม่ใช่ลืม
 
-- [ ] **CI อัตโนมัติ (GitHub Actions)** — ตอนนี้ lint/build/test รันด้วยมือก่อน push ทุกครั้ง ยังไม่ได้ตั้ง workflow
+- [x] **CI อัตโนมัติ (GitHub Actions)** — ทำแล้ว: lint → check:readme → test → build ทุก push/PR บน Node 20.9 และ 22
 - [ ] **บันทึกลงคลาวด์ / sync ข้ามเครื่อง** — ตอนนี้ข้อมูลอยู่ใน `localStorage` ของเบราว์เซอร์เดียวเท่านั้น
   ต้องกด "ส่งออก Excel" เพื่อย้ายไฟล์เอง (ไม่มีบัญชีผู้ใช้/ฐานข้อมูลฝั่งเซิร์ฟเวอร์ในสโคปปัจจุบัน)
 - [ ] **กราฟ/แผนภูมิ** จากข้อมูลในตาราง

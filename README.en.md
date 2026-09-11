@@ -21,6 +21,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <img alt="Vitest" src="https://img.shields.io/badge/tests-207%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
 A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
@@ -146,7 +147,8 @@ cd ExcelToGo
 
 ### Step 1 — Install and run
 
-**Requires:** [Node.js](https://nodejs.org) 18.18+ (20 or 22 recommended) and npm
+**Requires:** [Node.js](https://nodejs.org) **20.9+** (22 recommended) and npm — that's Next 16's own floor,
+now declared in `package.json`'s `engines` and actually tested on both 20.9 and 22 in CI
 
 ```bash
 npm install
@@ -521,7 +523,7 @@ architecture behind it.
 
 ### Tooling
 
-- **Node.js 18.18+** (20 or 22 recommended) and npm
+- **Node.js 20.9+** (22 recommended) and npm — Next 16's requirement
 - **ESLint 9** (`eslint-config-next`), including React 19-specific rules (`react-hooks/set-state-in-effect`, `react-hooks/refs`)
 - **Vitest 3** for unit tests
 - No database or separate backend — everything runs in one Next.js app
@@ -737,6 +739,8 @@ src/
     pdfExport.ts              # PDF export via jspdf + jspdf-autotable
   types/
     sheet-ui.ts               # Types for the grid's selection state
+.github/workflows/
+  ci.yml                     # CI: lint → check:readme → test → build on every push/PR, Node 20.9 and 22
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
 public/
@@ -875,8 +879,11 @@ tool, not a permanent regression suite).
 
 CI: `npm run verify` bundles it — `lint` → `check:readme` → `test` → `build` (the build also type-checks the
 whole project, including the two languages' `Messages` parity). **It has to be green before every push**; the
-full rule lives in `AGENTS.md` (no GitHub Actions workflow yet, see
-[What's next](#-whats-next)).
+full rule lives in `AGENTS.md`.
+
+**GitHub Actions** (`.github/workflows/ci.yml`) runs those same four gates on every push and pull request,
+across **Node 20.9 and 22** — 20.9 being Next 16's floor, so the claim is tested rather than asserted. They run
+as separate steps so the run summary names the gate that failed instead of showing one opaque red cross.
 
 ---
 
@@ -884,8 +891,8 @@ full rule lives in `AGENTS.md` (no GitHub Actions workflow yet, see
 
 What's not done yet, and why — to show this is a known gap, not something forgotten:
 
-- [ ] **Automated CI (GitHub Actions)** — lint/build/test are currently run by hand before every push; no
-  workflow set up yet
+- [x] **Automated CI (GitHub Actions)** — done: lint → check:readme → test → build on every push and PR,
+      across Node 20.9 and 22
 - [ ] **Cloud save / cross-device sync** — data currently lives only in one browser's `localStorage`; "Export
   Excel" is the way to move it (no user accounts or server-side database in the current scope)
 - [ ] **Charts/graphs** from the sheet's data

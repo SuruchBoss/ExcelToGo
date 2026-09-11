@@ -1,0 +1,54 @@
+name: CI
+
+# The same four gates AGENTS.md asks for before a push, enforced here so they hold even when
+# someone forgets — including on a machine that isn't the one they were developed on.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# A second push to the same branch makes the first run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      # Don't hide a failure on one version because the other failed first.
+      fail-fast: false
+      matrix:
+        # 20.9 is the floor Next 16 declares, so the README's claim is tested rather than asserted;
+        # 22 is what most people will actually have.
+        node: ["20.9", "22"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Run as separate steps rather than `npm run verify`, so the failing gate is the one
+      # highlighted in the run summary instead of a single opaque red cross.
+      - name: Lint
+        run: npm run lint
+
+      - name: README is still true
+        run: npm run check:readme
+
+      - name: Tests
+        run: npm test
+
+      # Also the project's full type-check: `next build` compiles every route and both message
+      # dictionaries, so a missing translation key fails here.
+      - name: Build
+        run: npm run build
