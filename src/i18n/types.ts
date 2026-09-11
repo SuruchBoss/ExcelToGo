@@ -196,6 +196,12 @@ export interface Messages {
     describe: (test: CfTest) => string;
     orderNote: string;
   };
+  storageNotice: {
+    /** Shown once inside the app: work lives in this browser only. The README saying so is no
+     *  help to someone who has already typed an afternoon's work into the grid. */
+    text: string;
+    dismiss: string;
+  };
   formatBar: {
     /** Collapses the formatting row to give the grid back its vertical space. */
     hide: string;

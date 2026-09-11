@@ -2,11 +2,11 @@
 
 **Language:** [ไทย](README.md) · English
 
-> Excel on desktop or online is hard to fill in, the UI isn't friendly, you can't remember formulas, and
-> scrolling around a big sheet leaves you lost about which row/column you're on — this project fixes exactly
-> that: a spreadsheet-style grid with **drag-and-drop formulas** instead of memorizing syntax, an **AI assistant**
-> that suggests formulas from a plain-language question, and a **hand-written formula engine** (no third-party
-> library) covering the Excel features people actually use day to day.
+> **Open an Excel file and keep working, in the browser — no install, no account.** A `.xlsx` opens
+> still looking like itself (colour bands, merged cells, borders, row heights), and from there you can
+> **pick formulas from a drag-and-drop list** instead of remembering them, or **ask an AI** in plain
+> language. It runs on a **hand-written formula engine** (no third-party library), entirely in your
+> browser — the data never leaves your machine.
 >
 > Three things build on that: **[live data from an API/CSV](#-live-data-from-an-api--csv-prototype)** that keeps
 > cells current on its own (following paginated APIs and backing off when rate-limited),
@@ -206,10 +206,25 @@ switches to Claude automatically once this is set, no code changes needed.
 
 This is a standard Next.js app, so it deploys to any platform that supports Next.js:
 
-- **[Vercel](https://vercel.com)** (recommended, easiest): connect this repo to Vercel and deploy — no setup
-  needed. For real AI, add an `ANTHROPIC_API_KEY` environment variable under Project Settings → Environment
-  Variables.
+- **[Vercel](https://vercel.com)** (recommended, easiest): connect this repo to Vercel and deploy. For real
+  AI, add an `ANTHROPIC_API_KEY` environment variable under Project Settings → Environment Variables.
 - Self-host with Docker/any Node server: `npm run build` then `npm run start`.
+
+> [!IMPORTANT]
+> **Deploying a public demo? Set `NEXT_PUBLIC_DEMO_MODE=1` as well.**
+>
+> It switches the live-data feature off on both sides: every `/api/sources*` route answers 403, and the
+> UI stops offering the "Data" button. [`SECURITY.md`](SECURITY.md) explains why — that API has no
+> authentication and will make the *server* fetch any URL a visitor gives it, which on a cloud host is
+> a server-side request forgery route. With it off, everything left runs in the browser, which is safe
+> to hand to strangers.
+>
+> It also matches reality on a serverless host: sources are persisted to `data/sources.json`, and
+> Vercel's filesystem is read-only, so the feature could not work there anyway.
+>
+> And **don't set `ANTHROPIC_API_KEY` on a public demo** — `/api/ai/formula` has no authentication
+> and no rate limit, so anyone could call it repeatedly on your bill. Without a key the assistant
+> falls back to local keyword matching, which costs nothing and still works.
 
 ### 🔧 Troubleshooting
 
@@ -762,6 +777,7 @@ src/
     sheetClipboard.ts        # Copy/cut/paste, converting to/from TSV (for cross-app pasting)
     sheetSort.ts             # Detecting the range to sort + the actual sort
     sheetMerges.ts           # Merged cells: which cell renders, which are swallowed, shifting on edits (tested)
+    demoMode.ts              # Switch that turns the live-data feature off for a public demo
     conditionalFormat.ts     # Conditional formatting rules: compare/text/rank/colour scale/data bar, the
                               # per-cell styling they produce, and range shifting on edits (tested)
     sheetTemplate.ts         # Templates from a file: which cells are fields, dropdown options, width units (tested)

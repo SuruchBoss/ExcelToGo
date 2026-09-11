@@ -2,12 +2,14 @@ import { executeSource } from "@/lib/server/executeSource";
 import { getSource } from "@/lib/server/sourceRepo";
 import { parseSourceBody } from "../validate";
 import { fetchErrorResponse } from "../errorResponse";
+import { DEMO_MODE, demoModeResponse } from "@/lib/demoMode";
 
 export const runtime = "nodejs";
 
 /** "Test connection" from the setup form: runs a config without saving it. If the form is
  *  editing an existing source and left the masked secret in place, reuse the stored one. */
 export async function POST(request: Request) {
+  if (DEMO_MODE) return demoModeResponse();
   const url = new URL(request.url);
   const editingId = url.searchParams.get("id");
   const parsed = await parseSourceBody(request);

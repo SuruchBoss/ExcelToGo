@@ -6,6 +6,7 @@ import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/s
 import { useT } from "@/i18n";
 import LanguageToggle from "./LanguageToggle";
 import Link from "next/link";
+import { DEMO_MODE } from "@/lib/demoMode";
 
 export default function Toolbar() {
   const t = useT();
@@ -124,14 +125,18 @@ export default function Toolbar() {
         >
           <Sparkles size={15} /> {t.toolbar.askAi}
         </button>
-        <button
-          onClick={() => toggleSidebar("data")}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-            dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
-          }`}
-        >
-          <Database size={15} /> {t.toolbar.data}
-        </button>
+        {/* Hidden rather than disabled on a public demo: the feature is off server-side too, so a
+            button that could only fail is worse than no button. See src/lib/demoMode.ts. */}
+        {!DEMO_MODE && (
+          <button
+            onClick={() => toggleSidebar("data")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+              dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            }`}
+          >
+            <Database size={15} /> {t.toolbar.data}
+          </button>
+        )}
         <LanguageToggle />
       </div>
     </div>

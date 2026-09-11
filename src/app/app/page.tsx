@@ -11,6 +11,7 @@ import FormulaParamPanel from "@/features/formulas/FormulaParamPanel";
 import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
 import DataSourcePanel from "@/features/data/DataSourcePanel";
 import ConditionalFormatPanel from "@/features/grid/ConditionalFormatPanel";
+import StorageNotice from "@/features/grid/StorageNotice";
 import DataPicker from "@/features/data/DataPicker";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
@@ -33,6 +34,7 @@ export default function Home() {
       <FormatBar />
       <FormulaBar />
       <TemplateBar />
+      <StorageNotice />
       <div className="flex min-h-0 flex-1 gap-3 p-3">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white">
           <div className="min-h-0 flex-1">

@@ -1,10 +1,12 @@
 import { executeSource } from "@/lib/server/executeSource";
 import { getSource } from "@/lib/server/sourceRepo";
 import { fetchErrorResponse } from "../../errorResponse";
+import { DEMO_MODE, demoModeResponse } from "@/lib/demoMode";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request, ctx: RouteContext<"/api/sources/[id]/data">) {
+  if (DEMO_MODE) return demoModeResponse();
   const { id } = await ctx.params;
   const source = await getSource(id);
   if (!source) return Response.json({ error: "not_found" }, { status: 404 });

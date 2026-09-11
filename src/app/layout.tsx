@@ -14,11 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "ExcelToGo — ตารางแบบ Excel ที่ไม่ต้องจำสูตร",
+    default: "ExcelToGo — เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์",
     template: "%s · ExcelToGo",
   },
+  // This is the line that shows in search results and link previews, so it says what the app does
+  // rather than what problem it set out to solve.
   description:
-    "ตารางกรอกข้อมูลแบบ Excel พร้อมสูตรลากวางแทนการจำ syntax, ผู้ช่วย AI แนะนำสูตรจากคำถามภาษาคน และข้อมูลสดจาก API/CSV ที่อัปเดตเองในเซลล์",
+    "เปิดไฟล์ .xlsx ในเบราว์เซอร์แล้วคำนวณต่อได้เลย ไม่ต้องติดตั้ง ไม่ต้องสมัครสมาชิก — หน้าตาไฟล์ยังเหมือนเดิม เลือกสูตรจากรายการแทนการจำ และถาม AI เป็นภาษาคนได้",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

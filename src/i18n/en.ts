@@ -106,10 +106,10 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 162 tests",
-    headline: "A spreadsheet that doesn't make you memorize formulas",
+    eyebrow: "A side project · hand-written formula engine · 283 tests",
+    headline: "Open an Excel file and keep working, in the browser",
     subheadline:
-      "Excel is fiddly to fill in, nobody remembers the syntax, and you lose track of which row you're on. ExcelToGo fixes exactly that: pick formulas from a list instead of typing them, ask an AI in plain language, and pull live API data straight into cells.",
+      "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
     ctaPrimary: "Open the app",
     ctaSecondary: "View the code on GitHub",
     ctaNote: "No sign-up, no install — your data stays in your own browser",
@@ -152,7 +152,7 @@ export const en: Messages = {
     stats: [
       { value: "25", label: "ready-made formulas" },
       { value: "42", label: "engine functions" },
-      { value: "162", label: "automated tests" },
+      { value: "283", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     closingTitle: "Try it — nothing to sign up for",
@@ -244,6 +244,10 @@ export const en: Messages = {
       }
     },
     orderNote: "A lower rule overrides one above it where they clash",
+  },
+  storageNotice: {
+    text: "Your work is saved in this browser only — never uploaded. Clearing your browser data or moving to another device loses it, so use \"Export Excel\" to keep a copy.",
+    dismiss: "Dismiss",
   },
   formatBar: {
     hide: "Hide the formatting bar",
