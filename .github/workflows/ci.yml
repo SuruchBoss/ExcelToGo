@@ -22,9 +22,11 @@ jobs:
       # Don't hide a failure on one version because the other failed first.
       fail-fast: false
       matrix:
-        # 20.9 is the floor Next 16 declares, so the README's claim is tested rather than asserted;
-        # 22 is what most people will actually have.
-        node: ["20.9", "22"]
+        # Both floors `engines` declares, plus a current release. The floor comes from Vite 7
+        # (^20.19 || >=22.12), not from Next — it needs `require(esm)`, which lands in exactly
+        # those two versions. Testing the floors is the point: an earlier matrix asserted 20.9
+        # and the suite turned out not to run there at all.
+        node: ["20.19", "22.12", "24"]
 
     steps:
       - uses: actions/checkout@v5

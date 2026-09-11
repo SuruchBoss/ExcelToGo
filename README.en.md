@@ -147,8 +147,10 @@ cd ExcelToGo
 
 ### Step 1 — Install and run
 
-**Requires:** [Node.js](https://nodejs.org) **20.9+** (22 recommended) and npm — that's Next 16's own floor,
-now declared in `package.json`'s `engines` and actually tested on both 20.9 and 22 in CI
+**Requires:** [Node.js](https://nodejs.org) **20.19+ or 22.12+** (22 or 24 recommended) and npm. That floor
+comes from Vite 7, which the test suite runs on: it needs `require(esm)`, which lands in exactly those two
+versions — higher than Next 16's own `>=20.9`. It's declared in `package.json`'s `engines`, and CI runs both
+floors for real
 
 ```bash
 npm install
@@ -523,7 +525,7 @@ architecture behind it.
 
 ### Tooling
 
-- **Node.js 20.9+** (22 recommended) and npm — Next 16's requirement
+- **Node.js 20.19+ or 22.12+** (22 or 24 recommended) and npm — the floor the test suite's Vite 7 needs
 - **ESLint 9** (`eslint-config-next`), including React 19-specific rules (`react-hooks/set-state-in-effect`, `react-hooks/refs`)
 - **Vitest 3** for unit tests
 - No database or separate backend — everything runs in one Next.js app
@@ -740,7 +742,7 @@ src/
   types/
     sheet-ui.ts               # Types for the grid's selection state
 .github/workflows/
-  ci.yml                     # CI: lint → check:readme → test → build on every push/PR, Node 20.9 and 22
+  ci.yml                     # CI: lint → check:readme → test → build on every push/PR, Node 20.19/22.12/24
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
 public/
@@ -882,12 +884,14 @@ whole project, including the two languages' `Messages` parity). **It has to be g
 full rule lives in `AGENTS.md`.
 
 **GitHub Actions** (`.github/workflows/ci.yml`) runs those same four gates on every push and pull request,
-across **Node 20.9 and 22** — 20.9 being Next 16's floor, so the claim is tested rather than asserted. They run
-as separate steps so the run summary names the gate that failed instead of showing one opaque red cross.
+across **Node 20.19, 22.12 and 24** — the first two being both floors `engines` declares, so the claim is
+tested rather than asserted. They run as separate steps so the run summary names the gate that failed instead
+of showing one opaque red cross.
 
-Testing the actual floor paid for itself on the first run: `check:readme` passed on 22 and failed on 20.9,
-because the script used `import.meta.dirname`, which only exists from Node 20.11. On a machine matching what
-this README asks for, that script could not run at all.
+Testing the real floor caught the same class of bug twice, and both times it was "the documented minimum
+doesn't actually work": first `check:readme` died on `import.meta.dirname` (Node 20.11+), then `npm test` died
+instantly because Vite 7 is ESM-only and needs `require(esm)`, which exists only from 20.19/22.12. This
+project's true floor comes from Vite, not Next — which is only knowable by running CI on it.
 
 ---
 
@@ -896,7 +900,7 @@ this README asks for, that script could not run at all.
 What's not done yet, and why — to show this is a known gap, not something forgotten:
 
 - [x] **Automated CI (GitHub Actions)** — done: lint → check:readme → test → build on every push and PR,
-      across Node 20.9 and 22
+      across Node 20.19, 22.12 and 24
 - [ ] **Cloud save / cross-device sync** — data currently lives only in one browser's `localStorage`; "Export
   Excel" is the way to move it (no user accounts or server-side database in the current scope)
 - [ ] **Charts/graphs** from the sheet's data
