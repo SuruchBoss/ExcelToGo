@@ -2,6 +2,19 @@
   "name": "exceltogo",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Suruch Boss",
+    "url": "https://github.com/SuruchBoss"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SuruchBoss/ExcelToGo.git"
+  },
+  "homepage": "https://github.com/SuruchBoss/ExcelToGo#readme",
+  "bugs": {
+    "url": "https://github.com/SuruchBoss/ExcelToGo/issues"
+  },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },

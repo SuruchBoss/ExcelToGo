@@ -158,6 +158,8 @@ export const en: Messages = {
     closingTitle: "Try it — nothing to sign up for",
     closingBody: "It opens with sample data to play with, plus three live sources whose numbers actually move.",
     footerNote: "A personal project for practising and testing ideas — still at the dev stage",
+    builtBy: "Built by",
+    authorName: "Suruch Boss",
     backToApp: "Open the app",
     home: "Home",
   },

@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per ecosystem rather than a dozen: CI runs the full suite on each, and a grouped
+      # bump is far likelier to actually get reviewed than five separate ones.
+      dev-dependencies:
+        dependency-type: development
+      production-dependencies:
+        dependency-type: production
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly

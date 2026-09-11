@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security issue / ปัญหาด้านความปลอดภัย
+    url: https://github.com/SuruchBoss/ExcelToGo/security/advisories/new
+    about: Please report these privately, not as a public issue. See SECURITY.md.

@@ -8,6 +8,7 @@ import { useT } from "@/i18n";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 
 const REPO_URL = "https://github.com/SuruchBoss/ExcelToGo";
+const AUTHOR_URL = "https://github.com/SuruchBoss";
 
 /** Paired by index with `t.landing.features`. Kept out of the message dictionaries because a file
  *  path and its pixel size are the same in every language — only the alt text needs translating. */
@@ -169,7 +170,16 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-6 text-xs text-zinc-500 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-6 text-xs text-zinc-500 sm:px-6">
+          {/* The licence only compels attribution inside the source tree, which nobody using the
+              app ever opens. This is the line a person actually reads. */}
+          <span>
+            {t.landing.builtBy}{" "}
+            <a href={AUTHOR_URL} target="_blank" rel="noreferrer" className="font-medium text-zinc-700 underline-offset-2 hover:text-emerald-700 hover:underline">
+              {t.landing.authorName}
+            </a>
+          </span>
+          <span className="text-zinc-300">·</span>
           <span>{t.landing.footerNote}</span>
           <div className="flex-1" />
           <a href={REPO_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-zinc-800">

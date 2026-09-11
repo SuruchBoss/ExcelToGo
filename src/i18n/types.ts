@@ -147,6 +147,10 @@ export interface Messages {
     closingTitle: string;
     closingBody: string;
     footerNote: string;
+    /** Author credit in the landing page footer. The licence only requires attribution in the
+     *  source tree, so this is where a person actually using the app can find who made it. */
+    builtBy: string;
+    authorName: string;
     backToApp: string;
     home: string;
   };

@@ -1009,7 +1009,22 @@ What's not done yet, and why — to show this is a known gap, not something forg
 
 ---
 
+## 👤 Author
+
+Built by **Suruch Boss** — [github.com/SuruchBoss](https://github.com/SuruchBoss)
+
+If this project is useful to you, or you'd like to talk about work, do get in touch.
+
+---
+
 ## 📄 License
 
-This project doesn't declare a formal license yet. If you'd like to reuse, modify, or use this code
-commercially, please contact the repository owner first.
+Released under the [Apache License 2.0](LICENSE) — free to use, modify and use commercially.
+
+What the licence asks in return: if you redistribute it (a deployed fork counts), include a copy of
+the licence, state which files you changed, and **carry the [`NOTICE`](NOTICE) file with its
+upstream credit**, per section 4(d). That last mechanism is why Apache-2.0 was chosen over MIT,
+which has no equivalent.
+
+`"private": true` stays in `package.json` on purpose — it prevents an accidental `npm publish` of
+an application and says nothing about whether the source is open.

@@ -1,0 +1,21 @@
+name: Feature request / เสนอฟีเจอร์
+description: Something the app should be able to do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do / อยากทำอะไร
+      description: The task, not the solution — it often has a simpler answer than expected. / เล่าปัญหาที่เจอ ไม่ต้องเสนอวิธีแก้ก็ได้
+    validations:
+      required: true
+  - type: textarea
+    id: excel
+    attributes:
+      label: How does Excel or Google Sheets do it / Excel หรือ Google Sheets ทำยังไง
+      description: If they do. Matching behaviour people already know is usually the right default.
+  - type: markdown
+    attributes:
+      value: |
+        หัวข้อ "สิ่งที่จะทำต่อ" ท้าย README มีรายการที่รู้อยู่แล้วว่ายังขาด ลองดูก่อนได้ /
+        The roadmap at the end of the README lists gaps that are already known.

@@ -1,0 +1,35 @@
+name: Bug report / รายงานปัญหา
+description: Something behaves differently from what you expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        เขียนภาษาไทยหรืออังกฤษก็ได้ / Thai or English is fine.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened / เกิดอะไรขึ้น
+      description: And what did you expect instead? / แล้วคาดว่าควรเป็นยังไง
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / ทำยังไงถึงเจอ
+      placeholder: |
+        1. เปิด /app
+        2. พิมพ์ =SUMIFS(...) ที่ช่อง A1
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: formula
+    attributes:
+      label: The formula or file involved / สูตรหรือไฟล์ที่เกี่ยวข้อง
+      description: Paste the exact formula. For an import problem, say what the file contains — please don't upload a file with real data in it.
+  - type: input
+    id: env
+    attributes:
+      label: Browser and Node version / เบราว์เซอร์และเวอร์ชัน Node
+      placeholder: "Chrome 141, Node 22.12"

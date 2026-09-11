@@ -158,6 +158,8 @@ export const th: Messages = {
     closingTitle: "ลองเลย ไม่ต้องสมัคร",
     closingBody: "เปิดแล้วมีข้อมูลตัวอย่างให้เล่นทันที รวมถึงแหล่งข้อมูลสด 3 แหล่งที่ตัวเลขขยับจริง",
     footerNote: "โปรเจกต์ส่วนตัวเพื่อฝึกและทดลองแนวคิด — ยังอยู่ในขั้น dev",
+    builtBy: "สร้างโดย",
+    authorName: "Suruch Boss",
     backToApp: "เปิดแอป",
     home: "หน้าแรก",
   },
