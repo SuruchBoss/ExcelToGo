@@ -12,14 +12,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-137%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-162%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 **English TL;DR** — A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
-detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 137 automated tests.
+detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 162 automated tests.
 
 ---
 
@@ -134,7 +134,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 137 เคสด้วย Vitest |
+| `npm test` | รัน unit test 162 เคสด้วย Vitest |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -307,6 +307,25 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 ที่คำนวณจาก 40 แถวแรกของข้อมูล 120 แถว มันอ่านเหมือนยอดรวมจริงแต่ไม่ใช่ คำเตือนจึงขึ้นทั้งใน**แถบด้านขวา**,
 ใน**หน้าต่างเลือก**ก่อนที่ผู้ใช้จะกดเลือกค่าสรุป และใน**ผลทดสอบการเชื่อมต่อ**ของฝ่าย tech
 
+**เมื่อ API บอกว่า "เรียกถี่เกินไป" (rate limit)** — ปัญหาไม่ได้มีแค่ข้อความ `HTTP 429` ที่ผู้ใช้ทั่วไปอ่านไม่รู้เรื่อง
+แต่คือ poller ที่ยังยิงตามรอบเดิมต่อไป ซึ่งเป็นสิ่งเดียวที่การันตีว่ามันจะไม่หายเอง ระบบจึง:
+
+- **อ่านว่าต้องรอเท่าไหร่** จาก `Retry-After` (รับทั้งแบบวินาทีและแบบ HTTP date) ถ้าไม่มีก็ดูตระกูล
+  `X-RateLimit-Reset` (ซึ่งแต่ละเจ้าส่งไม่เหมือนกัน — epoch วินาที, epoch มิลลิวินาที, หรือจำนวนวินาทีนับจากนี้ —
+  แยกด้วยขนาดตัวเลขแทนที่จะเชื่อธรรมเนียมใดธรรมเนียมหนึ่ง) ถ้าไม่มีอะไรเลยใช้ 60 วินาที เพดานสูงสุด 15 นาที
+- **แยก 429 ออกจาก 403 ธรรมดา** — นับ 403 เป็น rate limit เฉพาะตอนที่ header บอกว่าโควตาเหลือ 0 (GitHub ตอบแบบนี้)
+  ถ้าเหมารวมทุก 403 ปัญหาเรื่องสิทธิ์จะกลายเป็น "เดี๋ยวลองใหม่" ที่ผู้ใช้รอไปก็ไม่มีวันหาย
+- **หยุดยิงจริงๆ ระหว่างรอ** — ไม่ใช่แค่โชว์ข้อความ (ยืนยันด้วยเทสต์ที่นับจำนวน request ฝั่ง API: ตั้งรีเฟรช 5 วิ
+  โดน 429 ที่ขอให้รอ 40 วิ → 16 วินาทีถัดมามี request เพิ่ม **0 ครั้ง**) และแหล่งอื่นที่ไม่ได้โดนยังอัปเดตตามปกติ
+- **ถ้าโดนกลางทางตอนไล่ดึงหน้า** แถวที่ได้มาแล้วยังคืนให้ พร้อมแนบเวลาที่ต้องรอไปด้วย — ข้อมูลไม่หาย และรอบถัดไป
+  ก็ไม่เดินกลับเข้าไปชนกำแพงเดิม
+- **error ทั่วไปก็ถอยเป็นขั้น** (exponential backoff ทวีคูณจากรอบรีเฟรชของแหล่งนั้น เพดาน 15 นาที) แหล่งที่ล่มอยู่
+  จะไม่ถูกยิงทุก 5 วินาทีไปตลอดกาล
+- ผู้ใช้เห็นเป็นภาษาคนพร้อมนับถอยหลัง และมีปุ่ม **"ลองตอนนี้"** ถ้าไม่อยากรอ (กดเองได้เสมอ — การกดเองคือเจตนา
+  ของคน ไม่ใช่ poller)
+
+<p align="center"><img src="docs/screenshots/14-rate-limited.png" width="820"></p>
+
 รายละเอียดเบื้องหลัง:
 
 - ระบบแปลง JSON เป็นตารางให้เอง (หา array ของ record ที่ใหญ่สุดในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์
@@ -353,7 +372,7 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า และบล็อกข้อมูลสด (137 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit และบล็อกข้อมูลสด (162 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -534,7 +553,8 @@ src/
     sheetSort.ts             # ตรวจจับช่วงที่จะเรียง + เรียงลำดับข้อมูล
     liveBlocks.ts            # เขียนตารางจากแหล่งข้อมูลลงเซลล์, จำขอบเขตเพื่อล้างเมื่อข้อมูลหด, รวม/เฉลี่ย/นับ (มี test)
     dataSources/             # types + jsonToTable.ts (แปลง JSON/CSV อะไรก็ได้เป็นตาราง) +
-                              # paginate.ts (หาหน้าถัดไปจาก Link header/ฟิลด์ next/cursor/พารามิเตอร์) — มี test ทั้งคู่
+                              # paginate.ts (หาหน้าถัดไปจาก Link header/ฟิลด์ next/cursor/พารามิเตอร์) +
+                              # rateLimit.ts (อ่านเวลาที่ต้องรอจาก header + คำนวณ backoff) — มี test ทุกไฟล์
     server/                  # โค้ดฝั่งเซิร์ฟเวอร์เท่านั้น: sourceRepo.ts (เก็บ config+credential ใน data/sources.json),
                               # executeSource.ts (ดึงข้อมูลจริง)
     excelIO.ts                # นำเข้า/ส่งออก workbook หลายชีต (.xlsx) ด้วย exceljs พร้อมรูปแบบเซลล์
@@ -639,10 +659,10 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 137 เคส ใน 11 ไฟล์ ด้วย Vitest
+npm test      # 162 เคส ใน 12 ไฟล์ ด้วย Vitest
 ```
 
-โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
+โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง ส่วน UI/interaction verify ด้วย Playwright แบบ manual ระหว่างพัฒนาแต่ละฟีเจอร์
 (ไม่ได้ commit สคริปต์ไว้ในโปรเจกต์ เพราะเป็นเครื่องมือช่วยตรวจสอบชั่วคราว ไม่ใช่ regression suite ถาวร)
 
@@ -657,7 +677,8 @@ npm test      # 137 เคส ใน 11 ไฟล์ ด้วย Vitest
 | `sheetSort.test.ts` | 7 | ฮิวริสติกตรวจจับขอบเขต+หัวตาราง และการเรียงลำดับ (รวมกรณีค่าว่าง, จำกัดคอลัมน์ที่ย้าย) |
 | `jsonToTable.test.ts` | 10 | หา array ของ record ในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์, ตรวจจับคอลัมน์ตัวเลข, KPI object แถวเดียว |
 | `paginate.test.ts` | 19 | ตรวจจับหน้าถัดไปจาก Link header / ฟิลด์ next / cursor / พารามิเตอร์ใน URL, การหยุดเมื่อ next เป็น null, ค่าที่ไม่ใช่ลิงก์ |
-| `executeSource.test.ts` | 15 | ลูปไล่ดึงหน้าจริง (stub fetch): ขีดจำกัดแถว, เพดาน 20 หน้า, กันลูปวน, หน้ากลางพัง, รวมคอลัมน์ข้ามหน้า, auth header ทุกหน้า |
+| `executeSource.test.ts` | 20 | ลูปไล่ดึงหน้าจริง (stub fetch): ขีดจำกัดแถว, เพดาน 20 หน้า, กันลูปวน, หน้ากลางพัง, รวมคอลัมน์ข้ามหน้า, auth header ทุกหน้า, 429 กลางทาง |
+| `rateLimit.test.ts` | 20 | อ่าน `Retry-After` (วินาที/HTTP date) และ `X-RateLimit-Reset` ทุกรูปแบบ, แยก 403 ที่โควตาหมดออกจาก 403 ธรรมดา, การคำนวณ backoff |
 | `liveBlocks.test.ts` | 15 | เขียน/ล้างบล็อกข้อมูลสด, ขอบเขตที่หดลง, รวม/เฉลี่ย/นับ, ตัวเลือกค่าเดียวที่เสนอให้, ตรวจพื้นที่ทับซ้อน |
 
 CI: `npm run lint` → `npm run build` (บังคับ type-check เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) →
@@ -691,8 +712,8 @@ CI: `npm run lint` → `npm run build` (บังคับ type-check เต็�
 - [x] **ข้อมูลสดจาก REST API / CSV** — ทำแล้ว (prototype, ดูหัวข้อ ✨ ฟีเจอร์) รีเฟรชแบบ polling
 - [x] **ไล่ดึง API ที่แบ่งหน้า (pagination)** — ทำแล้ว: ตรวจจับเองจาก Link header / ฟิลด์ next / cursor /
       พารามิเตอร์ใน URL พร้อมบอกผู้ใช้เมื่อดึงมาไม่ครบ
-- [ ] **จัดการ rate limit ให้ผู้ใช้เข้าใจ** — ตอนนี้ HTTP 429 ขึ้นเป็นข้อความ error ดิบ ยังไม่มี backoff
-      หรือการอ่าน `Retry-After` มาบอกว่า "ลองใหม่ในอีกกี่วินาที"
+- [x] **จัดการ rate limit ให้ผู้ใช้เข้าใจ** — ทำแล้ว: อ่าน `Retry-After`/`X-RateLimit-Reset`, หยุด polling
+      ระหว่างรอจริงๆ, exponential backoff สำหรับ error ทั่วไป, และแสดงเป็นภาษาคนพร้อมนับถอยหลัง
 - [ ] **แหล่งข้อมูลแบบฐานข้อมูล** (Postgres/MySQL) — เฟสถัดไป: tech เลือกตาราง/เซฟ query ครั้งเดียว user ไม่เห็น SQL
 - [ ] **Realtime แบบ push (SSE/WebSocket)** แทน polling, และการกรองข้อมูลสดจาก UI ก่อนวาง
 

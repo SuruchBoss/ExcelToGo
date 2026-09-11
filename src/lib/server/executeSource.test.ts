@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MAX_PAGES } from "@/lib/dataSources/paginate";
+import { RateLimitError } from "@/lib/dataSources/rateLimit";
 import { executeSource } from "./executeSource";
 
 const ORIGIN = "https://app.test";
@@ -8,6 +9,7 @@ interface Stub {
   body: unknown | string;
   link?: string;
   status?: number;
+  headers?: Record<string, string>;
 }
 
 /** Serves canned responses by URL and records the order they were asked for. */
@@ -17,7 +19,7 @@ function stubFetch(routes: Record<string, Stub>) {
     calls.push(url);
     const stub = routes[url];
     if (!stub) throw new Error(`unexpected fetch: ${url}`);
-    const headers = new Headers(stub.link ? { link: stub.link } : {});
+    const headers = new Headers({ ...(stub.link ? { link: stub.link } : {}), ...(stub.headers ?? {}) });
     return {
       ok: (stub.status ?? 200) < 400,
       status: stub.status ?? 200,
@@ -201,5 +203,54 @@ describe("executeSource pagination", () => {
       [1, 2],
       [3, 4],
     ]);
+  });
+});
+
+describe("executeSource rate limiting", () => {
+  it("raises a typed error carrying the wait when the first request is rate limited", async () => {
+    stubFetch({ "https://api.test/r": { body: {}, status: 429, headers: { "retry-after": "45" } } });
+    await expect(executeSource({ type: "rest", url: "https://api.test/r" }, ORIGIN)).rejects.toMatchObject({
+      name: "RateLimitError",
+      retryAfterSec: 45,
+    });
+  });
+
+  it("reads a 403 as rate limiting only when the quota header says it's spent", async () => {
+    stubFetch({ "https://api.test/q": { body: {}, status: 403, headers: { "x-ratelimit-remaining": "0", "retry-after": "30" } } });
+    await expect(executeSource({ type: "rest", url: "https://api.test/q" }, ORIGIN)).rejects.toBeInstanceOf(RateLimitError);
+
+    vi.unstubAllGlobals();
+    stubFetch({ "https://api.test/f": { body: {}, status: 403 } });
+    const plain = executeSource({ type: "rest", url: "https://api.test/f" }, ORIGIN);
+    await expect(plain).rejects.toThrow(/403/);
+    await expect(plain).rejects.not.toBeInstanceOf(RateLimitError);
+  });
+
+  it("keeps the pages it already fetched and passes the wait along", async () => {
+    stubFetch({
+      "https://api.test/m": { body: { items: rows(1, 3), next: "https://api.test/m?page=2" } },
+      "https://api.test/m?page=2": { body: {}, status: 429, headers: { "retry-after": "90" } },
+    });
+    const table = await executeSource({ type: "rest", url: "https://api.test/m" }, ORIGIN);
+
+    expect(table.rows).toHaveLength(3);
+    expect(table.truncated).toBe(true);
+    expect(table.retryAfterSec).toBe(90);
+  });
+
+  it("falls back to a reset header when no Retry-After is sent", async () => {
+    const resetAt = Math.floor(Date.now() / 1000) + 120;
+    stubFetch({ "https://api.test/s": { body: {}, status: 429, headers: { "x-ratelimit-reset": String(resetAt) } } });
+    await expect(executeSource({ type: "rest", url: "https://api.test/s" }, ORIGIN)).rejects.toMatchObject({
+      retryAfterSec: expect.any(Number),
+    });
+  });
+
+  it("leaves a healthy response alone even if it carries rate-limit headers", async () => {
+    stubFetch({ "https://api.test/ok": { body: rows(1, 2), headers: { "x-ratelimit-remaining": "0", "retry-after": "60" } } });
+    const table = await executeSource({ type: "rest", url: "https://api.test/ok" }, ORIGIN);
+
+    expect(table.rows).toHaveLength(2);
+    expect(table.retryAfterSec).toBeUndefined();
   });
 });

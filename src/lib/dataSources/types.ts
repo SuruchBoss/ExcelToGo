@@ -45,6 +45,10 @@ export interface TableData {
    *  rows are only part of the data. Surfaced in the UI: a silent partial table is worse than a
    *  small one the user knows is partial. */
   truncated?: boolean;
+  /** Set when the source rate-limited us partway through the pages. The rows collected so far are
+   *  still worth returning, but the caller must wait this long before refreshing again — otherwise
+   *  the next poll walks straight back into the same limit. */
+  retryAfterSec?: number;
 }
 
 export interface SourceFetchError {

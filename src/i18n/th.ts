@@ -43,6 +43,9 @@ export const th: Messages = {
     liveCellReadOnly: "เซลล์นี้เป็นข้อมูลสด แก้ไขเองไม่ได้ — กด \"เอาออก\" ก่อนถ้าต้องการพิมพ์ทับ",
     partial: (rows) => `ได้มาแค่ ${rows.toLocaleString("th-TH")} แถวแรก`,
     partialHint: "แหล่งข้อมูลนี้ยังมีข้อมูลมากกว่านี้ — เพิ่มขีดจำกัดแถวได้ที่การตั้งค่าแหล่งข้อมูล",
+    rateLimited: "แหล่งข้อมูลขอให้เรียกถี่น้อยลง",
+    retryIn: (s) => (s >= 60 ? `ลองใหม่ในอีก ${Math.ceil(s / 60)} นาที` : `ลองใหม่ในอีก ${s} วิ.`),
+    retryNow: "ลองตอนนี้",
     pages: (pages) => `${pages} หน้า`,
     aggregate: { first: "", sum: "รวม", avg: "เฉลี่ย", count: "จำนวนรายการ" },
     picker: {

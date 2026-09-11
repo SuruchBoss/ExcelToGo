@@ -64,6 +64,10 @@ export interface Messages {
     /** Shown wherever a paginated source's table is only part of the data. */
     partial: (rows: number) => string;
     partialHint: string;
+    /** Shown instead of a raw "HTTP 429" when a source asks to be called less often. */
+    rateLimited: string;
+    retryIn: (seconds: number) => string;
+    retryNow: string;
     pages: (pages: number) => string;
     aggregate: { first: string; sum: string; avg: string; count: string };
     picker: {

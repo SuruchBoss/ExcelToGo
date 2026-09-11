@@ -43,6 +43,9 @@ export const en: Messages = {
     liveCellReadOnly: "This cell is live data and can't be edited — click \"Remove\" first to type over it",
     partial: (rows) => `Only the first ${rows.toLocaleString("en-US")} rows`,
     partialHint: "This source has more data — raise the row limit in the source's settings",
+    rateLimited: "This source asked to be called less often",
+    retryIn: (s) => (s >= 60 ? `retrying in ${Math.ceil(s / 60)} min` : `retrying in ${s}s`),
+    retryNow: "Try now",
     pages: (pages) => `${pages} pages`,
     aggregate: { first: "", sum: "Total", avg: "Average", count: "Row count" },
     picker: {

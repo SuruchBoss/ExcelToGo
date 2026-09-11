@@ -1,5 +1,6 @@
 import { executeSource } from "@/lib/server/executeSource";
 import { getSource } from "@/lib/server/sourceRepo";
+import { fetchErrorResponse } from "../../errorResponse";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,6 @@ export async function GET(request: Request, ctx: RouteContext<"/api/sources/[id]
     const table = await executeSource(source, new URL(request.url).origin);
     return Response.json(table);
   } catch (err) {
-    return Response.json({ error: err instanceof Error ? err.message : "fetch_failed" }, { status: 502 });
+    return fetchErrorResponse(err);
   }
 }

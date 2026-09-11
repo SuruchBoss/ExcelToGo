@@ -14,14 +14,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-137%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-162%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 137 automated tests.
+workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 162 automated tests.
 
 ---
 
@@ -141,7 +141,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 137-case Vitest suite |
+| `npm test` | Run the 162-case Vitest suite |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -328,6 +328,30 @@ small one the user knows about: a "Sum" card computed from the first 40 rows of 
 reads exactly like a real total and isn't one. So the warning appears in the **side panel**, in the
 **picker** before the user commits to a summary value, and in the tech-side **connection test**.
 
+**When an API says "too many requests"** — the problem isn't only that `HTTP 429` means nothing to a
+non-technical user. It's that the poller keeps firing on its normal interval, which is the one
+response guaranteed to keep the source broken. So:
+
+- **The wait is read from the response**: `Retry-After` (both the seconds form and the HTTP-date
+  form), falling back to the `X-RateLimit-Reset` family — which is maddeningly inconsistent (epoch
+  seconds, epoch milliseconds, or seconds-from-now), so it's told apart by magnitude rather than by
+  trusting any one convention. With nothing to go on, 60 seconds; capped at 15 minutes.
+- **429 is separated from an ordinary 403** — a 403 counts as rate limiting only when a header says
+  the remaining quota is zero (GitHub answers that way). Treating every 403 as a rate limit would
+  turn a permission error into "try again later" and leave the user waiting on something that will
+  never fix itself.
+- **Polling actually stops during the wait**, not just the message changes — verified by a test that
+  counts requests on the API side: a source on a 5s interval, 429'd with a 40s wait, received
+  **0 further requests** over the next 16 seconds. Unaffected sources keep refreshing throughout.
+- **A rate limit partway through pagination** still returns the rows already collected, with the
+  wait attached — no data lost, and the next poll doesn't walk back into the same wall.
+- **Ordinary failures back off too** (exponential from the source's own interval, capped at 15
+  minutes), so a source that is simply down stops being polled every few seconds forever.
+- The user sees plain language with a live countdown and a **"Try now"** button to override it — a
+  manual refresh always goes through, because a person clicking is a deliberate act, not the poller.
+
+<p align="center"><img src="docs/screenshots/14-rate-limited.png" width="820"></p>
+
 Behind the scenes:
 
 - The app converts JSON into a table on its own (finds the largest array of records in the response, flattens
@@ -378,7 +402,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination and live blocks (137 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting and live blocks (162 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -562,7 +586,8 @@ src/
     sheetSort.ts             # Detecting the range to sort + the actual sort
     liveBlocks.ts            # Writes a source's table into cells, tracks extent to clear shrinking data, sum/avg/count (tested)
     dataSources/             # Types + jsonToTable.ts (turns any JSON/CSV into a table) + paginate.ts
-                              # (finds the next page from a Link header/next field/cursor/URL param) — both tested
+                              # (finds the next page from a Link header/next field/cursor/URL param) +
+                              # rateLimit.ts (reads the wait out of headers + backoff maths) — all tested
     server/                  # Server-only: sourceRepo.ts (config + credentials in data/sources.json),
                               # executeSource.ts (does the actual fetch)
     excelIO.ts                # Importing/exporting a multi-sheet workbook (.xlsx) via exceljs, with cell formatting
@@ -675,10 +700,10 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 137 cases across 11 files, via Vitest
+npm test      # 162 cases across 12 files, via Vitest
 ```
 
-Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination and live-block placement** — pure functions with no React/DOM dependency, so
+Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence. UI/interaction behavior was verified manually with Playwright during
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
@@ -694,7 +719,8 @@ tool, not a permanent regression suite).
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
 | `jsonToTable.test.ts` | 10 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects |
 | `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
-| `executeSource.test.ts` | 15 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, auth header on every page |
+| `executeSource.test.ts` | 20 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, auth header on every page, a mid-chain 429 |
+| `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
 CI: `npm run lint` → `npm run build` (which also type-checks the whole project, including the two languages'
@@ -732,8 +758,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Live data from REST API / CSV** — done (prototype, see ✨ Features), polling-based refresh
 - [x] **Following paginated APIs** — done: auto-detected from a Link header / next field / cursor / a param
       already in the URL, and the user is told when the data came back incomplete
-- [ ] **Rate limits explained to the user** — an HTTP 429 currently surfaces as a raw error string; there's
-      no backoff and no reading of `Retry-After` to say "try again in N seconds"
+- [x] **Rate limits explained to the user** — done: reads `Retry-After`/`X-RateLimit-Reset`, genuinely stops
+      polling for the duration, exponential backoff for ordinary failures, shown in plain language with a
+      live countdown
 - [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 

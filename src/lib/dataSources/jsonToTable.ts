@@ -87,7 +87,7 @@ export function extractRecords(json: Json): Record_[] | null {
 export function tableFromRecords(
   records: Record_[],
   fetchedAt = new Date().toISOString(),
-  extra: Pick<TableData, "pageCount" | "truncated"> = {}
+  extra: Pick<TableData, "pageCount" | "truncated" | "retryAfterSec"> = {}
 ): TableData {
   const flat = records.map((r) => flattenRecord(r));
   const keys: string[] = [];

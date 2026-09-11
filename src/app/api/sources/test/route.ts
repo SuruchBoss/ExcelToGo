@@ -1,6 +1,7 @@
 import { executeSource } from "@/lib/server/executeSource";
 import { getSource } from "@/lib/server/sourceRepo";
 import { parseSourceBody } from "../validate";
+import { fetchErrorResponse } from "../errorResponse";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,6 @@ export async function POST(request: Request) {
     const table = await executeSource(cfg, url.origin);
     return Response.json(table);
   } catch (err) {
-    return Response.json({ error: err instanceof Error ? err.message : "fetch_failed" }, { status: 502 });
+    return fetchErrorResponse(err);
   }
 }

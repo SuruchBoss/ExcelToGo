@@ -1,5 +1,6 @@
 import { csvToTable, extractRecords, getByPath, jsonToTable, tableFromRecords } from "@/lib/dataSources/jsonToTable";
 import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "@/lib/dataSources/paginate";
+import { RateLimitError, readRateLimit } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, TableData } from "@/lib/dataSources/types";
 
 export type SourceInput = Pick<DataSourceConfig, "type" | "url" | "method" | "authHeader" | "jsonPath" | "maxRows">;
@@ -23,6 +24,8 @@ async function fetchPage(url: string, src: SourceInput): Promise<{ text: string;
   } finally {
     clearTimeout(timeout);
   }
+  const limited = readRateLimit(res.status, res.headers);
+  if (limited) throw new RateLimitError(limited);
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
   return { text: await res.text(), linkHeader: res.headers.get("link") };
 }
@@ -74,6 +77,7 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
   let currentUrl = startUrl;
   let pageCount = 1;
   let truncated = false;
+  let retryAfterSec: number | undefined;
 
   for (;;) {
     // Ask where the next page is first, then decide whether we're allowed to go there. Doing it
@@ -96,8 +100,11 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
     let next: { text: string; linkHeader: string | null };
     try {
       next = await fetchPage(currentUrl, src);
-    } catch {
-      // One bad page shouldn't throw away the rows already in hand — return them, marked partial.
+    } catch (err) {
+      // A rate limit partway through is the one failure worth carrying forward rather than just
+      // swallowing: the rows already collected are still good, but the caller has to know to wait
+      // or the next poll walks straight back into the same limit.
+      if (err instanceof RateLimitError) retryAfterSec = err.retryAfterSec;
       truncated = true;
       break;
     }
@@ -117,5 +124,5 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
     all.length = maxRows;
     truncated = true;
   }
-  return tableFromRecords(all, fetchedAt, { pageCount, truncated: truncated || undefined });
+  return tableFromRecords(all, fetchedAt, { pageCount, truncated: truncated || undefined, retryAfterSec });
 }

@@ -14,13 +14,14 @@ interface Props {
   onEdit: () => void;
 }
 
-function useSecondsSince(iso: string | undefined): number {
+/** One ticking clock for the row, shared by "updated Ns ago" and the retry countdown. */
+function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  return iso ? Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000)) : 0;
+  return now;
 }
 
 /** One source in the side panel: name, freshness, and a single primary action. Everything heavier
@@ -31,7 +32,12 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
   const error = useDataSourceStore((s) => s.errors[source.id]);
   const refresh = useDataSourceStore((s) => s.refresh);
   const deleteSource = useDataSourceStore((s) => s.deleteSource);
-  const ago = useSecondsSince(table?.fetchedAt);
+  const backoff = useDataSourceStore((s) => s.backoff[source.id]);
+  const now = useNow();
+  const ago = table ? Math.max(0, Math.floor((now - new Date(table.fetchedAt).getTime()) / 1000)) : 0;
+  // Floored, not rounded up: `now` ticks once a second so it can lag, and a 40s wait displayed as
+  // "41s" reads like the app invented a number the API never sent.
+  const waitSec = backoff ? Math.max(0, Math.floor((backoff.until - now) / 1000)) : 0;
   const [menuOpen, setMenuOpen] = useState(false);
 
   const size = table
@@ -50,7 +56,7 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
             {t.data.live}
           </span>
         )}
-        {error && <span className="shrink-0 text-[11px] font-semibold text-red-600">{t.data.error}</span>}
+        {error && !backoff?.rateLimited && <span className="shrink-0 text-[11px] font-semibold text-red-600">{t.data.error}</span>}
         <button
           onClick={() => setMenuOpen((o) => !o)}
           title={t.data.options}
@@ -70,7 +76,24 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
           ⚠ {t.data.partial(table.rows.length)}
         </p>
       )}
-      {error && <p className="mt-1 rounded bg-red-50 p-1.5 text-[11px] text-red-600">{error}</p>}
+      {backoff?.rateLimited ? (
+        <div className="mt-1 rounded bg-amber-50 p-1.5 text-[11px] text-amber-800">
+          <p className="font-medium">⏳ {t.data.rateLimited}</p>
+          <div className="mt-0.5 flex items-center gap-2">
+            <span>{waitSec > 0 ? t.data.retryIn(waitSec) : t.data.loading}</span>
+            <button onClick={() => void refresh(source.id, true)} className="font-semibold text-amber-900 underline hover:no-underline">
+              {t.data.retryNow}
+            </button>
+          </div>
+        </div>
+      ) : (
+        error && (
+          <p className="mt-1 rounded bg-red-50 p-1.5 text-[11px] text-red-600">
+            {error}
+            {waitSec > 0 && <span className="ml-1 text-red-500">· {t.data.retryIn(waitSec)}</span>}
+          </p>
+        )
+      )}
 
       <button
         onClick={onUse}
@@ -92,7 +115,7 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
             <button
               onClick={() => {
                 setMenuOpen(false);
-                void refresh(source.id);
+                void refresh(source.id, true);
               }}
               className="block w-full rounded px-2.5 py-1.5 text-left text-[13px] text-zinc-700 hover:bg-zinc-50"
             >
