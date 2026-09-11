@@ -28,6 +28,18 @@ const DEFAULT_SOURCES: DataSourceConfig[] = [
     refreshSec: 5,
     createdAt: new Date(0).toISOString(),
   },
+  {
+    // Returns 25 rows per page over 120 rows, so the panel shows a source that only adds up to
+    // its full size once pages have been followed.
+    id: "demo-orders",
+    name: "รายการสั่งซื้อ (ตัวอย่าง, หลายหน้า)",
+    type: "rest",
+    url: "/api/demo/orders",
+    method: "GET",
+    maxRows: 200,
+    refreshSec: 30,
+    createdAt: new Date(0).toISOString(),
+  },
 ];
 
 async function readAll(): Promise<DataSourceConfig[]> {

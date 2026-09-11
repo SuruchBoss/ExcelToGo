@@ -12,14 +12,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-103%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-137%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 **English TL;DR** — A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
-detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 103 automated tests.
+detection, multi-sheet workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 137 automated tests.
 
 ---
 
@@ -134,7 +134,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 103 เคสด้วย Vitest |
+| `npm test` | รัน unit test 137 เคสด้วย Vitest |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -283,6 +283,30 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 
 <p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
 
+**API แบ่งหน้า (pagination)** — ปัญหาคือ API ส่วนใหญ่ส่งมาทีละหน้า ถ้าดึงแค่ครั้งเดียวผู้ใช้จะได้ 25 แถวแรก
+แล้วเข้าใจว่านั่นคือข้อมูลทั้งหมด ระบบจึงไล่ดึงหน้าถัดไปให้เอง โดย**ไม่ต้องตั้งค่าอะไรเพิ่ม** — อ่านสัญญาณที่ API
+บอกมาอยู่แล้ว ไล่ตามลำดับนี้:
+
+| สัญญาณ | ตัวอย่าง | ใครใช้ |
+|---|---|---|
+| `Link` header `rel="next"` | `Link: <…?page=2>; rel="next"` | GitHub, GitLab |
+| ฟิลด์ URL หน้าถัดไปใน body | `next`, `next_page_url`, `links.next`, `_links.next.href`, `@odata.nextLink` | Laravel, HAL, OData |
+| cursor / token | `next_cursor`, `nextPageToken`, `scroll_id` → ส่งกลับเป็น query param | Slack, Google APIs |
+| พารามิเตอร์ที่มีอยู่ใน URL แล้ว | tech ใส่ `?page=1` หรือ `?offset=0` มาเอง → ระบบบวกเพิ่มให้ | API ที่ไม่บอกอะไรเลย |
+
+ข้อสุดท้ายสำคัญ: ระบบจะ**ไม่เดา** `?page=2` ให้ API ที่ URL ไม่มีพารามิเตอร์นั้น เพราะถ้า API ไม่รองรับ มันจะส่ง
+หน้าแรกกลับมาซ้ำๆ ไม่รู้จบ — ถือว่า tech "เลือกแล้ว" ก็ต่อเมื่อเขียน param นั้นไว้ใน URL เอง
+
+ฝ่าย tech เห็นแค่ช่องเดียว: **"ดึงสูงสุด [1000] แถว"** (ใส่ 0 = เอาเฉพาะหน้าแรก) ส่วนที่เหลือมีกันชนไว้หมดแล้ว —
+ไม่เกิน 20 request ต่อรอบ, งบเวลารวม 45 วินาที, หยุดถ้าลิงก์หน้าถัดไปวนกลับไปหน้าที่ดึงมาแล้ว, หน้าว่างคือจบ,
+และถ้าหน้ากลางพัง**ก็ยังคืนแถวที่ได้มาแล้ว** ไม่ทิ้งทั้งก้อน
+
+<p align="center"><img src="docs/screenshots/13-partial-data.png" width="820"></p>
+
+**และถ้าดึงมาไม่ครบ ระบบจะบอกตรงๆ** — ตารางที่ไม่ครบแบบเงียบๆ อันตรายกว่าตารางเล็กที่รู้ตัว เพราะการ์ด "รวม"
+ที่คำนวณจาก 40 แถวแรกของข้อมูล 120 แถว มันอ่านเหมือนยอดรวมจริงแต่ไม่ใช่ คำเตือนจึงขึ้นทั้งใน**แถบด้านขวา**,
+ใน**หน้าต่างเลือก**ก่อนที่ผู้ใช้จะกดเลือกค่าสรุป และใน**ผลทดสอบการเชื่อมต่อ**ของฝ่าย tech
+
 รายละเอียดเบื้องหลัง:
 
 - ระบบแปลง JSON เป็นตารางให้เอง (หา array ของ record ที่ใหญ่สุดในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์
@@ -294,7 +318,8 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
   และปุ่ม "เปลี่ยน" (ล้างของเดิม + วางของใหม่) ก็นับเป็น 1 ขั้นตอนเดียวเช่นกัน
 - ยัง**ลากวางได้เหมือนเดิม**สำหรับคนที่ถนัดลาก แต่ไม่ใช่ทางหลักอีกต่อไป
 - แถบด้านขวามีรายการ "ข้อมูลสดในชีตนี้" บอกว่าตอนนี้วางอะไรไว้ที่เซลล์ไหนบ้าง พร้อมปุ่มเอาออกทีละอัน
-- มี 2 แหล่งข้อมูลตัวอย่างให้เล่นทันที (`/api/demo/sales` ตารางที่ตัวเลขขยับทุก 5 วิ, `/api/demo/summary` แบบ KPI object)
+- มี 3 แหล่งข้อมูลตัวอย่างให้เล่นทันที: `/api/demo/sales` (ตารางที่ตัวเลขขยับทุก 5 วิ), `/api/demo/summary`
+  (KPI object), และ `/api/demo/orders` (**แบ่งหน้า** 25 แถว/หน้า รวม 120 แถว — ไว้ลองฟีเจอร์ pagination)
 
 > ฐานข้อมูล (Postgres/MySQL) อยู่ในเฟสถัดไป — ปุ่มมีให้เห็นในฟอร์มแล้วแต่ยังกดไม่ได้
 
@@ -328,7 +353,7 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง และบล็อกข้อมูลสด (103 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า และบล็อกข้อมูลสด (137 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -460,6 +485,7 @@ src/
     api/ai/formula/route.ts  # API endpoint ให้ AI แนะนำสูตร (ใช้ Claude หรือ heuristic fallback)
     api/sources/             # CRUD แหล่งข้อมูล, /test (ทดสอบโดยไม่บันทึก), /[id]/data (ดึงข้อมูลเป็นตาราง)
     api/demo/                # endpoint ตัวอย่างที่ตัวเลขขยับเอง สำหรับลองฟีเจอร์ข้อมูลสดโดยไม่ต้องมี API จริง
+                              # (sales, summary, และ orders ที่แบ่งหน้า 25 แถว/หน้า)
   store/
     sheetStore.ts            # Zustand store หลัก — sheets (รวม liveBlocks), activeSheetId, selection/ตัวกรองต่อชีต,
                               # แผงสูตรที่กำลังกรอก, แถบข้างที่เปิดอยู่, หน้าต่างเลือกข้อมูล + action ทั้งหมด ต่อด้วย
@@ -507,7 +533,8 @@ src/
     sheetClipboard.ts        # คัดลอก/ตัด/วาง, แปลงเป็น/จาก TSV (สำหรับ paste ข้ามแอป)
     sheetSort.ts             # ตรวจจับช่วงที่จะเรียง + เรียงลำดับข้อมูล
     liveBlocks.ts            # เขียนตารางจากแหล่งข้อมูลลงเซลล์, จำขอบเขตเพื่อล้างเมื่อข้อมูลหด, รวม/เฉลี่ย/นับ (มี test)
-    dataSources/             # types + jsonToTable.ts: แปลง JSON/CSV อะไรก็ได้เป็นตาราง (มี test)
+    dataSources/             # types + jsonToTable.ts (แปลง JSON/CSV อะไรก็ได้เป็นตาราง) +
+                              # paginate.ts (หาหน้าถัดไปจาก Link header/ฟิลด์ next/cursor/พารามิเตอร์) — มี test ทั้งคู่
     server/                  # โค้ดฝั่งเซิร์ฟเวอร์เท่านั้น: sourceRepo.ts (เก็บ config+credential ใน data/sources.json),
                               # executeSource.ts (ดึงข้อมูลจริง)
     excelIO.ts                # นำเข้า/ส่งออก workbook หลายชีต (.xlsx) ด้วย exceljs พร้อมรูปแบบเซลล์
@@ -612,10 +639,10 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 103 เคส ใน 9 ไฟล์ ด้วย Vitest
+npm test      # 137 เคส ใน 11 ไฟล์ ด้วย Vitest
 ```
 
-โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
+โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง ส่วน UI/interaction verify ด้วย Playwright แบบ manual ระหว่างพัฒนาแต่ละฟีเจอร์
 (ไม่ได้ commit สคริปต์ไว้ในโปรเจกต์ เพราะเป็นเครื่องมือช่วยตรวจสอบชั่วคราว ไม่ใช่ regression suite ถาวร)
 
@@ -629,6 +656,8 @@ npm test      # 103 เคส ใน 9 ไฟล์ ด้วย Vitest
 | `structuralShift.test.ts` | 15 | การปรับอ้างอิงตอนแทรก/ลบแถว-คอลัมน์ รวม `#REF!` และการขยาย/หดของช่วง |
 | `sheetSort.test.ts` | 7 | ฮิวริสติกตรวจจับขอบเขต+หัวตาราง และการเรียงลำดับ (รวมกรณีค่าว่าง, จำกัดคอลัมน์ที่ย้าย) |
 | `jsonToTable.test.ts` | 10 | หา array ของ record ในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์, ตรวจจับคอลัมน์ตัวเลข, KPI object แถวเดียว |
+| `paginate.test.ts` | 19 | ตรวจจับหน้าถัดไปจาก Link header / ฟิลด์ next / cursor / พารามิเตอร์ใน URL, การหยุดเมื่อ next เป็น null, ค่าที่ไม่ใช่ลิงก์ |
+| `executeSource.test.ts` | 15 | ลูปไล่ดึงหน้าจริง (stub fetch): ขีดจำกัดแถว, เพดาน 20 หน้า, กันลูปวน, หน้ากลางพัง, รวมคอลัมน์ข้ามหน้า, auth header ทุกหน้า |
 | `liveBlocks.test.ts` | 15 | เขียน/ล้างบล็อกข้อมูลสด, ขอบเขตที่หดลง, รวม/เฉลี่ย/นับ, ตัวเลือกค่าเดียวที่เสนอให้, ตรวจพื้นที่ทับซ้อน |
 
 CI: `npm run lint` → `npm run build` (บังคับ type-check เต็มโปรเจกต์ รวม parity ของ `Messages` สองภาษา) →
@@ -652,6 +681,10 @@ CI: `npm run lint` → `npm run build` (บังคับ type-check เต็�
   สำหรับจอเล็ก
 - [ ] **Import/Export CSV** โดยตรง (ตอนนี้ผ่าน `.xlsx` เท่านั้น)
 - [x] **ข้อมูลสดจาก REST API / CSV** — ทำแล้ว (prototype, ดูหัวข้อ ✨ ฟีเจอร์) รีเฟรชแบบ polling
+- [x] **ไล่ดึง API ที่แบ่งหน้า (pagination)** — ทำแล้ว: ตรวจจับเองจาก Link header / ฟิลด์ next / cursor /
+      พารามิเตอร์ใน URL พร้อมบอกผู้ใช้เมื่อดึงมาไม่ครบ
+- [ ] **จัดการ rate limit ให้ผู้ใช้เข้าใจ** — ตอนนี้ HTTP 429 ขึ้นเป็นข้อความ error ดิบ ยังไม่มี backoff
+      หรือการอ่าน `Retry-After` มาบอกว่า "ลองใหม่ในอีกกี่วินาที"
 - [ ] **แหล่งข้อมูลแบบฐานข้อมูล** (Postgres/MySQL) — เฟสถัดไป: tech เลือกตาราง/เซฟ query ครั้งเดียว user ไม่เห็น SQL
 - [ ] **Realtime แบบ push (SSE/WebSocket)** แทน polling, และการกรองข้อมูลสดจาก UI ก่อนวาง
 

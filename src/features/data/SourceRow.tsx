@@ -62,8 +62,14 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
 
       <p className="mt-0.5 text-[11px] text-zinc-400">
         {size}
+        {table && (table.pageCount ?? 1) > 1 && ` · ${t.data.pages(table.pageCount ?? 1)}`}
         {table && ` · ${t.data.updatedAgo(ago)}`}
       </p>
+      {table?.truncated && (
+        <p className="mt-1 text-[11px] font-medium text-amber-700" title={t.data.partialHint}>
+          ⚠ {t.data.partial(table.rows.length)}
+        </p>
+      )}
       {error && <p className="mt-1 rounded bg-red-50 p-1.5 text-[11px] text-red-600">{error}</p>}
 
       <button

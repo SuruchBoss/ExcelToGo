@@ -69,23 +69,26 @@ function labelFor(key: string): string {
 }
 
 /**
- * Turns any JSON payload into a rectangular table a non-technical user can read:
- * - an array of objects → one row per object
+ * Finds the list of records a payload is really about:
+ * - an array of objects → itself
+ * - an array of primitives → one `{ value }` record each
  * - a wrapped payload → the largest array of objects found inside it
- * - a single object → a single-row table (its fields become the columns)
- * - an array of primitives → a one-column "value" table
+ *
+ * Returns null when the payload is a single object (a KPI response, say) or a bare primitive —
+ * there is no list to page through, so callers that follow pagination know to stop.
  */
-export function jsonToTable(json: Json, fetchedAt = new Date().toISOString()): TableData {
-  let records: Record_[];
-  if (isRecordArray(json)) {
-    records = json;
-  } else if (Array.isArray(json)) {
-    records = json.map((v) => ({ value: v }));
-  } else {
-    const found = isRecord(json) ? findLargestRecordArray(json) : null;
-    records = found ?? (isRecord(json) ? [json] : [{ value: json }]);
-  }
+export function extractRecords(json: Json): Record_[] | null {
+  if (isRecordArray(json)) return json;
+  if (Array.isArray(json)) return json.map((v) => ({ value: v }));
+  return isRecord(json) ? findLargestRecordArray(json) : null;
+}
 
+/** Flattens a list of records into a rectangular table whose columns are the union of their keys. */
+export function tableFromRecords(
+  records: Record_[],
+  fetchedAt = new Date().toISOString(),
+  extra: Pick<TableData, "pageCount" | "truncated"> = {}
+): TableData {
   const flat = records.map((r) => flattenRecord(r));
   const keys: string[] = [];
   const seen = new Set<string>();
@@ -104,7 +107,19 @@ export function jsonToTable(json: Json, fetchedAt = new Date().toISOString()): T
     label: labelFor(key),
     numeric: rows.length > 0 && rows.every((r) => r[i] === null || typeof r[i] === "number"),
   }));
-  return { columns, rows, fetchedAt };
+  return { columns, rows, fetchedAt, ...extra };
+}
+
+/**
+ * Turns any JSON payload into a rectangular table a non-technical user can read:
+ * - an array of objects → one row per object
+ * - a wrapped payload → the largest array of objects found inside it
+ * - a single object → a single-row table (its fields become the columns)
+ * - an array of primitives → a one-column "value" table
+ */
+export function jsonToTable(json: Json, fetchedAt = new Date().toISOString()): TableData {
+  const records = extractRecords(json) ?? (isRecord(json) ? [json] : [{ value: json }]);
+  return tableFromRecords(records, fetchedAt);
 }
 
 /** Minimal RFC-4180-ish CSV parser (quoted fields, escaped quotes, CRLF). */

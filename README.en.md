@@ -14,14 +14,14 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-103%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-137%20passing-2F9E44?logo=vitest&logoColor=white">
 </p>
 
 A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 103 automated tests.
+workbooks, and full-fidelity Excel/PDF export. Bilingual UI (Thai/English), 137 automated tests.
 
 ---
 
@@ -141,7 +141,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 103-case Vitest suite |
+| `npm test` | Run the 137-case Vitest suite |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -299,6 +299,35 @@ often it updates, with **Refresh / Change / Remove** buttons — no trip back to
 
 <p align="center"><img src="docs/screenshots/11-block-toolbar.png" width="820"></p>
 
+**Paginated APIs** — most APIs hand back one page at a time, so a single fetch gets the user the
+first 25 rows and leaves them believing that's all the data. Following pages are therefore fetched
+automatically, with **nothing extra to configure** — the signals APIs already send are read in this
+order:
+
+| Signal | Example | Who sends it |
+|---|---|---|
+| `Link` header with `rel="next"` | `Link: <…?page=2>; rel="next"` | GitHub, GitLab |
+| A next-page URL field in the body | `next`, `next_page_url`, `links.next`, `_links.next.href`, `@odata.nextLink` | Laravel, HAL, OData |
+| A cursor / token | `next_cursor`, `nextPageToken`, `scroll_id` → sent back as a query param | Slack, Google APIs |
+| A param the URL already carries | tech wrote `?page=1` or `?offset=0` → it gets incremented | APIs that signal nothing |
+
+That last row matters: `?page=2` is never **invented** for a URL that doesn't already have the
+param, because an API that doesn't support it would just return page 1 forever. Writing the param
+into the URL is how tech opts in.
+
+Tech sees a single field for all of this: **"Fetch up to [1000] rows"** (0 = first response only).
+The rest is guard rails — at most 20 requests per refresh, a 45-second total budget, a stop when a
+next link points back at a page already fetched, an empty page ends it, and if a page partway
+through fails, **the rows already collected are still returned** rather than the whole refresh
+being thrown away.
+
+<p align="center"><img src="docs/screenshots/13-partial-data.png" width="820"></p>
+
+**And when the data is incomplete, it says so.** A silently partial table is more dangerous than a
+small one the user knows about: a "Sum" card computed from the first 40 rows of a 120-row source
+reads exactly like a real total and isn't one. So the warning appears in the **side panel**, in the
+**picker** before the user commits to a summary value, and in the tech-side **connection test**.
+
 Behind the scenes:
 
 - The app converts JSON into a table on its own (finds the largest array of records in the response, flattens
@@ -312,8 +341,9 @@ Behind the scenes:
 - **Drag and drop still works** for people who prefer it, it's just no longer the primary path.
 - The side panel keeps a "Live data in this sheet" list showing what is placed where, each with its own remove
   button.
-- Two demo sources are seeded so it works out of the box (`/api/demo/sales`, a table whose numbers drift
-  every 5s, and `/api/demo/summary`, a KPI-style object).
+- Three demo sources are seeded so it works out of the box: `/api/demo/sales` (a table whose numbers drift
+  every 5s), `/api/demo/summary` (a KPI-style object), and `/api/demo/orders` (**paginated**, 25 rows a page
+  over 120 rows, for exercising the pagination path).
 
 > Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
 
@@ -348,7 +378,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion and live blocks (103 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination and live blocks (137 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -481,6 +511,7 @@ src/
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
     api/demo/                # Self-drifting demo endpoints so live data can be tried without a real API
+                              # (sales, summary, and orders — paginated at 25 rows a page)
   store/
     sheetStore.ts            # Main Zustand store — sheets (incl. liveBlocks), activeSheetId, per-sheet
                               # selection/filters, the formula panel being filled in, which sidebar is open,
@@ -530,7 +561,8 @@ src/
     sheetClipboard.ts        # Copy/cut/paste, converting to/from TSV (for cross-app pasting)
     sheetSort.ts             # Detecting the range to sort + the actual sort
     liveBlocks.ts            # Writes a source's table into cells, tracks extent to clear shrinking data, sum/avg/count (tested)
-    dataSources/             # Types + jsonToTable.ts: turns any JSON/CSV into a table (tested)
+    dataSources/             # Types + jsonToTable.ts (turns any JSON/CSV into a table) + paginate.ts
+                              # (finds the next page from a Link header/next field/cursor/URL param) — both tested
     server/                  # Server-only: sourceRepo.ts (config + credentials in data/sources.json),
                               # executeSource.ts (does the actual fetch)
     excelIO.ts                # Importing/exporting a multi-sheet workbook (.xlsx) via exceljs, with cell formatting
@@ -643,10 +675,10 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 103 cases across 9 files, via Vitest
+npm test      # 137 cases across 11 files, via Vitest
 ```
 
-Testing is focused on the **formula engine, sort logic, JSON-to-table conversion and live-block placement** — pure functions with no React/DOM dependency, so
+Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence. UI/interaction behavior was verified manually with Playwright during
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
@@ -661,6 +693,8 @@ tool, not a permanent regression suite).
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
 | `jsonToTable.test.ts` | 10 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects |
+| `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
+| `executeSource.test.ts` | 15 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, auth header on every page |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
 CI: `npm run lint` → `npm run build` (which also type-checks the whole project, including the two languages'
@@ -686,6 +720,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
   screens isn't tuned yet
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
 - [x] **Live data from REST API / CSV** — done (prototype, see ✨ Features), polling-based refresh
+- [x] **Following paginated APIs** — done: auto-detected from a Link header / next field / cursor / a param
+      already in the URL, and the user is told when the data came back incomplete
+- [ ] **Rate limits explained to the user** — an HTTP 429 currently surfaces as a raw error string; there's
+      no backoff and no reading of `Retry-After` to say "try again in N seconds"
 - [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 

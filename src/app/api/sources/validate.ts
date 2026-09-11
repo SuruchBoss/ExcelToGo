@@ -23,11 +23,16 @@ export async function parseSourceBody(request: Request): Promise<{ value: Source
   const method = body.method === "POST" ? "POST" : "GET";
   const jsonPath = typeof body.jsonPath === "string" && body.jsonPath.trim() ? body.jsonPath.trim().slice(0, 200) : undefined;
 
+  // 0 means "first response only". The upper bound is a guard on us as much as on the API: every
+  // extra row is another request the server makes on the user's behalf.
+  const maxRowsRaw = Number(body.maxRows);
+  const maxRows = Number.isFinite(maxRowsRaw) ? Math.min(Math.max(Math.round(maxRowsRaw), 0), 50_000) : undefined;
+
   let authHeader: SourceBody["authHeader"];
   const ah = body.authHeader as { name?: unknown; value?: unknown } | undefined;
   if (ah && typeof ah.name === "string" && ah.name.trim() && typeof ah.value === "string") {
     authHeader = { name: ah.name.trim().slice(0, 100), value: ah.value.slice(0, 2000) };
   }
 
-  return { value: { name, type, url, method, refreshSec, jsonPath, authHeader } };
+  return { value: { name, type, url, method, refreshSec, jsonPath, maxRows, authHeader } };
 }

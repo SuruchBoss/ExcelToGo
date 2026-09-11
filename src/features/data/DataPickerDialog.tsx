@@ -88,6 +88,15 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
+          {/* A partial table has to be said out loud here above all: a "sum" card computed over
+              the first N rows of a longer source reads as a total and isn't one. */}
+          {table.truncated && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <p className="font-semibold">⚠ {t.data.partial(table.rows.length)}</p>
+              <p className="mt-0.5 text-amber-700">{t.data.partialHint}</p>
+            </div>
+          )}
+
           <div className="mb-4 grid gap-2.5 sm:grid-cols-2">
             {(
               [

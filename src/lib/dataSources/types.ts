@@ -12,6 +12,10 @@ export interface DataSourceConfig {
   authHeader?: { name: string; value: string };
   /** Optional dot-path into the JSON response to the array/object to tabulate, e.g. "data.items". */
   jsonPath?: string;
+  /** How many rows to collect in total. When a response signals a next page (a Link header, a
+   *  "next" URL, a cursor, or a page/offset param already in the URL), pages are followed until
+   *  this many rows are in hand. 0 means "just the first response"; undefined means DEFAULT_MAX_ROWS. */
+  maxRows?: number;
   refreshSec: number;
   createdAt: string;
 }
@@ -35,6 +39,12 @@ export interface TableData {
   columns: TableColumn[];
   rows: CellValue[][];
   fetchedAt: string;
+  /** How many HTTP requests produced this table — 1 unless pages were followed. */
+  pageCount?: number;
+  /** True when collecting stopped at a limit while the source still had more pages, so these
+   *  rows are only part of the data. Surfaced in the UI: a silent partial table is worse than a
+   *  small one the user knows is partial. */
+  truncated?: boolean;
 }
 
 export interface SourceFetchError {

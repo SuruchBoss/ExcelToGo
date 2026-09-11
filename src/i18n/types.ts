@@ -61,6 +61,10 @@ export interface Messages {
     unlink: string;
     liveCellTitle: (source: string) => string;
     liveCellReadOnly: string;
+    /** Shown wherever a paginated source's table is only part of the data. */
+    partial: (rows: number) => string;
+    partialHint: string;
+    pages: (pages: number) => string;
     aggregate: { first: string; sum: string; avg: string; count: string };
     picker: {
       subtitle: string;
@@ -102,11 +106,16 @@ export interface Messages {
       authValue: string;
       jsonPath: string;
       jsonPathHint: string;
+      maxRows: string;
+      maxRowsUnit: string;
+      maxRowsHint: string;
       refresh: string;
       refreshUnit: string;
       test: string;
       testing: string;
       testOk: (rows: number, cols: number) => string;
+      testPages: (pages: number) => string;
+      testTruncated: string;
       testFailed: string;
       save: string;
       saving: string;

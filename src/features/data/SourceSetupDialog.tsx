@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
+import { DEFAULT_MAX_ROWS } from "@/lib/dataSources/paginate";
 import { PublicDataSource, TableData } from "@/lib/dataSources/types";
 import { SourceDraft, useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
@@ -23,6 +24,7 @@ function draftFrom(source?: PublicDataSource): SourceDraft {
     method: source?.method ?? "GET",
     authHeader: source?.authHeader ? { name: source.authHeader.name, value: MASKED } : { name: "", value: "" },
     jsonPath: source?.jsonPath ?? "",
+    maxRows: source?.maxRows ?? DEFAULT_MAX_ROWS,
     refreshSec: source?.refreshSec ?? 30,
   };
 }
@@ -162,6 +164,25 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
             </label>
           )}
 
+          {draft.type === "rest" && (
+            <label className="flex flex-col gap-1">
+              <span className={labelCls}>{t.data.setup.maxRows}</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={50000}
+                  step={100}
+                  value={draft.maxRows ?? DEFAULT_MAX_ROWS}
+                  onChange={(e) => patch({ maxRows: Number(e.target.value) })}
+                  className={clsx(inputCls, "w-28")}
+                />
+                <span className="text-xs text-zinc-500">{t.data.setup.maxRowsUnit}</span>
+              </div>
+              <span className="text-[11px] text-zinc-400">{t.data.setup.maxRowsHint}</span>
+            </label>
+          )}
+
           <label className="flex items-center gap-2">
             <span className={labelCls}>{t.data.setup.refresh}</span>
             <input
@@ -177,7 +198,17 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
 
           {testResult && (
             <div className={clsx("rounded-md p-2 text-xs", testResult.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600")}>
-              {testResult.ok ? t.data.setup.testOk(testResult.table.rows.length, testResult.table.columns.length) : `${t.data.setup.testFailed}: ${testResult.error}`}
+              {testResult.ok
+                ? [
+                    t.data.setup.testOk(testResult.table.rows.length, testResult.table.columns.length),
+                    (testResult.table.pageCount ?? 1) > 1 ? t.data.setup.testPages(testResult.table.pageCount ?? 1) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : `${t.data.setup.testFailed}: ${testResult.error}`}
+              {testResult.ok && testResult.table.truncated && (
+                <p className="mt-1 font-medium text-amber-700">⚠ {t.data.setup.testTruncated}</p>
+              )}
               {testResult.ok && testResult.table.columns.length > 0 && (
                 <p className="mt-1 truncate text-[11px] text-emerald-600">{testResult.table.columns.map((c) => c.label).join(" · ")}</p>
               )}
