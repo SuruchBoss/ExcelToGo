@@ -69,8 +69,9 @@ whole table or a single summary number, seeing the real values before deciding</
 </tr>
 </table>
 
-<p align="center"><b>Click a live block and its toolbar floats right above it</b> — refresh / change / remove,
-with no trip back to the side panel</p>
+<p align="center"><b>Click a live block and its toolbar appears right beside it</b> — refresh / change / remove,
+with no trip back to the side panel. A block on the very first row leaves no space above, so the toolbar goes
+underneath rather than covering the column headers.</p>
 <p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
 ---
@@ -333,8 +334,9 @@ and never reach the user's browser; the server does the fetching, so CORS isn't 
 </tr>
 </table>
 
-**Once placed**, clicking a live block floats a toolbar right above it showing which source it came from and how
-often it updates, with **Refresh / Change / Remove** buttons — no trip back to the side panel required.
+**Once placed**, the grid scrolls to show the whole block and the side panel closes itself — left open, it sat
+over the very columns the table just landed in. Clicking the block brings up a toolbar beside it showing which
+source it came from and how often it updates, with **Refresh / Change / Remove** — no trip back to the panel.
 
 <p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
