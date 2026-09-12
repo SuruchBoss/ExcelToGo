@@ -12,6 +12,7 @@ import {
   CfStyle,
   CfRule,
   CfTest,
+  ChartFrame,
   ChartKind,
   ChartSpec,
   clearRange,
@@ -36,6 +37,7 @@ import {
   sortRange,
   toTsv,
 } from "@/lib/sheet";
+import { autoChartFrame } from "@/lib/gridGeometry";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { downloadBlob, exportWorkbookToXlsxBlob, importWorkbookFromFile } from "@/lib/excelIO";
 import { exportSheetToPdf } from "@/lib/pdfExport";
@@ -175,6 +177,7 @@ interface SheetState {
   addChart: (kind: ChartKind) => void;
   removeChart: (id: string) => void;
   setChartKind: (id: string, kind: ChartKind) => void;
+  moveChart: (id: string, frame: ChartFrame) => void;
 
   addConditionalRule: (test: CfTest, style?: CfStyle) => void;
   removeConditionalRule: (id: string) => void;
@@ -497,6 +500,10 @@ export const useSheetStore = create<SheetState>()(
                   endRow: selection.endRow,
                   endCol: selection.endCol,
                 },
+                // Placed without knowing which rows a filter is hiding — that lives in a hook over
+                // the computed grid, not in the store. A chart made under an active filter lands
+                // lower than its data; it is a starting point, and the first drag replaces it.
+                frame: autoChartFrame(sheet, selection),
               };
               return { ...cloneSheet(sheet), charts: [...(sheet.charts ?? []), chart] };
             }),
@@ -515,6 +522,17 @@ export const useSheetStore = create<SheetState>()(
             sheets: updateActiveSheet(s, (sheet) => ({
               ...cloneSheet(sheet),
               charts: (sheet.charts ?? []).map((c) => (c.id === id ? { ...c, kind } : c)),
+            })),
+          })),
+
+        // Written once when a drag ends, never while it runs: every set() here is an undo step,
+        // and a chart dragged across the sheet would otherwise bury the user's last real edit
+        // under a hundred of them.
+        moveChart: (id, frame) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet) => ({
+              ...cloneSheet(sheet),
+              charts: (sheet.charts ?? []).map((c) => (c.id === id ? { ...c, frame } : c)),
             })),
           })),
 

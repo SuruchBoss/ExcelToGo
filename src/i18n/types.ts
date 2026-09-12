@@ -181,6 +181,10 @@ export interface Messages {
     empty: string;
     remove: string;
     noNumbers: string;
+    /** How a chart on the grid is moved and resized, said once in the panel. */
+    onGrid: string;
+    move: string;
+    resize: string;
   };
   conditionalFormat: {
     /** Sidebar panel where value-driven styling rules are written and listed. */

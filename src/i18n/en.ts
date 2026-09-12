@@ -186,6 +186,9 @@ export const en: Messages = {
     empty: "No charts on this sheet yet",
     remove: "Delete this chart",
     noNumbers: "Nothing numeric in the selected range to plot",
+    onGrid: "Charts sit on the grid: drag the bar at the top to move one, the bottom-right corner to resize it.",
+    move: "Drag to move this chart",
+    resize: "Drag to resize this chart",
   },
   conditionalFormat: {
     title: "Conditional formatting",

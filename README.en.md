@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-319%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-344%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export. Bilingual UI (Thai/English), 319 automated tests.
+export. Bilingual UI (Thai/English), 344 automated tests.
 
 ---
 
@@ -187,7 +187,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 319-case Vitest suite |
+| `npm test` | Run the 344-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -289,8 +289,9 @@ three stacked bars ate 150px before a single grid row appeared; folded, that's 1
 
 ### 📊 Charts from the sheet
 
-Select a range, hit **Charts** in the format bar, and pick **bar, line or pie** — switchable
-afterwards at any time.
+Select a range, hit **Charts** in the format bar, and pick **bar, line or pie**. The chart lands on
+the grid just under the range it reads: **drag the bar at its top to move it, the bottom-right
+corner to resize it**, and switch its type or delete it from the chart itself.
 
 ![Charts](public/screenshots/20-charts.png)
 
@@ -312,12 +313,23 @@ Deliberate details:
   as a flat line at zero.
 - Charts live in the sheet, so they sit in the **undo/redo history** and **shift with inserted or
   deleted rows and columns**.
+- **A whole drag is one undo step**, not one per pixel the mouse moved — otherwise a chart dragged
+  across the sheet buries the last real edit under a hundred entries nobody can ctrl-Z back through.
+- **A chart can't be dragged off the sheet**: it is clamped to the area the grid scrolls to, because
+  something you cannot scroll back to is simply gone.
+- **Resizing stops at a size that can still be read**, and a chart dragged wider gets more room to
+  draw in rather than the same picture floating in more white space.
+- **A second chart built from the same range steps clear of the first** instead of landing on top of
+  it and looking like one chart that changed type.
+- **The legend names whatever suits the kind** — series for a bar or line, categories for a pie,
+  since a pie colours one series slice by slice and naming the series there labels the wrong thing.
 
 **Drawn as hand-written SVG, with no charting library** — a bar, line and pie between them are a few
 dozen lines of geometry, against a dependency that would outweigh the whole feature.
 
-**Not supported:** dragging or resizing a chart over the grid as in Excel (charts live in the side
-panel); exporting charts into `.xlsx` or the PDF; and a pie shows only the first series.
+**Not supported:** exporting charts into `.xlsx` or the PDF; a pie shows only the first series; and a
+chart's position is in pixels rather than anchored to a cell, so it stays put when a column is
+inserted to its left (the range it reads still follows).
 
 ### 🌡 Conditional formatting
 
@@ -626,7 +638,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (319 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (344 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -810,6 +822,11 @@ src/
     grid/SheetTabs.tsx              # The sheet tab bar below the grid
     grid/TemplateBar.tsx            # Says the sheet is a template, how many fields, and offers the unlock
     grid/ColumnFilterPopover.tsx    # The per-column filter popover
+    grid/ChartOverlay.tsx           # Charts floating over the cells: drag, resize, switch kind, delete
+    grid/ChartPanel.tsx             # The "Charts" panel: build one from the selection + this sheet's list
+    grid/ChartView.tsx              # The SVG drawing itself (bar/line/pie), sized to the box it is given
+    grid/ConditionalFormatPanel.tsx # The conditional-formatting panel: writing rules + this sheet's list
+    grid/StorageNotice.tsx          # The dismissible bar saying the data lives only in this browser
     formulas/FormulaPalette.tsx     # The formula list panel — search/category filter/drag
     formulas/FormulaParamPanel.tsx  # The parameter-entry panel — pick a range from the grid + choose a scope
     ai/AIAssistantPanel.tsx         # The "ask AI" chat panel
@@ -841,7 +858,10 @@ src/
     sheetMerges.ts           # Merged cells: which cell renders, which are swallowed, shifting on edits (tested)
     sheetRange.ts            # A range of cells and how it follows an insert/delete — shared by charts
                               # and conditional formatting, which need identical behaviour
-    charts.ts                # Charts: reading a range into series and labels, the axis, shifting (tested)
+    charts.ts                # Charts: reading a range into series and labels, the axis, the frame a chart
+                              # is moved and resized by, the legend per kind, shifting (tested)
+    gridGeometry.ts          # Row/column positions in pixels + where a new chart lands — shared with the
+                              # grid so the two agree on exactly the same sizes (tested)
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
     conditionalFormat.ts     # Conditional formatting rules: compare/text/rank/colour scale/data bar, the
                               # per-cell styling they produce, and range shifting on edits (tested)
@@ -1006,7 +1026,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 319 cases across 18 files, via Vitest
+npm test      # 344 cases across 19 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1031,7 +1051,8 @@ tool, not a permanent regression suite).
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
 | `excelIO.test.ts` | 22 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule |
-| `charts.test.ts` | 20 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, shifting on edits |
+| `charts.test.ts` | 33 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
+| `gridGeometry.test.ts` | 12 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there |
 | `conditionalFormat.test.ts` | 33 | Compare/text/rank rules (ties included), colour scales (including an all-equal range), data bars (including negatives), stacked rules, range shifting on insert/delete |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
@@ -1059,8 +1080,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
       across Node 20.19, 22.12 and 24
 - [ ] **Cloud save / cross-device sync** — data currently lives only in one browser's `localStorage`; "Export
   Excel" is the way to move it (no user accounts or server-side database in the current scope)
-- [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and
-      following the live values. Still open: placing them over the grid, and exporting them
+- [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and following
+      the live values, placed on the grid and dragged and resized there. Still open: exporting them
+      into `.xlsx`/PDF, and anchoring a chart's position to a cell rather than to pixels
 - [ ] **Merged cells** and freezing beyond the already-sticky header row/column
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules

@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { chartDataFrom, ChartSpec, seriesColor, shiftCharts, valueExtent } from "./charts";
+import {
+  chartDataFrom,
+  ChartSpec,
+  clampFrame,
+  legendEntries,
+  MIN_CHART_H,
+  MIN_CHART_W,
+  moveFrame,
+  resizeFrame,
+  seriesColor,
+  shiftCharts,
+  valueExtent,
+} from "./charts";
 import { FormulaValue } from "./formulaEngine/types";
 import { cloneSheet, createEmptySheet, deleteRow, insertColumnBefore, SheetModel } from "./sheet";
 
@@ -150,5 +162,88 @@ describe("wired into the sheet", () => {
     const copy = cloneSheet(original);
     copy.charts!.push({ id: "c2", kind: "pie", range: { startRow: 0, startCol: 0, endRow: 1, endCol: 1 } });
     expect(original.charts).toHaveLength(1);
+  });
+});
+
+describe("a chart's frame on the grid", () => {
+  const frame = { x: 100, y: 80, w: 300, h: 200 };
+  const canvas = { width: 1000, height: 600 };
+
+  it("moves by the distance dragged, leaving the size alone", () => {
+    expect(moveFrame(frame, 25, -30)).toEqual({ x: 125, y: 50, w: 300, h: 200 });
+  });
+
+  it("resizes from the bottom-right, so the top-left corner stays put", () => {
+    const out = resizeFrame(frame, 40, 60);
+    expect(out).toEqual({ x: 100, y: 80, w: 340, h: 260 });
+  });
+
+  it("stops shrinking at a size that can still be read", () => {
+    const out = resizeFrame(frame, -9999, -9999);
+    expect(out.w).toBe(MIN_CHART_W);
+    expect(out.h).toBe(MIN_CHART_H);
+  });
+
+  it("keeps a chart dragged past the last row inside the sheet", () => {
+    // Without this it lands where the grid never scrolls to and there is no way back to it.
+    const out = clampFrame({ ...frame, x: 5000, y: 5000 }, canvas);
+    expect(out.x).toBe(canvas.width - frame.w);
+    expect(out.y).toBe(canvas.height - frame.h);
+  });
+
+  it("keeps a chart dragged off the top-left inside the sheet", () => {
+    const out = clampFrame({ ...frame, x: -400, y: -400 }, canvas);
+    expect(out.x).toBe(0);
+    expect(out.y).toBe(0);
+  });
+
+  it("caps a size larger than the sheet itself", () => {
+    const out = clampFrame({ x: 0, y: 0, w: 9999, h: 9999 }, canvas);
+    expect(out).toEqual({ x: 0, y: 0, w: canvas.width, h: canvas.height });
+  });
+
+  it("lets a chart overhang a sheet too small to hold it, rather than collapsing it", () => {
+    const tiny = { width: 60, height: 40 };
+    const out = clampFrame(frame, tiny);
+    expect(out).toEqual({ x: 0, y: 0, w: MIN_CHART_W, h: MIN_CHART_H });
+  });
+
+  it("survives a row being inserted above the chart", () => {
+    // The range moves; the frame is in pixels and deliberately stays where it was put.
+    const placed: ChartSpec = { id: "c", kind: "bar", range: { startRow: 2, startCol: 0, endRow: 4, endCol: 2 }, frame };
+    expect(shiftCharts([placed], "row", 0, 1)![0].frame).toEqual(frame);
+  });
+});
+
+describe("what the legend names", () => {
+  const data = chartDataFrom(sales, full(4, 3));
+
+  it("names the series on a bar chart", () => {
+    expect(legendEntries("bar", data).map((e) => e.label)).toEqual(["ม.ค.", "ก.พ."]);
+  });
+
+  it("stays out of the way when there is only one series to tell apart", () => {
+    const one = chartDataFrom([["ยอด"], [10], [20]], full(3, 1));
+    expect(legendEntries("line", one)).toEqual([]);
+  });
+
+  it("names the slices on a pie, not the series", () => {
+    // The pie draws one series coloured slice by slice; naming the series would label three
+    // branches with two month names.
+    expect(legendEntries("pie", data).map((e) => e.label)).toEqual(["กรุงเทพ", "เชียงใหม่", "ภูเก็ต"]);
+  });
+
+  it("colours each pie entry like the slice it stands for", () => {
+    const entries = legendEntries("pie", data);
+    expect(entries[0].color).toBe(seriesColor(0));
+    expect(entries[2].color).toBe(seriesColor(2));
+  });
+
+  it("leaves out a category the pie never draws", () => {
+    const withGap = chartDataFrom(
+      [["สาขา", "ยอด"], ["กรุงเทพ", 10], ["เชียงใหม่", "ยังไม่ส่ง"], ["ภูเก็ต", 30]],
+      full(4, 2)
+    );
+    expect(legendEntries("pie", withGap).map((e) => e.label)).toEqual(["กรุงเทพ", "ภูเก็ต"]);
   });
 });

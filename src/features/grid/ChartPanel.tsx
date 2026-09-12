@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo } from "react";
 import { BarChart3, ChartLine, ChartPie, Trash2 } from "lucide-react";
 import clsx from "clsx";
-import { chartDataFrom, ChartKind, ChartSpec, seriesColor } from "@/lib/charts";
+import { ChartKind } from "@/lib/charts";
 import { rangeRefString } from "@/lib/formulaEngine/address";
-import { selectActiveSelection, selectActiveSheet, useComputedSheet, useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, selectActiveSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
-import ChartView from "./ChartView";
 
-const NO_CHARTS: ChartSpec[] = [];
+/**
+ * Makes charts, and lists the ones this sheet already has.
+ *
+ * The charts themselves are drawn on the grid, not here: they belong beside the numbers they read,
+ * and a second copy in the sidebar would only be a smaller version of something already on screen.
+ * What the panel is for is the two things the grid can't show — the range a new chart would be
+ * built from, and an inventory when a chart has been scrolled out of sight.
+ */
 
 const KINDS: { kind: ChartKind; Icon: typeof BarChart3 }[] = [
   { kind: "bar", Icon: BarChart3 },
@@ -21,19 +26,12 @@ export default function ChartPanel() {
   const t = useT();
   const sheet = useSheetStore(selectActiveSheet);
   const selection = useSheetStore(selectActiveSelection);
-  const { values } = useComputedSheet();
   const addChart = useSheetStore((s) => s.addChart);
   const removeChart = useSheetStore((s) => s.removeChart);
   const setChartKind = useSheetStore((s) => s.setChartKind);
 
-  // `?? []` creates a new array each render, which would make the memo below recompute every
-  // time; keeping the fallback stable is what lets an untouched chart skip redrawing.
-  const charts = sheet.charts ?? NO_CHARTS;
+  const charts = sheet.charts ?? [];
   const rangeLabel = rangeRefString(selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-
-  // Every chart redraws from the current values, so editing a cell moves the bars on the same
-  // render. Memoised together because they all read the one computed grid.
-  const drawn = useMemo(() => charts.map((c) => ({ chart: c, data: chartDataFrom(values, c.range) })), [charts, values]);
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -62,14 +60,15 @@ export default function ChartPanel() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
         <span className="text-xs font-medium text-zinc-600">{t.charts.count(charts.length)}</span>
         {charts.length === 0 ? (
           <p className="rounded-md border border-dashed border-zinc-300 p-3 text-xs text-zinc-500">{t.charts.empty}</p>
         ) : (
-          drawn.map(({ chart, data }) => (
-            <div key={chart.id} className="rounded-lg border border-zinc-200 p-2">
-              <div className="mb-1 flex items-center gap-1">
+          <>
+            <p className="text-[11px] leading-relaxed text-zinc-500">{t.charts.onGrid}</p>
+            {charts.map((chart) => (
+              <div key={chart.id} className="flex items-center gap-1 rounded-lg border border-zinc-200 px-2 py-1.5">
                 <span className="truncate text-xs font-medium text-zinc-700">
                   {rangeRefString(chart.range.startRow, chart.range.startCol, chart.range.endRow, chart.range.endCol)}
                 </span>
@@ -97,22 +96,8 @@ export default function ChartPanel() {
                   <Trash2 size={13} />
                 </button>
               </div>
-
-              <ChartView kind={chart.kind} data={data} emptyMessage={t.charts.noNumbers} />
-
-              {/* A legend only earns its space once there is more than one series to tell apart. */}
-              {data.series.length > 1 && (
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                  {data.series.map((s, i) => (
-                    <span key={s.name + i} className="flex items-center gap-1 text-[11px] text-zinc-600">
-                      <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: seriesColor(i) }} />
-                      {s.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))
+            ))}
+          </>
         )}
       </div>
     </div>

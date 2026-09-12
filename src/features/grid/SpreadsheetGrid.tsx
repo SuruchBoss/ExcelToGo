@@ -28,10 +28,10 @@ import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
 import { mergeLookup } from "@/lib/sheetMerges";
 import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
+// Shared with the chart overlay, which places charts in these same coordinates.
+import { COL_WIDTH, ROW_HEADER_WIDTH, ROW_HEIGHT } from "@/lib/gridGeometry";
+import ChartOverlay from "./ChartOverlay";
 
-const ROW_HEADER_WIDTH = 48;
-const COL_WIDTH = 112;
-const ROW_HEIGHT = 32;
 
 export default function SpreadsheetGrid() {
   const t = useT();
@@ -489,6 +489,8 @@ export default function SpreadsheetGrid() {
           ))}
         </tbody>
       </table>
+
+      <ChartOverlay sheet={sheet} values={values} hiddenRows={hiddenRows} />
 
       {selectedBlock && (
         <LiveBlockToolbar

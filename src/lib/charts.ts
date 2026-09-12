@@ -19,6 +19,58 @@ export interface ChartSpec {
   range: SheetRange;
   /** Optional, user-supplied. The range's own header is used when this is empty. */
   title?: string;
+  /**
+   * Where the chart sits on the grid, in the sheet's own pixel coordinates, so it scrolls with the
+   * cells rather than hovering over them. Written when the chart is made; optional only so charts
+   * saved before charts could be dragged still load, and those get the same automatic placement.
+   */
+  frame?: ChartFrame;
+}
+
+/** A chart's rectangle on the grid: top-left corner and size, all in content pixels. */
+export interface ChartFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Small enough to tuck beside a column of figures, large enough that the axis labels still read.
+ * Below this a chart stops being a chart and becomes a coloured smudge, so a resize stops here
+ * rather than letting someone shrink one to nothing by accident and lose track of it.
+ */
+export const MIN_CHART_W = 180;
+export const MIN_CHART_H = 130;
+
+export const DEFAULT_CHART_W = 300;
+export const DEFAULT_CHART_H = 200;
+
+export function moveFrame(frame: ChartFrame, dx: number, dy: number): ChartFrame {
+  return { ...frame, x: frame.x + dx, y: frame.y + dy };
+}
+
+/** Resizes from the bottom-right corner, which is the only handle: the top-left stays put. */
+export function resizeFrame(frame: ChartFrame, dx: number, dy: number): ChartFrame {
+  return { ...frame, w: Math.max(MIN_CHART_W, frame.w + dx), h: Math.max(MIN_CHART_H, frame.h + dy) };
+}
+
+/**
+ * Keeps a frame inside the sheet.
+ *
+ * Without this a chart can be dragged past the last row into space the grid never scrolls to, and
+ * it is simply gone — there is no way back to something you cannot reach. The minimum size wins
+ * over the sheet's own size, so a chart on a tiny sheet overhangs rather than collapsing.
+ */
+export function clampFrame(frame: ChartFrame, canvas: { width: number; height: number }): ChartFrame {
+  const w = Math.min(Math.max(frame.w, MIN_CHART_W), Math.max(MIN_CHART_W, canvas.width));
+  const h = Math.min(Math.max(frame.h, MIN_CHART_H), Math.max(MIN_CHART_H, canvas.height));
+  return {
+    w,
+    h,
+    x: Math.min(Math.max(0, frame.x), Math.max(0, canvas.width - w)),
+    y: Math.min(Math.max(0, frame.y), Math.max(0, canvas.height - h)),
+  };
 }
 
 export interface ChartSeries {
@@ -129,6 +181,28 @@ export const CHART_COLORS = ["#059669", "#2563eb", "#d97706", "#7c3aed", "#dc262
 
 export function seriesColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+/**
+ * What a chart's legend should name — and it is not the same thing for every kind.
+ *
+ * A bar or line chart colours one line per series, so the legend names the series, and only earns
+ * its space when there is more than one to tell apart. A pie draws a single series coloured slice
+ * by slice, so its legend names the *categories*: listing the series there would label four slices
+ * with two quarter names and quietly mislead anyone reading it.
+ */
+export function legendEntries(kind: ChartKind, data: ChartData): { label: string; color: string }[] {
+  if (kind !== "pie") {
+    return data.series.length > 1 ? data.series.map((s, i) => ({ label: s.name, color: seriesColor(i) })) : [];
+  }
+  const first = data.series[0];
+  if (!first) return [];
+  // Only the slices actually drawn: the pie skips anything that isn't a positive number, and a
+  // legend entry with no wedge beside it is worse than none.
+  return data.labels
+    .map((label, i) => ({ label, color: seriesColor(i), point: first.points[i] }))
+    .filter((e) => e.point !== null && e.point > 0)
+    .map(({ label, color }) => ({ label, color }));
 }
 
 /** Moves chart ranges to follow an inserted or deleted row/column, dropping any whose range the
