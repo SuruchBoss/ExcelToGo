@@ -1,3 +1,4 @@
+import { CellComments, shiftComments } from "./cellComments";
 import { parseFormula, FormulaSyntaxError } from "./formulaEngine/parser";
 import { evaluate } from "./formulaEngine/evaluator";
 import { FormulaError, FormulaValue } from "./formulaEngine/types";
@@ -33,6 +34,8 @@ export interface SheetModel {
   conditionalRules?: CfRule[];
   /** Charts drawn from ranges of this sheet. See charts.ts. */
   charts?: ChartSpec[];
+  /** Notes attached to individual cells, keyed by position. See cellComments.ts. */
+  comments?: CellComments;
 }
 
 export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): SheetModel {
@@ -55,6 +58,9 @@ export function cloneSheet(sheet: SheetModel): SheetModel {
     // enough to stop one sheet's edits reaching another's history entry.
     conditionalRules: sheet.conditionalRules ? [...sheet.conditionalRules] : undefined,
     charts: sheet.charts ? [...sheet.charts] : undefined,
+    // Values are plain strings replaced wholesale, so a shallow copy is enough to keep one sheet's
+    // notes out of another's history entry.
+    comments: sheet.comments ? { ...sheet.comments } : undefined,
     // `template` is replaced wholesale (imported, or removed when unlocked), never edited in
     // place, so sharing the reference is safe and keeps clones cheap.
   };
@@ -236,6 +242,7 @@ export function deleteRow(sheet: SheetModel, row: number): SheetModel {
     merges: shiftMerges(adjusted.merges, "row", row, -1),
     conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "row", row, -1),
     charts: shiftCharts(adjusted.charts, "row", row, -1),
+    comments: shiftComments(adjusted.comments, "row", row, -1),
   };
 }
 
@@ -252,6 +259,7 @@ export function insertRowBefore(sheet: SheetModel, row: number): SheetModel {
     merges: shiftMerges(adjusted.merges, "row", row, 1),
     conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "row", row, 1),
     charts: shiftCharts(adjusted.charts, "row", row, 1),
+    comments: shiftComments(adjusted.comments, "row", row, 1),
   };
 }
 
@@ -268,6 +276,7 @@ export function deleteColumn(sheet: SheetModel, col: number): SheetModel {
     merges: shiftMerges(adjusted.merges, "col", col, -1),
     conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "col", col, -1),
     charts: shiftCharts(adjusted.charts, "col", col, -1),
+    comments: shiftComments(adjusted.comments, "col", col, -1),
   };
 }
 
@@ -282,6 +291,7 @@ export function insertColumnBefore(sheet: SheetModel, col: number): SheetModel {
     merges: shiftMerges(adjusted.merges, "col", col, 1),
     conditionalRules: shiftConditionalRules(adjusted.conditionalRules, "col", col, 1),
     charts: shiftCharts(adjusted.charts, "col", col, 1),
+    comments: shiftComments(adjusted.comments, "col", col, 1),
   };
 }
 
@@ -291,6 +301,8 @@ export type { SheetTemplate } from "./sheetTemplate";
 export type { MergeRange } from "./sheetMerges";
 export type { CfRule, CfRange, CfTest, CfStyle, CfVisual } from "./conditionalFormat";
 export type { ChartSpec, ChartKind, ChartFrame, ChartAnchor } from "./charts";
+export type { CellComments } from "./cellComments";
+export { commentKey, getComment, setComment } from "./cellComments";
 export type { SheetRange } from "./sheetRange";
 
 // Re-exported so `@/lib/sheet` stays the one import surface for sheet operations, even though

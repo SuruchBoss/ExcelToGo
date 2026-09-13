@@ -175,6 +175,16 @@ export const en: Messages = {
     structureLocked: "The template locks its structure, so rows and columns can't be added or removed — unlock the sheet first",
     choosePlaceholder: "— choose —",
   },
+  comments: {
+    title: "Comment",
+    titleFor: (ref: string) => `Note on ${ref}`,
+    openTitle: "Comment on a cell",
+    placeholder: "e.g. waiting on accounts to confirm this figure",
+    save: "Save",
+    remove: "Delete comment",
+    hint: "A commented cell gets an amber corner; hover to read it · Ctrl/Cmd+Enter saves",
+    selectCell: "Select a single cell first, then add a comment",
+  },
   charts: {
     title: "Charts",
     subtitle: "Drawn from a range of the sheet — edit a number and the chart moves with it",

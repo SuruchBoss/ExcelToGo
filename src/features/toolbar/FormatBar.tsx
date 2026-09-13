@@ -1,9 +1,22 @@
 "use client";
 
-import { Bold, AlignLeft, AlignCenter, AlignRight, ArrowDownAZ, ArrowDownZA, BarChart3, Palette } from "lucide-react";
-import { NumberFormat } from "@/lib/sheet";
-import { useAnchorFormat, useSheetStore } from "@/store/sheetStore";
+import { useState } from "react";
+import {
+  Bold,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  ArrowDownAZ,
+  ArrowDownZA,
+  BarChart3,
+  MessageSquareText,
+  Palette,
+} from "lucide-react";
+import { getComment, NumberFormat } from "@/lib/sheet";
+import { isSingleCell } from "@/types/sheet-ui";
+import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
+import CommentPopover from "@/features/grid/CommentPopover";
 import clsx from "clsx";
 
 export default function FormatBar() {
@@ -16,6 +29,12 @@ export default function FormatBar() {
   const sortSelection = useSheetStore((s) => s.sortSelection);
   const toggleSidebar = useSheetStore((s) => s.toggleSidebar);
   const cfOpen = useSheetStore((s) => s.sidebarMode === "cf");
+  const sheet = useSheetStore(selectActiveSheet);
+  const selection = useSheetStore(selectActiveSelection);
+  const setCellComment = useSheetStore((s) => s.setCellComment);
+  const [commentAt, setCommentAt] = useState<{ x: number; y: number } | null>(null);
+  const singleCell = isSingleCell(selection);
+  const existingComment = getComment(sheet.comments, selection.anchorRow, selection.anchorCol) ?? "";
   const chartOpen = useSheetStore((s) => s.sidebarMode === "chart");
   // Three stacked bars ate a fifth of a 768px laptop screen before a single grid row appeared.
   // Formatting is the least-used of the three, so the whole row folds away — hiding only its
@@ -116,6 +135,42 @@ export default function FormatBar() {
       >
         <Palette size={14} /> <span className="hidden sm:inline">{t.conditionalFormat.title}</span>
       </button>
+
+      {/* A single cell, because a note is about one cell: pointing it at a block would have to
+          either fan out into a note per cell or invent a note about a rectangle. */}
+      <button
+        onClick={(e) => {
+          if (!singleCell) return;
+          // The popover dismisses itself on any click reaching the window, and this very click is
+          // still on its way there — without this it opens and closes in the same gesture.
+          e.stopPropagation();
+          const box = e.currentTarget.getBoundingClientRect();
+          setCommentAt({ x: Math.min(box.left, window.innerWidth - 300), y: box.bottom + 6 });
+        }}
+        disabled={!singleCell}
+        title={singleCell ? t.comments.openTitle : t.comments.selectCell}
+        className={clsx(
+          "flex h-11 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7",
+          !singleCell
+            ? "cursor-not-allowed border-zinc-200 text-zinc-300"
+            : existingComment
+              ? "border-amber-500 bg-amber-50 text-amber-800 hover:bg-amber-100"
+              : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+        )}
+      >
+        <MessageSquareText size={14} /> <span className="hidden sm:inline">{t.comments.title}</span>
+      </button>
+
+      {commentAt && (
+        <CommentPopover
+          row={selection.anchorRow}
+          col={selection.anchorCol}
+          value={existingComment}
+          anchor={commentAt}
+          onSave={(text) => setCellComment(selection.anchorRow, selection.anchorCol, text)}
+          onClose={() => setCommentAt(null)}
+        />
+      )}
 
       <button
         onClick={() => toggleSidebar("chart")}

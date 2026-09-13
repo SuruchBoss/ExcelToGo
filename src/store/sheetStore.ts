@@ -32,6 +32,7 @@ import {
   pasteClipboardBlock,
   pastePlainTextBlock,
   setCellRaw,
+  setComment,
   setRangeFormat,
   SheetModel,
   sortRange,
@@ -179,6 +180,7 @@ interface SheetState {
   setChartKind: (id: string, kind: ChartKind) => void;
   moveChart: (id: string, anchor: ChartAnchor) => void;
   setPieSeries: (id: string, seriesIndex: number) => void;
+  setCellComment: (row: number, col: number, text: string) => void;
 
   addConditionalRule: (test: CfTest, style?: CfStyle) => void;
   removeConditionalRule: (id: string) => void;
@@ -533,6 +535,14 @@ export const useSheetStore = create<SheetState>()(
               // The old pixel `frame` goes with the write rather than lingering beside the anchor
               // as a second, stale answer to the same question.
               charts: (sheet.charts ?? []).map((c) => (c.id === id ? { ...c, anchor, frame: undefined } : c)),
+            })),
+          })),
+
+        setCellComment: (row, col, text) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet) => ({
+              ...cloneSheet(sheet),
+              comments: setComment(sheet.comments, row, col, text),
             })),
           })),
 

@@ -269,3 +269,69 @@ describe("conditional formatting round-trip", () => {
     expect(cfs).toHaveLength(0);
   });
 });
+
+describe("cell comments through a round-trip", () => {
+  function notedSheet(): SheetModel {
+    const sheet = createEmptySheet(4, 3);
+    sheet.cells[1][1] = "1200";
+    sheet.comments = { "1,1": "รอบัญชียืนยันอีกที", "0,0": "หัวตาราง" };
+    return sheet;
+  }
+
+  it("writes a note onto the cell and reads it back", async () => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(notedSheet(), "มีโน้ต"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+    expect(again.comments?.["1,1"]).toBe("รอบัญชียืนยันอีกที");
+  });
+
+  it("survives Thai text, which is the whole point of the app", async () => {
+    const sheet = createEmptySheet(2, 2);
+    sheet.cells[0][0] = "1200";
+    sheet.comments = { "0,0": "ยอดนี้รวม VAT แล้วนะครับ" };
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet, "ไทย"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+    expect(again.comments?.["0,0"]).toBe("ยอดนี้รวม VAT แล้วนะครับ");
+  });
+
+  it("writes a note on an empty cell into the file, where Excel will show it", async () => {
+    // ExcelJS attaches a note on read only to a cell that exists in its sheet model, and a cell
+    // with no value doesn't — so this note reaches Excel intact but is dropped coming back into
+    // ExcelToGo. The loss is in the reader, not the writer, and this pins which: if an ExcelJS
+    // upgrade ever fixes the read side, the sibling test below starts failing and says so.
+    const sheet = createEmptySheet(3, 3);
+    sheet.cells[1][1] = "มีค่า";
+    sheet.comments = { "0,0": "กรอกช่องนี้ด้วย" };
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet, "ว่างแต่มีโน้ต"));
+    // The archive's own file table, read straight out of the bytes rather than through the library
+    // whose reader is the thing in question.
+    const text = new TextDecoder().decode(new Uint8Array(await blob.arrayBuffer()));
+    expect(text).toContain("comments1.xml");
+  });
+
+  it("loses a note on an empty cell when read back, which is ExcelJS's reader, not the file", async () => {
+    const sheet = createEmptySheet(3, 3);
+    sheet.cells[1][1] = "มีค่า";
+    sheet.comments = { "0,0": "กรอกช่องนี้ด้วย" };
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet, "ว่างแต่มีโน้ต"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+    expect(again.comments?.["0,0"]).toBeUndefined();
+  });
+
+  it("reads a note Excel wrote as rich text, not only one written as a plain string", async () => {
+    // ExcelJS hands back a string for its own notes and a rich-text object for Excel's; reading
+    // only the string form would drop every comment in a file that actually came from Excel.
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet("rich");
+    ws.getCell("A1").value = "x";
+    (ws.getCell("A1") as unknown as { note: unknown }).note = { texts: [{ text: "ส่วน" }, { text: "ที่สอง" }] };
+    const buffer = await workbook.xlsx.writeBuffer();
+    const [{ sheet }] = await importWorkbookFromFile(new File([buffer], "rich.xlsx"));
+    expect(sheet.comments?.["0,0"]).toBe("ส่วนที่สอง");
+  });
+
+  it("leaves a sheet with no notes carrying none", async () => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(createEmptySheet(3, 3), "ว่าง"));
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+    expect(again.comments).toBeUndefined();
+  });
+});

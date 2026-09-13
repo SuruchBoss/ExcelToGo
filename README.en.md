@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-407%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-430%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export. Bilingual UI (Thai/English), 407 automated tests.
+export. Bilingual UI (Thai/English), 430 automated tests.
 
 ---
 
@@ -96,6 +96,7 @@ underneath rather than covering the column headers.</p>
   - [Cell formatting](#-cell-formatting)
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
+  - [Cell comments](#-cell-comments)
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Sort and filter](#-sort-and-filter)
@@ -187,7 +188,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 407-case Vitest suite |
+| `npm test` | Run the 430-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -341,6 +342,34 @@ means nothing on a page.
 **Not supported:** an exported chart is a **picture, not a live chart** — ExcelJS writes no chart XML
 at all (`addImage` is the entire drawing API) and jsPDF has no chart primitive either, so the image
 stops updating when the numbers change. A pie still draws one series at a time.
+
+### 💬 Cell comments
+
+Select a cell, hit **Comment** in the format bar, and write a note. A commented cell gets an **amber
+corner**; hover to read it.
+
+![A note on a cell](public/screenshots/22-cell-comment.png)
+
+**One cell at a time**, because a note is something said about *a* cell. Allowing a block would mean
+either fanning it out into a note per cell or inventing a note about a rectangle, and neither is the
+thing anybody meant.
+
+**Emptying the text deletes the note** rather than keeping an empty one: an amber corner on a cell
+with nothing behind it promises information that isn't there.
+
+**Notes follow edits.** Insert a row above and the note moves down with its cell; **delete the row a
+note is on and the note goes with it**. That is deliberately the opposite of what a chart's anchor
+does — a chart is placed *near* cells, a note is written *about* one, so re-pointing it at whatever
+slid into the gap would attach an explanation to data it never described.
+
+**They export as real Excel notes** (`cell.note`), so they open as ordinary comments in Excel or
+Google Sheets, and notes are read back out of imported files — including ones Excel wrote as rich
+text rather than as a plain string.
+
+**Not supported:** an author name or timestamp (the text is all that's kept); threaded replies as in
+Google Sheets; and **a note on an empty cell is lost when the file is read back in** — the file
+itself is correct and Excel shows the note, but ExcelJS attaches notes only to cells present in its
+sheet model, and a cell with no value isn't. The loss is in the reader, not the writer.
 
 ### 🌡 Conditional formatting
 
@@ -667,7 +696,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (407 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (430 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -855,6 +884,7 @@ src/
     grid/ChartPanel.tsx             # The "Charts" panel: build one from the selection + this sheet's list
     grid/ChartView.tsx              # The SVG drawing itself (bar/line/pie), sized to the box it is given
     grid/SelectionHandle.tsx        # The corner grip that extends a selection with a finger on touch
+    grid/CommentPopover.tsx         # The box that writes or clears the selected cell's note
     grid/ConditionalFormatPanel.tsx # The conditional-formatting panel: writing rules + this sheet's list
     grid/StorageNotice.tsx          # The dismissible bar saying the data lives only in this browser
     formulas/FormulaPalette.tsx     # The formula list panel — search/category filter/drag
@@ -888,6 +918,7 @@ src/
     sheetMerges.ts           # Merged cells: which cell renders, which are swallowed, shifting on edits (tested)
     sheetRange.ts            # A range of cells and how it follows an insert/delete — shared by charts
                               # and conditional formatting, which need identical behaviour
+    cellComments.ts          # Notes attached to cells, and how they follow an insert/delete (tested)
     charts.ts                # Charts: reading a range into series and labels, the axis, the frame a chart
                               # is moved and resized by, its cell anchor, a pie's series, the legend
                               # per kind, shifting (tested)
@@ -1087,7 +1118,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 407 cases across 21 files, via Vitest
+npm test      # 430 cases across 22 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1111,8 +1142,9 @@ tool, not a permanent regression suite).
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `excelIO.test.ts` | 22 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule |
+| `excelIO.test.ts` | 28 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
+| `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
 | `gridGeometry.test.ts` | 18 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there, anchor↔pixel round trips |
 | `chartGeometry.test.ts` | 14 | The shapes a bar/line/pie is made of: bars inside the plot and scaled to their value, a line broken at a gap, a pie following the chosen series, labels thinning out when the room runs out |
 | `chartImage.test.ts` | 10 | The exported picture: a complete SVG document, the legend carried into it, XML escaping, and null when there is nothing to draw |
@@ -1150,7 +1182,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **Merged cells** and freezing beyond the already-sticky header row/column
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
-- [ ] **Cell comments**
+- [x] **Cell comments** — done (see ✨ Features): a note per cell with an amber corner, following
+      edits to the sheet, and exported as a real Excel note. Still open: an author and timestamp,
+      and threaded replies
 - [x] **`INDEX`/`MATCH`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS` and wildcards in criteria** — done
       (see Supported functions): lookups that read leftwards, and counting/summing/averaging on
       several conditions at once

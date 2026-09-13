@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { colToLetters } from "@/lib/sheet";
+import { colToLetters, getComment } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
 import { normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
@@ -313,6 +313,7 @@ export default function SpreadsheetGrid() {
                 if (merges.covered.has(`${r},${c}`)) return null;
                 const merge = merges.anchors.get(`${r},${c}`);
                 const locked = isTemplateLocked(sheet.template, r, c);
+                const comment = getComment(sheet.comments, r, c);
                 const choices = templateChoices(sheet.template, r, c);
                 const isField = sheet.template !== undefined && !locked;
                 return (
@@ -482,6 +483,16 @@ export default function SpreadsheetGrid() {
                           {display[r]?.[c]}
                         </span>
                       </div>
+                    )}
+                    {/* The corner Excel uses, so a note is visible without hovering every cell to
+                        find one. `title` carries the text for a mouse; touch reads it by selecting
+                        the cell and opening the editor. */}
+                    {comment && (
+                      <span
+                        title={comment}
+                        aria-label={comment}
+                        className="pointer-events-auto absolute right-0 top-0 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-amber-500"
+                      />
                     )}
                   </td>
                 );

@@ -169,6 +169,17 @@ export interface Messages {
     structureLocked: string;
     choosePlaceholder: string;
   };
+  comments: {
+    /** The note attached to one cell: its editor, its marker and its button. */
+    title: string;
+    titleFor: (ref: string) => string;
+    openTitle: string;
+    placeholder: string;
+    save: string;
+    remove: string;
+    hint: string;
+    selectCell: string;
+  };
   charts: {
     /** Sidebar panel that draws charts from a range of the sheet. */
     title: string;

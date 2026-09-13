@@ -1,3 +1,4 @@
+import { commentKey } from "./cellComments";
 import { chartDataFrom } from "./charts";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
@@ -322,6 +323,7 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
   // as a form, with the unlocked cells as the fields. An unprotected file is just a spreadsheet.
   const isTemplate = (worksheet as unknown as { sheetProtection?: { sheet?: boolean } }).sheetProtection?.sheet === true;
   const inputs: Record<string, true> = {};
+  const comments: Record<string, string> = {};
   const validations: { key: string; formulae: unknown[] }[] = [];
 
   worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
@@ -350,6 +352,8 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
         if (Object.values(format).some((v) => v !== undefined)) {
           sheet.formats[r][c] = format;
         }
+        const note = noteText(cell.note);
+        if (note) comments[commentKey(r, c)] = note;
       }
     });
   });
@@ -369,6 +373,8 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
       }
     }
   }
+
+  if (Object.keys(comments).length > 0) sheet.comments = comments;
 
   const widths: (number | undefined)[] = [];
   let anyWidth = false;
@@ -410,6 +416,23 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
 
   sheet.conditionalRules = readConditionalFormats(worksheet);
   return sheet;
+}
+
+/**
+ * The text of a cell's note.
+ *
+ * ExcelJS hands back a plain string for a note it wrote itself, but a rich-text object for one
+ * Excel wrote, and the two are indistinguishable at the call site. Reading only the string form
+ * would silently drop every comment in a file that came from Excel — which is every file that
+ * matters here.
+ */
+function noteText(note: unknown): string {
+  if (typeof note === "string") return note.trim();
+  if (note && typeof note === "object" && "texts" in note) {
+    const texts = (note as { texts?: { text?: string }[] }).texts ?? [];
+    return texts.map((t) => t.text ?? "").join("").trim();
+  }
+  return "";
 }
 
 export interface ImportedSheet {
@@ -501,6 +524,11 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
     // Without protecting the sheet the unlocked flags are inert — Excel would let anyone type
     // anywhere, which is the one thing the template exists to prevent.
     await worksheet.protect("", { selectLockedCells: true, selectUnlockedCells: true });
+  }
+
+  for (const [key, text] of Object.entries(sheet.comments ?? {})) {
+    const [r, c] = key.split(",").map(Number);
+    worksheet.getCell(r + 1, c + 1).note = text;
   }
 
   for (const m of sheet.merges ?? []) {
