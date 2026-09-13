@@ -189,6 +189,7 @@ export const en: Messages = {
     onGrid: "Charts sit on the grid: drag the bar at the top to move one, the bottom-right corner to resize it.",
     move: "Drag to move this chart",
     resize: "Drag to resize this chart",
+    pieSeries: "A pie shows one series at a time — pick which",
   },
   conditionalFormat: {
     title: "Conditional formatting",
@@ -307,6 +308,7 @@ export const en: Messages = {
     deleteRow: "Delete this row",
     insertColumnLeft: "Insert column left",
     deleteColumn: "Delete this column",
+    extendSelection: "Drag to extend the selection",
   },
   palette: {
     title: "Ready-made formulas",
@@ -356,6 +358,7 @@ export const en: Messages = {
   store: {
     busyImporting: "Importing file...",
     busyExportingXlsx: "Building Excel file...",
+    busyExportingPdf: "Building PDF...",
     importError: "Couldn't import this file. Please check that it's a valid Excel (.xlsx) file.",
   },
   aiHeuristic: {

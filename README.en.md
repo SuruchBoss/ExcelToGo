@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-368%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-407%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export. Bilingual UI (Thai/English), 368 automated tests.
+export. Bilingual UI (Thai/English), 407 automated tests.
 
 ---
 
@@ -187,7 +187,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 368-case Vitest suite |
+| `npm test` | Run the 407-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -321,15 +321,26 @@ Deliberate details:
   draw in rather than the same picture floating in more white space.
 - **A second chart built from the same range steps clear of the first** instead of landing on top of
   it and looking like one chart that changed type.
+- **A chart's position is pinned to a cell, not to pixels** — insert a column to its left and the
+  chart travels with the data instead of staying put over a different set of numbers.
 - **The legend names whatever suits the kind** — series for a bar or line, categories for a pie,
   since a pie colours one series slice by slice and naming the series there labels the wrong thing.
 
 **Drawn as hand-written SVG, with no charting library** — a bar, line and pie between them are a few
 dozen lines of geometry, against a dependency that would outweigh the whole feature.
 
-**Not supported:** exporting charts into `.xlsx` or the PDF; a pie shows only the first series; and a
-chart's position is in pixels rather than anchored to a cell, so it stays put when a column is
-inserted to its left (the range it reads still follows).
+**A pie picks which series it draws** — a pie can only show one, so a range with several gets a
+chooser under the chart rather than being handed "whichever was leftmost". If the chosen series later
+goes away, it falls back to the first rather than drawing an empty circle.
+
+**Charts go into both exports** — into the `.xlsx` at the cell they are anchored to, and into the PDF
+in order under the table, each captioned with the range it reads. Under the table rather than where
+they sit on screen: a paginated table has already moved the cells somewhere else, so "the same place"
+means nothing on a page.
+
+**Not supported:** an exported chart is a **picture, not a live chart** — ExcelJS writes no chart XML
+at all (`addImage` is the entire drawing API) and jsPDF has no chart primitive either, so the image
+stops updating when the numbers change. A pie still draws one series at a time.
 
 ### 🌡 Conditional formatting
 
@@ -373,15 +384,28 @@ of an 844px screen before the grid began. All three are fixed:
 | **Toolbar** | Icons only, labels hidden — three rows down to two |
 | **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all |
 | **Tap targets** | 44px, up from 28px |
+| **Selecting a range** | A **grip on the selection's bottom-right corner**, dragged to pull the range out |
 
 ![On a phone](public/screenshots/19-mobile.png)
+
+**Dragging out a range with a finger** — a mouse sweeps a range by holding the button down and
+moving, but on a phone dragging a finger across the grid is how you scroll it, and taking that over
+would trade one ordinary gesture for another. So touch gets what every mobile spreadsheet gives it:
+a **grip on the corner of the selection**. Only the grip takes the drag, so the rest of the sheet
+still scrolls normally, and **dragging to the edge scrolls the sheet to meet the finger** — without
+that a range could never be bigger than the screen, which on a phone is a handful of columns.
+
+<p align="center"><img src="public/screenshots/21-touch-select.png" width="320"></p>
+
+The grip appears only where `(pointer: coarse)` matches. On a mouse it would sit under the cursor
+looking like Excel's fill handle while doing something else entirely.
 
 Desktop behaviour is **unchanged**: the panel still sits beside the grid, and clicking an already
 selected cell still does *not* start editing — you double-click, as in Excel. The tap-again rule is
 tied to `pointerType === "touch"` rather than guessed from screen width.
 
-**Not supported yet:** dragging across cells with a finger (tap them individually instead), and the
-row/column context menu needs a long press, which some mobile browsers answer with their own menu.
+**Not supported yet:** the row/column context menu needs a long press, which some mobile browsers
+answer with their own menu.
 
 ### ➕ Insert/delete rows & columns
 
@@ -426,8 +450,13 @@ a short explanation. One click inserts it into the selected cell.
 - **Excel**: a single `.xlsx` with **every sheet** included — original formulas, formatting (fills, font sizes,
   borders, row heights, column widths, merged cells) and a template's locking all intact, so it opens in
   Excel/Google Sheets as the file it was rather than as computed numbers.
-- **PDF**: the currently open sheet only, showing computed values with row/column headers — good for printing
-  or sharing read-only.
+- **PDF**: the currently open sheet only, showing computed values with row/column headers, with the
+  charts following underneath.
+
+  > ⚠️ **Thai text in the PDF's table still comes out as broken glyphs.** jsPDF ships only the
+  > standard PDF fonts, which contain no Thai vowel or tone marks at all; fixing it means embedding
+  > a Thai font. Numbers and charts are unaffected (a chart is a picture, so its Thai renders
+  > correctly). To send a sheet with Thai text to someone, **export to Excel** for now.
 
 ### 🔌 Live data from an API / CSV (prototype)
 
@@ -638,7 +667,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (368 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (407 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -825,6 +854,7 @@ src/
     grid/ChartOverlay.tsx           # Charts floating over the cells: drag, resize, switch kind, delete
     grid/ChartPanel.tsx             # The "Charts" panel: build one from the selection + this sheet's list
     grid/ChartView.tsx              # The SVG drawing itself (bar/line/pie), sized to the box it is given
+    grid/SelectionHandle.tsx        # The corner grip that extends a selection with a finger on touch
     grid/ConditionalFormatPanel.tsx # The conditional-formatting panel: writing rules + this sheet's list
     grid/StorageNotice.tsx          # The dismissible bar saying the data lives only in this browser
     formulas/FormulaPalette.tsx     # The formula list panel — search/category filter/drag
@@ -859,7 +889,11 @@ src/
     sheetRange.ts            # A range of cells and how it follows an insert/delete — shared by charts
                               # and conditional formatting, which need identical behaviour
     charts.ts                # Charts: reading a range into series and labels, the axis, the frame a chart
-                              # is moved and resized by, the legend per kind, shifting (tested)
+                              # is moved and resized by, its cell anchor, a pie's series, the legend
+                              # per kind, shifting (tested)
+    chartGeometry.ts         # A chart reduced to plain shapes, shared by the on-screen and exported
+                              # drawings so the two cannot drift apart (tested)
+    chartImage.ts            # A chart as a picture (SVG → PNG) for the .xlsx and the PDF (tested)
     gridGeometry.ts          # Row/column positions in pixels + where a new chart lands — shared with the
                               # grid so the two agree on exactly the same sizes (tested)
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
@@ -1053,7 +1087,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 368 cases across 19 files, via Vitest
+npm test      # 407 cases across 21 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1078,8 +1112,10 @@ tool, not a permanent regression suite).
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
 | `excelIO.test.ts` | 22 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule |
-| `charts.test.ts` | 33 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
-| `gridGeometry.test.ts` | 12 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there |
+| `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
+| `gridGeometry.test.ts` | 18 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there, anchor↔pixel round trips |
+| `chartGeometry.test.ts` | 14 | The shapes a bar/line/pie is made of: bars inside the plot and scaled to their value, a line broken at a gap, a pie following the chosen series, labels thinning out when the room runs out |
+| `chartImage.test.ts` | 10 | The exported picture: a complete SVG document, the legend carried into it, XML escaping, and null when there is nothing to draw |
 | `conditionalFormat.test.ts` | 33 | Compare/text/rank rules (ties included), colour scales (including an all-equal range), data bars (including negatives), stacked rules, range shifting on insert/delete |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
@@ -1108,8 +1144,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **Cloud save / cross-device sync** — data currently lives only in one browser's `localStorage`; "Export
   Excel" is the way to move it (no user accounts or server-side database in the current scope)
 - [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and following
-      the live values, placed on the grid and dragged and resized there. Still open: exporting them
-      into `.xlsx`/PDF, and anchoring a chart's position to a cell rather than to pixels
+      the live values, placed on the grid, dragged and resized there, anchored to a cell, and carried
+      into both the `.xlsx` and the PDF. Still open: an exported chart is a picture rather than a
+      live chart, because ExcelJS writes no chart XML
 - [ ] **Merged cells** and freezing beyond the already-sticky header row/column
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
@@ -1117,9 +1154,13 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **`INDEX`/`MATCH`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS` and wildcards in criteria** — done
       (see Supported functions): lookups that read leftwards, and counting/summing/averaging on
       several conditions at once
-- [ ] **More functions** such as `XLOOKUP`, date-difference functions (`DATEDIF`, etc.)
-- [ ] **Mobile/tablet support** — currently designed primarily for a desktop screen; layout/touch for small
-  screens isn't tuned yet
+- [x] **`XLOOKUP` and `DATEDIF`** — done (see Supported functions): a lookup whose key column
+      needn't be leftmost, matching exactly by default and taking its own not-found value, plus date
+      gaps in all six units (which turned up a bug where `DAY`/`MONTH`/`YEAR` were a day out west of
+      UTC)
+- [x] **Mobile/tablet support** — done (see ✨ Features): the panel opens over the screen, the
+      toolbar folds to icons, a second tap edits a cell, 44px targets, and a range is dragged out
+      with a finger from a grip on the selection's corner (which scrolls the sheet to meet it)
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
 - [x] **Template support for imported files** — done (see ✨ Features): cell locking, dropdowns and column
       widths are read from a protected file, every route into the structure is guarded, and export puts the

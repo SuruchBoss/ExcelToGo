@@ -11,9 +11,10 @@ import {
   clampFrame,
   moveFrame,
   legendEntries,
+  pieSeriesIndex,
   resizeFrame,
 } from "@/lib/charts";
-import { autoChartFrame, contentSize } from "@/lib/gridGeometry";
+import { anchorToFrame, chartAnchorOf, contentSize, frameToAnchor } from "@/lib/gridGeometry";
 import { rangeRefString } from "@/lib/formulaEngine/address";
 import { FormulaValue } from "@/lib/formulaEngine/types";
 import { SheetModel } from "@/lib/sheet";
@@ -34,6 +35,8 @@ const CARD_CHROME_W = 14;
 const CARD_CHROME_H = 40;
 /** The one-line legend under a multi-series chart, which the drawing has to make room for. */
 const LEGEND_H = 16;
+/** The series picker a multi-series pie shows, which likewise eats into the drawing's height. */
+const PICKER_H = 22;
 
 const KINDS: { kind: ChartKind; Icon: typeof BarChart3 }[] = [
   { kind: "bar", Icon: BarChart3 },
@@ -64,6 +67,7 @@ export default function ChartOverlay({
   const t = useT();
   const removeChart = useSheetStore((s) => s.removeChart);
   const setChartKind = useSheetStore((s) => s.setChartKind);
+  const setPieSeries = useSheetStore((s) => s.setPieSeries);
   const moveChart = useSheetStore((s) => s.moveChart);
   const [gesture, setGesture] = useState<Gesture | null>(null);
   // Which chart was touched last, so overlapping charts can be brought forward by clicking them.
@@ -74,8 +78,10 @@ export default function ChartOverlay({
   if (!charts || charts.length === 0) return null;
 
   const canvas = contentSize(sheet, hiddenRows);
+  // The stored position is a cell plus an offset; drawing and dragging both happen in pixels, so
+  // it is converted here and converted back once the gesture ends.
   const frameOf = (chart: ChartSpec): ChartFrame =>
-    gesture?.id === chart.id ? gesture.live : chart.frame ?? autoChartFrame(sheet, chart.range, hiddenRows);
+    gesture?.id === chart.id ? gesture.live : anchorToFrame(sheet, chartAnchorOf(sheet, chart, hiddenRows), hiddenRows);
 
   const begin = (chart: ChartSpec, mode: Gesture["mode"]) => (e: React.PointerEvent) => {
     // The grid starts a cell selection on mousedown anywhere inside it, and touch would scroll the
@@ -97,7 +103,7 @@ export default function ChartOverlay({
   };
 
   const end = () => {
-    if (gesture) moveChart(gesture.id, gesture.live);
+    if (gesture) moveChart(gesture.id, frameToAnchor(sheet, gesture.live, hiddenRows));
     setGesture(null);
   };
 
@@ -106,7 +112,11 @@ export default function ChartOverlay({
       {charts.map((chart) => {
         const f = frameOf(chart);
         const data = chartDataFrom(values, chart.range);
-        const legend = legendEntries(chart.kind, data);
+        const pieIndex = pieSeriesIndex(data, chart.seriesIndex);
+        const legend = legendEntries(chart.kind, data, pieIndex);
+        // A pie draws one series; with several to choose from, which one has to be the user's call
+        // rather than "whichever happened to be leftmost".
+        const pickSeries = chart.kind === "pie" && data.series.length > 1;
         return (
           <div
             key={chart.id}
@@ -171,8 +181,24 @@ export default function ChartOverlay({
                 // The drawing is given the box's own proportions so it fills the card instead of
                 // being letterboxed inside it; a few pixels out only costs a hairline margin.
                 width={f.w - CARD_CHROME_W}
-                height={f.h - CARD_CHROME_H - (legend.length > 0 ? LEGEND_H : 0)}
+                height={f.h - CARD_CHROME_H - (legend.length > 0 ? LEGEND_H : 0) - (pickSeries ? PICKER_H : 0)}
+                seriesIndex={pieIndex}
               />
+              {pickSeries && (
+                <select
+                  value={pieIndex}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onChange={(e) => setPieSeries(chart.id, Number(e.target.value))}
+                  title={t.charts.pieSeries}
+                  className="mt-0.5 w-full truncate rounded border border-zinc-200 bg-white px-1 py-0.5 text-[10px] text-zinc-700"
+                >
+                  {data.series.map((s, i) => (
+                    <option key={s.name + i} value={i}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               {/* Colours nobody can name are decoration; what they stand for depends on the kind,
                   which is why the list is worked out in charts.ts rather than here. */}
               {legend.length > 0 && (

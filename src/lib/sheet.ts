@@ -290,7 +290,7 @@ export type { CellFormat, CellAlign, NumberFormat } from "./cellFormat";
 export type { SheetTemplate } from "./sheetTemplate";
 export type { MergeRange } from "./sheetMerges";
 export type { CfRule, CfRange, CfTest, CfStyle, CfVisual } from "./conditionalFormat";
-export type { ChartSpec, ChartKind, ChartFrame } from "./charts";
+export type { ChartSpec, ChartKind, ChartFrame, ChartAnchor } from "./charts";
 export type { SheetRange } from "./sheetRange";
 
 // Re-exported so `@/lib/sheet` stays the one import surface for sheet operations, even though

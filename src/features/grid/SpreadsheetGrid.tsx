@@ -31,6 +31,7 @@ import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 // Shared with the chart overlay, which places charts in these same coordinates.
 import { COL_WIDTH, ROW_HEADER_WIDTH, ROW_HEIGHT } from "@/lib/gridGeometry";
 import ChartOverlay from "./ChartOverlay";
+import SelectionHandle from "./SelectionHandle";
 
 
 export default function SpreadsheetGrid() {
@@ -489,6 +490,14 @@ export default function SpreadsheetGrid() {
           ))}
         </tbody>
       </table>
+
+      <SelectionHandle
+        sheet={sheet}
+        selection={selection}
+        hiddenRows={hiddenRows}
+        scrollRef={scrollRef}
+        onSelect={setSelection}
+      />
 
       <ChartOverlay sheet={sheet} values={values} hiddenRows={hiddenRows} />
 

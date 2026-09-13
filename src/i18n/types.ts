@@ -185,6 +185,8 @@ export interface Messages {
     onGrid: string;
     move: string;
     resize: string;
+    /** A pie draws one series; this labels the picker for which. */
+    pieSeries: string;
   };
   conditionalFormat: {
     /** Sidebar panel where value-driven styling rules are written and listed. */
@@ -256,6 +258,8 @@ export interface Messages {
     deleteRow: string;
     insertColumnLeft: string;
     deleteColumn: string;
+    /** The touch grip that pulls a selection out to a range. */
+    extendSelection: string;
   };
   palette: {
     title: string;
@@ -293,6 +297,7 @@ export interface Messages {
   store: {
     busyImporting: string;
     busyExportingXlsx: string;
+    busyExportingPdf: string;
     importError: string;
   };
   /** Explanations for the keyword-based fallback AI suggester (used when no

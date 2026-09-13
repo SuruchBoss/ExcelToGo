@@ -189,6 +189,7 @@ export const th: Messages = {
     onGrid: "กราฟวางอยู่บนตาราง ลากแถบบนหัวกราฟเพื่อย้าย ลากมุมขวาล่างเพื่อย่อขยาย",
     move: "ลากเพื่อย้ายกราฟ",
     resize: "ลากเพื่อย่อขยายกราฟ",
+    pieSeries: "กราฟวงกลมแสดงได้ทีละชุดข้อมูล — เลือกชุดที่จะแสดง",
   },
   conditionalFormat: {
     title: "จัดรูปแบบตามเงื่อนไข",
@@ -307,6 +308,7 @@ export const th: Messages = {
     deleteRow: "ลบแถวนี้",
     insertColumnLeft: "แทรกคอลัมน์ด้านซ้าย",
     deleteColumn: "ลบคอลัมน์นี้",
+    extendSelection: "ลากเพื่อขยายช่วงที่เลือก",
   },
   palette: {
     title: "สูตรพร้อมใช้",
@@ -356,6 +358,7 @@ export const th: Messages = {
   store: {
     busyImporting: "กำลังนำเข้าไฟล์...",
     busyExportingXlsx: "กำลังสร้างไฟล์ Excel...",
+    busyExportingPdf: "กำลังสร้างไฟล์ PDF...",
     importError: "ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) ที่ถูกต้อง",
   },
   aiHeuristic: {

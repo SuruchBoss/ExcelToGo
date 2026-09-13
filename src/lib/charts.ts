@@ -9,7 +9,7 @@
  * of geometry, and a charting library would add far more weight to the bundle than it saves here.
  */
 import { FormulaValue } from "./formulaEngine/types";
-import { SheetRange, shiftRange } from "./sheetRange";
+import { SheetRange, shiftPoint, shiftRange } from "./sheetRange";
 
 export type ChartKind = "bar" | "line" | "pie";
 
@@ -20,11 +20,34 @@ export interface ChartSpec {
   /** Optional, user-supplied. The range's own header is used when this is empty. */
   title?: string;
   /**
-   * Where the chart sits on the grid, in the sheet's own pixel coordinates, so it scrolls with the
-   * cells rather than hovering over them. Written when the chart is made; optional only so charts
-   * saved before charts could be dragged still load, and those get the same automatic placement.
+   * Where the chart sits on the grid: pinned to a cell, plus an offset inside it. A chart tied to
+   * pixels alone stayed put when a column was inserted to its left and ended up covering different
+   * data than it was placed beside; pinned to a cell it moves with the sheet the way its range
+   * already did.
+   */
+  anchor?: ChartAnchor;
+  /**
+   * The old pixel-only position, read once and converted. Charts saved before the anchor existed
+   * still load; the first drag replaces it.
+   * @deprecated superseded by `anchor`
    */
   frame?: ChartFrame;
+  /**
+   * Which series a pie draws, since a pie can only show one. Bar and line ignore it.
+   * Defaults to the first.
+   */
+  seriesIndex?: number;
+}
+
+/** A chart's top-left corner as a cell plus an offset inside it, with its size in pixels. */
+export interface ChartAnchor {
+  row: number;
+  col: number;
+  /** Pixels right of, and below, that cell's top-left corner. */
+  dx: number;
+  dy: number;
+  w: number;
+  h: number;
 }
 
 /** A chart's rectangle on the grid: top-left corner and size, all in content pixels. */
@@ -176,6 +199,16 @@ export function valueExtent(series: ChartSeries[]): { min: number; max: number }
   return max === min ? { min, max: min + 1 } : { min, max };
 }
 
+/**
+ * The series a pie should draw, clamped to one that exists.
+ *
+ * A chart keeps its chosen series while the sheet changes underneath it, so the column it pointed
+ * at can disappear. Falling back to the first draws something honest instead of an empty circle.
+ */
+export function pieSeriesIndex(data: ChartData, seriesIndex = 0): number {
+  return seriesIndex >= 0 && seriesIndex < data.series.length ? seriesIndex : 0;
+}
+
 /** Colours for successive series, reused from the app's palette so charts match the rest of it. */
 export const CHART_COLORS = ["#059669", "#2563eb", "#d97706", "#7c3aed", "#dc2626", "#0891b2"];
 
@@ -191,11 +224,11 @@ export function seriesColor(index: number): string {
  * by slice, so its legend names the *categories*: listing the series there would label four slices
  * with two quarter names and quietly mislead anyone reading it.
  */
-export function legendEntries(kind: ChartKind, data: ChartData): { label: string; color: string }[] {
+export function legendEntries(kind: ChartKind, data: ChartData, seriesIndex = 0): { label: string; color: string }[] {
   if (kind !== "pie") {
     return data.series.length > 1 ? data.series.map((s, i) => ({ label: s.name, color: seriesColor(i) })) : [];
   }
-  const first = data.series[0];
+  const first = data.series[pieSeriesIndex(data, seriesIndex)];
   if (!first) return [];
   // Only the slices actually drawn: the pie skips anything that isn't a positive number, and a
   // legend entry with no wedge beside it is worse than none.
@@ -217,7 +250,16 @@ export function shiftCharts(
   const out: ChartSpec[] = [];
   for (const chart of charts) {
     const range = shiftRange(chart.range, axis, index, delta);
-    if (range) out.push({ ...chart, range });
+    if (!range) continue;
+    // The anchor follows the same edit as the range, which is the whole point of anchoring to a
+    // cell: insert a column to the left and the chart travels with the data instead of staying put
+    // over whatever slid underneath it.
+    const anchor = chart.anchor
+      ? axis === "row"
+        ? { ...chart.anchor, row: shiftPoint(chart.anchor.row, index, delta) }
+        : { ...chart.anchor, col: shiftPoint(chart.anchor.col, index, delta) }
+      : undefined;
+    out.push({ ...chart, range, anchor });
   }
   return out.length > 0 ? out : undefined;
 }

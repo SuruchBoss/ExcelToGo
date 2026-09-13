@@ -1,3 +1,6 @@
+import { chartDataFrom } from "./charts";
+import { chartToSvg, svgToPngDataUrl } from "./chartImage";
+import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
 import ExcelJS from "exceljs";
 import { ComputedSheet, SheetModel, createEmptySheet } from "./sheet";
 import { isError } from "./formulaEngine/types";
@@ -521,6 +524,40 @@ export interface ExportableSheet {
   computed: ComputedSheet;
 }
 
+/**
+ * Puts each of a sheet's charts into the worksheet as a picture, anchored to the cell it sits on.
+ *
+ * A picture, not a chart: ExcelJS writes no chart XML — `addImage` is the entire drawing API — so
+ * there is no way to hand Excel something it would keep redrawing. The image stops updating when
+ * the numbers change, which the README says out loud rather than leaving to be discovered.
+ *
+ * A chart that fails to draw is skipped rather than aborting the export: losing a picture is a far
+ * smaller loss than losing the file.
+ */
+async function writeCharts(workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
+  for (const chart of sheet.charts ?? []) {
+    const anchor = chartAnchorOf(sheet, chart);
+    const data = chartDataFrom(computed.values, chart.range);
+    const picture = chartToSvg(chart.kind, data, anchor.w, anchor.h, chart.seriesIndex);
+    if (!picture) continue;
+    try {
+      const imageId = workbook.addImage({ base64: await svgToPngDataUrl(picture), extension: "png" });
+      worksheet.addImage(imageId, {
+        // ExcelJS counts from zero here, unlike getCell, and takes the offset as a fraction of the
+        // cell — hence the division rather than a pixel value.
+        tl: {
+          col: anchor.col + Math.max(0, anchor.dx) / columnWidth(sheet, anchor.col),
+          row: anchor.row + Math.max(0, anchor.dy) / rowHeight(sheet, anchor.row),
+        },
+        ext: { width: picture.width, height: picture.height },
+        editAs: "oneCell",
+      });
+    } catch {
+      // Canvas is unavailable outside a browser, and a chart is not worth failing an export over.
+    }
+  }
+}
+
 /** Exports every tab as its own worksheet in a single .xlsx file, in order. */
 export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promise<Blob> {
   const workbook = new ExcelJS.Workbook();
@@ -528,6 +565,7 @@ export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promi
   for (const { name, sheet, computed } of sheets) {
     const worksheet = workbook.addWorksheet(sanitizeSheetName(name, usedNames));
     await writeSheetToWorksheet(worksheet, sheet, computed);
+    await writeCharts(workbook, worksheet, sheet, computed);
   }
   const buffer = await workbook.xlsx.writeBuffer();
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

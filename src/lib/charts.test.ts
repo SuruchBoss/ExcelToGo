@@ -4,6 +4,7 @@ import {
   ChartSpec,
   clampFrame,
   legendEntries,
+  pieSeriesIndex,
   MIN_CHART_H,
   MIN_CHART_W,
   moveFrame,
@@ -208,10 +209,70 @@ describe("a chart's frame on the grid", () => {
     expect(out).toEqual({ x: 0, y: 0, w: MIN_CHART_W, h: MIN_CHART_H });
   });
 
-  it("survives a row being inserted above the chart", () => {
-    // The range moves; the frame is in pixels and deliberately stays where it was put.
-    const placed: ChartSpec = { id: "c", kind: "bar", range: { startRow: 2, startCol: 0, endRow: 4, endCol: 2 }, frame };
-    expect(shiftCharts([placed], "row", 0, 1)![0].frame).toEqual(frame);
+});
+
+describe("a chart's anchor following edits to the sheet", () => {
+  const anchor = { row: 5, col: 3, dx: 4, dy: 8, w: 300, h: 200 };
+  const pinned: ChartSpec = { id: "c", kind: "bar", range: { startRow: 2, startCol: 0, endRow: 4, endCol: 2 }, anchor };
+
+  it("travels with its cell when a column is inserted to its left", () => {
+    // The whole reason for anchoring: pinned to pixels the chart stayed put and ended up covering
+    // different data than it was placed beside.
+    expect(shiftCharts([pinned], "col", 0, 1)![0].anchor).toEqual({ ...anchor, col: 4 });
+  });
+
+  it("stays where it is when a column is inserted to its right", () => {
+    expect(shiftCharts([pinned], "col", 9, 1)![0].anchor).toEqual(anchor);
+  });
+
+  it("moves up when a row above it is deleted", () => {
+    expect(shiftCharts([pinned], "row", 0, -1)![0].anchor).toEqual({ ...anchor, row: 4 });
+  });
+
+  it("keeps its offset inside the cell, which is what stops it drifting over repeated edits", () => {
+    let charts = [pinned];
+    for (let i = 0; i < 5; i++) charts = shiftCharts(charts, "col", 0, 1)!;
+    expect(charts[0].anchor).toMatchObject({ dx: 4, dy: 8 });
+  });
+
+  it("stays on the column the deletion landed on rather than being thrown away", () => {
+    expect(shiftCharts([pinned], "col", 3, -1)![0].anchor).toEqual({ ...anchor, col: 3 });
+  });
+
+  it("leaves a chart still carrying only the old pixel position alone", () => {
+    const oldFrame = { x: 100, y: 80, w: 300, h: 200 };
+    const legacy: ChartSpec = { id: "c", kind: "bar", range: { startRow: 0, startCol: 0, endRow: 2, endCol: 2 }, frame: oldFrame };
+    const out = shiftCharts([legacy], "col", 0, 1)!;
+    expect(out[0].frame).toEqual(oldFrame);
+    expect(out[0].anchor).toBeUndefined();
+  });
+});
+
+describe("which series a pie draws", () => {
+  const data = chartDataFrom(sales, full(4, 3));
+
+  it("defaults to the first", () => {
+    expect(pieSeriesIndex(data)).toBe(0);
+  });
+
+  it("uses the one chosen", () => {
+    expect(pieSeriesIndex(data, 1)).toBe(1);
+    expect(legendEntries("pie", data, 1).map((e) => e.label)).toEqual(["กรุงเทพ", "เชียงใหม่", "ภูเก็ต"]);
+  });
+
+  it("falls back to the first when the chosen series no longer exists", () => {
+    // A chart keeps its choice while the sheet changes underneath it, so the column it pointed at
+    // can go away; drawing the first series is better than drawing an empty circle.
+    expect(pieSeriesIndex(data, 7)).toBe(0);
+    expect(pieSeriesIndex(data, -1)).toBe(0);
+  });
+
+  it("leaves out a category the chosen series has no slice for", () => {
+    const gappy = chartDataFrom(
+      [["สาขา", "ม.ค.", "ก.พ."], ["กรุงเทพ", 10, 5], ["เชียงใหม่", 20, "ปิด"]],
+      full(3, 3)
+    );
+    expect(legendEntries("pie", gappy, 1).map((e) => e.label)).toEqual(["กรุงเทพ"]);
   });
 });
 

@@ -44,6 +44,19 @@ export function shiftRange(range: SheetRange, axis: RangeAxis, index: number, de
     : { ...range, startCol: nextStart, endCol: nextEnd };
 }
 
+/**
+ * Moves a single row or column index to follow an inserted or deleted line.
+ *
+ * Used by anything pinned to one cell rather than to a block — a chart's anchor, a comment. A line
+ * deleted out from under the index leaves it on whatever slid into that position, which is where
+ * the thing visually ends up anyway; the alternative, dropping it, would throw away a chart or a
+ * note because the column beside it went away.
+ */
+export function shiftPoint(index: number, at: number, delta: 1 | -1): number {
+  if (delta === 1) return index >= at ? index + 1 : index;
+  return index > at ? index - 1 : index;
+}
+
 export function rangeRows(range: SheetRange): number {
   return range.endRow - range.startRow + 1;
 }
