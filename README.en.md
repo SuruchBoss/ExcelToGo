@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-344%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-368%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export. Bilingual UI (Thai/English), 344 automated tests.
+export. Bilingual UI (Thai/English), 368 automated tests.
 
 ---
 
@@ -187,7 +187,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 344-case Vitest suite |
+| `npm test` | Run the 368-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -638,7 +638,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (344 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (368 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -902,7 +902,7 @@ flowchart LR
     Raw["Raw formula text<br/>e.g. =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>splits into tokens"]
     Tok --> Par["parser.ts<br/>builds an AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>walks the AST to compute a result"]
-    Eval -->|"calls"| Fn["functions.ts<br/>47 functions"]
+    Eval -->|"calls"| Fn["functions.ts<br/>49 functions"]
     Eval -->|"getCell(row, col)"| Sheet[("other cells' values/formulas<br/>in the sheet")]
     Sheet -.-> Eval
     Eval --> Result["a number/text value,<br/>or a FormulaError"]
@@ -932,18 +932,18 @@ thing:
 
 ### Supported functions
 
-The drag-and-drop palette shows only the **30 most commonly used** formulas, but the engine itself supports
-**47 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
+The drag-and-drop palette shows only the **32 most commonly used** formulas, but the engine itself supports
+**49 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
 `=YEAR(...)`, `=PROPER(...)`):
 
-| Category | In the palette (30) | Also available by typing |
+| Category | In the palette (32) | Also available by typing |
 |---|---|---|
 | Math | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
 | Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` |
 | Logic | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
 | Text | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` |
-| Date | `TODAY` `NOW` | `DAY` `MONTH` `YEAR` |
-| Lookup | `VLOOKUP` `INDEX` `MATCH` | — |
+| Date | `TODAY` `NOW` `DATEDIF` | `DAY` `MONTH` `YEAR` |
+| Lookup | `VLOOKUP` `XLOOKUP` `INDEX` `MATCH` | — |
 
 **`INDEX` + `MATCH` replaces `VLOOKUP` and does what it cannot** — `VLOOKUP` can only search the
 leftmost column of a table, and hard-codes *which column number* to return, which breaks silently
@@ -956,6 +956,33 @@ the moment someone inserts a column:
 
 Giving `INDEX` a row number of 0 hands back the whole column (or 0 for the column, the whole row),
 so another function can consume it: `=SUM(INDEX(A1:D6,0,3))`.
+
+**`XLOOKUP` is the one to reach for now** — it names the search range and the answer range
+separately, so the key needn't be leftmost and nothing breaks when a column is inserted between
+them. Two further differences from `VLOOKUP` matter in practice: it matches **exactly by default**
+(`VLOOKUP`'s default is approximate, which quietly returns a neighbouring row), and it takes what to
+show when nothing matches, instead of leaving `#N/A` to be wrapped in `IFERROR` — which swallows
+real errors along with the miss:
+
+```
+=XLOOKUP("Phuket",A2:A100,D2:D100,"not found")
+=XLOOKUP(150,C2:C100,A2:A100,,-1)               nearest value at or below 150
+```
+
+The nearest-match modes compare rather than assume the column is sorted, which is the case
+`VLOOKUP`'s approximate match gets silently wrong. Both arrays must be a single row or column of the
+same length: Excel would spill a whole row out of a two-dimensional return array, and this engine
+has no spilling, so that is refused rather than answered with the first cell.
+
+**An argument can be left out mid-formula** — `XLOOKUP(a,b,c,,-1)` skips `if_not_found` to reach the
+match mode, the way Excel writes it. Before this the parser rejected the empty slot, which made
+every argument after an optional one unreachable without typing a value nobody meant.
+
+**`DATEDIF` answers "how long between these two dates"** in whole units: `"Y"`, `"M"` and `"D"`,
+plus `"MD"`, `"YM"` and `"YD"` — the days ignoring months and years, the months ignoring years, and
+the days ignoring years — which between them say "3 years, 2 months and 5 days" without three
+separate subtractions. An end date before the start is `#NUM!`, as in Excel: it is a mistake in the
+sheet, and a negative age would hide it.
 
 **`SUMIFS` takes its arguments in the opposite order to `SUMIF`** — `SUMIF` puts the range being
 summed *last*, `SUMIFS` puts it *first*. That's Excel's own inconsistency, kept because a formula
@@ -1026,7 +1053,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 344 cases across 19 files, via Vitest
+npm test      # 368 cases across 19 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1037,9 +1064,9 @@ tool, not a permanent regression suite).
 | File | Cases | Tests |
 |---|---|---|
 | `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
-| `parser.test.ts` | 14 | Operator precedence/associativity, ranges, function calls, syntax errors |
+| `parser.test.ts` | 17 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 57 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data) and SUMIFS (several conditions, mismatched ranges) |
+| `functions.test.ts` | 78 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |

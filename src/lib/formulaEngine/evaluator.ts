@@ -19,6 +19,8 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
       return scalar(ctx.getCell(node.row, node.col));
     case "referror":
       return scalar(ERR_REF);
+    case "missing":
+      return scalar(null);
     case "range": {
       const rows: FormulaValue[][] = [];
       for (let r = node.startRow; r <= node.endRow; r++) {

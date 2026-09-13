@@ -319,3 +319,122 @@ describe("wildcards in criteria", () => {
     expect(calc('COUNTIFS(A1:A4,"*ใหม่")', branches)).toBe(1);
   });
 });
+
+describe("XLOOKUP", () => {
+  const stock = [
+    ["รหัส", "ชื่อ", "คงเหลือ"],
+    ["A1", "กาแฟ", 12],
+    ["B2", "ขนมปัง", 0],
+    ["C3", "นม", 7],
+  ];
+
+  it("looks up across two named arrays, in either direction", () => {
+    // The key column is to the right of the answer here, which VLOOKUP cannot do at all.
+    expect(calc('XLOOKUP("นม",B2:B4,A2:A4)', stock)).toBe("C3");
+    expect(calc('XLOOKUP("A1",A2:A4,C2:C4)', stock)).toBe(12);
+  });
+
+  it("returns what it was told to when nothing matches, instead of #N/A", () => {
+    expect(calc('XLOOKUP("ไม่มี",A2:A4,C2:C4,"ไม่พบ")', stock)).toBe("ไม่พบ");
+  });
+
+  it("is #N/A with no fallback given", () => {
+    expect(isError(calc('XLOOKUP("ไม่มี",A2:A4,C2:C4)', stock))).toBe(true);
+  });
+
+  it("matches exactly by default, unlike VLOOKUP", () => {
+    // VLOOKUP's default is an approximate match, which quietly returns a neighbouring row.
+    const nums = [["ค่า", "ผล"], [10, "สิบ"], [20, "ยี่สิบ"], [30, "สามสิบ"]];
+    expect(isError(calc("XLOOKUP(15,A2:A4,B2:B4)", nums))).toBe(true);
+  });
+
+  it("finds the next smaller or next larger when asked", () => {
+    const nums = [["ค่า", "ผล"], [10, "สิบ"], [20, "ยี่สิบ"], [30, "สามสิบ"]];
+    expect(calc("XLOOKUP(15,A2:A4,B2:B4,,-1)", nums)).toBe("สิบ");
+    expect(calc("XLOOKUP(15,A2:A4,B2:B4,,1)", nums)).toBe("ยี่สิบ");
+  });
+
+  it("finds the nearest match even when the column isn't sorted", () => {
+    // The case VLOOKUP gets silently wrong: its approximate match assumes sorted input.
+    const jumbled = [["ค่า", "ผล"], [30, "สามสิบ"], [10, "สิบ"], [20, "ยี่สิบ"]];
+    expect(calc("XLOOKUP(25,A2:A4,B2:B4,,-1)", jumbled)).toBe("ยี่สิบ");
+  });
+
+  it("searches from the end when asked, which finds the last of a repeated key", () => {
+    const dupes = [["ค่า", "ผล"], ["x", "แรก"], ["y", "กลาง"], ["x", "สุดท้าย"]];
+    expect(calc('XLOOKUP("x",A2:A4,B2:B4)', dupes)).toBe("แรก");
+    expect(calc('XLOOKUP("x",A2:A4,B2:B4,,0,-1)', dupes)).toBe("สุดท้าย");
+  });
+
+  it("matches wildcards in mode 2", () => {
+    expect(calc('XLOOKUP("ขนม*",B2:B4,C2:C4,,2)', stock)).toBe(0);
+  });
+
+  it("refuses arrays of different lengths rather than pairing them up wrongly", () => {
+    expect(isError(calc('XLOOKUP("A1",A2:A4,C2:C3)', stock))).toBe(true);
+  });
+
+  it("refuses a two-dimensional array, which would need a spill this engine has no way to do", () => {
+    expect(isError(calc('XLOOKUP("A1",A2:A4,B2:C4)', stock))).toBe(true);
+  });
+
+  it("returns a matched blank as a match rather than falling through to not-found", () => {
+    expect(calc('XLOOKUP("B2",A2:A4,C2:C4,"ไม่พบ")', stock)).toBe(0);
+  });
+});
+
+describe("DATEDIF", () => {
+  const dates = [["เริ่ม", "จบ"], ["2020-02-29", "2024-03-01"], ["2024-01-31", "2024-03-01"]];
+
+  it("counts whole years, months and days", () => {
+    expect(calc('DATEDIF("2020-01-15","2024-03-20","Y")', dates)).toBe(4);
+    expect(calc('DATEDIF("2020-01-15","2024-03-20","M")', dates)).toBe(50);
+    expect(calc('DATEDIF("2024-01-01","2024-03-01","D")', dates)).toBe(60);
+  });
+
+  it("does not count a year that hasn't come round yet", () => {
+    expect(calc('DATEDIF("2020-06-15","2024-06-14","Y")', dates)).toBe(3);
+    expect(calc('DATEDIF("2020-06-15","2024-06-15","Y")', dates)).toBe(4);
+  });
+
+  it("splits a gap into years, months and days with YM and MD", () => {
+    expect(calc('DATEDIF("2020-01-15","2024-03-20","YM")', dates)).toBe(2);
+    expect(calc('DATEDIF("2020-01-15","2024-03-20","MD")', dates)).toBe(5);
+  });
+
+  it("borrows from the previous month when the end day is earlier than the start day", () => {
+    // 31 Jan to 1 Mar is one day past the end of February, not a negative number of days.
+    expect(calc('DATEDIF("2024-01-31","2024-03-01","MD")', dates)).toBe(1);
+  });
+
+  it("counts days ignoring years with YD, across a year boundary", () => {
+    expect(calc('DATEDIF("2023-12-25","2024-01-05","YD")', dates)).toBe(11);
+  });
+
+  it("is #NUM! when the end is before the start, rather than a negative age", () => {
+    expect(isError(calc('DATEDIF("2024-03-01","2024-01-01","D")', dates))).toBe(true);
+  });
+
+  it("is #NUM! for a unit it doesn't know", () => {
+    expect(isError(calc('DATEDIF("2024-01-01","2024-03-01","W")', dates))).toBe(true);
+  });
+
+  it("is #VALUE! for something that isn't a date", () => {
+    expect(isError(calc('DATEDIF("เมื่อวาน","2024-03-01","D")', dates))).toBe(true);
+  });
+
+  it("reads a leap day as a real date and 31 February as an error", () => {
+    expect(calc('DATEDIF("2024-02-29","2024-03-01","D")', dates)).toBe(1);
+    expect(isError(calc('DATEDIF("2024-02-31","2024-03-01","D")', dates))).toBe(true);
+  });
+});
+
+describe("dates read the day they say, in any timezone", () => {
+  it("YEAR/MONTH/DAY of a plain date don't shift west of UTC", () => {
+    // new Date("2024-01-15") is UTC midnight; reading it back with getDate() gave the 14th in the
+    // Americas, so DAY of a date typed by hand was a day out for a whole hemisphere.
+    expect(calc('DAY("2024-01-15")', [[""]])).toBe(15);
+    expect(calc('MONTH("2024-01-01")', [[""]])).toBe(1);
+    expect(calc('YEAR("2024-01-01")', [[""]])).toBe(2024);
+  });
+});

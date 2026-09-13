@@ -102,3 +102,29 @@ describe("parseFormula", () => {
     expect(() => parseFormula("1+")).toThrow(FormulaSyntaxError);
   });
 });
+
+describe("an argument left out", () => {
+  it("parses an empty slot between commas as its own argument", () => {
+    // XLOOKUP(a,b,c,,-1) is how Excel skips an optional argument to reach a later one.
+    const ast = parseFormula("XLOOKUP(A1,B1:B3,C1:C3,,-1)");
+    expect(ast.type).toBe("call");
+    if (ast.type !== "call") return;
+    expect(ast.args).toHaveLength(5);
+    expect(ast.args[3].type).toBe("missing");
+  });
+
+  it("parses a trailing empty slot rather than failing on it", () => {
+    const ast = parseFormula("VLOOKUP(A1,B1:C3,2,)");
+    expect(ast.type).toBe("call");
+    if (ast.type !== "call") return;
+    expect(ast.args).toHaveLength(4);
+    expect(ast.args[3].type).toBe("missing");
+  });
+
+  it("leaves a function with no arguments at all alone", () => {
+    const ast = parseFormula("TODAY()");
+    expect(ast.type).toBe("call");
+    if (ast.type !== "call") return;
+    expect(ast.args).toHaveLength(0);
+  });
+});

@@ -132,11 +132,18 @@ class Parser {
       if (this.peek().type === "LPAREN") {
         this.next();
         const args: AstNode[] = [];
+        // An empty slot is an argument, not a syntax error: XLOOKUP(a,b,c,,-1) is how Excel skips
+        // an optional argument to reach a later one, and refusing it made the later ones unusable
+        // without typing a value the user did not mean.
+        const argument = (): AstNode => {
+          const next = this.peek().type;
+          return next === "COMMA" || next === "RPAREN" ? { type: "missing" } : this.parseComparison();
+        };
         if (this.peek().type !== "RPAREN") {
-          args.push(this.parseComparison());
+          args.push(argument());
           while (this.peek().type === "COMMA") {
             this.next();
-            args.push(this.parseComparison());
+            args.push(argument());
           }
         }
         this.expect("RPAREN");

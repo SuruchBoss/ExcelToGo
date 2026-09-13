@@ -524,6 +524,37 @@ export const en: Messages = {
         colNum: { label: "Column number (optional, 0 = the whole row)", placeholder: "e.g. 2" },
       },
     },
+    XLOOKUP: {
+      name: "XLOOKUP - flexible lookup",
+      description: "Search one range and return from another at the same position. The key column needn't be leftmost, and inserting a column doesn't break it.",
+      example: '=XLOOKUP(A2,$D$2:$D$100,$F$2:$F$100,"not found")',
+      params: {
+        lookup: { label: "Value to look for", placeholder: "e.g. A2" },
+        lookupArray: { label: "Range to search in", placeholder: "e.g. D2:D100" },
+        returnArray: { label: "Range to return from", placeholder: "e.g. F2:F100" },
+        ifNotFound: { label: "Show this if nothing matches (optional)", placeholder: "e.g. not found" },
+      },
+    },
+    DATEDIF: {
+      name: "DATEDIF - gap between two dates",
+      description: "The whole years, months or days between two dates.",
+      example: '=DATEDIF(A2,TODAY(),"Y")',
+      params: {
+        start: { label: "Start date", placeholder: "e.g. A2" },
+        end: { label: "End date", placeholder: "e.g. B2 or TODAY()" },
+        unit: { label: "Counted in" },
+      },
+      options: {
+        unit: {
+          Y: "Whole years",
+          M: "Whole months",
+          D: "Days",
+          MD: "Days, ignoring months and years",
+          YM: "Months, ignoring years",
+          YD: "Days, ignoring years",
+        },
+      },
+    },
     VLOOKUP: {
       name: "VLOOKUP - Vertical lookup",
       description: "Looks up a value in the table's first column, then returns a value from the matching row",

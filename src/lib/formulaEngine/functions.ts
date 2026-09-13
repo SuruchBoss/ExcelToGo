@@ -1,4 +1,4 @@
-import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_VALUE } from "./types";
+import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_NUM, ERR_VALUE } from "./types";
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
 
 // SUM/AVERAGE/MIN/MAX etc. silently ignore text and blanks found inside a
@@ -23,6 +23,40 @@ function flattenNumbers(args: EvalResult[]): number[] | FormulaError {
   }
   return out;
 }
+
+/**
+ * Reads a date out of a cell, always as an instant at UTC.
+ *
+ * `new Date("2024-01-15")` is UTC midnight, but `.getDate()` reads it back in the local zone: west
+ * of UTC that gives the 14th. Every date function here used to do exactly that, so DAY of a date
+ * typed by hand was a day out for anyone in the Americas. Parsing the plain forms into UTC and
+ * reading them back with the UTC accessors keeps a date the day it says it is, wherever it is read.
+ */
+function parseDateValue(v: FormulaValue): Date | null {
+  if (v instanceof Date) return v;
+  const text = toDisplayString(v).trim();
+  if (text === "") return null;
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?$/.exec(text);
+  if (iso) {
+    const [, y, m, d, hh, mm] = iso;
+    const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), Number(hh ?? 0), Number(mm ?? 0)));
+    // Date.UTC rolls 2024-02-31 over into March rather than rejecting it; Excel treats a date that
+    // doesn't exist as an error, and so should this.
+    if (date.getUTCMonth() !== Number(m) - 1 || date.getUTCDate() !== Number(d)) return null;
+    return date;
+  }
+  const loose = new Date(text);
+  return Number.isNaN(loose.getTime()) ? null : loose;
+}
+
+/** Whole months from one date to another, counting only months that have fully elapsed. */
+function monthsBetween(from: Date, to: Date): number {
+  let months = (to.getUTCFullYear() - from.getUTCFullYear()) * 12 + (to.getUTCMonth() - from.getUTCMonth());
+  if (to.getUTCDate() < from.getUTCDate()) months -= 1;
+  return months;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function firstError(values: FormulaValue[]): FormulaError | null {
   for (const v of values) if (isError(v)) return v;
@@ -121,6 +155,20 @@ function toVector(rows: FormulaValue[][]): FormulaValue[] | null {
 
 function sameShape(a: FormulaValue[][], b: FormulaValue[][]): boolean {
   return a.length === b.length && a.every((row, i) => row.length === b[i].length);
+}
+
+/**
+ * An optional argument, or undefined when it was left out.
+ *
+ * `XLOOKUP(a,b,c,,-1)` parses the skipped slot as a blank, so "was it given?" cannot be `args[3] ?`
+ * any more. A blank written out in full is read as omitted too — Excel distinguishes them, but only
+ * in corners nobody writes on purpose, and falling back to the documented default is the safer of
+ * the two readings.
+ */
+function optional(arg: EvalResult | undefined): EvalResult | undefined {
+  if (!arg) return undefined;
+  if (arg.kind === "scalar" && isBlank(arg.value)) return undefined;
+  return arg;
 }
 
 function requireRange(arg: EvalResult): FormulaValue[][] {
@@ -311,16 +359,65 @@ export const FUNCTIONS: Record<string, FnImpl> = {
   },
   NOW: () => new Date().toISOString().slice(0, 16).replace("T", " "),
   YEAR: (args) => {
-    const d = new Date(toDisplayString(scalarOf(args[0])));
-    return Number.isNaN(d.getTime()) ? ERR_VALUE : d.getFullYear();
+    const d = parseDateValue(scalarOf(args[0]));
+    return d ? d.getUTCFullYear() : ERR_VALUE;
   },
   MONTH: (args) => {
-    const d = new Date(toDisplayString(scalarOf(args[0])));
-    return Number.isNaN(d.getTime()) ? ERR_VALUE : d.getMonth() + 1;
+    const d = parseDateValue(scalarOf(args[0]));
+    return d ? d.getUTCMonth() + 1 : ERR_VALUE;
   },
   DAY: (args) => {
-    const d = new Date(toDisplayString(scalarOf(args[0])));
-    return Number.isNaN(d.getTime()) ? ERR_VALUE : d.getDate();
+    const d = parseDateValue(scalarOf(args[0]));
+    return d ? d.getUTCDate() : ERR_VALUE;
+  },
+  /**
+   * DATEDIF(start, end, unit) — the gap between two dates, in whole units.
+   *
+   * "Y", "M" and "D" are whole years, months and days. The three odd ones are what make it worth
+   * having: "MD" is the days ignoring months and years, "YM" the months ignoring years, and "YD"
+   * the days ignoring years — between them they say "3 years, 2 months and 5 days" without three
+   * different subtractions.
+   *
+   * An end before the start is #NUM!, as in Excel: it is a mistake in the sheet, and returning a
+   * negative age would hide it.
+   */
+  DATEDIF: (args) => {
+    const start = parseDateValue(scalarOf(args[0]));
+    const end = parseDateValue(scalarOf(args[1]));
+    if (!start || !end) return ERR_VALUE;
+    if (end.getTime() < start.getTime()) return ERR_NUM;
+    const unit = toDisplayString(scalarOf(args[2])).trim().toUpperCase();
+    switch (unit) {
+      case "D":
+        return Math.floor((end.getTime() - start.getTime()) / MS_PER_DAY);
+      case "M":
+        return monthsBetween(start, end);
+      case "Y":
+        return Math.floor(monthsBetween(start, end) / 12);
+      case "YM":
+        return monthsBetween(start, end) % 12;
+      case "MD": {
+        // Days since the start's day-of-month last came round. Subtracting the two day numbers and
+        // borrowing the previous month's length gives -1 for 31 Jan → 1 Mar, because January's 31st
+        // has no counterpart in February at all. Landing on the anniversary date itself — clamped
+        // to the month's last day where that day doesn't exist — is what makes it 1.
+        const monthEnd = (y: number, m: number) => new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+        const year = end.getUTCDate() >= start.getUTCDate() ? end.getUTCFullYear() : end.getUTCMonth() === 0 ? end.getUTCFullYear() - 1 : end.getUTCFullYear();
+        const month = end.getUTCDate() >= start.getUTCDate() ? end.getUTCMonth() : (end.getUTCMonth() + 11) % 12;
+        const day = Math.min(start.getUTCDate(), monthEnd(year, month));
+        return Math.round((end.getTime() - Date.UTC(year, month, day)) / MS_PER_DAY);
+      }
+      case "YD": {
+        // The start moved forward to the anniversary that falls on or before the end date.
+        const sameYear = new Date(Date.UTC(end.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+        const from = sameYear.getTime() > end.getTime()
+          ? new Date(Date.UTC(end.getUTCFullYear() - 1, start.getUTCMonth(), start.getUTCDate()))
+          : sameYear;
+        return Math.floor((end.getTime() - from.getTime()) / MS_PER_DAY);
+      }
+      default:
+        return ERR_NUM;
+    }
   },
   SUMIF: (args) => {
     const range = requireRange(args[0]);
@@ -393,6 +490,80 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       if (key <= lookupNum) best = row;
     }
     return best ? best[colIndex - 1] ?? ERR_NA : ERR_NA;
+  },
+  /**
+   * XLOOKUP(lookup, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])
+   *
+   * What VLOOKUP should have been: the two arrays are named separately, so the key doesn't have to
+   * be the leftmost column and nothing breaks when a column is inserted between them. It also says
+   * what to return when nothing matches, instead of leaving #N/A to be wrapped in IFERROR — which
+   * swallows real errors along with the miss.
+   *
+   * match_mode: 0 exact (the default, unlike VLOOKUP's), -1 exact or next smaller, 1 exact or next
+   * larger, 2 wildcards. search_mode: 1 first to last (default), -1 last to first.
+   *
+   * Both arrays must be a single row or a single column of the same length. Excel would spill a
+   * whole row out of a two-dimensional return_array; this engine has no spilling, so that is
+   * refused rather than answered with the first cell and passed off as the same thing.
+   */
+  XLOOKUP: (args) => {
+    const lookup = scalarOf(args[0]);
+    if (isError(lookup)) return lookup;
+    const haystack = toVector(requireRange(args[1]));
+    const results = toVector(requireRange(args[2]));
+    if (!haystack || !results) return ERR_VALUE;
+    if (haystack.length !== results.length) return ERR_VALUE;
+
+    const fallbackArg = optional(args[3]);
+    const notFound = fallbackArg ? scalarOf(fallbackArg) : ERR_NA;
+    const modeRaw = optional(args[4]);
+    const modeArg = modeRaw ? toNumber(scalarOf(modeRaw)) : 0;
+    if (isError(modeArg)) return modeArg;
+    const searchRaw = optional(args[5]);
+    const searchArg = searchRaw ? toNumber(scalarOf(searchRaw)) : 1;
+    if (isError(searchArg)) return searchArg;
+
+    const order = searchArg < 0
+      ? Array.from({ length: haystack.length }, (_, i) => haystack.length - 1 - i)
+      : Array.from({ length: haystack.length }, (_, i) => i);
+
+    const lookupNum = toNumber(lookup);
+    const lookupText = toDisplayString(lookup).toLowerCase();
+    const exactAt = (i: number) => {
+      if (!isError(lookupNum)) {
+        const n = toNumber(haystack[i]);
+        if (!isError(n)) return n === lookupNum;
+      }
+      return toDisplayString(haystack[i]).toLowerCase() === lookupText;
+    };
+
+    if (modeArg === 2) {
+      const re = wildcardToRegExp(toDisplayString(lookup));
+      for (const i of order) {
+        const cell = toDisplayString(haystack[i]);
+        if (re ? re.test(cell) : cell.toLowerCase() === lookupText) return results[i];
+      }
+      return notFound;
+    }
+
+    for (const i of order) if (exactAt(i)) return results[i];
+    if (modeArg === 0) return notFound;
+
+    // Nearest match: the closest candidate on the requested side, found by comparing rather than
+    // by assuming the array is sorted — an unsorted array is the case VLOOKUP silently gets wrong.
+    let bestIndex = -1;
+    let bestKey: number | null = null;
+    for (let i = 0; i < haystack.length; i++) {
+      const n = toNumber(haystack[i]);
+      if (isError(n) || isError(lookupNum)) continue;
+      const smaller = modeArg < 0;
+      if (smaller ? n > lookupNum : n < lookupNum) continue;
+      if (bestKey === null || (smaller ? n > bestKey : n < bestKey)) {
+        bestKey = n;
+        bestIndex = i;
+      }
+    }
+    return bestIndex >= 0 ? results[bestIndex] : notFound;
   },
   /**
    * MATCH(lookup, range, [match_type]) — the position of a value within a one-dimensional range.

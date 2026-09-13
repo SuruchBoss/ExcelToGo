@@ -10,6 +10,7 @@ export const ERR_VALUE = new FormulaError("#VALUE!");
 export const ERR_NAME = new FormulaError("#NAME?");
 export const ERR_REF = new FormulaError("#REF!");
 export const ERR_NA = new FormulaError("#N/A");
+export const ERR_NUM = new FormulaError("#NUM!");
 
 export type FormulaValue = number | string | boolean | null | FormulaError;
 

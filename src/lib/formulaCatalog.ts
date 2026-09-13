@@ -215,6 +215,27 @@ const FORMULA_SPECS: FormulaSpec[] = [
     build: (v) => `VLOOKUP(${v.lookup},${v.table},${v.colIndex},${v.exact || "FALSE"})`,
   },
   {
+    id: "XLOOKUP",
+    categoryKey: "lookup",
+    syntax: "XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found])",
+    params: [req("lookup", "cell"), req("lookupArray", "range"), req("returnArray", "range"), opt("ifNotFound", "text")],
+    // The fallback is quoted like any other free-text value, and left out entirely when empty so
+    // the formula falls back to #N/A rather than to a blank that looks like a found answer.
+    build: (v) =>
+      `XLOOKUP(${v.lookup},${v.lookupArray},${v.returnArray}${v.ifNotFound?.trim() ? `,${quoteIfNeeded(v.ifNotFound)}` : ""})`,
+  },
+  {
+    id: "DATEDIF",
+    categoryKey: "date",
+    syntax: 'DATEDIF(start_date, end_date, "Y"|"M"|"D"|"MD"|"YM"|"YD")',
+    params: [
+      req("start", "cell"),
+      req("end", "cell"),
+      { key: "unit", type: "text", optional: false, defaultValue: "Y", optionValues: ["Y", "M", "D", "MD", "YM", "YD"] },
+    ],
+    build: (v) => `DATEDIF(${v.start},${v.end},"${v.unit || "Y"}")`,
+  },
+  {
     id: "IF",
     categoryKey: "logic",
     syntax: "IF(condition, value_if_true, value_if_false)",

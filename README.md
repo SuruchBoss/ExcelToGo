@@ -24,7 +24,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-344%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-368%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 344 automated tests.
+(Thai/English), 368 automated tests.
 
 ---
 
@@ -182,7 +182,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 344 เคสด้วย Vitest |
+| `npm test` | รัน unit test 368 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
@@ -585,7 +585,7 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (344 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (368 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -843,7 +843,7 @@ flowchart LR
     Raw["สูตรดิบ<br/>เช่น =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>แยกเป็น token"]
     Tok --> Par["parser.ts<br/>สร้าง AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>เดิน AST คำนวณผล"]
-    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>47 ฟังก์ชัน"]
+    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>49 ฟังก์ชัน"]
     Eval -->|"getCell(row, col)"| Sheet[("ค่า/สูตรของ<br/>เซลล์อื่นในชีต")]
     Sheet -.-> Eval
     Eval --> Result["ค่าตัวเลข/ข้อความ<br/>หรือ FormulaError"]
@@ -871,17 +871,17 @@ flowchart LR
 
 ### ฟังก์ชันที่รองรับ
 
-แถบสูตรที่ลากวางได้แสดงแค่ **30 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **47 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
+แถบสูตรที่ลากวางได้แสดงแค่ **32 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **49 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
 ในเซลล์ได้เลยแม้ไม่มีการ์ดในแถบสูตร (เช่น `=MID(...)`, `=YEAR(...)`, `=PROPER(...)`):
 
-| หมวดหมู่ | อยู่ในแถบสูตร (30) | พิมพ์ตรงในเซลล์ได้เพิ่ม |
+| หมวดหมู่ | อยู่ในแถบสูตร (32) | พิมพ์ตรงในเซลล์ได้เพิ่ม |
 |---|---|---|
 | คณิตศาสตร์ | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
 | สถิติ | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` |
 | ตรรกะ | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
 | ข้อความ | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` |
-| วันที่ | `TODAY` `NOW` | `DAY` `MONTH` `YEAR` |
-| ค้นหา | `VLOOKUP` `INDEX` `MATCH` | — |
+| วันที่ | `TODAY` `NOW` `DATEDIF` | `DAY` `MONTH` `YEAR` |
+| ค้นหา | `VLOOKUP` `XLOOKUP` `INDEX` `MATCH` | — |
 
 **`INDEX` + `MATCH` แทน `VLOOKUP` ได้ และทำสิ่งที่ VLOOKUP ทำไม่ได้** — `VLOOKUP` ค้นได้เฉพาะจากคอลัมน์ซ้ายสุด
 ของตาราง และผูกกับ "ลำดับคอลัมน์ที่เท่าไร" ซึ่งพังเงียบๆ เมื่อมีคนแทรกคอลัมน์:
@@ -893,6 +893,28 @@ flowchart LR
 
 `INDEX` ใส่ 0 ในช่องลำดับแถวจะได้ทั้งคอลัมน์ (หรือ 0 ในช่องคอลัมน์ = ทั้งแถว) ส่งต่อให้ฟังก์ชันอื่นได้
 เช่น `=SUM(INDEX(A1:D6,0,3))`
+
+**`XLOOKUP` คือตัวที่ควรใช้แทน `VLOOKUP`** — ระบุช่วงที่ใช้ค้นกับช่วงที่ดึงคำตอบแยกกัน คอลัมน์ที่ใช้ค้นจึงไม่ต้อง
+อยู่ซ้ายสุด และแทรกคอลัมน์คั่นกลางแล้วสูตรก็ไม่พัง อีกสองข้อที่ต่างจาก `VLOOKUP` แล้วสำคัญจริงตอนใช้งาน:
+มัน**ค้นหาแบบตรงทั้งหมดเป็นค่าเริ่มต้น** (ของ `VLOOKUP` เริ่มต้นเป็นค้นหาใกล้เคียง ซึ่งคืนแถวข้างเคียงมาให้เงียบๆ)
+และรับได้เลยว่าถ้าไม่พบให้แสดงอะไร แทนที่จะทิ้ง `#N/A` ไว้ให้ไปครอบด้วย `IFERROR` ซึ่งกลืนข้อผิดพลาดจริงไปด้วย:
+
+```
+=XLOOKUP("ภูเก็ต",A2:A100,D2:D100,"ไม่พบ")
+=XLOOKUP(150,C2:C100,A2:A100,,-1)               ค่าที่ใกล้ที่สุดที่ไม่เกิน 150
+```
+
+โหมดค้นหาใกล้เคียงใช้วิธีเทียบทีละค่า ไม่ได้สมมติว่าคอลัมน์เรียงมาแล้ว ซึ่งเป็นกรณีที่ `VLOOKUP` ตอบผิดแบบเงียบๆ
+ทั้งสองช่วงต้องเป็นแถวเดียวหรือคอลัมน์เดียวและยาวเท่ากัน — Excel จะ spill ทั้งแถวออกมาถ้าช่วงคำตอบเป็นสองมิติ
+แต่เอนจินนี้ไม่มี spill จึงปฏิเสธไปตรงๆ ดีกว่าคืนเซลล์แรกมาแล้วทำเป็นว่าเหมือนกัน
+
+**เว้นอาร์กิวเมนต์กลางสูตรได้** — `XLOOKUP(a,b,c,,-1)` คือการข้าม `if_not_found` ไปใส่โหมดค้นหา แบบเดียวกับที่
+Excel เขียน ก่อนหน้านี้ parser ไม่รับช่องว่างนี้ ทำให้อาร์กิวเมนต์ที่อยู่หลังตัวที่ไม่บังคับใช้ไม่ได้เลยถ้าไม่พิมพ์ค่าที่ไม่ได้ตั้งใจ
+
+**`DATEDIF` ตอบว่า "ห่างกันเท่าไร"** เป็นจำนวนเต็ม: `"Y"` `"M"` `"D"` และอีกสามตัวที่มีค่าจริง —
+`"MD"` วันโดยไม่นับเดือนและปี, `"YM"` เดือนโดยไม่นับปี, `"YD"` วันโดยไม่นับปี ซึ่งรวมกันแล้วบอกได้ว่า
+"3 ปี 2 เดือน 5 วัน" โดยไม่ต้องลบสามครั้ง ถ้าวันสิ้นสุดมาก่อนวันเริ่มจะได้ `#NUM!` เหมือน Excel —
+เพราะนั่นคือความผิดพลาดในชีต การคืนอายุติดลบมาจะกลบมันไว้
 
 **`SUMIFS` สลับลำดับพารามิเตอร์กับ `SUMIF`** — `SUMIF` เอาช่วงที่จะบวกไว้*ท้าย* แต่ `SUMIFS` เอาไว้*หน้า*สุด
 (เป็นความไม่สม่ำเสมอของ Excel เอง ที่ทำตามเพราะสูตรที่ก๊อปมาจากไฟล์จริงต้องทำงานเหมือนกัน):
@@ -958,7 +980,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 344 เคส ใน 19 ไฟล์ ด้วย Vitest
+npm test      # 368 เคส ใน 19 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -968,9 +990,9 @@ npm test      # 344 เคส ใน 19 ไฟล์ ด้วย Vitest
 | ไฟล์ | เคส | ทดสอบอะไร |
 |---|---|---|
 | `tokenizer.test.ts` | 8 | literal, cell/range ref (รวม absolute `$`), operator, การ escape string, token `#REF!` |
-| `parser.test.ts` | 14 | ลำดับความสำคัญ/associativity ของตัวดำเนินการ, range, function call, syntax error |
+| `parser.test.ts` | 17 | ลำดับความสำคัญ/associativity ของตัวดำเนินการ, range, function call, syntax error, อาร์กิวเมนต์ที่เว้นว่างไว้ |
 | `evaluator.test.ts` | 10 | เลขคณิต, เปรียบเทียบ, ต่อข้อความ, อ่านค่าเซลล์/ช่วง, การกระจาย error |
-| `functions.test.ts` | 57 | ฟังก์ชันกลุ่มรวม/ปัดเศษ/ตรรกะ/ข้อความ/ค้นหา ทั้งไลบรารี รวม INDEX/MATCH (ค้นย้อนซ้าย, ทั้งแถว/คอลัมน์, ข้อมูลไม่เรียง) และ SUMIFS (หลายเงื่อนไข, ช่วงไม่เท่ากัน) |
+| `functions.test.ts` | 78 | ฟังก์ชันกลุ่มรวม/ปัดเศษ/ตรรกะ/ข้อความ/ค้นหา ทั้งไลบรารี รวม INDEX/MATCH (ค้นย้อนซ้าย, ทั้งแถว/คอลัมน์, ข้อมูลไม่เรียง), SUMIFS (หลายเงื่อนไข, ช่วงไม่เท่ากัน), XLOOKUP (ค้นย้อนซ้าย, ค่าตั้งต้นเมื่อไม่พบ, ใกล้เคียงบนข้อมูลไม่เรียง, ค้นจากท้าย) และ DATEDIF (ทั้งหกหน่วย, การยืมเดือน, วันที่ไม่มีจริง) รวมทั้งวันที่ที่ต้องไม่เลื่อนข้ามโซนเวลา |
 | `formulaCatalog.test.ts` | 12 | สูตรที่แถบลากวางสร้างออกมาจริง: การใส่เครื่องหมายคำพูดให้เงื่อนไข, เงื่อนไขที่ 2 ที่กรอกไม่ครบ, และทุกสูตรมีคำแปลครบสองภาษา |
 | `shift.test.ts` | 8 | การเลื่อนอ้างอิงแบบ relative ตอนคัดลอก/วาง, absolute ไม่เลื่อน |
 | `structuralShift.test.ts` | 15 | การปรับอ้างอิงตอนแทรก/ลบแถว-คอลัมน์ รวม `#REF!` และการขยาย/หดของช่วง |
