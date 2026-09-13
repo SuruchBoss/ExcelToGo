@@ -9,3 +9,15 @@ Original project: https://github.com/SuruchBoss/ExcelToGo
 Licensed under the Apache License, Version 2.0. Section 4(d) of that License
 requires that this NOTICE file, or the attribution it contains, travels with
 any derivative work that is distributed.
+
+--------------------------------------------------------------------------------
+Third-party assets bundled with this project
+--------------------------------------------------------------------------------
+
+public/fonts/NotoSansThai-Regular.ttf
+  Noto Sans Thai, version 2.002
+  Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)
+  Licensed under the SIL Open Font License, Version 1.1.
+  The full licence travels with the font in public/fonts/OFL.txt, as the OFL
+  requires. The font is embedded into exported PDFs so that Thai text renders;
+  it is not modified, and it is not sold on its own.

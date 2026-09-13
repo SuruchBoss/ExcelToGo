@@ -4,6 +4,7 @@ import { colToLetters, rangeRefString } from "./formulaEngine/address";
 import { chartDataFrom } from "./charts";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf } from "./gridGeometry";
+import { THAI_FONT_NAME, registerThaiFont } from "./pdfFont";
 import { ComputedSheet, SheetModel } from "./sheet";
 import { downloadBlob } from "./excelIO";
 
@@ -75,6 +76,11 @@ export async function exportSheetToPdf(sheet: SheetModel, computed: ComputedShee
   ]);
 
   const doc = new jsPDF({ orientation: lastCol > 8 ? "landscape" : "portrait" });
+  // Without this every Thai character in the table comes out as an unrelated Latin glyph, because
+  // the standard PDF fonts contain no Thai at all. Falls back silently if the font can't be
+  // fetched — a PDF with wrong glyphs beats no PDF.
+  const thai = await registerThaiFont(doc);
+  const font = thai ? THAI_FONT_NAME : undefined;
   doc.setFontSize(14);
   doc.text(title, 14, 14);
 
@@ -82,9 +88,9 @@ export async function exportSheetToPdf(sheet: SheetModel, computed: ComputedShee
     head,
     body,
     startY: 20,
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [37, 99, 235] },
-    columnStyles: { 0: { fontStyle: "bold", fillColor: [243, 244, 246] } },
+    styles: { fontSize: 8, cellPadding: 2, font },
+    headStyles: { fillColor: [37, 99, 235], font },
+    columnStyles: { 0: { fontStyle: "bold", fillColor: [243, 244, 246], font } },
   });
 
   // autoTable records where it stopped on the document; charts go below that rather than on top.

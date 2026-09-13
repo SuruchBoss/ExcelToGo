@@ -24,7 +24,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-430%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-435%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 430 automated tests.
+(Thai/English), 435 automated tests.
 
 ---
 
@@ -183,7 +183,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 430 เคสด้วย Vitest |
+| `npm test` | รัน unit test 435 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
@@ -441,9 +441,14 @@ fill handle ของ Excel แต่ทำคนละเรื่อง
   ไฟล์เดิม ไม่ใช่แค่ตัวเลขที่คำนวณแล้ว
 - **PDF**: เฉพาะชีตที่เปิดอยู่ แสดงค่าที่คำนวณแล้วพร้อมหัวแถว/คอลัมน์ และกราฟต่อท้ายตาราง
 
-  > ⚠️ **ข้อความภาษาไทยในตาราง PDF ยังออกมาเป็นอักขระเพี้ยน** — jsPDF มีแต่ฟอนต์มาตรฐานของ PDF
-  > ซึ่งไม่มีสระและวรรณยุกต์ไทยอยู่เลย ต้องฝังฟอนต์ไทยเข้าไปถึงจะแก้ได้ ตัวเลขและกราฟไม่มีปัญหา
-  > (กราฟเป็นรูปภาพ จึงมีตัวอักษรไทยครบ) ถ้าต้องส่งงานที่มีข้อความไทยให้คนอื่น ใช้ **ส่งออก Excel** ไปก่อน
+  **ฟังภาษาไทยออก เพราะฝังฟอนต์ไทยไปด้วย** — jsPDF มีแต่ฟอนต์มาตรฐานของ PDF ซึ่งไม่มีสระและวรรณยุกต์ไทย
+  อยู่เลย ข้อความไทยทุกตัวจึงเคยออกมาเป็นอักษรละตินที่ไม่เกี่ยวอะไรด้วย ตอนนี้ฝัง **Noto Sans Thai**
+  (สัญญาอนุญาต OFL, ~45KB) ไว้ที่ `public/fonts/` แล้วโหลดตอนกดส่งออกเท่านั้น — คนที่ไม่เคยกดส่งออก PDF
+  ไม่ต้องโหลดอะไรเพิ่มเลย ถ้าโหลดฟอนต์ไม่สำเร็จจะถอยไปใช้ฟอนต์เดิมแทนที่จะพังทั้งไฟล์
+
+  > ⚠️ **ข้อจำกัดที่เหลือ: วรรณยุกต์ที่ซ้อนบนสระบน (เช่น ที่ · นี่ · ดื่ม) จะทับกันแทนที่จะซ้อนขึ้นไป**
+  > เพราะ jsPDF ไม่ทำ OpenType shaping จึงไม่ขยับ mark ตามที่ฟอนต์กำหนดไว้ **ตัวอักษรครบทุกตัวจริง** —
+  > คัดลอกข้อความจาก PDF ออกมาได้ถูกต้องและค้นหาเจอ เป็นเรื่องการวางตำแหน่งอย่างเดียว
 
 ### 🔌 ข้อมูลสดจาก API / CSV (prototype)
 
@@ -632,7 +637,7 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (430 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (435 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -868,7 +873,8 @@ src/
     server/                  # โค้ดฝั่งเซิร์ฟเวอร์เท่านั้น: sourceRepo.ts (เก็บ config+credential ใน data/sources.json),
                               # executeSource.ts (ดึงข้อมูลจริง)
     excelIO.ts                # นำเข้า/ส่งออก workbook หลายชีต (.xlsx) ด้วย exceljs พร้อมรูปแบบเซลล์
-    pdfExport.ts              # ส่งออก PDF ด้วย jspdf + jspdf-autotable
+    pdfExport.ts              # ส่งออก PDF ด้วย jspdf + jspdf-autotable (ตาราง + กราฟต่อท้าย)
+    pdfFont.ts                # ฝังฟอนต์ไทยลง PDF โหลดตอนส่งออกเท่านั้น (มี test)
   types/
     sheet-ui.ts               # types สำหรับ selection ของตารางฝั่ง UI
 .github/workflows/
@@ -1032,7 +1038,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 430 เคส ใน 22 ไฟล์ ด้วย Vitest
+npm test      # 435 เคส ใน 23 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -1057,6 +1063,7 @@ npm test      # 430 เคส ใน 22 ไฟล์ ด้วย Vitest
 | `sheetTemplate.test.ts` | 14 | เซลล์ไหนล็อก/กรอกได้, ตัวเลือก dropdown แบบ inline และแบบอ้างช่วง, แปลงความกว้างคอลัมน์ |
 | `excelIO.test.ts` | 28 | สร้างไฟล์ .xlsx จริงแล้ววนครบรอบ: อ่านช่องกรอก/dropdown/ความกว้าง, ไฟล์ที่ไม่ protect ไม่ใช่แม่แบบ, export แล้ว import กลับได้เหมือนเดิม, และรูปแบบ (แถบสี/ขนาดตัวอักษร/เส้นขอบ/ความสูงแถว/merge) ครบรอบ รวมถึงกฎจัดรูปแบบตามเงื่อนไขทั้ง 5 แบบ และโน้ตของเซลล์ (ทั้งที่เขียนเป็นข้อความธรรมดาและ rich text ของ Excel) |
 | `charts.test.ts` | 42 | อ่านช่วงเป็นชุดข้อมูล+ป้ายกำกับ (รวมกรณีคอลัมน์ซ้ายเป็นข้อความ), ช่องว่างเมื่อไม่ใช่ตัวเลข, แกนที่รวมศูนย์, การย้าย/ย่อขยาย/หนีบกรอบไว้ในชีต, คำอธิบายสีตามชนิดกราฟ, การเลื่อนตามแทรก/ลบ |
+| `pdfFont.test.ts` | 5 | ฝังฟอนต์ไทยลง PDF, โหลดครั้งเดียวต่อหนึ่งหน้า, ถอยไปใช้ฟอนต์เดิมเมื่อโหลดไม่ได้แทนที่จะพังทั้งไฟล์ |
 | `cellComments.test.ts` | 17 | เขียน/ลบโน้ต, ตัดช่องว่าง, เลื่อนตามแทรกแถว-คอลัมน์, โน้ตหายไปพร้อมแถวที่ถูกลบ |
 | `gridGeometry.test.ts` | 18 | พิกัดพิกเซลของแถว-คอลัมน์ (รวมความกว้าง/สูงจากไฟล์ที่นำเข้า), แถวที่ถูกกรองซ่อนไม่กินความสูง, จุดวางกราฟใหม่และการเยื้องไม่ให้ทับกัน, แปลงจุดยึด↔พิกเซลกลับไปกลับมา |
 | `chartGeometry.test.ts` | 14 | รูปทรงของกราฟแท่ง/เส้น/วงกลม: แท่งอยู่ในกรอบและสูงตามค่า, เส้นขาดตรงที่ไม่มีข้อมูล, วงกลมเลือกชุดข้อมูลได้, ป้ายกำกับบางลงเมื่อที่ไม่พอ |
@@ -1083,8 +1090,10 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
 สิ่งที่ยังไม่ได้ทำและเหตุผล — เพื่อให้เห็นว่ารู้ตัวว่าอะไรยังขาด ไม่ใช่ลืม
 
 - [x] **CI อัตโนมัติ (GitHub Actions)** — ทำแล้ว: lint → check:readme → test → build ทุก push/PR บน Node 20.19, 22.12, 24
-- [ ] **บันทึกลงคลาวด์ / sync ข้ามเครื่อง** — ตอนนี้ข้อมูลอยู่ใน `localStorage` ของเบราว์เซอร์เดียวเท่านั้น
-  ต้องกด "ส่งออก Excel" เพื่อย้ายไฟล์เอง (ไม่มีบัญชีผู้ใช้/ฐานข้อมูลฝั่งเซิร์ฟเวอร์ในสโคปปัจจุบัน)
+- [ ] **บันทึกลงคลาวด์ / sync ข้ามเครื่อง** — **ตั้งใจยังไม่ทำ** ตอนนี้ข้อมูลอยู่ใน `localStorage`
+  ของเบราว์เซอร์เดียวเท่านั้น ต้องกด "ส่งออก Excel" เพื่อย้ายไฟล์เอง ถ้าจะทำให้ถูกต้องต้องมีบัญชีผู้ใช้จริง
+  และฐานข้อมูลฝั่งเซิร์ฟเวอร์ ซึ่งกลับด้านจุดยืนปัจจุบันของแอปที่ไม่ส่งข้อมูลของผู้ใช้ไปไหนเลย
+  (ดู [SECURITY.md](SECURITY.md)) — ต้องตัดสินใจเรื่องผู้ให้บริการและรูปแบบการล็อกอินก่อนเขียนโค้ด
 - [x] **กราฟ/แผนภูมิ** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): แท่ง เส้น วงกลม วาดจากช่วงและอัปเดตตามค่าจริง
       วางบนตาราง ลากย้ายและย่อขยายได้ ตำแหน่งยึดกับเซลล์ และติดไปกับไฟล์ `.xlsx`/PDF ที่ส่งออก
       ยังเหลือ: กราฟที่ส่งออกเป็นรูปภาพ ไม่ใช่กราฟที่แก้ต่อได้ (ExcelJS เขียน chart XML ไม่ได้)
