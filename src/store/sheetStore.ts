@@ -49,7 +49,7 @@ import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
-export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "none";
+export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "cloud" | "none";
 export type { ApplyScope };
 
 export interface PendingFormula {
@@ -149,7 +149,7 @@ interface SheetState {
   setSelection: (sel: SelectionRect) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   toggleFormatBar: () => void;
-  toggleSidebar: (mode: "palette" | "ai" | "data" | "cf" | "chart") => void;
+  toggleSidebar: (mode: Exclude<SidebarMode, "none">) => void;
 
   /** Drops a live block at the active sheet's selection anchor and fills it right away if the
    *  source's data is already cached. */
@@ -199,6 +199,7 @@ interface SheetState {
   insertAIFormula: (formula: string) => void;
 
   importFromFile: (file: File) => Promise<void>;
+  replaceWorkbook: (sheets: SheetTab[]) => void;
   exportXlsx: () => Promise<void>;
   exportPdf: () => Promise<void>;
 }
@@ -765,6 +766,16 @@ export const useSheetStore = create<SheetState>()(
           } finally {
             set({ busy: null });
           }
+        },
+
+        /**
+         * Swaps the whole document for another one — opening a workbook from the optional cloud
+         * backend. Selections and filters are keyed by sheet id, and the incoming ids are not the
+         * outgoing ones, so they are cleared rather than left pointing at sheets that are gone.
+         */
+        replaceWorkbook: (sheets) => {
+          if (sheets.length === 0) return;
+          set({ sheets, activeSheetId: sheets[0].id, selectionBySheetId: {}, filtersBySheetId: {}, pending: null });
         },
 
         exportXlsx: async () => {

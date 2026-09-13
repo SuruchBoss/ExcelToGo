@@ -12,6 +12,7 @@ import AIAssistantPanel from "@/features/ai/AIAssistantPanel";
 import DataSourcePanel from "@/features/data/DataSourcePanel";
 import ConditionalFormatPanel from "@/features/grid/ConditionalFormatPanel";
 import ChartPanel from "@/features/grid/ChartPanel";
+import CloudPanel from "@/features/cloud/CloudPanel";
 import StorageNotice from "@/features/grid/StorageNotice";
 import DataPicker from "@/features/data/DataPicker";
 import { X } from "lucide-react";
@@ -87,6 +88,8 @@ export default function Home() {
                   <ConditionalFormatPanel />
                 ) : sidebarMode === "chart" ? (
                   <ChartPanel />
+                ) : sidebarMode === "cloud" ? (
+                  <CloudPanel />
                 ) : (
                   <AIAssistantPanel />
                 )}

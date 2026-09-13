@@ -47,6 +47,26 @@ These are limitations of the current scope rather than bugs, which is why they a
 here instead of being reported privately. A report that one of them can be reached in a way this
 page does not describe is still worth sending.
 
+## Cloud save is optional, and it is your database
+
+`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are unset by default, and while they
+are, none of the cloud code can run: the button is not rendered and the client library is never
+downloaded. The app stays what it was — sheets in `localStorage`, nothing sent anywhere.
+
+Set them and the browser talks **directly to your Supabase project**. Nothing is proxied through
+this app's server, so a deployment never sees its users' spreadsheets. Two things to know:
+
+- **The anon key is public by design.** It ships to the browser, as it is meant to. What protects
+  the data is row-level security, which `supabase/migrations/0001_workbooks.sql` sets up: a row is
+  readable, writable and deletable only by the account that owns it. **Run that migration** — an
+  unprotected table with a public key is readable by anyone who opens the page.
+- **Never put a service-role key in these variables.** It bypasses every policy, and being
+  `NEXT_PUBLIC_` it would be handed to every visitor.
+
+Running cloud save means running a database for whoever signs into your deployment, with the
+obligations that carries. That is the reason it is off by default rather than something this
+project hosts for everyone.
+
 ## Your own API key
 
 `ANTHROPIC_API_KEY` is read on the server only and is never sent to the browser. Keep it in

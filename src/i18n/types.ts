@@ -169,6 +169,35 @@ export interface Messages {
     structureLocked: string;
     choosePlaceholder: string;
   };
+  cloud: {
+    /** The optional bring-your-own-backend cloud save panel. */
+    title: string;
+    subtitle: string;
+    openTitle: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    sendLink: string;
+    linkSent: string;
+    signedInAs: (email: string) => string;
+    signOut: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    saveNew: string;
+    saveOver: (name: string) => string;
+    saved: string;
+    opened: string;
+    myWorkbooks: (n: number) => string;
+    empty: string;
+    openWorkbook: string;
+    removeWorkbook: string;
+    confirmRemove: (name: string) => string;
+    updatedAt: (when: string) => string;
+    linkedTo: (name: string) => string;
+    conflict: string;
+    unreadable: string;
+    working: string;
+    privacy: string;
+  };
   comments: {
     /** The note attached to one cell: its editor, its marker and its button. */
     title: string;

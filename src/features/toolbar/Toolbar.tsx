@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database } from "lucide-react";
+import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database, Cloud } from "lucide-react";
 import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import LanguageToggle from "./LanguageToggle";
 import Link from "next/link";
 import { DEMO_MODE } from "@/lib/demoMode";
+import { isCloudConfigured } from "@/lib/cloud/config";
 
 export default function Toolbar() {
   const t = useT();
@@ -21,6 +22,7 @@ export default function Toolbar() {
   const addRow = useSheetStore((s) => s.addRow);
   const addColumn = useSheetStore((s) => s.addColumn);
   const toggleSidebar = useSheetStore((s) => s.toggleSidebar);
+  const cloudOpen = useSheetStore((s) => s.sidebarMode === "cloud");
   const canUndo = useCanUndo();
   const canRedo = useCanRedo();
 
@@ -135,6 +137,19 @@ export default function Toolbar() {
             }`}
           >
             <Database size={15} /> <span className="hidden sm:inline">{t.toolbar.data}</span>
+          </button>
+        )}
+        {/* Absent, not disabled, when no cloud backend is configured — which is the default. The
+            app is open source, not a hosted service: you point it at your own Supabase project or
+            you get the same browser-only app as before. See src/lib/cloud/config.ts. */}
+        {isCloudConfigured() && (
+          <button
+            onClick={() => toggleSidebar("cloud")}
+            className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
+              cloudOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            }`}
+          >
+            <Cloud size={15} /> <span className="hidden sm:inline">{t.cloud.title}</span>
           </button>
         )}
         <LanguageToggle />

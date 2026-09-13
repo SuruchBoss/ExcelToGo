@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-435%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-450%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export. Bilingual UI (Thai/English), 435 automated tests.
+export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 450 automated tests.
 
 ---
 
@@ -97,6 +97,7 @@ underneath rather than covering the column headers.</p>
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
+  - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Sort and filter](#-sort-and-filter)
@@ -188,7 +189,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 435-case Vitest suite |
+| `npm test` | Run the 450-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -342,6 +343,41 @@ means nothing on a page.
 **Not supported:** an exported chart is a **picture, not a live chart** — ExcelJS writes no chart XML
 at all (`addImage` is the entire drawing API) and jsPDF has no chart primitive either, so the image
 stops updating when the numbers change. A pie still draws one series at a time.
+
+### ☁️ Cloud save (bring your own backend)
+
+**Off by default, deliberately.** ExcelToGo is an open-source project, **not a hosted service**.
+Running one database for everyone who uses the app would make the maintainer a data controller with
+the obligations that carries, and would reverse the property the rest of the app is built on: your
+spreadsheet never leaves your browser.
+
+If you want it, **bring your own Supabase project**. Set two variables and the button appears:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+![Cloud save](public/screenshots/23-cloud-save.png)
+
+Run [`supabase/migrations/0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) against your
+project once first — it creates the table and the **row-level security** policies that keep one
+account's workbooks away from another's.
+
+- **The browser talks to your Supabase directly**, never through this app's server, so whoever
+  deploys it never sees their users' spreadsheets.
+- **Sign in with an emailed link** — no password for this app to store or check.
+- **A save that would overwrite a newer one asks first.** Two devices on one account is the ordinary
+  case, and last-write-wins with no warning loses work silently.
+- **A workbook written by a newer version is refused rather than half-read**, because half-reading
+  it drops whatever the newer format added and the user finds out by noticing work missing.
+
+**Leave it unset** — the default, and what the public demo does — and the button doesn't exist, the
+cloud code is unreachable, and the ~250KB Supabase client **is never downloaded**. That was checked
+by counting the chunks the browser actually requests, not assumed.
+
+**Not supported:** automatic sync (you press save), simultaneous editing, version history, or
+sharing a workbook with someone else.
 
 ### 💬 Cell comments
 
@@ -699,10 +735,11 @@ architecture behind it.
 | `zundo` | Built on zustand to keep an edit history for undo/redo (sheet content only, never selection or transient UI) |
 | `exceljs` | Reads/writes `.xlsx` files, preserving original formulas and formatting (chosen over `xlsx`/SheetJS, whose published npm version has unpatched security advisories) |
 | `jspdf` + `jspdf-autotable` | Builds PDF exports from the computed sheet |
+| `@supabase/supabase-js` | Optional cloud save — dynamically imported, so it never loads unless configured |
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (435 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (450 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -891,6 +928,7 @@ src/
     grid/ChartView.tsx              # The SVG drawing itself (bar/line/pie), sized to the box it is given
     grid/SelectionHandle.tsx        # The corner grip that extends a selection with a finger on touch
     grid/CommentPopover.tsx         # The box that writes or clears the selected cell's note
+    cloud/CloudPanel.tsx            # The cloud panel: sign in, save, and open from the user's own Supabase
     grid/ConditionalFormatPanel.tsx # The conditional-formatting panel: writing rules + this sheet's list
     grid/StorageNotice.tsx          # The dismissible bar saying the data lives only in this browser
     formulas/FormulaPalette.tsx     # The formula list panel — search/category filter/drag
@@ -934,6 +972,9 @@ src/
     gridGeometry.ts          # Row/column positions in pixels + where a new chart lands — shared with the
                               # grid so the two agree on exactly the same sizes (tested)
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
+    cloud/config.ts          # Whether a cloud backend is attached at all (off unless set) (tested)
+    cloud/workbook.ts        # The stored workbook shape, reading it back, and the conflict rule (tested)
+    cloud/client.ts          # The Supabase client (dynamically imported), auth and workbook CRUD
     conditionalFormat.ts     # Conditional formatting rules: compare/text/rank/colour scale/data bar, the
                               # per-cell styling they produce, and range shifting on edits (tested)
     sheetTemplate.ts         # Templates from a file: which cells are fields, dropdown options, width units (tested)
@@ -1125,7 +1166,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 435 cases across 23 files, via Vitest
+npm test      # 450 cases across 24 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1151,6 +1192,7 @@ tool, not a permanent regression suite).
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
 | `excelIO.test.ts` | 28 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
+| `cloud/cloud.test.ts` | 15 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
 | `gridGeometry.test.ts` | 18 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there, anchor↔pixel round trips |
@@ -1181,11 +1223,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
 
 - [x] **Automated CI (GitHub Actions)** — done: lint → check:readme → test → build on every push and PR,
       across Node 20.19, 22.12 and 24
-- [ ] **Cloud save / cross-device sync** — deliberately not started. Data lives only in one
-  browser's `localStorage` and "Export Excel" is the way to move it. Doing it properly means real
-  accounts and a server-side database, which reverses the app's current posture of never sending
-  your data anywhere (see [SECURITY.md](SECURITY.md)) — the provider and the sign-in model are a
-  decision to make before any code
+- [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
+      point it at your own Supabase project. Off by default, because this is an open-source project
+      rather than a hosted service. Still open: automatic sync, simultaneous editing, version
+      history, and sharing a workbook with someone else
 - [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and following
       the live values, placed on the grid, dragged and resized there, anchored to a cell, and carried
       into both the `.xlsx` and the PDF. Still open: an exported chart is a picture rather than a
