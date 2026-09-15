@@ -24,7 +24,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-557%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-577%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 557 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 577 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -68,6 +68,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
   - [ใช้บนมือถือได้](#-ใช้บนมือถือได้)
   - [แทรก/ลบแถว-คอลัมน์](#-แทรกลบแถว-คอลัมน์)
   - [เรียงลำดับและกรองข้อมูล](#-เรียงลำดับและกรองข้อมูล)
+  - [สรุปข้อมูล (Pivot)](#-สรุปข้อมูล-pivot)
   - [หลายชีตในไฟล์เดียว](#-หลายชีตในไฟล์เดียว)
   - [นำเข้าไฟล์ Excel ที่มีอยู่แล้ว](#-นำเข้าไฟล์-excel-ที่มีอยู่แล้ว)
   - [ใส่สูตรแบบลากวาง](#-ใส่สูตรแบบลากวาง)
@@ -149,7 +150,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 557 เคสด้วย Vitest |
+| `npm test` | รัน unit test 577 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
@@ -415,6 +416,32 @@ fill handle ของ Excel แต่ทำคนละเรื่อง
 - **เรียงลำดับ** (A-Z/Z-A): เลือกเซลล์เดียวก็เดาขอบเขตตารางให้อัตโนมัติ พร้อมข้ามแถวหัวตารางให้ถ้าตรวจพบว่า
   เป็นข้อความอยู่เหนือข้อมูลตัวเลข
 - **กรองข้อมูล**: ไอคอนกรวยที่หัวคอลัมน์ ติ๊กเลือกค่าที่จะแสดง/ซ่อนแถวได้ทันที
+
+### 🧮 สรุปข้อมูล (Pivot)
+
+เลือกช่วงที่มีหัวตารางอยู่แถวแรก กด **"สรุปข้อมูล (Pivot)"** แล้วเลือกว่าจะจัดกลุ่มด้วยคอลัมน์ไหน
+(เลือกได้หลายคอลัมน์) จะแตกเป็นคอลัมน์ด้วยอะไร และจะสรุปค่าอะไรด้วยวิธีไหน — ผลรวม / จำนวน / ค่าเฉลี่ย /
+ค่าต่ำสุด / ค่าสูงสุด ปุ่มเลือกคอลัมน์อ่านชื่อมาจาก**แถวแรกของช่วงที่เลือกจริงๆ** ไม่ใช่ A B C
+จะได้ไม่ต้องแปลตัวอักษรเป็นหัวตารางในหัว
+
+<p align="center"><img src="public/screenshots/28-pivot-panel.png" width="820"></p>
+
+ผลลัพธ์ออกมาเป็น**ชีตใหม่** ไม่ใช่วัตถุพิเศษที่แก้ไม่ได้ — เรียง กรอง ทำกราฟ หรือส่งออกต่อได้เหมือนข้อมูลอื่น
+หัวตารางกับแถวรวมทั้งหมดทำเป็นตัวหนาให้ เพราะเป็นสองแถวที่คนกวาดตาหาก่อน
+
+<p align="center"><img src="public/screenshots/29-pivot-result.png" width="820"></p>
+
+รายละเอียดที่ตั้งใจทำ:
+
+- **แถวรวมคำนวณจากข้อมูลดิบใหม่ ไม่ได้เอาตัวเลขในตารางมาบวกกัน** — ค่าเฉลี่ยของค่าเฉลี่ยไม่ใช่ค่าเฉลี่ย
+  ถ้าบวกช่องที่เห็นจะได้ตัวเลขที่ผิดแบบที่ไม่มีใครเอะใจ
+- **กลุ่มที่ไม่มีตัวเลขเลยได้ค่าว่าง ไม่ใช่ 0** — "ไม่มีข้อมูล" กับ "รวมแล้วได้ศูนย์" คนละเรื่องกัน
+- **เรียงกลุ่มแบบตัวเลขถ้าค่าเป็นตัวเลข** ไม่งั้นเรียงตามภาษา (ไทยเรียงแบบไทย ไม่ใช่ตามรหัสอักขระ)
+  ส่วนกลุ่มว่างจมลงล่างสุดเสมอ
+- **แถวที่ว่างทั้งคอลัมน์จัดกลุ่มแต่มีตัวเลขอยู่** ยังถูกนับเป็นกลุ่ม `(ว่าง)` ไม่ได้ถูกทิ้งไปเงียบๆ
+
+**ยังไม่รองรับ:** ตารางสรุปไม่ได้อัปเดตตามข้อมูลต้นทางเอง (เป็นภาพนิ่ง ณ ตอนกด — แก้ข้อมูลแล้วกดสร้างใหม่) ·
+แตกเป็นคอลัมน์ได้ทีละหนึ่งฟิลด์ · ยังไม่มีตัวกรองของตารางสรุปเอง
 
 ### 📑 หลายชีตในไฟล์เดียว
 
@@ -704,7 +731,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (557 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (577 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -935,6 +962,7 @@ src/
     demoMode.ts              # สวิตช์ปิดฟีเจอร์ข้อมูลสดสำหรับ demo สาธารณะ (อ่าน NEXT_PUBLIC_DEMO_MODE)
     site.ts                  # URL สาธารณะที่ใช้ร่วมกันของ metadata/sitemap/robots (ที่เดียว ไม่ให้ขัดกัน)
     thaiMarks.ts             # หาวรรณยุกต์ที่ซ้อนบนสระบนและต้องวาดยกขึ้น (ใช้ตอนส่งออก PDF) (มี test)
+    pivot.ts                 # เอนจินจัดกลุ่ม/สรุปข้อมูล เป็นฟังก์ชันล้วน ไม่ผูกกับชีตหรือ UI (มี test)
     xlsxChartXml.ts          # สร้าง OOXML ของกราฟ (chart part + drawing anchor) เป็นสตริงล้วน (มี test)
     xlsxCharts.ts            # แทรก chart part ลงใน .xlsx ที่ ExcelJS เขียนเสร็จ + ต่อ relationship (มี test)
     dataSources/sourcesToken.ts  # โทเคนผู้ดูแลฝั่งเบราว์เซอร์ (เก็บใน sessionStorage)
@@ -1122,7 +1150,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 557 เคส ใน 27 ไฟล์ ด้วย Vitest
+npm test      # 577 เคส ใน 27 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM

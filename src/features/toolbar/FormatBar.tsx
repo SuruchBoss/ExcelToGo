@@ -11,6 +11,7 @@ import {
   BarChart3,
   MessageSquareText,
   Palette,
+  Table2,
 } from "lucide-react";
 import { getComment, NumberFormat } from "@/lib/sheet";
 import { isSingleCell } from "@/types/sheet-ui";
@@ -36,6 +37,7 @@ export default function FormatBar() {
   const singleCell = isSingleCell(selection);
   const existingComment = getComment(sheet.comments, selection.anchorRow, selection.anchorCol) ?? "";
   const chartOpen = useSheetStore((s) => s.sidebarMode === "chart");
+  const pivotOpen = useSheetStore((s) => s.sidebarMode === "pivot");
   // Three stacked bars ate a fifth of a 768px laptop screen before a single grid row appeared.
   // Formatting is the least-used of the three, so the whole row folds away — hiding only its
   // contents saved 14px and not one extra row, which is decoration rather than a fix.
@@ -183,6 +185,17 @@ export default function FormatBar() {
         )}
       >
         <BarChart3 size={14} /> <span className="hidden sm:inline">{t.charts.title}</span>
+      </button>
+
+      <button
+        onClick={() => toggleSidebar("pivot")}
+        title={t.pivot.title}
+        className={clsx(
+          "flex h-11 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7",
+          pivotOpen ? "border-emerald-600 bg-emerald-700 text-white" : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+        )}
+      >
+        <Table2 size={14} /> <span className="hidden sm:inline">{t.pivot.title}</span>
       </button>
       </div>
     </div>

@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-557%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-577%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 557 automated tests.
+export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 577 automated tests.
 
 ---
 
@@ -66,6 +66,7 @@ export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/Engl
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Sort and filter](#-sort-and-filter)
+  - [Pivot (summarise a range)](#-pivot-summarise-a-range)
   - [Multiple sheets in one file](#-multiple-sheets-in-one-file)
   - [Import an existing Excel file](#-import-an-existing-excel-file)
   - [Drag-and-drop formulas](#-drag-and-drop-formulas)
@@ -154,7 +155,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 557-case Vitest suite |
+| `npm test` | Run the 577-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -464,6 +465,35 @@ turns into `#REF!`, exactly like Excel.
 - **Sort** (A-Z/Z-A): selecting a single cell auto-detects the surrounding table bounds, and skips the header
   row automatically if it detects text sitting above numeric data.
 - **Filter**: the funnel icon on each column header lets you check/uncheck which values to show, hiding rows instantly.
+
+### 🧮 Pivot (summarise a range)
+
+Select a range whose first row is the header, press **"Summarise (Pivot)"**, then choose which columns to
+group by (more than one is fine), which column to fan out across the top, and what to summarise — sum, count,
+average, min or max. The field buttons are named from **the first row of the range you actually selected**,
+not A/B/C, so nobody has to translate column letters into headings in their head.
+
+<p align="center"><img src="public/screenshots/28-pivot-panel.png" width="820"></p>
+
+The result is a **new sheet**, not a special object you can't touch: sort it, filter it, chart it or export it
+like any other data. The header and the grand-total row are bolded, because those are the two rows a reader
+scans for first.
+
+<p align="center"><img src="public/screenshots/29-pivot-result.png" width="820"></p>
+
+Details that were worth getting right:
+
+- **The totals row re-aggregates the raw values instead of adding up the cells above it.** An average of
+  averages is not the average; summing what's on screen would print a number wrong in a way nobody questions.
+- **A group with no numbers gives a blank, not 0.** "Nothing here" and "adds up to nothing" are different
+  answers.
+- **Groups sort numerically when the labels are numbers**, otherwise by locale — so Thai sorts as Thai rather
+  than by code point — and blank groups always sink to the bottom.
+- **A row that is blank in the grouping column but carries a number** still counts, as a `(blank)` group,
+  rather than being dropped silently.
+
+**Not supported:** the summary doesn't follow its source — it is a snapshot, so rebuild it after the numbers
+change. One column field at a time, and the summary sheet has no filters of its own.
 
 ### 📑 Multiple sheets in one file
 
@@ -788,7 +818,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (557 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (577 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1025,6 +1055,7 @@ src/
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
     site.ts                  # The one canonical public URL shared by metadata, sitemap and robots
     thaiMarks.ts             # Finds tone marks stacked on an upper vowel that must be redrawn higher (tested)
+    pivot.ts                 # The group-and-summarise engine — pure functions, no sheet or UI (tested)
     xlsxChartXml.ts          # Builds the chart OOXML (chart part + drawing anchor) as pure strings (tested)
     xlsxCharts.ts            # Splices chart parts into the finished .xlsx and wires the rels (tested)
     dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
@@ -1228,7 +1259,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 557 cases across 27 files, via Vitest
+npm test      # 577 cases across 27 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so

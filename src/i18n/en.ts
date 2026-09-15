@@ -114,7 +114,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 557 tests",
+    eyebrow: "A side project · hand-written formula engine · 577 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -168,7 +168,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "557", label: "automated tests" },
+      { value: "577", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "What it can't do",
@@ -187,8 +187,8 @@ export const en: Messages = {
         body: "Your work lives in this browser; clearing site data clears it. Saving across devices means pointing the app at your own Supabase project, and there is no simultaneous multi-person editing.",
       },
       {
-        title: "No pivot tables and no macros",
-        body: "Those two are why people go back to real Excel. This isn't trying to replace all of it — it makes the parts you reach for most open instantly in a browser.",
+        title: "A summary doesn't follow its data, and there are no macros",
+        body: "Pivot summaries work, but the result is a snapshot: change the source and you rebuild it. Macros aren't there at all.",
       },
     ],
     closingTitle: "Try it — nothing to sign up for",
@@ -359,6 +359,24 @@ export const en: Messages = {
     number2: "2 decimal places",
     percent: "Percent (%)",
     currency: "Currency (฿)",
+  },
+  pivot: {
+    title: "Summarise (Pivot)",
+    subtitle: "Select a range whose first row is the header, then choose what to group by and what to total.",
+    sourceLabel: "Selected range:",
+    rowFields: "Group by (rows)",
+    colField: "Split into columns",
+    valueField: "Value to summarise",
+    aggLabel: "How to summarise",
+    none: "Don't split",
+    build: "Create summary sheet",
+    sheetName: "Pivot",
+    blank: "(blank)",
+    grandTotal: "Grand total",
+    valueHeading: (agg, field) => `${agg} of ${field}`,
+    aggNames: { sum: "Sum", count: "Count", average: "Average", min: "Min", max: "Max" },
+    needRows: "Select at least 2 rows — the first one is used as the header.",
+    pickRowField: "Pick at least one column to group by.",
   },
   formulaBar: {
     placeholder: "Type a value or formula, e.g. =SUM(A1:A10)",

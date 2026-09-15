@@ -299,6 +299,26 @@ export interface Messages {
     numberFormatTitle: string;
   };
   numberFormats: Record<NumberFormat, string>;
+  /** The pivot panel, and the sheet it writes. */
+  pivot: {
+    title: string;
+    subtitle: string;
+    sourceLabel: string;
+    rowFields: string;
+    colField: string;
+    valueField: string;
+    aggLabel: string;
+    none: string;
+    build: string;
+    sheetName: string;
+    blank: string;
+    grandTotal: string;
+    /** e.g. ("Sum", "Price") -> "Sum of Price" */
+    valueHeading: (agg: string, field: string) => string;
+    aggNames: Record<"sum" | "count" | "average" | "min" | "max", string>;
+    needRows: string;
+    pickRowField: string;
+  };
   formulaBar: {
     placeholder: string;
   };

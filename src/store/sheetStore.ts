@@ -40,6 +40,8 @@ import {
 } from "@/lib/sheet";
 import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
+import { FormulaValue } from "@/lib/formulaEngine/types";
+import { PivotConfig, buildPivot } from "@/lib/pivot";
 // ExcelJS (~400KB) and jsPDF + autoTable are loaded on demand, not with the store.
 //
 // They were plain imports, which put both libraries in the app's first chunk — and because the
@@ -54,7 +56,7 @@ import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
-export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "cloud" | "none";
+export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "pivot" | "cloud" | "none";
 export type { ApplyScope };
 
 export interface PendingFormula {
@@ -99,6 +101,15 @@ let idCounter = 0;
 function genId(): string {
   idCounter += 1;
   return `sheet-${Date.now().toString(36)}-${idCounter}`;
+}
+
+/** "Pivot", then "Pivot 2", "Pivot 3"… so repeated pivots don't all answer to the same name. */
+function nextPivotName(tabs: SheetTab[], base: string): string {
+  const taken = new Set(tabs.map((t) => t.name));
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base} ${n}`)) n += 1;
+  return `${base} ${n}`;
 }
 
 function newTab(name: string, sheet: SheetModel = createEmptySheet()): SheetTab {
@@ -180,6 +191,9 @@ interface SheetState {
   clearColumnFilter: (col: number) => void;
   clearAllFilters: () => void;
 
+  /** Summarises the selected range onto a brand-new sheet. Returns false when the selection is
+   *  too small to pivot, so the panel can say so instead of silently doing nothing. */
+  buildPivotSheet: (config: PivotConfig) => boolean;
   addChart: (kind: ChartKind) => void;
   removeChart: (id: string) => void;
   setChartKind: (id: string, kind: ChartKind) => void;
@@ -495,6 +509,59 @@ export const useSheetStore = create<SheetState>()(
 
         setAlign: (align) =>
           set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { align })) })),
+
+        /**
+         * Writes a pivot of the current selection onto a new sheet.
+         *
+         * A new sheet rather than an overlay on this one: the result is an ordinary grid of values
+         * that can be sorted, charted and exported like anything else, and dropping it beside the
+         * source would overwrite whatever was already there. It is a snapshot, not a live object —
+         * rebuild it when the numbers move, which is what the panel's button is for.
+         */
+        buildPivotSheet: (config) => {
+          const s = get();
+          const { sheet } = activeTab(s);
+          const selection = activeSelectionOf(s);
+          const computed = computeSheet(sheet);
+
+          // The header row is the selection's first row, so a pivot needs at least two rows and
+          // one column of data to say anything at all.
+          if (selection.endRow <= selection.startRow) return false;
+
+          const rows: FormulaValue[][] = [];
+          for (let r = selection.startRow; r <= selection.endRow; r++) {
+            const row: FormulaValue[] = [];
+            for (let c = selection.startCol; c <= selection.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
+            rows.push(row);
+          }
+
+          const m = getMessages();
+          const result = buildPivot(rows, config, {
+            blank: m.pivot.blank,
+            grandTotal: m.pivot.grandTotal,
+            valueHeading: (agg, field) => m.pivot.valueHeading(m.pivot.aggNames[agg], field),
+          });
+          if (result.header.length === 0 || result.rows.length === 0) return false;
+
+          const out = createEmptySheet();
+          const lines = [result.header, ...result.rows, ...(result.totalRow ? [result.totalRow] : [])];
+          lines.forEach((line, r) => {
+            line.forEach((cell, c) => {
+              if (r < out.rows && c < out.cols) out.cells[r][c] = cell === null ? "" : String(cell);
+            });
+          });
+          // The header and the closing total are the two rows a reader scans for, so they are bold
+          // rather than left to be picked out of a wall of numbers.
+          for (let c = 0; c < result.header.length && c < out.cols; c++) {
+            out.formats[0][c] = { bold: true };
+            const last = lines.length - 1;
+            if (result.totalRow && last < out.rows) out.formats[last][c] = { bold: true };
+          }
+
+          const tab = newTab(nextPivotName(s.sheets, m.pivot.sheetName), out);
+          set({ sheets: [...s.sheets, tab], activeSheetId: tab.id, sidebarMode: "none" });
+          return true;
+        },
 
         // A chart reads whatever is selected when it's made, like Excel's "insert chart".
         addChart: (kind) =>
