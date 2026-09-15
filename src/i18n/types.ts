@@ -312,6 +312,9 @@ export interface Messages {
     aggLabel: string;
     none: string;
     build: string;
+    sourceChanged: string;
+    sourceGone: string;
+    refresh: string;
     sheetName: string;
     blank: string;
     grandTotal: string;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FormulaValue } from "./formulaEngine/types";
 import { ERR_DIV0 } from "./formulaEngine/types";
-import { aggregate, buildPivot, compareLabels, keyOf, PivotLabels } from "./pivot";
+import { PivotLabels, aggregate, buildPivot, compareLabels, hashValues, keyOf } from "./pivot";
 
 const labels: PivotLabels = {
   blank: "(blank)",
@@ -193,5 +193,28 @@ describe("buildPivot", () => {
     expect(p.totalRow!).toHaveLength(p.header.length);
     expect(p.totalRow![0]).toBe("Total");
     expect(p.totalRow![1]).toBe("");
+  });
+});
+
+describe("hashValues", () => {
+  it("is stable for the same values", () => {
+    const rows = [["a", 1], ["b", 2]] as const;
+    expect(hashValues(rows as never)).toBe(hashValues(rows as never));
+  });
+
+  it("changes when a value changes — the whole point of keeping it", () => {
+    expect(hashValues([["a", 1]] as never)).not.toBe(hashValues([["a", 2]] as never));
+  });
+
+  it("changes when the shape changes even though the text reads the same", () => {
+    expect(hashValues([["a", "b"]] as never)).not.toBe(hashValues([["ab"]] as never));
+  });
+
+  it("tells one row of two from two rows of one", () => {
+    expect(hashValues([["a", "b"]] as never)).not.toBe(hashValues([["a"], ["b"]] as never));
+  });
+
+  it("treats a blank and an empty string the same, because a pivot does", () => {
+    expect(hashValues([[null]] as never)).toBe(hashValues([[""]] as never));
   });
 });

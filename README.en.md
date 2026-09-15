@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-627%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-632%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 627 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 632 automated tests.
 
 ---
 
@@ -159,7 +159,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 627-case Vitest suite |
+| `npm test` | Run the 632-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -536,8 +536,23 @@ Details that were worth getting right:
 - **A row that is blank in the grouping column but carries a number** still counts, as a `(blank)` group,
   rather than being dropped silently.
 
-**Not supported:** the summary doesn't follow its source — it is a snapshot, so rebuild it after the numbers
-change. One column field at a time, and the summary sheet has no filters of its own.
+**A summary remembers where it came from, and says when the source moves.** The sheet keeps the range it
+read, the fields that were picked, and a fingerprint of the values at the time. Change the source and a
+notice appears on that sheet with a **Refresh** button — one press, instead of going back, re-selecting the
+range and re-picking every field.
+
+<p align="center"><img src="public/screenshots/31-pivot-refresh.png" width="900"></p>
+
+**Deliberately not live.** The result is an ordinary sheet you can sort, chart and edit; one that rewrote
+itself whenever a source cell changed would throw that away, and throw it away inside someone else's undo
+history. Excel refreshes pivots on request for the same reason. Nothing is shown while it is up to date —
+a banner that is always there is a banner nobody reads.
+
+If the source sheet has since been deleted, the notice says it can't be refreshed rather than offering a
+button that does nothing.
+
+**Not supported yet:** refreshing is manual, not automatic; a refresh overwrites anything typed into the
+summary sheet; one column field at a time; and the summary sheet has no filters of its own.
 
 ### 📑 Multiple sheets in one file
 
@@ -892,7 +907,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (627 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (632 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1335,7 +1350,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 627 cases across 27 files, via Vitest
+npm test      # 632 cases across 27 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1407,7 +1422,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       series at a time
 - [x] **Pivot tables** — done (see ✨ Features): group by several columns, fan one field out across
       the top, summarise with sum/count/average/min/max, and get an ordinary sheet back that can be
-      sorted, charted and exported. Still open: the summary doesn't follow its source, one column
+      sorted, charted and exported. **A summary sheet now remembers its source** and offers a
+      Refresh button once the numbers behind it move. Still open: refreshing is manual, one column
       field at a time, and no filters of its own
 - [x] **A ceiling on `/api/ai/formula`** — done: 20 calls a minute per address, refused with `429`
       and a `Retry-After`. Still open: the counters are per process, so this guards against casual

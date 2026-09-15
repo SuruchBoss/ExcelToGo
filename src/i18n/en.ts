@@ -116,7 +116,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 627 tests",
+    eyebrow: "A side project · hand-written formula engine · 632 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -170,7 +170,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "627", label: "automated tests" },
+      { value: "632", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "What it can't do",
@@ -189,8 +189,8 @@ export const en: Messages = {
         body: "Your work lives in this browser; clearing site data clears it. Saving across devices means pointing the app at your own Supabase project, and there is no simultaneous multi-person editing.",
       },
       {
-        title: "A summary doesn't follow its data, and there are no macros",
-        body: "Pivot summaries work, but the result is a snapshot: change the source and you rebuild it. Macros aren't there at all.",
+        title: "A summary has to be refreshed by hand, and there are no macros",
+        body: "A summary sheet remembers the range it read and shows a notice with a Refresh button when the source moves — but it won't refresh itself. Macros aren't there at all.",
       },
     ],
     closingTitle: "Try it — nothing to sign up for",
@@ -372,6 +372,9 @@ export const en: Messages = {
     aggLabel: "How to summarise",
     none: "Don't split",
     build: "Create summary sheet",
+    sourceChanged: "The source data has changed. This summary still shows the earlier result.",
+    sourceGone: "This summary's source sheet is gone, so it can't be refreshed.",
+    refresh: "Refresh",
     sheetName: "Pivot",
     blank: "(blank)",
     grandTotal: "Grand total",

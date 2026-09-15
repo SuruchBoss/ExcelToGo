@@ -1,4 +1,5 @@
 import { CellComments, shiftComments } from "./cellComments";
+import { PivotSource } from "./pivot";
 import { parseFormula, FormulaSyntaxError } from "./formulaEngine/parser";
 import { evaluate } from "./formulaEngine/evaluator";
 import { FormulaError, FormulaValue } from "./formulaEngine/types";
@@ -36,6 +37,8 @@ export interface SheetModel {
   charts?: ChartSpec[];
   /** Notes attached to individual cells, keyed by position. See cellComments.ts. */
   comments?: CellComments;
+  /** Set on a sheet that *is* a pivot: where it was built from, so it can be rebuilt. See pivot.ts. */
+  pivot?: PivotSource;
 }
 
 export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): SheetModel {

@@ -15,6 +15,7 @@ import ChartPanel from "@/features/grid/ChartPanel";
 import PivotPanel from "@/features/grid/PivotPanel";
 import CloudPanel from "@/features/cloud/CloudPanel";
 import StorageNotice from "@/features/grid/StorageNotice";
+import PivotNotice from "@/features/grid/PivotNotice";
 import DataPicker from "@/features/data/DataPicker";
 import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
@@ -56,6 +57,7 @@ export default function Home() {
       <FormulaBar />
       <TemplateBar />
       <StorageNotice />
+      <PivotNotice />
       <div className="flex min-h-0 flex-1 gap-3 p-2 sm:p-3">
         <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white outline-none">
           <div className="min-h-0 flex-1">

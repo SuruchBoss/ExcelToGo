@@ -42,7 +42,7 @@ import {
 import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { FormulaValue } from "@/lib/formulaEngine/types";
-import { PivotConfig, buildPivot } from "@/lib/pivot";
+import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
 // ExcelJS (~400KB) and jsPDF + autoTable are loaded on demand, not with the store.
 //
 // They were plain imports, which put both libraries in the app's first chunk — and because the
@@ -196,6 +196,8 @@ interface SheetState {
   /** Summarises the selected range onto a brand-new sheet. Returns false when the selection is
    *  too small to pivot, so the panel can say so instead of silently doing nothing. */
   buildPivotSheet: (config: PivotConfig) => boolean;
+  /** Rebuilds the active pivot sheet from its source. False when it has no source, or the source is gone. */
+  refreshPivot: () => boolean;
   addChart: (kind: ChartKind) => void;
   removeChart: (id: string) => void;
   setChartKind: (id: string, kind: ChartKind) => void;
@@ -226,6 +228,59 @@ interface SheetState {
   exportXlsx: () => Promise<void>;
   exportPdf: () => Promise<void>;
   exportCsv: () => Promise<void>;
+}
+
+/**
+ * Builds the sheet a pivot produces, and stamps it with where it came from.
+ *
+ * Shared by the build button and the refresh button so that a refreshed pivot is laid out by exactly
+ * the same code as the original — the failure mode otherwise is two renderers that drift apart and a
+ * refresh that quietly changes the shape of the answer.
+ *
+ * Returns null when the range can't produce a pivot: the header row is the range's first row, so
+ * there has to be at least one row of data under it, and grouping has to yield something.
+ */
+function renderPivotSheet(
+  sourceSheet: SheetModel,
+  range: PivotSource["range"],
+  config: PivotConfig,
+  sourceSheetId: string
+): SheetModel | null {
+  if (range.endRow <= range.startRow) return null;
+  const computed = computeSheet(sourceSheet);
+
+  const rows: FormulaValue[][] = [];
+  for (let r = range.startRow; r <= range.endRow; r++) {
+    const row: FormulaValue[] = [];
+    for (let c = range.startCol; c <= range.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
+    rows.push(row);
+  }
+
+  const m = getMessages();
+  const result = buildPivot(rows, config, {
+    blank: m.pivot.blank,
+    grandTotal: m.pivot.grandTotal,
+    valueHeading: (agg, field) => m.pivot.valueHeading(m.pivot.aggNames[agg], field),
+  });
+  if (result.header.length === 0 || result.rows.length === 0) return null;
+
+  const out = createEmptySheet();
+  const lines = [result.header, ...result.rows, ...(result.totalRow ? [result.totalRow] : [])];
+  lines.forEach((line, r) => {
+    line.forEach((cell, c) => {
+      if (r < out.rows && c < out.cols) out.cells[r][c] = cell === null ? "" : String(cell);
+    });
+  });
+  // The header and the closing total are the two rows a reader scans for, so they are bold rather
+  // than left to be picked out of a wall of numbers.
+  for (let c = 0; c < result.header.length && c < out.cols; c++) {
+    out.formats[0][c] = { bold: true };
+    const last = lines.length - 1;
+    if (result.totalRow && last < out.rows) out.formats[last][c] = { bold: true };
+  }
+
+  out.pivot = { sheetId: sourceSheetId, range, config, hash: hashValues(rows) };
+  return out;
 }
 
 function activeTab(s: SheetState): SheetTab {
@@ -525,46 +580,41 @@ export const useSheetStore = create<SheetState>()(
          */
         buildPivotSheet: (config) => {
           const s = get();
-          const { sheet } = activeTab(s);
+          const source = activeTab(s);
           const selection = activeSelectionOf(s);
-          const computed = computeSheet(sheet);
-
-          // The header row is the selection's first row, so a pivot needs at least two rows and
-          // one column of data to say anything at all.
-          if (selection.endRow <= selection.startRow) return false;
-
-          const rows: FormulaValue[][] = [];
-          for (let r = selection.startRow; r <= selection.endRow; r++) {
-            const row: FormulaValue[] = [];
-            for (let c = selection.startCol; c <= selection.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
-            rows.push(row);
-          }
+          const range = {
+            startRow: selection.startRow,
+            startCol: selection.startCol,
+            endRow: selection.endRow,
+            endCol: selection.endCol,
+          };
+          const out = renderPivotSheet(source.sheet, range, config, source.id);
+          if (!out) return false;
 
           const m = getMessages();
-          const result = buildPivot(rows, config, {
-            blank: m.pivot.blank,
-            grandTotal: m.pivot.grandTotal,
-            valueHeading: (agg, field) => m.pivot.valueHeading(m.pivot.aggNames[agg], field),
-          });
-          if (result.header.length === 0 || result.rows.length === 0) return false;
-
-          const out = createEmptySheet();
-          const lines = [result.header, ...result.rows, ...(result.totalRow ? [result.totalRow] : [])];
-          lines.forEach((line, r) => {
-            line.forEach((cell, c) => {
-              if (r < out.rows && c < out.cols) out.cells[r][c] = cell === null ? "" : String(cell);
-            });
-          });
-          // The header and the closing total are the two rows a reader scans for, so they are bold
-          // rather than left to be picked out of a wall of numbers.
-          for (let c = 0; c < result.header.length && c < out.cols; c++) {
-            out.formats[0][c] = { bold: true };
-            const last = lines.length - 1;
-            if (result.totalRow && last < out.rows) out.formats[last][c] = { bold: true };
-          }
-
           const tab = newTab(nextPivotName(s.sheets, m.pivot.sheetName), out);
           set({ sheets: [...s.sheets, tab], activeSheetId: tab.id, sidebarMode: "none" });
+          return true;
+        },
+
+        /**
+         * Asks the pivot's question again, against the source as it is now.
+         *
+         * In place, on the same tab, keeping its name and position — the point is that this is the
+         * same pivot, not a second one. Anything typed into the pivot sheet is overwritten, which is
+         * why nothing refreshes on its own and the button only appears once the source has moved.
+         */
+        refreshPivot: () => {
+          const s = get();
+          const target = activeTab(s);
+          const spec = target.sheet.pivot;
+          if (!spec) return false;
+          const source = s.sheets.find((t) => t.id === spec.sheetId);
+          if (!source) return false;
+
+          const out = renderPivotSheet(source.sheet, spec.range, spec.config, spec.sheetId);
+          if (!out) return false;
+          set({ sheets: s.sheets.map((t) => (t.id === target.id ? { ...t, sheet: out } : t)) });
           return true;
         },
 
@@ -1021,6 +1071,32 @@ const EMPTY_FORMAT: CellFormat = {};
  *  formatting toolbar's toggle buttons. Falls back to a module-level constant (rather than a
  *  fresh `{}` per call) so the selector returns a stable reference when there's no format,
  *  which Zustand's snapshot comparison requires to avoid re-rendering forever. */
+/** What the pivot banner needs to know: nothing, out of date, or orphaned. */
+export type PivotStatus = "fresh" | "stale" | "orphaned";
+
+/**
+ * Whether the active sheet is a pivot, and whether its source has moved since it was built.
+ *
+ * Recomputing the source range and hashing it on every store read is the cost of not making the
+ * pivot live — and it is small, because a pivot's source is a block someone selected by hand, not
+ * the whole sheet.
+ */
+export function selectPivotStatus(s: SheetState): PivotStatus | null {
+  const spec = activeTab(s).sheet.pivot;
+  if (!spec) return null;
+  const source = s.sheets.find((t) => t.id === spec.sheetId);
+  if (!source) return "orphaned";
+
+  const computed = computeSheet(source.sheet);
+  const rows: FormulaValue[][] = [];
+  for (let r = spec.range.startRow; r <= spec.range.endRow; r++) {
+    const row: FormulaValue[] = [];
+    for (let c = spec.range.startCol; c <= spec.range.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
+    rows.push(row);
+  }
+  return hashValues(rows) === spec.hash ? "fresh" : "stale";
+}
+
 export function useAnchorFormat(): CellFormat {
   return useSheetStore((s) => {
     const sheet = activeTab(s).sheet;
