@@ -41,46 +41,11 @@ export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/Engl
 
 ## 📸 Screenshots
 
-<p align="center"><b>Main screen</b> — the data grid with the drag-and-drop formula panel on the right</p>
-<p align="center"><img src="public/screenshots/01-overview.png" width="820"></p>
+<p align="center"><img src="public/screenshots/01-overview.png" width="900"></p>
+<p align="center"><sub><b>Main screen</b> — the data grid with the drag-and-drop formula panel on the right</sub></p>
 
-<table>
-<tr>
-<td width="50%" align="center"><b>Formula parameter panel</b><br><sub>Pick range C2:C4 straight from the grid instead of typing the address</sub><br><br>
-<img src="public/screenshots/02-formula-panel.png" width="380"></td>
-<td width="50%" align="center"><b>Result after inserting</b><br><sub>SUM(C2:C4) computes to 100 the moment you confirm</sub><br><br>
-<img src="public/screenshots/03-after-insert.png" width="380"></td>
-</tr>
-<tr>
-<td width="50%" align="center"><b>AI formula assistant</b><br><sub>Ask in a plain-language sentence, get a formula back with an explanation</sub><br><br>
-<img src="public/screenshots/04-ai-assistant.png" width="380"></td>
-<td width="50%" align="center"><b>Multiple sheets in one file</b><br><sub>Switch, add, or rename sheets from the tab bar</sub><br><br>
-<img src="public/screenshots/05-sheet-tabs.png" width="380"></td>
-</tr>
-</table>
-
-<p align="center"><b>Cell formatting + column filters</b> — bold, number formats (currency), and per-column checkbox filters</p>
-<p align="center"><img src="public/screenshots/06-format-filter.png" width="820"></p>
-
-<p align="center"><b>Switch languages in one click</b> — menus, buttons, formula names/descriptions, and AI replies all update instantly</p>
-<p align="center"><img src="public/screenshots/07-english-ui.png" width="820"></p>
-
-<p align="center"><b>Live data from an API / CSV</b> — select a cell, click "Insert into sheet", then choose the
-whole table or a single summary number, seeing the real values before deciding</p>
-
-<table>
-<tr>
-<td width="50%" align="center"><b>Whole table</b><br><sub>Full-width preview, stating the rows × columns it will use</sub><br><br>
-<img src="public/screenshots/10-picker-table.png" width="380"></td>
-<td width="50%" align="center"><b>A single summary number</b><br><sub>Cards show the actual value, e.g. <code>9,510 · Sum of total</code> — no guessing what "sum" returns</sub><br><br>
-<img src="public/screenshots/12-picker-values.png" width="380"></td>
-</tr>
-</table>
-
-<p align="center"><b>Click a live block and its toolbar appears right beside it</b> — refresh / change / remove,
-with no trip back to the side panel. A block on the very first row leaves no space above, so the toolbar goes
-underneath rather than covering the column headers.</p>
-<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
+> The rest of the screenshots live in [**Features**](#-features) below, each one next to the feature it shows.
+> Every shot is from a production build, not a mockup.
 
 ---
 
@@ -285,6 +250,8 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 Bold, text alignment (left/center/right), text color, number format (general / 2 decimal places / percent /
 currency ฿) — travels with the cell on copy/paste and survives Excel export too.
 
+<p align="center"><img src="public/screenshots/06-format-filter.png" width="820"></p>
+
 The formatting row **folds away** (the brush button at the end of the formula bar). On a 1366×768 laptop the
 three stacked bars ate 150px before a single grid row appeared; folded, that's 107px.
 
@@ -477,6 +444,9 @@ Right-click a row/column header to insert or delete. The app **automatically rew
 sheet to reference the new correct positions**; a formula that referenced the exact row/column that got deleted
 turns into `#REF!`, exactly like Excel.
 
+<p align="center"><img src="public/screenshots/26-insert-row.png" width="820"></p>
+<p align="center"><sub>Insert a row at 3 and <code>=SUM(C2:C4)</code> becomes <code>=SUM(C2:C5)</code> by itself — no chasing formulas by hand</sub></p>
+
 ### 🔤 Sort and filter
 
 - **Sort** (A-Z/Z-A): selecting a single cell auto-detects the surrounding table bounds, and skips the header
@@ -487,6 +457,8 @@ turns into `#REF!`, exactly like Excel.
 
 Switch/add/rename/delete sheets from the tab bar below the grid. Each sheet has independent data, formulas, and
 formatting, but **undo/redo and autosave cover every sheet together**.
+
+<p align="center"><img src="public/screenshots/05-sheet-tabs.png" width="820"></p>
 
 ### 📥 Import an existing Excel file
 
@@ -503,11 +475,22 @@ grid instead of typing an address by hand. Choose to apply it to **this cell onl
 column / the current selection** — relative references adjust automatically like Excel's fill handle (absolute
 references with `$` stay put).
 
+<table>
+<tr>
+<td width="50%" align="center"><b>Parameter panel</b><br><sub>Pick range C2:C4 straight from the grid instead of typing the address</sub><br><br>
+<img src="public/screenshots/02-formula-panel.png" width="400"></td>
+<td width="50%" align="center"><b>Result the moment you confirm</b><br><sub><code>SUM(C2:C4)</code> computes to 100</sub><br><br>
+<img src="public/screenshots/03-after-insert.png" width="400"></td>
+</tr>
+</table>
+
 ### 🤖 Ask AI for a formula
 
 Type what you want as a plain sentence, in Thai or English — e.g. _"I want to total all sales in this column."_
 The app sends your question plus the currently selected range to the AI and gets back a suggested formula with
 a short explanation. One click inserts it into the selected cell.
+
+<p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
 
 ### 📤 Export
 
@@ -729,12 +712,16 @@ to `/app` — where before you landed straight in a bare grid with nothing telli
 screenshot on it comes from the running app rather than a mockup, and it goes through the same message
 dictionary as the app, so the language you choose there carries through with you.
 
+<p align="center"><img src="public/screenshots/25-landing.png" width="820"></p>
+
 ### 🌐 Bilingual (Thai / English)
 
-Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 25 formula
+Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 32 formula
 names/descriptions, alert text, and AI replies (both the keyword heuristic and real Claude) all follow the
 selected language. The choice is remembered per browser. See [Bilingual UI (i18n)](#-bilingual-ui-i18n) for the
 architecture behind it.
+
+<p align="center"><img src="public/screenshots/07-english-ui.png" width="820"></p>
 
 ---
 

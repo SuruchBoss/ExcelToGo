@@ -126,6 +126,35 @@ for (const [file, text, start, end] of [
   }
 }
 
+// --- 7. The landing page quotes numbers too, and nothing was checking them --------------------
+// Found by looking at a screenshot of the live page: it still said "319 tests" long after the
+// suite had passed 400, and claimed 25 palette formulas and 42 engine functions when the real
+// figures were 32 and 49. The README's counts were being kept honest by this script while the
+// page every visitor sees first drifted for months.
+const countMatches = (file, pattern) => (read(file).match(pattern) ?? []).length;
+const engineFunctions = countMatches("src/lib/formulaEngine/functions.ts", /^  [A-Z][A-Z0-9.]*:/gm);
+const paletteFormulas = countMatches("src/lib/formulaCatalog.ts", /^    id: "[A-Z][A-Z0-9.]*",/gm);
+
+for (const locale of ["th", "en"]) {
+  const source = read(`src/i18n/${locale}.ts`);
+  const stat = (label) => {
+    const m = new RegExp(`\\{ value: "(\\d+)", label: "[^"]*${label}[^"]*" \\}`).exec(source);
+    return m ? Number(m[1]) : null;
+  };
+  const eyebrow = /eyebrow: "[^"]*?(\d+)[^"]*"/.exec(source);
+
+  for (const [what, actual, found] of [
+    ["engine functions", engineFunctions, stat(locale === "th" ? "ฟังก์ชันในเอนจิน" : "engine functions")],
+    ["palette formulas", paletteFormulas, stat(locale === "th" ? "สูตรพร้อมใช้" : "ready-made formulas")],
+    ["tests", actualTests, stat(locale === "th" ? "เทสต์อัตโนมัติ" : "automated tests")],
+    ["tests (eyebrow)", actualTests, eyebrow ? Number(eyebrow[1]) : null],
+  ]) {
+    if (found === null) fail(`src/i18n/${locale}.ts: couldn't find the landing page's ${what} figure`);
+    else if (found !== actual) fail(`src/i18n/${locale}.ts: landing page says ${found} ${what}, but there are ${actual}`);
+  }
+}
+notes.push(`landing page: ${engineFunctions} functions, ${paletteFormulas} palette formulas, ${actualTests} tests — all counted`);
+
 // ----------------------------------------------------------------------------------------------
 for (const n of notes) console.log("  ok  " + n);
 if (problems.length > 0) {

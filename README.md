@@ -43,46 +43,11 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 
 ## 📸 หน้าตาแอป
 
-<p align="center"><b>หน้าจอหลัก</b> — ตารางกรอกข้อมูลพร้อมแถบสูตรลากวางด้านขวา</p>
-<p align="center"><img src="public/screenshots/01-overview.png" width="820"></p>
+<p align="center"><img src="public/screenshots/01-overview.png" width="900"></p>
+<p align="center"><sub><b>หน้าจอหลัก</b> — ตารางกรอกข้อมูล พร้อมแถบสูตรลากวางด้านขวา</sub></p>
 
-<table>
-<tr>
-<td width="50%" align="center"><b>แผงกรอกพารามิเตอร์สูตร</b><br><sub>เลือกช่วง C2:C4 จากตารางโดยตรง ไม่ต้องพิมพ์ที่อยู่เซลล์เอง</sub><br><br>
-<img src="public/screenshots/02-formula-panel.png" width="380"></td>
-<td width="50%" align="center"><b>ผลลัพธ์หลังใส่สูตร</b><br><sub>SUM(C2:C4) คำนวณเป็น 100 ทันทีที่กดยืนยัน</sub><br><br>
-<img src="public/screenshots/03-after-insert.png" width="380"></td>
-</tr>
-<tr>
-<td width="50%" align="center"><b>ผู้ช่วย AI หาสูตร</b><br><sub>ถามเป็นประโยคภาษาคน ได้สูตรพร้อมคำอธิบายกลับมา</sub><br><br>
-<img src="public/screenshots/04-ai-assistant.png" width="380"></td>
-<td width="50%" align="center"><b>หลายชีตในไฟล์เดียว</b><br><sub>สลับ/เพิ่ม/เปลี่ยนชื่อชีตได้จากแถบด้านล่าง</sub><br><br>
-<img src="public/screenshots/05-sheet-tabs.png" width="380"></td>
-</tr>
-</table>
-
-<p align="center"><b>จัดรูปแบบเซลล์ + กรองข้อมูล</b> — ตัวหนา, รูปแบบตัวเลข (สกุลเงิน), และตัวกรองแบบติ๊กเลือกค่าต่อคอลัมน์</p>
-<p align="center"><img src="public/screenshots/06-format-filter.png" width="820"></p>
-
-<p align="center"><b>สลับภาษาได้ทั้งแอปในคลิกเดียว</b> — เมนู ปุ่ม ชื่อ/คำอธิบายสูตร และคำตอบจาก AI เปลี่ยนตามทันที</p>
-<p align="center"><img src="public/screenshots/07-english-ui.png" width="820"></p>
-
-<p align="center"><b>ข้อมูลสดจาก API / CSV</b> — เลือกช่อง กด "ใส่ลงตาราง" แล้วเลือกว่าจะเอาทั้งตารางหรือตัวเลขสรุปค่าเดียว
-โดยเห็นตัวเลขจริงก่อนตัดสินใจ</p>
-
-<table>
-<tr>
-<td width="50%" align="center"><b>เลือกทั้งตาราง</b><br><sub>พรีวิวเต็มความกว้าง บอกว่าจะใช้พื้นที่กี่แถว × กี่คอลัมน์</sub><br><br>
-<img src="public/screenshots/10-picker-table.png" width="380"></td>
-<td width="50%" align="center"><b>เลือกตัวเลขสรุปค่าเดียว</b><br><sub>การ์ดโชว์ค่าจริง เช่น <code>9,510 · รวม total</code> ไม่ต้องเดาว่า "sum" ได้เลขอะไร</sub><br><br>
-<img src="public/screenshots/12-picker-values.png" width="380"></td>
-</tr>
-</table>
-
-<p align="center"><b>คลิกบล็อกข้อมูลสด → แถบเครื่องมือลอยขึ้นมาติดบล็อกนั้นเลย</b> — รีเฟรช / เปลี่ยน / เอาออก
-ไม่ต้องกลับไปหาที่แถบด้านขวา (ถ้าบล็อกอยู่แถวบนสุดจนไม่มีที่ด้านบน แถบจะย้ายไปอยู่ใต้บล็อกแทน
-เพื่อไม่ให้บังหัวคอลัมน์)</p>
-<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
+> ภาพที่เหลืออยู่ในหัวข้อ [**ฟีเจอร์**](#-ฟีเจอร์) ข้างล่าง โดยวางไว้ข้างฟีเจอร์ที่มันอธิบาย
+> ทุกภาพถ่ายจาก production build ไม่ใช่ mockup
 
 ---
 
@@ -275,6 +240,8 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 ตัวหนา, จัดตำแหน่งข้อความ (ซ้าย/กลาง/ขวา), สีข้อความ, รูปแบบตัวเลข (ทั่วไป / ทศนิยม 2 ตำแหน่ง / เปอร์เซ็นต์ /
 สกุลเงิน ฿) — ติดไปกับเซลล์เวลาคัดลอก/วางและส่งออกเป็น Excel ด้วย
 
+<p align="center"><img src="public/screenshots/06-format-filter.png" width="820"></p>
+
 แถบจัดรูปแบบ**พับเก็บได้** (ปุ่มพู่กันท้ายแถบสูตร) — บนโน้ตบุ๊ก 1366×768 แถบด้านบนสามชั้นกินไป 150px
 ก่อนจะเห็นตารางสักแถว พับแล้วเหลือ 107px
 
@@ -433,6 +400,9 @@ fill handle ของ Excel แต่ทำคนละเรื่อง
 คลิกขวาที่หัวแถว/หัวคอลัมน์เพื่อแทรกหรือลบ ระบบ**ปรับสูตรทุกเซลล์ในตารางให้อ้างอิงตำแหน่งใหม่ถูกต้องอัตโนมัติ**
 สูตรที่อ้างอิงถึงแถว/คอลัมน์ที่ถูกลบไปพอดีจะกลายเป็น `#REF!` ให้เห็นชัดเจนเหมือน Excel
 
+<p align="center"><img src="public/screenshots/26-insert-row.png" width="820"></p>
+<p align="center"><sub>แทรกแถวที่ 3 แล้ว <code>=SUM(C2:C4)</code> กลายเป็น <code>=SUM(C2:C5)</code> เอง — ไม่ต้องไล่แก้สูตรเอง</sub></p>
+
 ### 🔤 เรียงลำดับและกรองข้อมูล
 
 - **เรียงลำดับ** (A-Z/Z-A): เลือกเซลล์เดียวก็เดาขอบเขตตารางให้อัตโนมัติ พร้อมข้ามแถวหัวตารางให้ถ้าตรวจพบว่า
@@ -443,6 +413,8 @@ fill handle ของ Excel แต่ทำคนละเรื่อง
 
 สลับ/เพิ่ม/เปลี่ยนชื่อ/ลบชีตจากแถบด้านล่างตาราง แต่ละชีตมีข้อมูล สูตร และรูปแบบแยกอิสระ แต่ **Undo/Redo และ
 บันทึกอัตโนมัติครอบคลุมทุกชีตพร้อมกัน**
+
+<p align="center"><img src="public/screenshots/05-sheet-tabs.png" width="820"></p>
 
 ### 📥 นำเข้าไฟล์ Excel ที่มีอยู่แล้ว
 
@@ -458,10 +430,21 @@ fill handle ของ Excel แต่ทำคนละเรื่อง
 เลือกได้ว่าจะใส่ที่**เซลล์นี้เท่านั้น / ทั้งแถว / ทั้งคอลัมน์ / ช่วงที่เลือกไว้** — ระบบปรับการอ้างอิงแบบ relative
 ให้อัตโนมัติเหมือนลาก fill handle ใน Excel (อ้างอิงแบบ absolute ด้วย `$` จะไม่เลื่อนตาม)
 
+<table>
+<tr>
+<td width="50%" align="center"><b>แผงกรอกพารามิเตอร์</b><br><sub>เลือกช่วง C2:C4 จากตารางโดยตรง ไม่ต้องพิมพ์ที่อยู่เซลล์เอง</sub><br><br>
+<img src="public/screenshots/02-formula-panel.png" width="400"></td>
+<td width="50%" align="center"><b>ผลลัพธ์ทันทีที่กดยืนยัน</b><br><sub><code>SUM(C2:C4)</code> คำนวณออกมาเป็น 100</sub><br><br>
+<img src="public/screenshots/03-after-insert.png" width="400"></td>
+</tr>
+</table>
+
 ### 🤖 ถาม AI หาสูตร
 
 พิมพ์สิ่งที่ต้องการเป็นประโยคภาษาไทยหรืออังกฤษ เช่น _"อยากรวมยอดขายทั้งหมดในคอลัมน์นี้"_ ระบบส่งคำถาม
 พร้อมช่วงเซลล์ที่เลือกอยู่ไปให้ AI แนะนำสูตร พร้อมคำอธิบายสั้นๆ กดปุ่มเดียวเพื่อใส่สูตรลงเซลล์ทันที
+
+<p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
 
 ### 📤 ส่งออกไฟล์
 
@@ -656,11 +639,15 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 เจอตารางเปล่าๆ เลยโดยไม่มีอะไรบอกว่าใช้ยังไง ภาพทุกรูปบนหน้านี้ถ่ายจากแอปจริง ไม่ใช่ mockup และใช้ dictionary
 ภาษาชุดเดียวกับตัวแอป ภาษาที่เลือกไว้จึงติดตามเข้าไปในแอปด้วย
 
+<p align="center"><img src="public/screenshots/25-landing.png" width="820"></p>
+
 ### 🌐 สองภาษา (ไทย / English)
 
-กดปุ่ม **EN**/**ไทย** มุมขวาบนเพื่อสลับ UI ทั้งแอปทันที — เมนู ปุ่ม ชื่อ/คำอธิบายสูตรทั้ง 25 ตัว ข้อความแจ้งเตือน
+กดปุ่ม **EN**/**ไทย** มุมขวาบนเพื่อสลับ UI ทั้งแอปทันที — เมนู ปุ่ม ชื่อ/คำอธิบายสูตรทั้ง 32 ตัว ข้อความแจ้งเตือน
 และคำตอบจาก AI (ทั้ง heuristic และ Claude จริง) เปลี่ยนตามภาษาที่เลือกเสมอ จำภาษาไว้ในเบราว์เซอร์ ดูรายละเอียด
 สถาปัตยกรรมที่ [ระบบสองภาษา (i18n)](#-ระบบสองภาษา-i18n)
+
+<p align="center"><img src="public/screenshots/07-english-ui.png" width="820"></p>
 
 ---
 
