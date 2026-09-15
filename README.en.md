@@ -432,7 +432,7 @@ of an 844px screen before the grid began. All three are fixed:
 | **Formula / AI / data panels** | Cover the screen with a close button instead of competing with the grid, and **start closed** so the sheet is what you see first |
 | **Toolbar** | Icons only, labels hidden, and **one horizontally scrolling row** rather than a wrapping one |
 | **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all |
-| **Tap targets** | 44px, up from 28px |
+| **Tap targets** | 44×44 everywhere, in both bars (up from 28px — and five format-bar buttons were still only 32px wide until a later measurement caught them) |
 | **Selecting a range** | A **grip on the selection's bottom-right corner**, dragged to pull the range out |
 | **Hover-revealed buttons** | Shown permanently where nothing hovers — otherwise the column filter and the delete-sheet button are invisible |
 
@@ -486,6 +486,10 @@ and press **Merge** in the format bar.
 **One button, both directions.** A selection touching a merge turns the button into **Split**; one that
 doesn't leaves it as **Merge**. Two separate buttons would mean one of them is always the wrong one to
 press. It's disabled on a single cell, because one cell isn't a merge.
+
+The button sits **next to the number format**, not at the end of the bar — merging is cell formatting, so it
+belongs with bold, alignment and number format. It was first placed last, after the charts button, which on a
+phone meant scrolling almost the whole bar to reach it (measured at 645px into a 725px bar).
 
 **Selecting half of an existing merge swallows the whole thing.** Half a merge is not a thing that exists,
 so the new range grows until it contains every merge it touches — and grows again if swallowing one brings

@@ -71,7 +71,7 @@ export default function SheetTabs() {
       <button
         onClick={addSheet}
         title={t.sheetTabs.addTitle}
-        className="flex shrink-0 items-center justify-center rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 sm:h-7 sm:w-7"
       >
         <Plus size={16} />
       </button>

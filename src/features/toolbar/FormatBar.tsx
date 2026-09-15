@@ -118,6 +118,33 @@ export default function FormatBar() {
         ))}
       </select>
 
+      {/* One button, two directions: a selection touching a merge splits it, one that doesn't joins
+          it. Splitting is free, so only joining asks — and only when a cell that isn't the top-left
+          actually holds something, since a confirm dialog over an empty range is a dialog that
+          teaches people to click through dialogs. */}
+      <button
+        onClick={() => {
+          const range = {
+            startRow: selection.startRow,
+            startCol: selection.startCol,
+            endRow: selection.endRow,
+            endCol: selection.endCol,
+          };
+          const splitting = rangeHasMerge(sheet.merges, range);
+          if (!splitting && mergeWouldDiscard(sheet.cells, sheet.merges, range) && !confirm(t.merge.confirmDiscard)) {
+            return;
+          }
+          toggleMerge();
+        }}
+        disabled={!merging && singleCell}
+        aria-label={merging ? t.merge.split : t.merge.join}
+        title={merging ? t.merge.split : t.merge.title}
+        className="flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400 sm:h-7 sm:min-w-0 sm:justify-start"
+      >
+        <TableCellsMerge size={14} />{" "}
+        <span className="hidden sm:inline">{merging ? t.merge.split : t.merge.join}</span>
+      </button>
+
       <div className="mx-1 h-5 w-px bg-zinc-200" />
 
       <button
@@ -143,7 +170,7 @@ export default function FormatBar() {
         onClick={() => toggleSidebar("cf")}
         title={t.conditionalFormat.openTitle}
         className={clsx(
-          "flex h-11 items-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7",
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
           cfOpen ? "border-emerald-600 bg-emerald-700 text-white" : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
         )}
       >
@@ -164,7 +191,7 @@ export default function FormatBar() {
         disabled={!singleCell}
         title={singleCell ? t.comments.openTitle : t.comments.selectCell}
         className={clsx(
-          "flex h-11 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7",
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
           !singleCell
             ? "cursor-not-allowed border-zinc-200 text-zinc-300"
             : existingComment
@@ -190,45 +217,20 @@ export default function FormatBar() {
         onClick={() => toggleSidebar("chart")}
         title={t.charts.openTitle}
         className={clsx(
-          "flex h-11 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7",
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
           chartOpen ? "border-emerald-600 bg-emerald-700 text-white" : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
         )}
       >
         <BarChart3 size={14} /> <span className="hidden sm:inline">{t.charts.title}</span>
       </button>
 
-      {/* One button, two directions: a selection touching a merge splits it, one that doesn't joins
-          it. Splitting is free, so only joining asks — and only when a cell that isn't the top-left
-          actually holds something, since a confirm dialog over an empty range is a dialog that
-          teaches people to click through dialogs. */}
-      <button
-        onClick={() => {
-          const range = {
-            startRow: selection.startRow,
-            startCol: selection.startCol,
-            endRow: selection.endRow,
-            endCol: selection.endCol,
-          };
-          const splitting = rangeHasMerge(sheet.merges, range);
-          if (!splitting && mergeWouldDiscard(sheet.cells, sheet.merges, range) && !confirm(t.merge.confirmDiscard)) {
-            return;
-          }
-          toggleMerge();
-        }}
-        disabled={!merging && singleCell}
-        aria-label={merging ? t.merge.split : t.merge.join}
-        title={merging ? t.merge.split : t.merge.title}
-        className="flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400 sm:h-7"
-      >
-        <TableCellsMerge size={14} />{" "}
-        <span className="hidden sm:inline">{merging ? t.merge.split : t.merge.join}</span>
-      </button>
+
 
       <button
         onClick={() => toggleSidebar("pivot")}
         title={t.pivot.title}
         className={clsx(
-          "flex h-11 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7",
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
           pivotOpen ? "border-emerald-600 bg-emerald-700 text-white" : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
         )}
       >

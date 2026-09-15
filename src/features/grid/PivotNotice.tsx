@@ -33,7 +33,7 @@ export default function PivotNotice() {
       {!orphaned && (
         <button
           onClick={() => refreshPivot()}
-          className="shrink-0 whitespace-nowrap rounded-md bg-amber-700 px-3 py-1.5 font-medium text-white hover:bg-amber-800"
+          className="min-h-11 shrink-0 whitespace-nowrap rounded-md bg-amber-700 px-3 font-medium text-white hover:bg-amber-800 sm:min-h-0 sm:py-1.5"
         >
           {t.pivot.refresh}
         </button>
