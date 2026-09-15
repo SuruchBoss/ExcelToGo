@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { useDataSourceStore } from "@/store/dataSourceStore";
+import { readSourcesToken } from "@/lib/dataSources/sourcesToken";
+import { DEMO_MODE } from "@/lib/demoMode";
 
 /** Loads the source list once, then keeps every source polling on its own interval. Runs at the
  *  app root (not inside the panel) so live cells keep updating with the panel closed. */
@@ -10,7 +12,17 @@ export function useLiveDataPolling() {
   const loaded = useDataSourceStore((s) => s.loaded);
 
   useEffect(() => {
-    if (!loaded) void useDataSourceStore.getState().loadSources().catch(() => {});
+    if (loaded) return;
+    // Don't ask a question whose answer is already known to be no. The list endpoint refuses
+    // without a token — and on a public demo it refuses outright — so firing this at startup
+    // produced a red 403 in the console of every first visit, which reads as a broken app to
+    // anyone who opens devtools. The catch() swallowed the rejection but not the browser's own
+    // network log, which no JS can suppress: the fix has to be not making the request.
+    //
+    // Nothing is lost by waiting. Unlocking calls loadSources() itself, and a token already
+    // stored from a previous session still starts polling straight away.
+    if (DEMO_MODE || readSourcesToken() === "") return;
+    void useDataSourceStore.getState().loadSources().catch(() => {});
   }, [loaded]);
 
   useEffect(() => {

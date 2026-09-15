@@ -78,14 +78,31 @@ export interface SheetTab {
   liveBlocks?: LiveBlock[];
 }
 
+/**
+ * The table a first-time visitor lands on.
+ *
+ * Nine rows across three categories rather than the three rows it started with, because the sheet
+ * is the demo: someone opening this to judge it has to be able to press Pivot, Chart, sort or
+ * filter and get an answer worth looking at. Three rows grouped into two categories technically
+ * proves a pivot works and shows nothing anyone would care about.
+ *
+ * Every total is a formula, not a number, so the first thing anyone does — change a price — visibly
+ * moves the column and the grand total. That is the whole pitch in one edit.
+ */
 function seedSample(): SheetModel {
   const sheet = createEmptySheet();
   const header = ["สินค้า", "หมวดหมู่", "ราคา", "จำนวน", "รวม"];
   header.forEach((h, c) => (sheet.cells[0][c] = h));
   const rows: [string, string, number, number][] = [
-    ["กาแฟ", "เครื่องดื่ม", 45, 12],
-    ["ขนมปัง", "เบเกอรี่", 30, 8],
-    ["นม", "เครื่องดื่ม", 25, 20],
+    ["กาแฟลาเต้", "เครื่องดื่ม", 65, 18],
+    ["ชาไทย", "เครื่องดื่ม", 45, 24],
+    ["น้ำส้มคั้น", "เครื่องดื่ม", 55, 9],
+    ["ครัวซองต์", "เบเกอรี่", 55, 12],
+    ["ขนมปังไส้ทะลัก", "เบเกอรี่", 35, 20],
+    ["เค้กช็อกโกแลต", "เบเกอรี่", 85, 6],
+    ["ข้าวผัดกระเพรา", "อาหารจานเดียว", 60, 15],
+    ["ผัดไทยกุ้งสด", "อาหารจานเดียว", 80, 11],
+    ["ข้าวมันไก่", "อาหารจานเดียว", 50, 22],
   ];
   rows.forEach((row, r) => {
     sheet.cells[r + 1][0] = row[0];
@@ -94,8 +111,9 @@ function seedSample(): SheetModel {
     sheet.cells[r + 1][3] = String(row[3]);
     sheet.cells[r + 1][4] = `=C${r + 2}*D${r + 2}`;
   });
-  sheet.cells[5][3] = "รวมทั้งหมด";
-  sheet.cells[5][4] = "=SUM(E2:E4)";
+  const totalRow = rows.length + 2;
+  sheet.cells[totalRow][3] = "รวมทั้งหมด";
+  sheet.cells[totalRow][4] = `=SUM(E2:E${rows.length + 1})`;
   return sheet;
 }
 

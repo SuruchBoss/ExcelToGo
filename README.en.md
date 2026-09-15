@@ -41,6 +41,28 @@ bring-your-own-backend cloud save. Bilingual UI (Thai/English), 638 automated te
 
 ---
 
+## ⏱️ Try it in 60 seconds
+
+<p align="center"><img src="public/screenshots/demo.gif" width="900" alt="The three steps: change a price and the totals move, build a pivot, and the summary flags its source as stale"></p>
+
+<p align="center"><sub>The three steps below, recorded from the running app — no edits</sub></p>
+
+If you only have a minute — [**open the app**](https://excel-to-go.vercel.app/app) and do these three
+things in order. Nothing to install, no sign-up, and nine rows of sample data are already there.
+
+| | Do this | What you'll see |
+|---|---|---|
+| **1** | Click **C2** (the latte's price), type a different number, press Enter | The **Total** column and the **Grand total** row move with it — every total is a real formula, not a number somebody typed once |
+| **2** | Select **A1:E10**, press **Summarise (Pivot)** → group by *Category* → value *Total* → **Build summary sheet** | A new sheet summarising by category. Go back and change a price, then watch the **"the source data has changed"** notice appear on the summary |
+| **3** | Select **A1:E10** again and press **Export Excel** | Open it in real Excel — the formulas are still formulas, not baked-in values. Add a chart first and it exports as **a real chart you can keep editing** |
+
+Want the harder parts: [embedding a Thai font in the PDF, with stacked tone marks](#-export) ·
+[hand-written OOXML chart parts](#-charts-from-the-sheet) · [an accessibility gate in CI](#-testing) ·
+[the formula engine](#-formula-engine)
+
+> Every section explains the decision behind it, including **what it still can't do** — see
+> [What's next](#-whats-next).
+
 ## 📸 Screenshots
 
 <p align="center"><img src="public/screenshots/01-overview.png" width="900"></p>
@@ -53,6 +75,7 @@ bring-your-own-backend cloud save. Bilingual UI (Thai/English), 638 automated te
 
 ## 📋 Table of Contents
 
+- [Try it in 60 seconds](#️-try-it-in-60-seconds)
 - [Screenshots](#-screenshots)
 - [Why this project](#-why-this-project)
 - [Getting started](#-getting-started)
@@ -86,6 +109,7 @@ bring-your-own-backend cloud save. Bilingual UI (Thai/English), 638 automated te
 - [Project structure](#-project-structure)
 - [Formula engine](#-formula-engine)
 - [Bilingual UI (i18n)](#-bilingual-ui-i18n)
+- [Lighthouse](#-lighthouse)
 - [Testing](#-testing)
 - [What's next](#-whats-next)
 
@@ -1356,6 +1380,29 @@ flowchart LR
   regenerated when the language is switched, since that would risk silently overwriting a user's real data.
 
 ---
+
+## 📈 Lighthouse
+
+Measured against a local production build (`npm run build && npm run start`) with Lighthouse 12 on the
+**mobile** preset — 4x CPU slowdown and simulated slow 4G, not a desktop run dressed up as one.
+
+| Page | Performance | Accessibility | Best practices | SEO |
+|---|---|---|---|---|
+| Landing `/` | 85 | **100** | **100** | **100** |
+| App `/app` | 86 | **100** | **100** | **100** |
+
+`/` — FCP 1.3s · LCP 3.8s · TBT 140ms · **CLS 0** · Speed Index 4.1s
+`/app` — FCP 1.0s · LCP 3.8s · TBT 200ms · **CLS 0** · Speed Index 1.0s
+
+**Accessibility 100 on both pages**, which agrees with the [`check:a11y`](#-testing) gate that runs axe on
+every PR — two different tools, same answer.
+
+**Performance is not 90, and the only thing Lighthouse flags is `unused-javascript`, ~59KB (~300ms)** —
+mostly Next's own framework chunks that aren't needed for the first frame. Going further means cutting into
+the framework bundle itself, which isn't a trade worth making here. Written down rather than rounded up.
+
+> These are localhost numbers, not Vercel's. The deployed site has a CDN and compression and should do
+> better, but I can't verify that from here, so only what was actually measured is reported.
 
 ## 🧪 Testing
 
