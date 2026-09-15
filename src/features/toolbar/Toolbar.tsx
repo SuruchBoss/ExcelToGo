@@ -38,7 +38,7 @@ export default function Toolbar() {
     // two rows the same height and the same gesture.
     <div className="flex items-center gap-1.5 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-2">
       {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
-      <Link href="/" title={t.landing.home} className="mr-2 text-lg font-bold text-emerald-700 hover:text-emerald-800">
+      <Link href="/" title={t.landing.home} className="mr-2 shrink-0 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}
       </Link>
 
@@ -46,7 +46,7 @@ export default function Toolbar() {
         onClick={() => fileInputRef.current?.click()}
         aria-label={t.toolbar.importFile}
         title={t.toolbar.importTitle}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileUp size={15} /> <span className="hidden sm:inline">{t.toolbar.importFile}</span>
       </button>
@@ -65,7 +65,7 @@ export default function Toolbar() {
       <button
         onClick={exportXlsx}
         aria-label={t.toolbar.exportExcel}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileDown size={15} /> <span className="hidden sm:inline">{t.toolbar.exportExcel}</span>
       </button>
@@ -73,7 +73,7 @@ export default function Toolbar() {
       <button
         onClick={exportPdf}
         aria-label={t.toolbar.exportPdf}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileText size={15} /> <span className="hidden sm:inline">{t.toolbar.exportPdf}</span>
       </button>
@@ -83,18 +83,18 @@ export default function Toolbar() {
       <button
         onClick={exportCsv}
         aria-label={t.toolbar.exportCsv}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileSpreadsheet size={15} /> <span className="hidden sm:inline">{t.toolbar.exportCsv}</span>
       </button>
 
-      <div className="mx-1 h-5 w-px bg-zinc-200" />
+      <div className="mx-1 h-5 w-px shrink-0 bg-zinc-200" />
 
       <button
         onClick={undoSheet}
         disabled={!canUndo}
         title={t.toolbar.undoTitle}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Undo2 size={15} />
       </button>
@@ -102,40 +102,40 @@ export default function Toolbar() {
         onClick={redoSheet}
         disabled={!canRedo}
         title={t.toolbar.redoTitle}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Redo2 size={15} />
       </button>
 
-      <div className="mx-1 h-5 w-px bg-zinc-200" />
+      <div className="mx-1 h-5 w-px shrink-0 bg-zinc-200" />
 
       <button
         onClick={addRow}
         aria-label={t.toolbar.addRow}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
       >
         <Plus size={14} /> <span className="hidden sm:inline">{t.toolbar.addRow}</span>
       </button>
       <button
         onClick={addColumn}
         aria-label={t.toolbar.addColumn}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
+        className="flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
       >
         <Plus size={14} /> <span className="hidden sm:inline">{t.toolbar.addColumn}</span>
       </button>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         {busy ? (
           <span className="text-xs text-zinc-500">{busy}</span>
         ) : (
-          <span title={t.toolbar.autosaveTitle} className="hidden items-center gap-1 text-xs text-zinc-500 sm:flex">
+          <span title={t.toolbar.autosaveTitle} className="hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs text-zinc-500 sm:flex">
             <Save size={13} /> {t.toolbar.autosaveLabel}
           </span>
         )}
         <button
           onClick={() => toggleSidebar("palette")}
           aria-label={t.toolbar.formulas}
-          className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
+          className={`flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
             paletteOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
@@ -144,7 +144,7 @@ export default function Toolbar() {
         <button
           onClick={() => toggleSidebar("ai")}
           aria-label={t.toolbar.askAi}
-          className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
+          className={`flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
             aiOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
         >
@@ -156,7 +156,7 @@ export default function Toolbar() {
           <button
             onClick={() => toggleSidebar("data")}
             aria-label={t.toolbar.data}
-            className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
+            className={`flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
               dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
           >
@@ -170,7 +170,7 @@ export default function Toolbar() {
           <button
             onClick={() => toggleSidebar("cloud")}
             aria-label={t.cloud.title}
-            className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
+            className={`flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
               cloudOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
           >

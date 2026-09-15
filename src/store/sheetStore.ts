@@ -51,6 +51,7 @@ import { PivotConfig, buildPivot } from "@/lib/pivot";
 // Each of the three actions below is already async and already raises a busy flag, so awaiting the
 // import costs nothing a user can perceive: the work only starts when they click Import or Export.
 import { FormulaDef } from "@/lib/formulaCatalog";
+import { addMerge, rangeHasMerge, removeMerges } from "@/lib/sheetMerges";
 import { isSingleCell, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
 import { getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
@@ -210,6 +211,8 @@ interface SheetState {
   setAlign: (align: CellAlign) => void;
   setTextColor: (color: string) => void;
   setNumberFormat: (fmt: NumberFormat) => void;
+  /** Joins the selection into one cell, or splits any merge it touches. */
+  toggleMerge: () => void;
 
   openFormulaPanel: (def: FormulaDef, anchorRow: number, anchorCol: number) => void;
   updatePending: (pending: PendingFormula) => void;
@@ -666,6 +669,35 @@ export const useSheetStore = create<SheetState>()(
         setNumberFormat: (numberFormat) =>
           set((s) => ({
             sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { numberFormat })),
+          })),
+
+        /**
+         * One button for both directions, because they are the same thought: a selection that
+         * touches a merge splits it, and one that doesn't joins it. Two buttons would mean one of
+         * them is always the wrong one to press.
+         *
+         * Joining keeps the top-left cell and blanks the rest — the only destructive thing here,
+         * which is why the button asks first when there is actually something to lose.
+         */
+        toggleMerge: () =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const range = {
+                startRow: selection.startRow,
+                startCol: selection.startCol,
+                endRow: selection.endRow,
+                endCol: selection.endCol,
+              };
+              if (rangeHasMerge(sheet.merges, range)) {
+                return { ...cloneSheet(sheet), merges: removeMerges(sheet.merges, range) };
+              }
+              const result = addMerge(sheet.merges, range);
+              if (!result) return sheet;
+              const next = cloneSheet(sheet);
+              for (const [r, c] of result.cleared) next.cells[r][c] = "";
+              next.merges = result.merges;
+              return next;
+            }),
           })),
 
         setSelection: (sel) =>

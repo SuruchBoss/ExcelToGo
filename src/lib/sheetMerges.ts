@@ -95,3 +95,117 @@ export function parseMergeRef(ref: string, parseCell: (r: string) => { row: numb
     endCol: Math.max(a.col, b.col),
   };
 }
+
+/** The merge containing a cell, if any — anchor or covered, both count. */
+export function mergeAt(merges: MergeRange[] | undefined, row: number, col: number): MergeRange | null {
+  for (const m of merges ?? []) {
+    if (row >= m.startRow && row <= m.endRow && col >= m.startCol && col <= m.endCol) return m;
+  }
+  return null;
+}
+
+function overlaps(a: MergeRange, b: MergeRange): boolean {
+  return a.startRow <= b.endRow && a.endRow >= b.startRow && a.startCol <= b.endCol && a.endCol >= b.startCol;
+}
+
+function normalise(range: MergeRange): MergeRange {
+  return {
+    startRow: Math.min(range.startRow, range.endRow),
+    endRow: Math.max(range.startRow, range.endRow),
+    startCol: Math.min(range.startCol, range.endCol),
+    endCol: Math.max(range.startCol, range.endCol),
+  };
+}
+
+/**
+ * Grows a range until it wholly contains every merge it touches.
+ *
+ * Merging a range that clips an existing merge in half has no valid answer — half a merge is not a
+ * thing — so the new one swallows it instead, which is what Excel does. Repeated until stable,
+ * because swallowing one merge can bring the range into contact with another.
+ */
+export function expandOverMerges(merges: MergeRange[] | undefined, range: MergeRange): MergeRange {
+  let out = normalise(range);
+  if (!merges || merges.length === 0) return out;
+  for (let pass = 0; pass < merges.length + 1; pass++) {
+    let grew = false;
+    for (const m of merges) {
+      if (!overlaps(m, out)) continue;
+      const next = {
+        startRow: Math.min(out.startRow, m.startRow),
+        endRow: Math.max(out.endRow, m.endRow),
+        startCol: Math.min(out.startCol, m.startCol),
+        endCol: Math.max(out.endCol, m.endCol),
+      };
+      if (
+        next.startRow !== out.startRow ||
+        next.endRow !== out.endRow ||
+        next.startCol !== out.startCol ||
+        next.endCol !== out.endCol
+      ) {
+        out = next;
+        grew = true;
+      }
+    }
+    if (!grew) break;
+  }
+  return out;
+}
+
+/**
+ * Whether merging this range would throw away text.
+ *
+ * A merge keeps the top-left cell and nothing else, which is the one genuinely destructive thing
+ * the button does. Asking first is only reasonable when there is actually something to lose — a
+ * confirm dialog on an empty range is a dialog that teaches people to click through dialogs.
+ */
+export function mergeWouldDiscard(cells: string[][], merges: MergeRange[] | undefined, range: MergeRange): boolean {
+  const r = expandOverMerges(merges, range);
+  for (let row = r.startRow; row <= r.endRow; row++) {
+    for (let col = r.startCol; col <= r.endCol; col++) {
+      if (row === r.startRow && col === r.startCol) continue;
+      if ((cells[row]?.[col] ?? "") !== "") return true;
+    }
+  }
+  return false;
+}
+
+export interface MergeResult {
+  merges: MergeRange[] | undefined;
+  /** Cells to blank, as [row, col] — everything the merge covers except its top-left. */
+  cleared: [number, number][];
+}
+
+/**
+ * Adds a merge over a range, absorbing any it overlaps.
+ *
+ * Returns null for a single cell: one cell is not a merge, and storing it would put `colSpan={1}`
+ * on a cell for no reason and accumulate junk over edits.
+ */
+export function addMerge(merges: MergeRange[] | undefined, range: MergeRange): MergeResult | null {
+  const target = expandOverMerges(merges, range);
+  if (target.startRow === target.endRow && target.startCol === target.endCol) return null;
+
+  const kept = (merges ?? []).filter((m) => !overlaps(m, target));
+  const cleared: [number, number][] = [];
+  for (let r = target.startRow; r <= target.endRow; r++) {
+    for (let c = target.startCol; c <= target.endCol; c++) {
+      if (r !== target.startRow || c !== target.startCol) cleared.push([r, c]);
+    }
+  }
+  return { merges: [...kept, target], cleared };
+}
+
+/** Drops every merge the range touches. Splitting one it only clips still splits the whole merge. */
+export function removeMerges(merges: MergeRange[] | undefined, range: MergeRange): MergeRange[] | undefined {
+  if (!merges || merges.length === 0) return merges;
+  const target = normalise(range);
+  const kept = merges.filter((m) => !overlaps(m, target));
+  return kept.length > 0 ? kept : undefined;
+}
+
+/** True when the range touches any merge — the signal for whether the button splits or joins. */
+export function rangeHasMerge(merges: MergeRange[] | undefined, range: MergeRange): boolean {
+  const target = normalise(range);
+  return (merges ?? []).some((m) => overlaps(m, target));
+}

@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-607%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-627%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 607 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 627 automated tests.
 
 ---
 
@@ -67,6 +67,7 @@ bring-your-own-backend cloud save. Bilingual UI (Thai/English), 607 automated te
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
+  - [Merging cells](#-merging-cells)
   - [Sort and filter](#-sort-and-filter)
   - [Pivot (summarise a range)](#-pivot-summarise-a-range)
   - [Multiple sheets in one file](#-multiple-sheets-in-one-file)
@@ -158,7 +159,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 607-case Vitest suite |
+| `npm test` | Run the 627-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -473,6 +474,35 @@ turns into `#REF!`, exactly like Excel.
 
 <p align="center"><img src="public/screenshots/26-insert-row.png" width="820"></p>
 <p align="center"><sub>Insert a row at 3 and <code>=SUM(C2:C4)</code> becomes <code>=SUM(C2:C5)</code> by itself — no chasing formulas by hand</sub></p>
+
+### 🔗 Merging cells
+
+A report title spanning the width of a table is almost always a merged cell. This app already **read**
+merges out of an imported file and wrote them back on export — it just couldn't make one. Select a range
+and press **Merge** in the format bar.
+
+<p align="center"><img src="public/screenshots/30-merge-cells.png" width="900"></p>
+
+**One button, both directions.** A selection touching a merge turns the button into **Split**; one that
+doesn't leaves it as **Merge**. Two separate buttons would mean one of them is always the wrong one to
+press. It's disabled on a single cell, because one cell isn't a merge.
+
+**Selecting half of an existing merge swallows the whole thing.** Half a merge is not a thing that exists,
+so the new range grows until it contains every merge it touches — and grows again if swallowing one brings
+it against another. That's what Excel does. Splitting is the mirror image: touch any part of a merge and
+the whole merge goes.
+
+**Only the top-left value survives**, which is the one genuinely destructive thing here, so it **asks
+first — but only when there is something to lose.** If the other cells are already empty it just merges.
+A confirm dialog that fires every time is a dialog that teaches people to click through without reading.
+(And undo is still there if you do.)
+
+Merges already follow inserted and deleted rows and columns, and they **reach the exported `.xlsx` as real
+`<mergeCell>` elements** — checked by unzipping the export and reading the XML directly rather than
+through our own reader.
+
+**Not supported yet:** vertical centring inside a merged cell, and dragging a selection out from a merged
+cell still measures from its top-left corner.
 
 ### 🔤 Sort and filter
 
@@ -862,7 +892,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (607 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (627 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1305,7 +1335,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 607 cases across 27 files, via Vitest
+npm test      # 627 cases across 27 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1405,7 +1435,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       open first (panels, menus, popovers) aren't checked.
 - [x] **Direct CSV import/export** — done (see ✨ Features): the delimiter is sniffed (`,`, `;`, tab), the BOM
       is stripped on the way in and written on the way out so Excel reads Thai, quoting follows RFC 4180, and
-      the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.
+      the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.- [x] **Merge cells** — done (see ✨ Features): one button for merge and split, overlapping merges are
+      absorbed, it asks first only when data would be lost, and the export carries real `<mergeCell>`
+      elements. Still open: vertical centring, and freezing beyond the already-sticky headers.
+
 - [x] **Template support for imported files** — done (see ✨ Features): cell locking, dropdowns and column
       widths are read from a protected file, every route into the structure is guarded, and export puts the
       template back together

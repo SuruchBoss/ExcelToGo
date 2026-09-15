@@ -27,7 +27,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-607%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-627%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -40,7 +40,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 607 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 627 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -70,6 +70,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
   - [บันทึกบนคลาวด์ (ต่อ backend ของคุณเอง)](#️-บันทึกบนคลาวด์-ต่อ-backend-ของคุณเอง)
   - [ใช้บนมือถือได้](#-ใช้บนมือถือได้)
   - [แทรก/ลบแถว-คอลัมน์](#-แทรกลบแถว-คอลัมน์)
+  - [รวมเซลล์ (merge)](#-รวมเซลล์-merge)
   - [เรียงลำดับและกรองข้อมูล](#-เรียงลำดับและกรองข้อมูล)
   - [สรุปข้อมูล (Pivot)](#-สรุปข้อมูล-pivot)
   - [หลายชีตในไฟล์เดียว](#-หลายชีตในไฟล์เดียว)
@@ -154,7 +155,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 607 เคสด้วย Vitest |
+| `npm test` | รัน unit test 627 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build → check:a11y |
@@ -423,6 +424,31 @@ fill handle ของ Excel แต่ทำคนละเรื่อง
 
 <p align="center"><img src="public/screenshots/26-insert-row.png" width="820"></p>
 <p align="center"><sub>แทรกแถวที่ 3 แล้ว <code>=SUM(C2:C4)</code> กลายเป็น <code>=SUM(C2:C5)</code> เอง — ไม่ต้องไล่แก้สูตรเอง</sub></p>
+
+### 🔗 รวมเซลล์ (merge)
+
+หัวรายงานที่พาดยาวคลุมทั้งตารางคือเซลล์ที่ถูก merge เกือบทุกครั้ง เดิมแอปนี้**อ่าน**เซลล์ที่ merge จากไฟล์
+ที่นำเข้ามาได้ และส่งออกกลับไปได้ แต่สร้างเองไม่ได้ ตอนนี้เลือกช่วงแล้วกด **รวมเซลล์** ในแถบรูปแบบ
+
+<p align="center"><img src="public/screenshots/30-merge-cells.png" width="900"></p>
+
+**ปุ่มเดียวทำสองทาง** — ถ้าช่วงที่เลือกแตะเซลล์ที่ merge อยู่ ปุ่มจะกลายเป็น **แยกเซลล์** ถ้าไม่แตะก็เป็น
+**รวมเซลล์** สองปุ่มแยกกันแปลว่าจะมีปุ่มหนึ่งที่กดผิดเสมอ และปุ่มจะกดไม่ได้ตอนเลือกเซลล์เดียว เพราะเซลล์เดียว
+ไม่ใช่การ merge
+
+**เลือกคร่อมครึ่งหนึ่งของ merge เดิม จะกลืนทั้งอันเข้ามา** — ครึ่งหนึ่งของเซลล์ที่ merge ไม่ใช่สิ่งที่มีอยู่จริง
+ช่วงใหม่จึงขยายจนคลุมทุก merge ที่มันแตะ (และขยายซ้ำ ถ้ากลืนอันหนึ่งแล้วไปชนอีกอัน) แบบเดียวกับที่ Excel ทำ
+ส่วนการ **แยก** ทำกลับกัน: แตะ merge ไหนก็แยกทั้งอันนั้น ไม่มีการแยกครึ่ง
+
+**เหลือเฉพาะค่าในเซลล์ซ้ายบน** ซึ่งเป็นสิ่งเดียวที่ปุ่มนี้ทำแล้วข้อมูลหาย จึง**ถามก่อน — เฉพาะตอนที่มีอะไร
+ให้เสียจริงๆ** ถ้าเซลล์อื่นว่างอยู่แล้วก็ merge ไปเลยไม่ต้องถาม กล่องยืนยันที่เด้งทุกครั้งคือกล่องที่สอนให้คนกด
+ผ่านโดยไม่อ่าน (และถ้าเผลอกด ปุ่ม undo ยังอยู่)
+
+merge เลื่อนตามการแทรก/ลบแถวและคอลัมน์อยู่แล้ว และ**ติดไปกับไฟล์ `.xlsx` ที่ส่งออกเป็น `<mergeCell>` จริง** —
+ตรวจด้วยการแกะไฟล์ที่ส่งออกออกมาอ่าน XML ตรงๆ ไม่ได้อ่านด้วยโค้ดตัวเอง
+
+**ยังไม่รองรับ:** จัดข้อความให้อยู่กลางเซลล์ที่ merge ในแนวตั้ง · และการเลือกเซลล์ที่ merge แล้วลากขยายช่วง
+ยังนับจากมุมซ้ายบนของมัน
 
 ### 🔤 เรียงลำดับและกรองข้อมูล
 
@@ -771,7 +797,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (607 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (627 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -1192,7 +1218,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 607 เคส ใน 27 ไฟล์ ด้วย Vitest
+npm test      # 627 เคส ใน 27 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -1261,7 +1287,9 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
       ยังเหลือ: ไม่อัปเดตตามข้อมูลต้นทางเอง แตกคอลัมน์ได้ทีละฟิลด์ และยังไม่มีตัวกรองของตัวเอง
 - [x] **จำกัดจำนวนครั้งที่เรียก `/api/ai/formula`** — ทำแล้ว: 20 ครั้ง/นาที ต่อ IP ตอบ `429` พร้อม `Retry-After`
       ยังเหลือ: ตัวนับอยู่ในหน่วยความจำของ process จึงกันการยิงมั่วได้ แต่ไม่ใช่เครื่องมือคุมบิลข้ามอินสแตนซ์
-- [ ] **รวมเซลล์ (merge cells)** และการ freeze เพิ่มเติมนอกเหนือจากหัวแถว/หัวคอลัมน์ที่ sticky อยู่แล้ว
+- [x] **รวมเซลล์ (merge cells)** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): ปุ่มเดียวรวม/แยก, กลืน merge ที่คร่อมกัน,
+      ถามก่อนเฉพาะตอนที่ข้อมูลจะหาย และส่งออกเป็น `<mergeCell>` จริงใน `.xlsx`
+      ยังเหลือ: จัดกลางแนวตั้ง และการ freeze เพิ่มเติมนอกเหนือจากหัวแถว/หัวคอลัมน์ที่ sticky อยู่แล้ว
 - [x] **จัดรูปแบบตามเงื่อนไข (conditional formatting)** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): เทียบค่า/ข้อความ/
       อันดับ/ไล่สี/แถบยาว เขียนและอ่านกลับจาก `.xlsx` ได้ ยังเหลือ: icon set และกฎแบบสูตรเอง
 - [x] **คอมเมนต์ในเซลล์** — ทำแล้ว (ดูหัวข้อ ✨ ฟีเจอร์): โน้ตต่อเซลล์ มีมุมสีส้มบอก เลื่อนตามการแก้ตาราง

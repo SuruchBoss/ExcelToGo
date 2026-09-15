@@ -12,9 +12,11 @@ import {
   MessageSquareText,
   Palette,
   Table2,
+  TableCellsMerge,
 } from "lucide-react";
 import { getComment, NumberFormat } from "@/lib/sheet";
 import { isSingleCell } from "@/types/sheet-ui";
+import { mergeWouldDiscard, rangeHasMerge } from "@/lib/sheetMerges";
 import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import CommentPopover from "@/features/grid/CommentPopover";
@@ -35,9 +37,17 @@ export default function FormatBar() {
   const setCellComment = useSheetStore((s) => s.setCellComment);
   const [commentAt, setCommentAt] = useState<{ x: number; y: number } | null>(null);
   const singleCell = isSingleCell(selection);
+  // Whether the button currently splits rather than joins.
+  const merging = rangeHasMerge(sheet.merges, {
+    startRow: selection.startRow,
+    startCol: selection.startCol,
+    endRow: selection.endRow,
+    endCol: selection.endCol,
+  });
   const existingComment = getComment(sheet.comments, selection.anchorRow, selection.anchorCol) ?? "";
   const chartOpen = useSheetStore((s) => s.sidebarMode === "chart");
   const pivotOpen = useSheetStore((s) => s.sidebarMode === "pivot");
+  const toggleMerge = useSheetStore((s) => s.toggleMerge);
   // Three stacked bars ate a fifth of a 768px laptop screen before a single grid row appeared.
   // Formatting is the least-used of the three, so the whole row folds away — hiding only its
   // contents saved 14px and not one extra row, which is decoration rather than a fix.
@@ -185,6 +195,33 @@ export default function FormatBar() {
         )}
       >
         <BarChart3 size={14} /> <span className="hidden sm:inline">{t.charts.title}</span>
+      </button>
+
+      {/* One button, two directions: a selection touching a merge splits it, one that doesn't joins
+          it. Splitting is free, so only joining asks — and only when a cell that isn't the top-left
+          actually holds something, since a confirm dialog over an empty range is a dialog that
+          teaches people to click through dialogs. */}
+      <button
+        onClick={() => {
+          const range = {
+            startRow: selection.startRow,
+            startCol: selection.startCol,
+            endRow: selection.endRow,
+            endCol: selection.endCol,
+          };
+          const splitting = rangeHasMerge(sheet.merges, range);
+          if (!splitting && mergeWouldDiscard(sheet.cells, sheet.merges, range) && !confirm(t.merge.confirmDiscard)) {
+            return;
+          }
+          toggleMerge();
+        }}
+        disabled={!merging && singleCell}
+        aria-label={merging ? t.merge.split : t.merge.join}
+        title={merging ? t.merge.split : t.merge.title}
+        className="flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400 sm:h-7"
+      >
+        <TableCellsMerge size={14} />{" "}
+        <span className="hidden sm:inline">{merging ? t.merge.split : t.merge.join}</span>
       </button>
 
       <button

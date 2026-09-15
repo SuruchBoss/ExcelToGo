@@ -381,6 +381,12 @@ export interface Messages {
     examples: string[];
     insertAt: (address: string) => string;
   };
+  merge: {
+    title: string;
+    split: string;
+    join: string;
+    confirmDiscard: string;
+  };
   store: {
     busyImporting: string;
     busyExportingXlsx: string;

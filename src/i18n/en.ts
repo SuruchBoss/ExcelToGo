@@ -116,7 +116,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 607 tests",
+    eyebrow: "A side project · hand-written formula engine · 627 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -170,7 +170,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "607", label: "automated tests" },
+      { value: "627", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "What it can't do",
@@ -449,6 +449,12 @@ export const en: Messages = {
       "Look up a product's price from its code",
     ],
     insertAt: (address) => `Insert this formula at cell ${address}`,
+  },
+  merge: {
+    title: "Merge cells",
+    split: "Split",
+    join: "Merge",
+    confirmDiscard: "Merging keeps only the top-left value; the rest will be cleared. Continue?",
   },
   store: {
     busyImporting: "Importing file...",

@@ -21,7 +21,7 @@ export default function LanguageToggle({ className }: { className?: string } = {
       title={t.app.languageToggleLabel}
       className={
         className ??
-        "flex min-h-11 items-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:py-1.5"
+        "flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:py-1.5"
       }
     >
       <Languages size={15} /> {t.app.languageToggleLabel}
