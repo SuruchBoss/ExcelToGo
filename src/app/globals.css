@@ -28,8 +28,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  /* Role stacks, built from the face variables next/font defines on <html>.
+   *
+   * The mono one has a second name in it on purpose: IBM Plex Mono ships no Thai glyphs, so Thai
+   * inside anything set in `font-mono` — the eyebrow, the CTA note, the footer, the demo's hint
+   * line, an exhibit caption — was falling through to the system's default monospace font. That is
+   * the exact bug this project just fixed by dropping Geist, reintroduced one layer down: a page
+   * where the headline and the line above it were set in two different Thai faces. Latin and digits
+   * still come from Plex Mono and still line up in columns; Thai now comes from the same family as
+   * the body text instead of from whatever the OS happens to offer. */
+  --font-sans: var(--font-plex-thai), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), var(--font-plex-thai), ui-monospace, monospace;
 
   --color-paper: var(--color-paper);
   --color-ink: var(--color-ink);
@@ -44,5 +53,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-plex-thai), system-ui, sans-serif;
 }

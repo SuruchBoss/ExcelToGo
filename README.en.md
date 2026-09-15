@@ -725,6 +725,13 @@ of boxes, square corners, the alternating pale-green row bands of accounting pap
 figures for every number, formula and cell address against a sans for prose, and one inverted band through
 the middle as a spine. There is not a single gradient on it.
 
+The whole app moved to **IBM Plex Sans Thai** with **IBM Plex Mono**. It had declared Geist, but
+`globals.css` overrode that with `Arial` anyway — and Geist carries no Thai glyphs at all, so every
+Thai character fell back to whatever the OS offered and the same page looked different on Windows
+and macOS. Plex Mono has no Thai either, so the `font-mono` stack names Plex Sans Thai after it:
+figures and formulas still line up in columns in Plex Mono, while Thai words on the same line are
+set in the same family as the body text rather than in the system's default monospace face.
+
 <p align="center"><img src="public/screenshots/27-landing-stats.png" width="820"></p>
 <p align="center"><sub>The inverted "Under the hood" band and the <b>What it can't do</b> section — limits stated on the front page rather than buried in the README.</sub></p>
 

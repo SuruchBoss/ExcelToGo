@@ -6,16 +6,23 @@ import "./globals.css";
 // Thai character in this Thai-first app was silently falling back to whatever the OS offered,
 // which is why the same page looked different on Windows and macOS. Plex Sans Thai is drawn as one
 // family across both scripts, so a Thai sentence and the English beside it finally share a voice.
+//
+// The two variables are named for the faces, not for the roles: Tailwind's own theme keys are
+// --font-sans and --font-mono, and pointing those at themselves (--font-sans: var(--font-sans))
+// left the cascade to decide which definition won. globals.css builds the role stacks out of these.
 const plexThai = IBM_Plex_Sans_Thai({
-  variable: "--font-sans",
+  variable: "--font-plex-thai",
   subsets: ["latin", "thai"],
   weight: ["300", "400", "500", "600", "700"],
 });
 
 // Every number, cell address and formula on the site is set in this: a spreadsheet is a grid, and
 // figures that don't line up in a column read as decoration rather than as data.
+//
+// It carries no Thai at all, so it is never the whole story — see the --font-mono stack in
+// globals.css, which hands Thai on to Plex Sans Thai rather than to the system's default.
 const plexMono = IBM_Plex_Mono({
-  variable: "--font-mono",
+  variable: "--font-plex-mono",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
 });

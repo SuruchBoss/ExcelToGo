@@ -154,32 +154,56 @@ for (const locale of ["th", "en"]) {
   }
 }
 
-// Checking only `stats` and `eyebrow` was not enough: the same counts are written out in prose
-// inside the feature copy, and that prose still read "25 formulas" and "42 functions" one commit
-// after the stat tiles were fixed. So sweep the whole landing block instead, matching any figure
-// that sits directly in front of one of the words these counts are quoted with.
+// Checking only `stats` and `eyebrow` was not enough, twice over.
+//
+// First: the same counts are written out in prose inside the landing page's feature copy, and that
+// prose still read "25 formulas" and "42 functions" one commit after the stat tiles were fixed.
+// Second: so are they in the READMEs — a mermaid node, a bilingual feature paragraph, the sentence
+// contrasting the palette with the engine — and those were being fixed by hand each time somebody
+// happened to notice. Both files get the same sweep now: find every figure standing directly in
+// front of one of the words these counts are quoted with, and make it answer for itself.
 const QUOTED = {
-  "engine functions": { actual: engineFunctions, th: /(\d+)\s*ฟังก์ชัน/g, en: /(\d+)\s+(?:engine\s+)?functions/gi },
-  "palette formulas": { actual: paletteFormulas, th: /(\d+)\s*(?:รายการ|สูตร)พร้อมใช้/g, en: /(\d+)\s+(?:ready-made\s+)?formulas/gi },
-  tests: { actual: actualTests, th: /(\d+)\s*เทสต์/g, en: /(\d+)\s+(?:automated\s+)?tests/gi },
+  "engine functions": {
+    actual: engineFunctions,
+    th: [/(\d+)\s*ฟังก์ชัน/g],
+    en: [/(\d+)\s+(?:engine\s+)?functions\b/gi],
+  },
+  "palette formulas": {
+    actual: paletteFormulas,
+    th: [/(\d+)\s*(?:รายการ)?พร้อมใช้/g, /(\d+)\s*สูตร(?!ที่|พร้อม)/g, /สูตรทั้ง\s*(\d+)/g],
+    en: [/(\d+)\s+(?:ready-made\s+)?formulas?\b/gi],
+  },
+  tests: {
+    actual: actualTests,
+    th: [/(\d+)\s*เทสต์/g],
+    en: [/(\d+)\s+(?:automated\s+)?tests\b/gi],
+  },
 };
 
+/** Every place a count is quoted in words, paired with the language its patterns are written in. */
+const quotingTexts = [];
 for (const locale of ["th", "en"]) {
-  const block = /\n  landing: \{\n([\s\S]*?)\n  \},\n/.exec(read(`src/i18n/${locale}.ts`));
-  if (!block) {
-    fail(`src/i18n/${locale}.ts: couldn't find the landing block to scan for quoted counts`);
-    continue;
-  }
-  for (const [what, { actual, [locale]: pattern }] of Object.entries(QUOTED)) {
-    for (const m of block[1].matchAll(pattern)) {
-      if (Number(m[1]) !== actual) {
-        fail(`src/i18n/${locale}.ts: landing copy says "${m[0].trim()}", but there are ${actual} ${what}`);
+  const file = `src/i18n/${locale}.ts`;
+  const block = /\n  landing: \{\n([\s\S]*?)\n  \},\n/.exec(read(file));
+  if (block) quotingTexts.push({ file, locale, text: block[1] });
+  else fail(`${file}: couldn't find the landing block to scan for quoted counts`);
+}
+quotingTexts.push({ file: "README.md", locale: "th", text: read("README.md") });
+quotingTexts.push({ file: "README.en.md", locale: "en", text: read("README.en.md") });
+
+for (const { file, locale, text } of quotingTexts) {
+  for (const [what, spec] of Object.entries(QUOTED)) {
+    for (const pattern of spec[locale]) {
+      for (const m of text.matchAll(pattern)) {
+        if (Number(m[1]) !== spec.actual) {
+          fail(`${file}: says "${m[0].trim()}", but there are ${spec.actual} ${what}`);
+        }
       }
     }
   }
 }
 
-notes.push(`landing page: ${engineFunctions} functions, ${paletteFormulas} palette formulas, ${actualTests} tests — counted, in tiles and in prose`);
+notes.push(`${engineFunctions} functions / ${paletteFormulas} palette formulas / ${actualTests} tests — counted, and every place the docs or the landing page say so out loud agrees`);
 
 // ----------------------------------------------------------------------------------------------
 for (const n of notes) console.log("  ok  " + n);
