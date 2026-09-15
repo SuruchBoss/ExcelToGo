@@ -40,8 +40,13 @@ import {
 } from "@/lib/sheet";
 import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
-import { downloadBlob, exportWorkbookToXlsxBlob, importWorkbookFromFile } from "@/lib/excelIO";
-import { exportSheetToPdf } from "@/lib/pdfExport";
+// ExcelJS (~400KB) and jsPDF + autoTable are loaded on demand, not with the store.
+//
+// They were plain imports, which put both libraries in the app's first chunk — and because the
+// landing page links to /app, Next prefetched that chunk, so every visitor who only read the
+// landing page still downloaded 433KB of spreadsheet-writing and PDF-writing code they never ran.
+// Each of the three actions below is already async and already raises a busy flag, so awaiting the
+// import costs nothing a user can perceive: the work only starts when they click Import or Export.
 import { FormulaDef } from "@/lib/formulaCatalog";
 import { isSingleCell, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
 import { getMessages } from "@/i18n";
@@ -757,6 +762,7 @@ export const useSheetStore = create<SheetState>()(
         importFromFile: async (file) => {
           set({ busy: getMessages().store.busyImporting });
           try {
+            const { importWorkbookFromFile } = await import("@/lib/excelIO");
             const imported = await importWorkbookFromFile(file);
             const sheets = imported.map((w) => newTab(w.name, w.sheet));
             set({ sheets, activeSheetId: sheets[0].id });
@@ -782,6 +788,7 @@ export const useSheetStore = create<SheetState>()(
           set({ busy: getMessages().store.busyExportingXlsx });
           try {
             const sheets = get().sheets.map((t) => ({ name: t.name, sheet: t.sheet, computed: computeSheet(t.sheet) }));
+            const { exportWorkbookToXlsxBlob, downloadBlob } = await import("@/lib/excelIO");
             const blob = await exportWorkbookToXlsxBlob(sheets);
             downloadBlob(blob, "ExcelToGo.xlsx");
           } finally {
@@ -796,6 +803,7 @@ export const useSheetStore = create<SheetState>()(
           set({ busy: getMessages().store.busyExportingPdf });
           try {
             const tab = activeTab(get());
+            const { exportSheetToPdf } = await import("@/lib/pdfExport");
             await exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name);
           } finally {
             set({ busy: null });

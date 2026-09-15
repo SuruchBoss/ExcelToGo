@@ -1023,6 +1023,8 @@ src/
                               # executeSource.ts (does the actual fetch)
     excelIO.ts                # Importing/exporting a multi-sheet workbook (.xlsx) via exceljs, with cell formatting
     pdfExport.ts              # PDF export via jspdf + jspdf-autotable (the table, then the charts)
+                              # Both are dynamically imported from sheetStore, so exceljs and jspdf
+                              # load on the button press rather than in the app's first chunk (~433KB)
     pdfFont.ts                # The Thai font embedded into exported PDFs, fetched on export (tested)
   types/
     sheet-ui.ts               # Types for the grid's selection state

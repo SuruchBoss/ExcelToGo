@@ -940,6 +940,8 @@ src/
                               # executeSource.ts (ดึงข้อมูลจริง)
     excelIO.ts                # นำเข้า/ส่งออก workbook หลายชีต (.xlsx) ด้วย exceljs พร้อมรูปแบบเซลล์
     pdfExport.ts              # ส่งออก PDF ด้วย jspdf + jspdf-autotable (ตาราง + กราฟต่อท้าย)
+                              # ทั้งสองไฟล์ถูก import แบบ dynamic จาก sheetStore — exceljs กับ jspdf
+                              # โหลดตอนกดปุ่มเท่านั้น ไม่ติดไปกับ chunk แรกของแอป (ลดไป ~433KB)
     pdfFont.ts                # ฝังฟอนต์ไทยลง PDF โหลดตอนส่งออกเท่านั้น (มี test)
   types/
     sheet-ui.ts               # types สำหรับ selection ของตารางฝั่ง UI

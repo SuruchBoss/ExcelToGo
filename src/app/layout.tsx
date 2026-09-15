@@ -14,7 +14,9 @@ import "./globals.css";
 const plexThai = IBM_Plex_Sans_Thai({
   variable: "--font-plex-thai",
   subsets: ["latin", "thai"],
-  weight: ["300", "400", "500", "600", "700"],
+  // 300 was in this list and nothing used it: the app only reaches for normal, medium, semibold
+  // and bold. Each weight is a separate woff2 per subset, and the Thai ones are the heavy files.
+  weight: ["400", "500", "600", "700"],
 });
 
 // Every number, cell address and formula on the site is set in this: a spreadsheet is a grid, and
