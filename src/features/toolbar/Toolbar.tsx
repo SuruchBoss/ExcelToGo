@@ -31,7 +31,11 @@ export default function Toolbar() {
   const dataOpen = sidebarMode === "data" && !hasPending;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-zinc-200 bg-white px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-2">
+    // One scrolling row rather than a wrapping one. Wrapping put this bar on three lines at 360px
+    // and, with the format bar and the formula bar under it, more than half a phone screen was
+    // chrome before the first cell. The format bar beside it already scrolls; matching it keeps the
+    // two rows the same height and the same gesture.
+    <div className="flex items-center gap-1.5 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-2">
       {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
       <Link href="/" title={t.landing.home} className="mr-2 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}
@@ -39,6 +43,7 @@ export default function Toolbar() {
 
       <button
         onClick={() => fileInputRef.current?.click()}
+        aria-label={t.toolbar.importExcel}
         className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileUp size={15} /> <span className="hidden sm:inline">{t.toolbar.importExcel}</span>
@@ -57,6 +62,7 @@ export default function Toolbar() {
 
       <button
         onClick={exportXlsx}
+        aria-label={t.toolbar.exportExcel}
         className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileDown size={15} /> <span className="hidden sm:inline">{t.toolbar.exportExcel}</span>
@@ -64,6 +70,7 @@ export default function Toolbar() {
 
       <button
         onClick={exportPdf}
+        aria-label={t.toolbar.exportPdf}
         className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileText size={15} /> <span className="hidden sm:inline">{t.toolbar.exportPdf}</span>
@@ -92,12 +99,14 @@ export default function Toolbar() {
 
       <button
         onClick={addRow}
+        aria-label={t.toolbar.addRow}
         className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
       >
         <Plus size={14} /> <span className="hidden sm:inline">{t.toolbar.addRow}</span>
       </button>
       <button
         onClick={addColumn}
+        aria-label={t.toolbar.addColumn}
         className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:py-1.5"
       >
         <Plus size={14} /> <span className="hidden sm:inline">{t.toolbar.addColumn}</span>
@@ -113,6 +122,7 @@ export default function Toolbar() {
         )}
         <button
           onClick={() => toggleSidebar("palette")}
+          aria-label={t.toolbar.formulas}
           className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
             paletteOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
@@ -121,6 +131,7 @@ export default function Toolbar() {
         </button>
         <button
           onClick={() => toggleSidebar("ai")}
+          aria-label={t.toolbar.askAi}
           className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
             aiOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
           }`}
@@ -132,6 +143,7 @@ export default function Toolbar() {
         {!DEMO_MODE && (
           <button
             onClick={() => toggleSidebar("data")}
+            aria-label={t.toolbar.data}
             className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
               dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
@@ -145,6 +157,7 @@ export default function Toolbar() {
         {isCloudConfigured() && (
           <button
             onClick={() => toggleSidebar("cloud")}
+            aria-label={t.cloud.title}
             className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
               cloudOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}

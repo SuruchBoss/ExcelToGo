@@ -45,7 +45,7 @@ export default function FormatBar() {
   if (!open) return null;
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">
+    <div className="flex items-center gap-2 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">
       <span className="hidden shrink-0 text-xs font-medium text-zinc-500 sm:inline">{t.formatBar.label}</span>
       <div className="flex shrink-0 items-center gap-2">
 

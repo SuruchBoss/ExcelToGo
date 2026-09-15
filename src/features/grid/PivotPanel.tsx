@@ -41,16 +41,24 @@ export default function PivotPanel() {
   });
   const enoughRows = selection.endRow > selection.startRow;
 
+  /**
+   * Why the pivot can't be built yet, known *before* the button is pressed.
+   *
+   * The app opens with one cell selected, so the first thing anyone who taps "Pivot" out of
+   * curiosity used to see was a complete-looking form that threw an error the moment they pressed
+   * the only button on it. Saying it up front — and disabling the button — turns a dead end into
+   * an instruction.
+   */
+  const blocked = !enoughRows ? t.pivot.needRows : rowFields.length === 0 ? t.pivot.pickRowField : null;
+
   const toggleRowField = (i: number) =>
     setRowFields((prev) => (prev.includes(i) ? prev.filter((f) => f !== i) : [...prev, i]));
 
   const build = () => {
-    if (!enoughRows) return setProblem(t.pivot.needRows);
-    if (rowFields.length === 0) return setProblem(t.pivot.pickRowField);
-    setProblem(null);
+    if (blocked) return;
     // A false result means the selection produced no groups — say so rather than switching to a
     // sheet that turned out empty.
-    if (!buildPivotSheet({ rowFields, colField, valueField, agg })) setProblem(t.pivot.needRows);
+    setProblem(buildPivotSheet({ rowFields, colField, valueField, agg }) ? null : t.pivot.needRows);
   };
 
   const chip = (active: boolean) =>
@@ -130,11 +138,14 @@ export default function PivotPanel() {
         </select>
       </label>
 
-      {problem && <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">{problem}</p>}
+      {(blocked || problem) && (
+        <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">{blocked ?? problem}</p>
+      )}
 
       <button
         onClick={build}
-        className="min-h-11 rounded-md bg-emerald-700 px-3 text-sm font-medium text-white hover:bg-emerald-800 sm:min-h-0 sm:py-2"
+        disabled={blocked !== null}
+        className="min-h-11 rounded-md bg-emerald-700 px-3 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 sm:min-h-0 sm:py-2"
       >
         {t.pivot.build}
       </button>

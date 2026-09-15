@@ -59,7 +59,9 @@ export default function SheetTabs() {
                 if (confirm(t.sheetTabs.confirmDelete(tab.name))) deleteSheet(tab.id);
               }}
               title={t.sheetTabs.deleteTitle}
-              className="rounded p-0.5 text-zinc-300 opacity-0 hover:bg-zinc-200 hover:text-zinc-600 group-hover:opacity-100"
+              // Same reason as the column filter: on a touch screen nothing hovers, so this was an
+              // invisible button and deleting a sheet was a feature you had to already know about.
+              className="rounded p-1.5 text-zinc-300 opacity-0 hover:bg-zinc-200 hover:text-zinc-600 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
             >
               <X size={12} />
             </button>

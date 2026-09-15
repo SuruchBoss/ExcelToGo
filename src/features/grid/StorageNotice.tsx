@@ -69,7 +69,7 @@ export default function StorageNotice() {
         onClick={dismiss}
         title={t.storageNotice.dismiss}
         aria-label={t.storageNotice.dismiss}
-        className="shrink-0 rounded p-0.5 text-amber-700 hover:bg-amber-100 hover:text-amber-900"
+        className="-m-1 shrink-0 rounded p-2 text-amber-700 hover:bg-amber-100 hover:text-amber-900"
       >
         <X size={14} />
       </button>

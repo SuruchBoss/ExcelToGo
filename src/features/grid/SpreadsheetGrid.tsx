@@ -271,10 +271,13 @@ export default function SpreadsheetGrid() {
                       className={clsx(
                         // 14px of icon was a 14px target. The padding makes it 24px without
                         // making the glyph any louder.
-                        "-m-1 rounded p-1.5 hover:bg-zinc-300/60",
+                        "-m-1 rounded p-2 hover:bg-zinc-300/60",
                         columnFilters[c]
                           ? "text-emerald-700"
-                          : "text-zinc-500 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          // Quiet until pointed at — but only where pointing exists. A phone has no
+                          // hover, so this hid sort-and-filter from every touch user completely:
+                          // the button was there, fully clickable, at opacity zero.
+                          : "text-zinc-500 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
                       )}
                     >
                       <Filter size={11} />

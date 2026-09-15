@@ -55,3 +55,27 @@ body {
   color: var(--foreground);
   font-family: var(--font-plex-thai), system-ui, sans-serif;
 }
+
+/**
+ * A shadow at the edge of a horizontally scrolling strip, to say there is more off-screen.
+ *
+ * Both toolbars are one scrolling row on a phone, where roughly half their buttons sit past the
+ * right edge — including the newest ones, which are appended last. Without a cue, a feature that
+ * needs a swipe to reach may as well not exist.
+ *
+ * Done with `background-attachment` rather than JavaScript: the two "cover" gradients are `local`
+ * so they scroll with the content, while the two shadows are `scroll` so they stay pinned to the
+ * edges. The cover slides over a shadow exactly when that side has nothing left to reveal, so the
+ * hint appears and disappears on its own — no scroll listener, no state, no effect.
+ */
+.scroll-hint-x {
+  background-image:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(9, 9, 11, 0.14), rgba(9, 9, 11, 0)),
+    linear-gradient(to left, rgba(9, 9, 11, 0.14), rgba(9, 9, 11, 0));
+  background-position: 0 0, 100% 0, 0 0, 100% 0;
+  background-repeat: no-repeat;
+  background-size: 28px 100%, 28px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}

@@ -427,10 +427,11 @@ of an 844px screen before the grid began. All three are fixed:
 | Thing | What it does on a phone |
 |---|---|
 | **Formula / AI / data panels** | Cover the screen with a close button instead of competing with the grid, and **start closed** so the sheet is what you see first |
-| **Toolbar** | Icons only, labels hidden — three rows down to two |
+| **Toolbar** | Icons only, labels hidden, and **one horizontally scrolling row** rather than a wrapping one |
 | **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all |
 | **Tap targets** | 44px, up from 28px |
 | **Selecting a range** | A **grip on the selection's bottom-right corner**, dragged to pull the range out |
+| **Hover-revealed buttons** | Shown permanently where nothing hovers — otherwise the column filter and the delete-sheet button are invisible |
 
 ![On a phone](public/screenshots/19-mobile.png)
 
@@ -449,6 +450,15 @@ looking like Excel's fill handle while doing something else entirely.
 Desktop behaviour is **unchanged**: the panel still sits beside the grid, and clicking an already
 selected cell still does *not* start editing — you double-click, as in Excel. The tap-again rule is
 tied to `pointerType === "touch"` rather than guessed from screen width.
+
+**Measured** at 360×780: the toolbar used to wrap onto three rows, putting the first cell **51% of the
+way down the screen**. As one scrolling row that is **38%** — 12 visible data rows up to 15 — while desktop
+stays where it was, at 24%.
+
+**Hiding a button until hover is a bug on a phone.** The column-filter button and the delete-sheet button
+used `opacity-0 group-hover:opacity-100`, and a touch screen has no hover: they were **permanently
+invisible** — still clickable, but with nothing to say they existed. `pointer-coarse:opacity-100` now shows
+them wherever hovering doesn't exist, and leaves them quiet on a mouse.
 
 **Not supported yet:** the row/column context menu needs a long press, which some mobile browsers
 answer with their own menu.
