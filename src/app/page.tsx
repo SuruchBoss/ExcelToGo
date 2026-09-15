@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import LanguageToggle from "@/features/toolbar/LanguageToggle";
 import LiveSheet from "@/features/landing/LiveSheet";
+import SkipLink from "@/features/a11y/SkipLink";
 import { useT } from "@/i18n";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 
@@ -91,7 +92,8 @@ export default function Landing() {
   );
 
   return (
-    <main className="flex-1 bg-paper text-ink">
+    <div className="flex-1 bg-paper text-ink">
+      <SkipLink />
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/92 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-8">
           <span className="flex items-center gap-2.5 text-ink">
@@ -106,8 +108,10 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* ── Hero ─────────────────────────────────────────────────────────────────────────────── */}
-      <section className="border-b border-rule">
+      {/* `tabIndex={-1}` lets the skip link move focus here, not just scroll to it. */}
+      <main id="main-content" tabIndex={-1} className="outline-none">
+        {/* ── Hero ─────────────────────────────────────────────────────────────────────────────── */}
+        <section className="border-b border-rule">
         <div className="mx-auto grid max-w-6xl gap-11 px-4 py-12 sm:px-8 sm:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16 lg:py-24">
           <div className="min-w-0 lg:pt-1.5">
             <p className="flex items-center gap-2.5 font-mono text-[11.5px] leading-relaxed text-ledger">
@@ -151,12 +155,18 @@ export default function Landing() {
             {t.landing.problems.map((p, i) => (
               <div
                 key={p.title}
-                className={`grid gap-x-6 gap-y-1.5 border-b border-rule px-2 py-5 sm:grid-cols-[2.6rem_minmax(0,17rem)_1fr] sm:px-3 ${
+                className={`grid gap-x-6 gap-y-1.5 border-b border-rule px-2 py-5 sm:grid-cols-[minmax(0,19rem)_1fr] sm:px-3 ${
                   i % 2 === 1 ? "bg-band/40" : ""
                 }`}
               >
-                <span className="tabular-nums font-mono text-[11px] text-ash">{num(i)}</span>
-                <dt className="text-[15.5px] font-semibold leading-snug text-ink">{p.title}</dt>
+                {/* Number and title are one term, so they live together in the <dt> — a <dl> group
+                    may only hold <dt>/<dd>, not a stray <span>. The number is decorative. */}
+                <dt className="flex gap-3 text-[15.5px] font-semibold leading-snug text-ink sm:gap-4">
+                  <span aria-hidden className="tabular-nums shrink-0 pt-0.5 font-mono text-[11px] font-normal text-ash">
+                    {num(i)}
+                  </span>
+                  {p.title}
+                </dt>
                 <dd className="text-[14.5px] leading-relaxed text-ash">{p.body}</dd>
               </div>
             ))}
@@ -240,10 +250,14 @@ export default function Landing() {
             {t.landing.limits.map((l, i) => (
               <div
                 key={l.title}
-                className="grid gap-x-6 gap-y-1.5 border-b border-rule px-2 py-5 sm:grid-cols-[2.6rem_minmax(0,20rem)_1fr] sm:px-3"
+                className="grid gap-x-6 gap-y-1.5 border-b border-rule px-2 py-5 sm:grid-cols-[minmax(0,22rem)_1fr] sm:px-3"
               >
-                <span className="tabular-nums font-mono text-[11px] text-ref">{num(i)}</span>
-                <dt className="text-[15px] font-semibold leading-snug text-ink">{l.title}</dt>
+                <dt className="flex gap-3 text-[15px] font-semibold leading-snug text-ink sm:gap-4">
+                  <span aria-hidden className="tabular-nums shrink-0 pt-0.5 font-mono text-[11px] font-normal text-ref">
+                    {num(i)}
+                  </span>
+                  {l.title}
+                </dt>
                 <dd className="text-[14.5px] leading-relaxed text-ash">{l.body}</dd>
               </div>
             ))}
@@ -261,6 +275,7 @@ export default function Landing() {
           <div className="mt-8">{cta}</div>
         </div>
       </section>
+      </main>
 
       <footer>
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-8 font-mono text-[11.5px] text-ash sm:px-8">
@@ -285,6 +300,6 @@ export default function Landing() {
           </a>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

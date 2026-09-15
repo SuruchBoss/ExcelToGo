@@ -95,6 +95,8 @@ export default function FormatBar() {
       <select
         value={format.numberFormat ?? "general"}
         onChange={(e) => setNumberFormat(e.target.value as NumberFormat)}
+        aria-label={t.formatBar.numberFormatTitle}
+        title={t.formatBar.numberFormatTitle}
         className="h-11 rounded-md border border-zinc-300 px-1.5 text-xs text-zinc-700 outline-none focus:border-emerald-500 sm:h-7"
       >
         {Object.entries(t.numberFormats).map(([value, label]) => (

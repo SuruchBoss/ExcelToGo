@@ -24,6 +24,7 @@ export interface Messages {
     /** Closes the sidebar panel when it covers the screen on a phone. */
     close: string;
     brand: string;
+    skipToContent: string;
     /** Shows the *other* language's name — clicking it switches to that language. */
     languageToggleLabel: string;
   };
@@ -295,6 +296,7 @@ export interface Messages {
     colorTitle: string;
     sortAscTitle: string;
     sortDescTitle: string;
+    numberFormatTitle: string;
   };
   numberFormats: Record<NumberFormat, string>;
   formulaBar: {

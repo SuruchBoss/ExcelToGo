@@ -15,6 +15,7 @@ import ChartPanel from "@/features/grid/ChartPanel";
 import CloudPanel from "@/features/cloud/CloudPanel";
 import StorageNotice from "@/features/grid/StorageNotice";
 import DataPicker from "@/features/data/DataPicker";
+import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
@@ -48,18 +49,19 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-zinc-50">
+      <SkipLink />
       <Toolbar />
       <FormatBar />
       <FormulaBar />
       <TemplateBar />
       <StorageNotice />
       <div className="flex min-h-0 flex-1 gap-3 p-2 sm:p-3">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white">
+        <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white outline-none">
           <div className="min-h-0 flex-1">
             <SpreadsheetGrid />
           </div>
           <SheetTabs />
-        </div>
+        </main>
         {sidebarVisible && (
           <>
             {/* On a phone the panel covers the screen instead of sitting beside the grid. Side by

@@ -5,6 +5,7 @@ export const en: Messages = {
   app: {
     close: "Close",
     brand: "ExcelToGo",
+    skipToContent: "Skip to main content",
     languageToggleLabel: "TH",
   },
   toolbar: {
@@ -351,6 +352,7 @@ export const en: Messages = {
     colorTitle: "Text color",
     sortAscTitle: "Sort ascending (A-Z, 0-9)",
     sortDescTitle: "Sort descending (Z-A, 9-0)",
+    numberFormatTitle: "Number format",
   },
   numberFormats: {
     general: "General",

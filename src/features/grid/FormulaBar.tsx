@@ -52,7 +52,7 @@ export default function FormulaBar() {
       <span className="w-16 shrink-0 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-center text-xs font-medium text-zinc-600">
         {address}
       </span>
-      <span className="shrink-0 text-xs italic text-zinc-300">fx</span>
+      <span className="shrink-0 text-xs italic text-zinc-500">fx</span>
       <input
         key={address}
         ref={inputRef}

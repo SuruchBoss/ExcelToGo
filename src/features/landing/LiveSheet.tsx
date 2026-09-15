@@ -106,7 +106,7 @@ export default function LiveSheet() {
         <span className="tabular-nums flex w-14 shrink-0 items-center justify-center border-r border-rule bg-paper font-mono text-[11px] font-medium text-ash">
           {address}
         </span>
-        <span className="flex w-8 shrink-0 items-center justify-center border-r border-rule font-mono text-[11px] italic text-ash/60">
+        <span className="flex w-8 shrink-0 items-center justify-center border-r border-rule font-mono text-[11px] italic text-ash">
           fx
         </span>
         <span className={`flex min-w-0 flex-1 items-center truncate px-3 py-2 font-mono text-[12.5px] ${isFormula ? "text-ledger" : "text-ink"}`}>

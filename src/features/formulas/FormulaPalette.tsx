@@ -56,27 +56,40 @@ export default function FormulaPalette() {
           </button>
         ))}
       </div>
-      <div className="flex-1 overflow-y-auto pr-1">
+      {/* tabIndex makes the scroll area reachable by keyboard — axe flags a scrollable region with
+          no focusable content because a keyboard-only user otherwise can't scroll the formula list. */}
+      <div className="flex-1 overflow-y-auto pr-1" tabIndex={0} aria-label={t.palette.subtitle}>
         <div className="flex flex-col gap-2">
           {filtered.map((f) => (
             <div
               key={f.id}
+              // Drag is the mouse affordance; the card is also a button so a keyboard user can pick a
+              // formula with Enter/Space and a screen reader announces it as an activatable control.
+              role="button"
+              tabIndex={0}
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.setData("text/formula-id", f.id);
                 e.dataTransfer.effectAllowed = "copy";
               }}
               onClick={() => onPick(f)}
-              className="cursor-grab rounded-md border border-zinc-200 bg-white p-2.5 text-left shadow-sm transition hover:border-emerald-400 hover:shadow active:cursor-grabbing"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onPick(f);
+                }
+              }}
+              aria-label={`${f.name} — ${f.description}`}
+              className="cursor-grab rounded-md border border-zinc-200 bg-white p-2.5 text-left shadow-sm transition hover:border-emerald-400 hover:shadow focus:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:cursor-grabbing"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-zinc-800">{f.name}</span>
-                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600">
                   {f.category}
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-zinc-500">{f.description}</p>
-              <code className="mt-1 block truncate text-[11px] text-emerald-600">{f.example}</code>
+              <code className="mt-1 block truncate text-[11px] text-emerald-700">{f.example}</code>
             </div>
           ))}
           {filtered.length === 0 && <p className="p-4 text-center text-xs text-zinc-500">{t.palette.notFound}</p>}

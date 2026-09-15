@@ -5,6 +5,7 @@ export const th: Messages = {
   app: {
     close: "ปิด",
     brand: "ExcelToGo",
+    skipToContent: "ข้ามไปยังเนื้อหาหลัก",
     languageToggleLabel: "EN",
   },
   toolbar: {
@@ -351,6 +352,7 @@ export const th: Messages = {
     colorTitle: "สีข้อความ",
     sortAscTitle: "เรียงจากน้อยไปมาก (A-Z, 0-9)",
     sortDescTitle: "เรียงจากมากไปน้อย (Z-A, 9-0)",
+    numberFormatTitle: "รูปแบบตัวเลข",
   },
   numberFormats: {
     general: "ทั่วไป",
