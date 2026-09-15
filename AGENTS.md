@@ -40,6 +40,12 @@ first is still faster than waiting for CI to tell you.
   Both READMEs change together, always.
 - **ตัวเลขที่เคลมต้องนับมาจริง** เช่น จำนวนสูตร/ฟังก์ชัน — เคยเขียนผิดมาแล้ว (22/41 ทั้งที่จริงคือ 25/42)
   Counts must come from counting. A wrong one shipped before: 22/41 claimed, 25/42 actual.
+- **ภาพหน้าจอก็เคลมตัวเลขได้ และไม่มีด่านไหนอ่านมันออก** — `check:readme` นับเทสต์จาก *ข้อความ* ภาพ
+  landing page ที่เขียนว่า "519 เทสต์" จึงผ่านทุกด่านอยู่หลายวันทั้งที่จริงเป็น 577 เปลี่ยน UI หรือตัวเลขที่
+  โชว์อยู่ในภาพเมื่อไร ต้องถ่ายใหม่เมื่อนั้น
+  A screenshot makes claims too, and no gate can read it. `check:readme` counts tests in *text*, so a
+  landing-page image reading "519 tests" passed every gate for days while the real figure was 577.
+  Change the UI or a number it shows, and the screenshot has to be retaken.
 
 ### เรื่องอื่นที่ทำเป็นปกติ / Other habits
 

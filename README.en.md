@@ -1364,6 +1364,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Mobile/tablet support** — done (see ✨ Features): the panel opens over the screen, the
       toolbar folds to icons, a second tap edits a cell, 44px targets, and a range is dragged out
       with a finger from a grip on the selection's corner (which scrolls the sheet to meet it)
+- [ ] **Accessibility checks in CI** — axe runs by hand today, and that has already cost something: the
+      previous audit ran at desktop widths only, so it never saw that eight toolbar buttons have no
+      accessible name below 640px, where `sm:` hides their labels. Catching that needs both widths on
+      every PR.
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
 - [x] **Template support for imported files** — done (see ✨ Features): cell locking, dropdowns and column
       widths are read from a protected file, every route into the structure is guarded, and export puts the
