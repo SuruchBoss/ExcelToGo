@@ -9,9 +9,11 @@ export const th: Messages = {
     languageToggleLabel: "EN",
   },
   toolbar: {
-    importExcel: "นำเข้า Excel",
+    importFile: "นำเข้าไฟล์",
+    importTitle: "เปิดไฟล์ Excel (.xlsx) หรือ CSV",
     exportExcel: "ส่งออก Excel",
     exportPdf: "ส่งออก PDF",
+    exportCsv: "ส่งออก CSV",
     undoTitle: "เลิกทำ (Ctrl+Z)",
     redoTitle: "ทำซ้ำ (Ctrl+Y)",
     addRow: "แถว",
@@ -114,7 +116,7 @@ export const th: Messages = {
     },
   },
   landing: {
-    eyebrow: "โปรเจกต์ทดลอง · เอนจินคำนวณสูตรเขียนเอง · 577 เทสต์",
+    eyebrow: "โปรเจกต์ทดลอง · เอนจินคำนวณสูตรเขียนเอง · 607 เทสต์",
     headline: "เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์",
     subheadline:
       "ไม่ต้องติดตั้ง ไม่ต้องสมัครสมาชิก — เปิดไฟล์ .xlsx แล้วหน้าตายังเหมือนเดิม ทั้งแถบสี เซลล์ที่ merge และเส้นขอบ จากนั้นเลือกสูตรจากรายการแทนการจำ หรือถาม AI เป็นภาษาคน ทุกอย่างคำนวณในเบราว์เซอร์ ข้อมูลไม่ออกจากเครื่องคุณ",
@@ -168,7 +170,7 @@ export const th: Messages = {
     stats: [
       { value: "32", label: "สูตรพร้อมใช้" },
       { value: "49", label: "ฟังก์ชันในเอนจิน" },
-      { value: "577", label: "เทสต์อัตโนมัติ" },
+      { value: "607", label: "เทสต์อัตโนมัติ" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],
     limitsTitle: "สิ่งที่ยังทำไม่ได้",
@@ -452,7 +454,9 @@ export const th: Messages = {
     busyImporting: "กำลังนำเข้าไฟล์...",
     busyExportingXlsx: "กำลังสร้างไฟล์ Excel...",
     busyExportingPdf: "กำลังสร้างไฟล์ PDF...",
-    importError: "ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) ที่ถูกต้อง",
+    busyExportingCsv: "กำลังสร้างไฟล์ CSV...",
+    importError: "ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) หรือ CSV ที่ถูกต้อง",
+    csvEmpty: "ชีตนี้ยังไม่มีข้อมูล จึงไม่มีอะไรให้ส่งออก",
   },
   aiHeuristic: {
     rules: {

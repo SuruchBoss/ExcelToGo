@@ -47,6 +47,22 @@ export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): Shee
   };
 }
 
+/**
+ * Builds a sheet from a rectangle of raw cell text — what a CSV parses into.
+ *
+ * Kept at least the default size even for a three-row file, so an import lands in a spreadsheet
+ * with room to work in rather than a grid that ends where the data does.
+ */
+export function sheetFromGrid(grid: string[][]): SheetModel {
+  const rows = Math.max(DEFAULT_ROWS, grid.length);
+  const cols = Math.max(DEFAULT_COLS, ...grid.map((r) => r.length), 1);
+  const sheet = createEmptySheet(rows, cols);
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) sheet.cells[r][c] = grid[r][c];
+  }
+  return sheet;
+}
+
 export function cloneSheet(sheet: SheetModel): SheetModel {
   return {
     ...sheet,

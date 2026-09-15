@@ -32,6 +32,7 @@ import {
   pasteClipboardBlock,
   pastePlainTextBlock,
   setCellRaw,
+  sheetFromGrid,
   setComment,
   setRangeFormat,
   SheetModel,
@@ -221,6 +222,7 @@ interface SheetState {
   replaceWorkbook: (sheets: SheetTab[]) => void;
   exportXlsx: () => Promise<void>;
   exportPdf: () => Promise<void>;
+  exportCsv: () => Promise<void>;
 }
 
 function activeTab(s: SheetState): SheetTab {
@@ -829,6 +831,25 @@ export const useSheetStore = create<SheetState>()(
         importFromFile: async (file) => {
           set({ busy: getMessages().store.busyImporting });
           try {
+            // A .csv is plain text, so it never reaches ExcelJS — which would reject it anyway.
+            // The delimiter is sniffed rather than assumed: Excel writes the list separator of the
+            // machine's locale, and a semicolon file read as comma-separated lands every row in
+            // column A, which looks like a broken app rather than a wrong guess.
+            if (/\.csv$/i.test(file.name)) {
+              const { parseCsv } = await import("@/lib/csv");
+              const rows = parseCsv(await file.text());
+              if (rows.length === 0) {
+                alert(getMessages().store.importError);
+                return;
+              }
+              // Cells hold raw text and computeSheet coerces numeric-looking strings when it reads
+              // them, so the values go in as they came out of the file.
+              const sheet = sheetFromGrid(rows);
+              const name = file.name.replace(/\.csv$/i, "").slice(0, 31) || "CSV";
+              const sheets = [newTab(name, sheet)];
+              set({ sheets, activeSheetId: sheets[0].id, selectionBySheetId: {}, filtersBySheetId: {} });
+              return;
+            }
             const { importWorkbookFromFile } = await import("@/lib/excelIO");
             const imported = await importWorkbookFromFile(file);
             const sheets = imported.map((w) => newTab(w.name, w.sheet));
@@ -872,6 +893,34 @@ export const useSheetStore = create<SheetState>()(
             const tab = activeTab(get());
             const { exportSheetToPdf } = await import("@/lib/pdfExport");
             await exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name);
+          } finally {
+            set({ busy: null });
+          }
+        },
+
+        /**
+         * Writes the active sheet as CSV.
+         *
+         * The active sheet alone, because a CSV is one table — a workbook of three would have to
+         * become three files or one with the sheets stacked, and both are surprises. The tab's name
+         * becomes the filename so which one it was is not a guess.
+         */
+        exportCsv: async () => {
+          set({ busy: getMessages().store.busyExportingCsv });
+          try {
+            const tab = activeTab(get());
+            const { toCsv, trimGrid, valuesToCsvGrid } = await import("@/lib/csv");
+            const grid = trimGrid(valuesToCsvGrid(computeSheet(tab.sheet).values));
+            if (grid.length === 0) {
+              alert(getMessages().store.csvEmpty);
+              return;
+            }
+            const { downloadBlob } = await import("@/lib/excelIO");
+            // text/csv with an explicit charset, and toCsv writes the BOM: between them, Excel on
+            // Windows opens Thai as Thai instead of guessing a legacy code page.
+            const blob = new Blob([toCsv(grid)], { type: "text/csv;charset=utf-8" });
+            const safeName = tab.name.replace(/[\\/:*?"<>|]/g, "_").trim() || "sheet";
+            downloadBlob(blob, `${safeName}.csv`);
           } finally {
             set({ busy: null });
           }

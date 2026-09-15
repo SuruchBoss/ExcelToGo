@@ -9,9 +9,11 @@ export const en: Messages = {
     languageToggleLabel: "TH",
   },
   toolbar: {
-    importExcel: "Import Excel",
+    importFile: "Import file",
+    importTitle: "Open an Excel (.xlsx) or CSV file",
     exportExcel: "Export Excel",
     exportPdf: "Export PDF",
+    exportCsv: "Export CSV",
     undoTitle: "Undo (Ctrl+Z)",
     redoTitle: "Redo (Ctrl+Y)",
     addRow: "Row",
@@ -114,7 +116,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 577 tests",
+    eyebrow: "A side project · hand-written formula engine · 607 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -168,7 +170,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "577", label: "automated tests" },
+      { value: "607", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "What it can't do",
@@ -452,7 +454,9 @@ export const en: Messages = {
     busyImporting: "Importing file...",
     busyExportingXlsx: "Building Excel file...",
     busyExportingPdf: "Building PDF...",
-    importError: "Couldn't import this file. Please check that it's a valid Excel (.xlsx) file.",
+    busyExportingCsv: "Building CSV...",
+    importError: "Couldn't import this file. Please check that it's a valid Excel (.xlsx) or CSV file.",
+    csvEmpty: "This sheet is empty, so there is nothing to export.",
   },
   aiHeuristic: {
     rules: {

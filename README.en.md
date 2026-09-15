@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-577%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-607%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 577 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 607 automated tests.
 
 ---
 
@@ -74,6 +74,7 @@ bring-your-own-backend cloud save. Bilingual UI (Thai/English), 577 automated te
   - [Drag-and-drop formulas](#-drag-and-drop-formulas)
   - [Ask AI for a formula](#-ask-ai-for-a-formula)
   - [Export](#-export)
+  - [CSV in and out](#-csv-in-and-out)
   - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
   - [It looks like the file you opened](#-it-looks-like-the-file-you-opened)
   - [Templates from an Excel file](#-templates-from-an-excel-file)
@@ -157,7 +158,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 577-case Vitest suite |
+| `npm test` | Run the 607-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -552,6 +553,8 @@ a short explanation. One click inserts it into the selected cell.
 - **Excel**: a single `.xlsx` with **every sheet** included — original formulas, formatting (fills, font sizes,
   borders, row heights, column widths, merged cells) and a template's locking all intact, so it opens in
   Excel/Google Sheets as the file it was rather than as computed numbers.
+- **CSV**: the currently open sheet, as computed values, with the BOM Excel needs to read Thai
+  (see [CSV in and out](#-csv-in-and-out)).
 - **PDF**: the currently open sheet only, showing computed values with row/column headers, with the
   charts following underneath.
 
@@ -572,6 +575,34 @@ a short explanation. One click inserts it into the selected cell.
   > **Not supported:** the rest of Thai shaping — the lowered marks that tall consonants (ป ฟ ฬ)
   > want, the narrowed forms after ญ and ฐ. One rule that fixes what was actually unreadable beats
   > half a shaping engine.
+
+### 🔀 CSV in and out
+
+CSV is the format every other tool speaks — a bank statement, a POS export, the file a colleague mails you.
+Opening one here used to mean opening it in Excel first and saving it as `.xlsx`, which made this app the long
+way round for the most common file there is. The **Import file** button now takes `.csv` directly, and
+**Export CSV** sits beside the other two exports.
+
+Three details decide whether this works on real files rather than only on the ones we write:
+
+| Thing | What it does, and why |
+|---|---|
+| **The delimiter isn't always a comma** | Excel writes the list separator of the machine's locale, so a file saved in Thailand or most of Europe is semicolon-separated. Guessing comma doesn't fail loudly — it loads the whole row into column A, which looks like a broken app rather than a wrong guess. Candidates are counted **outside quotes** and the winner wins (`,`, `;` and tab). |
+| **A BOM is what makes Thai readable in Excel** | Without one, Excel on Windows guesses a legacy code page and every Thai file opens as mojibake. It's stripped on the way in and written on the way out — three bytes between a usable export and a bug report. |
+| **Quoting is the format** | A field holding the delimiter, a quote or a newline has to be quoted with inner quotes doubled. A parser that splits on the delimiter is wrong the first time an address or a Thai note contains one. |
+
+**Computed values on export, not formulas and not formatted text.** CSV has no formulas, so writing `=C2*D2`
+hands the next reader a text field that means nothing. Numbers go out as `1234` rather than `฿1,234.00`:
+on screen the thousands separator helps, but in the file it is a second delimiter that makes the column
+unparseable.
+
+**The active sheet only**, named after its tab — a CSV holds one table, and both stacking three sheets into
+one file and splitting them into three are surprises.
+
+**Not supported yet:** files that aren't UTF-8 (TIS-620 out of an older system, say) come in as mojibake —
+there's no encoding detection. And values beginning `=`, `+`, `-` or `@` are written through unchanged, with
+no neutralising: taking a file built from an untrusted source and opening it in Excel is a CSV-injection
+risk you have to know about. Quietly editing someone's data is its own bug, so it's stated here instead.
 
 ### 🔌 Live data from an API / CSV (prototype)
 
@@ -831,7 +862,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (577 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (607 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1057,6 +1088,7 @@ src/
     sheetRange.ts            # A range of cells and how it follows an insert/delete — shared by charts
                               # and conditional formatting, which need identical behaviour
     cellComments.ts          # Notes attached to cells, and how they follow an insert/delete (tested)
+    csv.ts                   # CSV read/write: delimiter sniffing, BOM, RFC 4180 quoting
     charts.ts                # Charts: reading a range into series and labels, the axis, the frame a chart
                               # is moved and resized by, its cell anchor, a pie's series, the legend
                               # per kind, shifting (tested)
@@ -1273,7 +1305,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 577 cases across 27 files, via Vitest
+npm test      # 607 cases across 27 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1371,7 +1403,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
       widths is the whole point** — the previous audit ran at desktop width only and reported zero
       violations while eight buttons below 640px had no accessible name. Still open: states you have to
       open first (panels, menus, popovers) aren't checked.
-- [ ] **Direct CSV import/export** (currently `.xlsx` only)
+- [x] **Direct CSV import/export** — done (see ✨ Features): the delimiter is sniffed (`,`, `;`, tab), the BOM
+      is stripped on the way in and written on the way out so Excel reads Thai, quoting follows RFC 4180, and
+      the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.
 - [x] **Template support for imported files** — done (see ✨ Features): cell locking, dropdowns and column
       widths are read from a protected file, every route into the structure is guarded, and export puts the
       template back together

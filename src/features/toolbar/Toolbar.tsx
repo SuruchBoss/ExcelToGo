@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FileUp, FileDown, FileText, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database, Cloud } from "lucide-react";
+import { FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database, Cloud } from "lucide-react";
 import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import LanguageToggle from "./LanguageToggle";
@@ -19,6 +19,7 @@ export default function Toolbar() {
   const importFromFile = useSheetStore((s) => s.importFromFile);
   const exportXlsx = useSheetStore((s) => s.exportXlsx);
   const exportPdf = useSheetStore((s) => s.exportPdf);
+  const exportCsv = useSheetStore((s) => s.exportCsv);
   const addRow = useSheetStore((s) => s.addRow);
   const addColumn = useSheetStore((s) => s.addColumn);
   const toggleSidebar = useSheetStore((s) => s.toggleSidebar);
@@ -43,15 +44,16 @@ export default function Toolbar() {
 
       <button
         onClick={() => fileInputRef.current?.click()}
-        aria-label={t.toolbar.importExcel}
+        aria-label={t.toolbar.importFile}
+        title={t.toolbar.importTitle}
         className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
-        <FileUp size={15} /> <span className="hidden sm:inline">{t.toolbar.importExcel}</span>
+        <FileUp size={15} /> <span className="hidden sm:inline">{t.toolbar.importFile}</span>
       </button>
       <input
         ref={fileInputRef}
         type="file"
-        accept=".xlsx,.xlsm,.xls"
+        accept=".xlsx,.xlsm,.xls,.csv"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -74,6 +76,16 @@ export default function Toolbar() {
         className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
       >
         <FileText size={15} /> <span className="hidden sm:inline">{t.toolbar.exportPdf}</span>
+      </button>
+
+      {/* CSV sits beside the other two exports rather than behind a menu: it is the format every
+          other tool reads, and a third button costs less than a dropdown people have to find. */}
+      <button
+        onClick={exportCsv}
+        aria-label={t.toolbar.exportCsv}
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5"
+      >
+        <FileSpreadsheet size={15} /> <span className="hidden sm:inline">{t.toolbar.exportCsv}</span>
       </button>
 
       <div className="mx-1 h-5 w-px bg-zinc-200" />

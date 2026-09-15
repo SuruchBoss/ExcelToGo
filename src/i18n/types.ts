@@ -29,9 +29,11 @@ export interface Messages {
     languageToggleLabel: string;
   };
   toolbar: {
-    importExcel: string;
+    importFile: string;
+    importTitle: string;
     exportExcel: string;
     exportPdf: string;
+    exportCsv: string;
     undoTitle: string;
     redoTitle: string;
     addRow: string;
@@ -383,7 +385,9 @@ export interface Messages {
     busyImporting: string;
     busyExportingXlsx: string;
     busyExportingPdf: string;
+    busyExportingCsv: string;
     importError: string;
+    csvEmpty: string;
   };
   /** Explanations for the keyword-based fallback AI suggester (used when no
    *  ANTHROPIC_API_KEY is configured), keyed by rule id. */
