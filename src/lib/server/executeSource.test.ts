@@ -326,4 +326,30 @@ describe("the URL guard on the path that actually fetches", () => {
       /not a public address/
     );
   });
+
+  // Regression: a URL that starts with a slash but is not actually relative used to be waved
+  // through the guard. `//host` (protocol-relative) and `/\host` both begin with a slash yet
+  // `new URL()` resolves them to a foreign origin, so the old `startsWith("/")` fast path fetched
+  // the metadata endpoint without ever calling the guard. The fix decides "same origin" by the
+  // resolved origin, so these now clear the guard like any other absolute URL and are blocked.
+  it("does not treat a protocol-relative URL as same-origin (SSRF bypass)", async () => {
+    stubFetch({}); // any fetch at all is a failure — the guard must reject before one is made
+    await expect(
+      executeSource({ type: "rest", url: "//169.254.169.254/latest/meta-data/" }, ORIGIN)
+    ).rejects.toThrow(/not a public address/);
+  });
+
+  it("does not treat a backslash-tricked URL as same-origin (SSRF bypass)", async () => {
+    stubFetch({});
+    await expect(executeSource({ type: "rest", url: "/\\169.254.169.254/" }, ORIGIN)).rejects.toThrow(
+      /not a public address/
+    );
+  });
+
+  it("blocks a userinfo trick that keeps the real host after the @ (SSRF bypass)", async () => {
+    stubFetch({});
+    await expect(
+      executeSource({ type: "rest", url: "//app.test@169.254.169.254/" }, ORIGIN)
+    ).rejects.toThrow(/not a public address/);
+  });
 });

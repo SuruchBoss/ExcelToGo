@@ -16,7 +16,11 @@ export async function parseSourceBody(request: Request): Promise<{ value: Source
   const type = body.type === "csv" ? "csv" : body.type === "rest" ? "rest" : null;
   if (!name) return { error: "missing_name" };
   if (!type) return { error: "invalid_type" };
-  if (!url || !(url.startsWith("/") || /^https?:\/\//i.test(url))) return { error: "invalid_url" };
+  // A relative path is a single leading slash followed by neither slash nor backslash. Excluding
+  // that second character is what keeps `//host` (protocol-relative) and `/\host` out of the
+  // "same origin" fast path in executeSource — both start with a slash but point at a foreign host.
+  const isRelativePath = /^\/(?![/\\])/.test(url);
+  if (!url || !(isRelativePath || /^https?:\/\//i.test(url))) return { error: "invalid_url" };
 
   const refreshRaw = Number(body.refreshSec);
   const refreshSec = Number.isFinite(refreshRaw) ? Math.min(Math.max(Math.round(refreshRaw), 2), 3600) : 30;

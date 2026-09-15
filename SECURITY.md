@@ -50,6 +50,14 @@ documentation ranges. IPv6 link-local and unique-local go too, as do IPv4 addres
 IPv6 in **any** of their spellings — `::ffff:169.254.169.254`, the hex form `::ffff:a9fe:a9fe` that
 a URL normalises it to, and the deprecated `::a9fe:a9fe`. Only `http` and `https` are allowed.
 
+A URL beginning with a single `/` is one of the app's own routes and is the one case the guard is
+skipped for — a demo source reaches `/api/demo/sales` even when the deployment's own origin is
+loopback. "Its own route" is decided by resolving the URL and comparing the *resolved origin* to the
+deployment's, not by the leading slash alone: `//169.254.169.254/` and `/\169.254.169.254/` also
+begin with a slash, but resolve to a foreign host, so they clear the full guard like any absolute
+URL. (A pentest found the earlier leading-slash shortcut let exactly these through to the metadata
+endpoint; there are now regression tests at both the validation and the fetch layer.)
+
 Set `SOURCES_ALLOWED_HOSTS` to a comma-separated list to narrow it further to named hosts. The
 address checks still apply on top of it: being allowlisted is not a licence to point at loopback.
 

@@ -113,7 +113,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 498 tests",
+    eyebrow: "A side project · hand-written formula engine · 505 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -167,7 +167,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "498", label: "automated tests" },
+      { value: "505", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "What it can't do",

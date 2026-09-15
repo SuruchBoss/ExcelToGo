@@ -91,11 +91,22 @@ function parseBody(text: string): { json: unknown } | { csv: string } {
  * data — showing a silently partial table is the one outcome worth avoiding here.
  */
 export async function executeSource(src: SourceInput, origin: string): Promise<TableData> {
-  // A leading slash means one of this app's own routes; anything else is a URL the user typed and
-  // has to clear the guard.
-  const isRelative = src.url.startsWith("/");
-  const startUrl = isRelative ? new URL(src.url, origin).toString() : src.url;
-  const first = await fetchPage(startUrl, src, isRelative);
+  // The guard is skipped only for this deployment's own origin, so the seeded demo sources can be
+  // reached over a relative path even when that origin is loopback. Deciding this by
+  // `startsWith("/")` was a bypass: `//169.254.169.254/`, `/\169.254.169.254/` and `//evil.com/`
+  // all start with a slash yet `new URL()` resolves them to a foreign host — so the guard was
+  // skipped for exactly the addresses it exists to block. Resolve first, then trust the fast path
+  // only when the *resolved origin* is this deployment's; anything else still clears the guard.
+  const base = new URL(origin);
+  let resolved: URL;
+  try {
+    resolved = new URL(src.url, base);
+  } catch {
+    throw new Error("invalid_url");
+  }
+  const sameOrigin = resolved.origin === base.origin;
+  const startUrl = resolved.toString();
+  const first = await fetchPage(startUrl, src, sameOrigin);
   const fetchedAt = new Date().toISOString();
 
   const parsed = parseBody(first.text);
