@@ -24,7 +24,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-505%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-519%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 505 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 519 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -149,7 +149,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 505 เคสด้วย Vitest |
+| `npm test` | รัน unit test 519 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
@@ -458,9 +458,14 @@ fill handle ของ Excel แต่ทำคนละเรื่อง
   (สัญญาอนุญาต OFL, ~45KB) ไว้ที่ `public/fonts/` แล้วโหลดตอนกดส่งออกเท่านั้น — คนที่ไม่เคยกดส่งออก PDF
   ไม่ต้องโหลดอะไรเพิ่มเลย ถ้าโหลดฟอนต์ไม่สำเร็จจะถอยไปใช้ฟอนต์เดิมแทนที่จะพังทั้งไฟล์
 
-  > ⚠️ **ข้อจำกัดที่เหลือ: วรรณยุกต์ที่ซ้อนบนสระบน (เช่น ที่ · นี่ · ดื่ม) จะทับกันแทนที่จะซ้อนขึ้นไป**
-  > เพราะ jsPDF ไม่ทำ OpenType shaping จึงไม่ขยับ mark ตามที่ฟอนต์กำหนดไว้ **ตัวอักษรครบทุกตัวจริง** —
-  > คัดลอกข้อความจาก PDF ออกมาได้ถูกต้องและค้นหาเจอ เป็นเรื่องการวางตำแหน่งอย่างเดียว
+  **วรรณยุกต์ซ้อนบนสระบนถูกต้องแล้ว** (ที่ · นี่ · ดื่ม · ซื้อ) — jsPDF ไม่ทำ OpenType shaping
+  วรรณยุกต์กับสระบนจึงเคยถูกวาดที่ตำแหน่งเดียวกันจนทับกันมิด `ที่` ออกมาเป็น `ที` ตอนนี้ `thaiMarks.ts`
+  หาวรรณยุกต์ที่ตามหลังสระบน แล้ว `pdfExport.ts` วาดมันซ้ำอีกครั้งให้สูงขึ้น 0.19em
+  (ค่านี้ได้จากการวัดช่องว่างในเบราว์เซอร์ซึ่ง shape ถูกต้อง แล้วไล่หาค่าที่ตรงกัน ไม่ได้เดา)
+  วรรณยุกต์ที่อยู่บนสระล่าง (`ผู้`) หรือบนพยัญชนะเปล่า (`ป่า`) ไม่ถูกขยับ
+
+  > **ยังไม่รองรับ:** shaping อย่างอื่นของไทย เช่น วรรณยุกต์ที่ควรลดตำแหน่งลงบนพยัญชนะหางสูง
+  > (ป ฟ ฬ) และรูปแคบหลัง ญ ฐ — ตั้งใจทำกฎเดียวที่ทำให้อ่านไม่ออกจริงๆ ดีกว่าเขียน shaper ครึ่งใบ
 
 ### 🔌 ข้อมูลสดจาก API / CSV (prototype)
 
@@ -692,7 +697,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (505 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (519 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -922,6 +927,7 @@ src/
                               # เพื่อให้ทั้งสองใช้ขนาดเดียวกันเป๊ะ) (มี test)
     demoMode.ts              # สวิตช์ปิดฟีเจอร์ข้อมูลสดสำหรับ demo สาธารณะ (อ่าน NEXT_PUBLIC_DEMO_MODE)
     site.ts                  # URL สาธารณะที่ใช้ร่วมกันของ metadata/sitemap/robots (ที่เดียว ไม่ให้ขัดกัน)
+    thaiMarks.ts             # หาวรรณยุกต์ที่ซ้อนบนสระบนและต้องวาดยกขึ้น (ใช้ตอนส่งออก PDF) (มี test)
     dataSources/sourcesToken.ts  # โทเคนผู้ดูแลฝั่งเบราว์เซอร์ (เก็บใน sessionStorage)
     server/urlGuard.ts       # กัน SSRF: ตรวจ IP ที่ DNS ตอบ + ทุก redirect ก่อนยิงจริง (มี test)
     server/sourcesAuth.ts    # ประตูของ API ข้อมูลสด ไม่ตั้งโทเคน = ปิดทั้งหมด (มี test)
@@ -1106,7 +1112,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 505 เคส ใน 27 ไฟล์ ด้วย Vitest
+npm test      # 519 เคส ใน 27 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM

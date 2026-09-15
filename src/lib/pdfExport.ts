@@ -5,8 +5,73 @@ import { chartDataFrom } from "./charts";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf } from "./gridGeometry";
 import { THAI_FONT_NAME, registerThaiFont } from "./pdfFont";
+import { planThaiMarks } from "./thaiMarks";
 import { ComputedSheet, SheetModel } from "./sheet";
 import { downloadBlob } from "./excelIO";
+
+/**
+ * How far above its normal spot a stacked tone mark is drawn, as a fraction of the font size.
+ *
+ * Calibrated against a real shaper rather than guessed. The same words were rendered in a browser,
+ * which applies the font's GPOS rules properly, and the gap between the bottom of the tone mark and
+ * the top of the vowel underneath it measured 0.047em. Rendering the PDF at a range of rises and
+ * measuring the same gap gave 0.18em -> 0.035 and 0.22em -> 0.076, so 0.19em lands on the target.
+ *
+ * Too small and the two marks touch; too large and the tone drifts off its syllable and starts
+ * crowding the line above.
+ */
+const MARK_RISE_EM = 0.19;
+
+/**
+ * Teaches one jsPDF document to draw stacked Thai marks in the right place.
+ *
+ * It patches `text` on the instance because that is the single funnel every string goes through —
+ * autoTable renders each cell with `doc.text(text, x, y)` (it works out alignment itself and passes
+ * no align option), so patching here fixes the table, the title and anything added later, without
+ * autoTable needing to know Thai exists.
+ *
+ * The string is drawn once with the colliding marks removed, then each of those marks is drawn
+ * again on its own, at the width of everything before it and one rise higher. Thai marks have a
+ * zero advance, so taking them out moves nothing and every other glyph lands exactly where it did.
+ */
+export function fixThaiMarks(doc: jsPDF): void {
+  const original = doc.text.bind(doc);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jsPDF's text() has eight overloads
+  (doc as any).text = function patched(text: any, x: number, y: number, ...rest: any[]) {
+    // autoTable hands every cell over as a *string array*, one entry per wrapped line — not as a
+    // string. Checking only for a string is what made the first version of this a silent no-op for
+    // every cell in the table.
+    const lines: string[] = typeof text === "string" ? [text] : Array.isArray(text) ? text : [];
+    if (lines.length === 0 || !lines.every((l) => typeof l === "string")) {
+      return original(text, x, y, ...rest);
+    }
+
+    const plans = lines.map(planThaiMarks);
+    if (plans.every((p) => p.raised.length === 0)) return original(text, x, y, ...rest);
+
+    // The whole scheme rests on Thai marks having a zero advance, which is what lets a mark be
+    // taken out of a line without moving anything after it. Rather than assume it, check it: a font
+    // that gave its marks width would silently shift every glyph past the first mark, so in that
+    // case draw the text untouched and accept the collision instead of mangling the line.
+    const zeroAdvance = plans.every((p, i) => doc.getTextWidth(p.base) === doc.getTextWidth(lines[i]));
+    if (!zeroAdvance) return original(text, x, y, ...rest);
+
+    const drawn = plans.map((p) => p.base);
+    const result = original(typeof text === "string" ? drawn[0] : drawn, x, y, ...rest);
+
+    // Both in document units: the font size is in points, and a line's advance comes back in points
+    // too, so each is divided by the points-per-unit factor before being used as a distance.
+    const rise = (doc.getFontSize() * MARK_RISE_EM) / doc.internal.scaleFactor;
+    const lineStep = doc.getLineHeight() / doc.internal.scaleFactor;
+    plans.forEach((plan, line) => {
+      for (const mark of plan.raised) {
+        original(mark.char, x + doc.getTextWidth(mark.prefix), y + line * lineStep - rise, ...rest);
+      }
+    });
+    return result;
+  };
+}
 
 /** Trims fully-empty trailing rows/columns so the PDF isn't mostly blank space. */
 function trimBounds(display: string[][], rows: number, cols: number) {
@@ -81,6 +146,9 @@ export async function exportSheetToPdf(sheet: SheetModel, computed: ComputedShee
   // fetched — a PDF with wrong glyphs beats no PDF.
   const thai = await registerThaiFont(doc);
   const font = thai ? THAI_FONT_NAME : undefined;
+  // Only worth doing with the Thai font in place: the fallback has no Thai glyphs to stack, and
+  // the rise is measured against this font's vowel heights.
+  if (thai) fixThaiMarks(doc);
   doc.setFontSize(14);
   doc.text(title, 14, 14);
 
