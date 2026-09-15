@@ -1,8 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { heuristicSuggest } from "@/lib/aiHeuristic";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/types";
+import { clientKey, createRateLimiter } from "@/lib/server/rateLimiter";
 
 export const runtime = "nodejs";
+
+/**
+ * This route takes no token — the assistant is part of the app and making a visitor authenticate
+ * to use it would be absurd — so a ceiling is the only thing standing between a script in a loop
+ * and the operator's Anthropic bill. Twenty a minute is far more than a person clicking "ask AI"
+ * will ever need and far less than a loop wants.
+ *
+ * Module scope, so the counters live as long as the server process. See rateLimiter.ts for what
+ * that does and does not buy on a multi-instance or serverless deployment.
+ */
+const limiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
 interface RequestBody {
   question?: string;
@@ -37,6 +49,15 @@ function parseLocale(value: unknown): Locale {
 }
 
 export async function POST(request: Request) {
+  // Before parsing the body: a refusal shouldn't cost the work of reading the request it refuses.
+  const verdict = limiter.check(clientKey(request.headers));
+  if (!verdict.allowed) {
+    return Response.json(
+      { error: "rate_limited", retryAfterSec: verdict.retryAfterSec },
+      { status: 429, headers: { "retry-after": String(verdict.retryAfterSec) } }
+    );
+  }
+
   let body: RequestBody;
   try {
     body = await request.json();

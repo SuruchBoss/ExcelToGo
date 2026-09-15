@@ -32,6 +32,13 @@ export default function AIAssistantPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q, selection: selectionAddress, locale }),
       });
+      // "Too many, too fast" is a different situation from "the AI is unreachable", and the user
+      // can act on it — so it says how long to wait instead of the generic connection error.
+      if (res.status === 429) {
+        const { retryAfterSec } = await res.json().catch(() => ({ retryAfterSec: 60 }));
+        setError(t.ai.rateLimited(Number(retryAfterSec) || 60));
+        return;
+      }
       if (!res.ok) throw new Error("request_failed");
       const data = await res.json();
       setSuggestion(data);

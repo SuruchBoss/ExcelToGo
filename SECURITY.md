@@ -108,3 +108,15 @@ project hosts for everyone.
 
 `ANTHROPIC_API_KEY` is read on the server only and is never sent to the browser. Keep it in
 `.env.local`, which is gitignored — `.env.example` is a template and holds no value.
+
+`/api/ai/formula` deliberately requires no token: the assistant is a feature of the app, not an
+admin tool. It is rate limited instead — **20 calls per minute per client address**, refused with
+`429` and a `Retry-After` — so an open endpoint cannot be looped against your Anthropic bill.
+
+The counters are held in the serving process's memory. Two instances behind a load balancer count
+separately and a serverless cold start forgets everything, so this is a guard against casual abuse
+and runaway scripts, **not a billing control**; a real one needs shared storage, which this project
+does not have. The address comes from `x-forwarded-for`, which a client can forge, so it is used
+for counting only and never for authorisation — and the limiter caps how many distinct keys it will
+hold, because otherwise a spray of forged addresses would exhaust memory and turn the limiter into
+the denial of service it exists to prevent.

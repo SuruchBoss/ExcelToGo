@@ -114,7 +114,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 519 tests",
+    eyebrow: "A side project · hand-written formula engine · 529 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -168,7 +168,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "519", label: "automated tests" },
+      { value: "529", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "What it can't do",
@@ -421,6 +421,7 @@ export const en: Messages = {
     askButton: "Ask AI",
     heuristicNote: "* AI isn't connected yet (set ANTHROPIC_API_KEY) — this suggestion is based on basic keyword matching",
     connectionError: "Sorry, something went wrong connecting to AI. Please try again.",
+    rateLimited: (seconds) => `Too many questions too quickly — try again in ${seconds}s.`,
     examples: [
       "Total all sales in this column",
       "Find the average test score",

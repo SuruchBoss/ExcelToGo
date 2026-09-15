@@ -354,6 +354,8 @@ export interface Messages {
     askButton: string;
     heuristicNote: string;
     connectionError: string;
+    /** Shown when the server refuses because this browser has asked too often. */
+    rateLimited: (seconds: number) => string;
     examples: string[];
     insertAt: (address: string) => string;
   };
