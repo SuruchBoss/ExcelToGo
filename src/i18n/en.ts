@@ -114,7 +114,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 529 tests",
+    eyebrow: "A side project · hand-written formula engine · 557 tests",
     headline: "Open an Excel file and keep working, in the browser",
     subheadline:
       "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
@@ -168,7 +168,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "529", label: "automated tests" },
+      { value: "557", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "What it can't do",
@@ -179,8 +179,8 @@ export const en: Messages = {
         body: "Tone marks stacked over an upper vowel (ที่, นี่, ดื่ม) are placed correctly now, but the rest of Thai shaping isn't there — the lowered marks that tall consonants like ป, ฟ and ฬ want, for instance.",
       },
       {
-        title: "Charts exported to .xlsx go as images",
-        body: "Open the file in Excel and the chart is there, in position, but you can't edit it as a chart — ExcelJS can't write chart XML. A picture that matches the data beats shipping nothing.",
+        title: "Charts in the PDF are still pictures",
+        body: "A chart exported to .xlsx is a real chart now — change a number in Excel and it redraws. In a PDF it stays a still image, because jsPDF has no chart of its own.",
       },
       {
         title: "No accounts, and nothing is saved to a cloud for you",

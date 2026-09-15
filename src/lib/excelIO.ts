@@ -2,6 +2,9 @@ import { commentKey } from "./cellComments";
 import { chartDataFrom } from "./charts";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
+import { colToLetters } from "./formulaEngine/address";
+import { PendingChart, injectCharts } from "./xlsxCharts";
+import { seriesRefsFrom } from "./xlsxChartXml";
 import ExcelJS from "exceljs";
 import { ComputedSheet, SheetModel, createEmptySheet } from "./sheet";
 import { isError } from "./formulaEngine/types";
@@ -586,17 +589,74 @@ async function writeCharts(workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
   }
 }
 
-/** Exports every tab as its own worksheet in a single .xlsx file, in order. */
-export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promise<Blob> {
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** Builds the workbook, optionally embedding charts as pictures on the way. */
+async function buildWorkbook(sheets: ExportableSheet[], picturesForCharts: boolean) {
   const workbook = new ExcelJS.Workbook();
   const usedNames = new Set<string>();
+  const names: string[] = [];
   for (const { name, sheet, computed } of sheets) {
-    const worksheet = workbook.addWorksheet(sanitizeSheetName(name, usedNames));
+    const sheetName = sanitizeSheetName(name, usedNames);
+    names.push(sheetName);
+    const worksheet = workbook.addWorksheet(sheetName);
     await writeSheetToWorksheet(worksheet, sheet, computed);
-    await writeCharts(workbook, worksheet, sheet, computed);
+    if (picturesForCharts) await writeCharts(workbook, worksheet, sheet, computed);
   }
-  const buffer = await workbook.xlsx.writeBuffer();
-  return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  return { buffer: await workbook.xlsx.writeBuffer(), names };
+}
+
+/**
+ * Exports every tab as its own worksheet in a single .xlsx file, in order.
+ *
+ * Charts go in as real chart parts, spliced into the finished package by `injectCharts` — ExcelJS
+ * writes no chart XML of its own. Open the result in Excel and the chart is a chart: change a
+ * number and it redraws, because it holds references to the cells rather than a picture of them.
+ *
+ * If that splice fails for any reason the export is rebuilt the old way, with each chart as a PNG.
+ * Rebuilding costs a second in a path that should never run, and the alternative — shipping a
+ * package with a dangling relationship — is a file Excel calls corrupt and refuses to open. A
+ * chart that has stopped updating is a much smaller loss than a workbook that won't open at all.
+ */
+export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promise<Blob> {
+  const { buffer, names } = await buildWorkbook(sheets, false);
+
+  const pending: PendingChart[] = [];
+  sheets.forEach(({ sheet, computed }, sheetIndex) => {
+    for (const chart of sheet.charts ?? []) {
+      const data = chartDataFrom(computed.values, chart.range);
+      if (data.series.length === 0) continue;
+      const series = seriesRefsFrom(
+        data,
+        names[sheetIndex],
+        chart.range,
+        colToLetters,
+        chart.seriesIndex ?? 0,
+        chart.kind === "pie"
+      );
+      if (series.length === 0) continue;
+      const anchor = chartAnchorOf(sheet, chart);
+      pending.push({
+        sheetIndex,
+        kind: chart.kind,
+        series,
+        title: chart.title,
+        // A chart is pinned to a cell; eight columns by fifteen rows is roughly the on-screen box
+        // and, unlike a pixel size, survives the different row heights of whoever opens it.
+        placement: { fromCol: anchor.col, fromRow: anchor.row, toCol: anchor.col + 8, toRow: anchor.row + 15 },
+      });
+    }
+  });
+
+  if (pending.length === 0) return new Blob([buffer], { type: XLSX_MIME });
+
+  try {
+    const withCharts = await injectCharts(buffer as ArrayBuffer, pending);
+    return new Blob([withCharts], { type: XLSX_MIME });
+  } catch {
+    const fallback = await buildWorkbook(sheets, true);
+    return new Blob([fallback.buffer], { type: XLSX_MIME });
+  }
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-529%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-557%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 529 automated tests.
+export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 557 automated tests.
 
 ---
 
@@ -154,7 +154,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 529-case Vitest suite |
+| `npm test` | Run the 557-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -310,9 +310,17 @@ in order under the table, each captioned with the range it reads. Under the tabl
 they sit on screen: a paginated table has already moved the cells somewhere else, so "the same place"
 means nothing on a page.
 
-**Not supported:** an exported chart is a **picture, not a live chart** — ExcelJS writes no chart XML
-at all (`addImage` is the entire drawing API) and jsPDF has no chart primitive either, so the image
-stops updating when the numbers change. A pie still draws one series at a time.
+**A chart in the exported `.xlsx` is a real chart, not a picture.** Open it in Excel, change a
+number, and the chart follows — it holds *references to the cells* rather than an image of them.
+ExcelJS writes no chart XML at all (`addImage` is its entire drawing API), so the OOXML chart parts
+are written by hand and spliced into the finished package; see `xlsxChartXml.ts` and
+`xlsxCharts.ts`. If that splice ever fails the export falls back to embedding pictures, because a
+package with a dangling relationship is one Excel calls corrupt and refuses to open — a much worse
+outcome than a chart that has stopped updating.
+
+**Not supported:** charts in the PDF are still pictures (jsPDF has no chart primitive). A pie still
+draws one series at a time. The chart parts carry no colour or theme styling, so whichever app opens
+the file applies its own defaults.
 
 ### ☁️ Cloud save (bring your own backend)
 
@@ -780,7 +788,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (529 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (557 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1017,6 +1025,8 @@ src/
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
     site.ts                  # The one canonical public URL shared by metadata, sitemap and robots
     thaiMarks.ts             # Finds tone marks stacked on an upper vowel that must be redrawn higher (tested)
+    xlsxChartXml.ts          # Builds the chart OOXML (chart part + drawing anchor) as pure strings (tested)
+    xlsxCharts.ts            # Splices chart parts into the finished .xlsx and wires the rels (tested)
     dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
     server/rateLimiter.ts    # Per-IP ceiling on /api/ai/formula (in-memory fixed window) (tested)
     server/urlGuard.ts       # SSRF guard: checks resolved addresses and every redirect (tested)
@@ -1218,7 +1228,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 529 cases across 27 files, via Vitest
+npm test      # 557 cases across 27 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
