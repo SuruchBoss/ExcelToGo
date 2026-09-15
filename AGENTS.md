@@ -7,13 +7,22 @@
 Run one command and get it green before committing:
 
 ```bash
-npm run verify     # lint → check:readme → test → build
+npm run verify     # lint → check:readme → test → build → check:a11y
 ```
 
-GitHub Actions รันสี่ด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24) —
+GitHub Actions รันห้าด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+ด่าน a11y แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
 รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same four gates on every push and PR (Node 20.19 / 22.12 / 24) — running them yourself
+GitHub Actions runs the same five gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y gate is its
+own job because it needs a browser) — running them yourself
 first is still faster than waiting for CI to tell you.
+
+`npm run check:a11y` รัน axe บนทั้งสองหน้า ที่ **390px และ 1280px** (WCAG 2.0/2.1/2.2 A+AA) แล้วเช็ก
+ว่าไม่มีการเลื่อนแนวนอนที่ 360/390/820/1280/1440 — สองความกว้างเพราะเคยพลาดมาแล้ว: audit ที่รัน
+เฉพาะความกว้างเดสก์ท็อปรายงาน 0 violations ทั้งที่ต่ำกว่า 640px มีปุ่มไม่มีชื่อ 8 ปุ่ม (ข้อความถูกซ่อนด้วย `sm:`)
+`npm run check:a11y` runs axe on both pages at **390px and 1280px** (WCAG 2.0/2.1/2.2 A+AA), then checks
+for sideways scroll at 360/390/820/1280/1440. Two widths because one was not enough: an audit run only at
+desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:
 `npm run check:readme` is dependency-free and catches what the eye misses:
@@ -52,8 +61,9 @@ first is still faster than waiting for CI to tell you.
 - ภาพหน้าจอถ่ายจาก **production build** (`npm run build && npm run start`) ไม่ใช่ `next dev`
   เพราะ dev overlay จะติดมาในภาพ — และเก็บไว้ที่ `public/screenshots/` ที่เดียว ใช้ร่วมกันทั้ง
   landing page และ README
-- ยืนยันฟีเจอร์ที่เห็นด้วยตาด้วย Playwright ชั่วคราว แล้ว **ลบสคริปต์กับ `npm uninstall playwright`
-  ก่อน commit** — `package.json`/lockfile ต้องไม่มี diff
+- ยืนยันฟีเจอร์ที่เห็นด้วยตาด้วย Playwright แล้ว **ลบสคริปต์ชั่วคราวก่อน commit** — `package.json`/lockfile
+  ต้องไม่มี diff **แต่ playwright กับ `@axe-core/playwright` เป็น devDependency จริงแล้ว** (ด่าน `check:a11y`)
+  จึงห้าม `npm uninstall` สองตัวนี้ ส่วนเครื่องมือชั่วคราวอย่างอื่น (pdfjs-dist, openpyxl ฯลฯ) ยังต้องถอนเหมือนเดิม
 - พัฒนาบนบรานช์ `claude/excel-sheet-ui-builder-8ooz26` และ merge เข้า `main` เฉพาะตอนที่สั่งเท่านั้น
 
 <!-- BEGIN:nextjs-agent-rules -->

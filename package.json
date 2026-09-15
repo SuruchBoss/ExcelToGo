@@ -25,7 +25,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "check:readme": "node scripts/check-readme.mjs",
-    "verify": "npm run lint && npm run check:readme && npm test && npm run build"
+    "verify": "npm run lint && npm run check:readme && npm test && npm run build && npm run check:a11y",
+    "check:a11y": "node scripts/check-a11y.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
@@ -43,12 +44,14 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.7"

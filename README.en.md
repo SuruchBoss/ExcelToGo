@@ -159,7 +159,8 @@ Other available commands:
 | `npm run lint` | Check code quality with ESLint |
 | `npm test` | Run the 577-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
-| `npm run verify` | Everything, before a push: lint → check:readme → test → build |
+| `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
+| `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -1096,6 +1097,7 @@ src/
     sheet-ui.ts               # Types for the grid's selection state
 .github/workflows/
   ci.yml                     # CI: lint → check:readme → test → build on every push/PR, Node 20.19/22.12/24
+                             #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
 public/
@@ -1313,7 +1315,7 @@ CI: `npm run verify` bundles it — `lint` → `check:readme` → `test` → `bu
 whole project, including the two languages' `Messages` parity). **It has to be green before every push**; the
 full rule lives in `AGENTS.md`.
 
-**GitHub Actions** (`.github/workflows/ci.yml`) runs those same four gates on every push and pull request,
+**GitHub Actions** (`.github/workflows/ci.yml`) runs those same five gates on every push and pull request,
 across **Node 20.19, 22.12 and 24** — the first two being both floors `engines` declares, so the claim is
 tested rather than asserted. They run as separate steps so the run summary names the gate that failed instead
 of showing one opaque red cross.
@@ -1364,10 +1366,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Mobile/tablet support** — done (see ✨ Features): the panel opens over the screen, the
       toolbar folds to icons, a second tap edits a cell, 44px targets, and a range is dragged out
       with a finger from a grip on the selection's corner (which scrolls the sheet to meet it)
-- [ ] **Accessibility checks in CI** — axe runs by hand today, and that has already cost something: the
-      previous audit ran at desktop widths only, so it never saw that eight toolbar buttons have no
-      accessible name below 640px, where `sm:` hides their labels. Catching that needs both widths on
-      every PR.
+- [x] **Accessibility checks in CI** — done: `npm run check:a11y` runs axe (WCAG 2.0/2.1/2.2 A+AA) on both
+      pages at 390px and 1280px and checks for sideways scroll at five widths, as its own CI job. **Two
+      widths is the whole point** — the previous audit ran at desktop width only and reported zero
+      violations while eight buttons below 640px had no accessible name. Still open: states you have to
+      open first (panels, menus, popovers) aren't checked.
 - [ ] **Direct CSV import/export** (currently `.xlsx` only)
 - [x] **Template support for imported files** — done (see ✨ Features): cell locking, dropdowns and column
       widths are read from a protected file, every route into the structure is guarded, and export puts the

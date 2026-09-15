@@ -54,3 +54,44 @@ jobs:
       # dictionaries, so a missing translation key fails here.
       - name: Build
         run: npm run build
+
+  # Its own job rather than a fifth step in the matrix: it needs a browser, and downloading one
+  # three times to check the same HTML would triple the cost for no extra signal. One current Node
+  # is enough — this gate is about the rendered page, not about the runtime.
+  accessibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.12"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Keyed on the resolved Playwright version: a browser cached against an older one is the
+      # wrong build, and Playwright refuses it rather than running it.
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # System libraries aren't in the cached browser directory, so they're installed even on a hit.
+      - name: Install Chromium system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # The gate serves a production build, so one has to exist.
+      - name: Build
+        run: npm run build
+
+      - name: axe on both pages, at a phone width and a desktop one
+        run: npm run check:a11y
