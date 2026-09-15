@@ -34,8 +34,10 @@ A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 577 automated tests.
+workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
+selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
+bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 577 automated tests.
 
 ---
 
@@ -1325,8 +1327,17 @@ What's not done yet, and why — to show this is a known gap, not something forg
       history, and sharing a workbook with someone else
 - [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and following
       the live values, placed on the grid, dragged and resized there, anchored to a cell, and carried
-      into both the `.xlsx` and the PDF. Still open: an exported chart is a picture rather than a
-      live chart, because ExcelJS writes no chart XML
+      into both the `.xlsx` and the PDF. **A chart in the `.xlsx` is now a real, editable chart** —
+      the OOXML chart parts are written by hand and spliced into what ExcelJS produces. Still open:
+      charts in the PDF are still pictures (jsPDF has no chart primitive), and a pie draws one
+      series at a time
+- [x] **Pivot tables** — done (see ✨ Features): group by several columns, fan one field out across
+      the top, summarise with sum/count/average/min/max, and get an ordinary sheet back that can be
+      sorted, charted and exported. Still open: the summary doesn't follow its source, one column
+      field at a time, and no filters of its own
+- [x] **A ceiling on `/api/ai/formula`** — done: 20 calls a minute per address, refused with `429`
+      and a `Retry-After`. Still open: the counters are per process, so this guards against casual
+      abuse rather than acting as a billing control across instances
 - [ ] **Merged cells** and freezing beyond the already-sticky header row/column
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
