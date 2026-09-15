@@ -2,6 +2,7 @@ import { csvToTable, extractRecords, getByPath, jsonToTable, tableFromRecords } 
 import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "@/lib/dataSources/paginate";
 import { RateLimitError, readRateLimit } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, TableData } from "@/lib/dataSources/types";
+import { assertFetchable } from "./urlGuard";
 
 export type SourceInput = Pick<DataSourceConfig, "type" | "url" | "method" | "authHeader" | "jsonPath" | "maxRows">;
 
@@ -9,21 +10,60 @@ export type SourceInput = Pick<DataSourceConfig, "type" | "url" | "method" | "au
 const REQUEST_TIMEOUT_MS = 15_000;
 /** Across every page of one refresh, so a source with many pages still finishes in bounded time. */
 const TOTAL_BUDGET_MS = 45_000;
+/** Redirect hops followed per request, each one re-checked. */
+const MAX_REDIRECTS = 5;
 
 type FetchedPage = { body: unknown; linkHeader: string | null; records: number };
 
-async function fetchPage(url: string, src: SourceInput): Promise<{ text: string; linkHeader: string | null }> {
+/**
+ * One request, with the destination checked before it is made and again after every redirect.
+ *
+ * Redirects are followed here rather than by fetch() because fetch's own following would take the
+ * request wherever it is sent without asking — and "302 to 169.254.169.254" is exactly how a
+ * checked URL becomes an unchecked one.
+ *
+ * `sameOrigin` marks the app's own demo endpoints, which are reached through a relative path and
+ * are the one case where a loopback address is not a warning sign: the host isn't user-controlled,
+ * it is this deployment.
+ */
+async function fetchPage(
+  url: string,
+  src: SourceInput,
+  sameOrigin: boolean
+): Promise<{ text: string; linkHeader: string | null }> {
   const headers: Record<string, string> = { Accept: "application/json, text/csv, text/plain;q=0.9, */*;q=0.8" };
-  if (src.authHeader?.name && src.authHeader.value) headers[src.authHeader.name] = src.authHeader.value;
+  const secret = src.authHeader?.value;
+  if (src.authHeader?.name && secret) headers[src.authHeader.name] = secret;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  let res: Response;
-  try {
-    res = await fetch(url, { method: src.method ?? "GET", headers, signal: controller.signal, cache: "no-store" });
-  } finally {
-    clearTimeout(timeout);
+  let target = url;
+  let res: Response | null = null;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (!sameOrigin) await assertFetchable(target);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      res = await fetch(target, {
+        method: src.method ?? "GET",
+        headers,
+        signal: controller.signal,
+        cache: "no-store",
+        redirect: "manual",
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+    if (!location) break;
+    if (hop === MAX_REDIRECTS) throw new Error("Too many redirects");
+    target = new URL(location, target).toString();
+    // Past the first hop the destination is chosen by the far end, so it is checked even when the
+    // source started out as one of this app's own endpoints.
+    sameOrigin = false;
   }
+
+  if (!res) throw new Error("No response");
   const limited = readRateLimit(res.status, res.headers);
   if (limited) throw new RateLimitError(limited);
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
@@ -51,8 +91,11 @@ function parseBody(text: string): { json: unknown } | { csv: string } {
  * data — showing a silently partial table is the one outcome worth avoiding here.
  */
 export async function executeSource(src: SourceInput, origin: string): Promise<TableData> {
-  const startUrl = src.url.startsWith("/") ? new URL(src.url, origin).toString() : src.url;
-  const first = await fetchPage(startUrl, src);
+  // A leading slash means one of this app's own routes; anything else is a URL the user typed and
+  // has to clear the guard.
+  const isRelative = src.url.startsWith("/");
+  const startUrl = isRelative ? new URL(src.url, origin).toString() : src.url;
+  const first = await fetchPage(startUrl, src, isRelative);
   const fetchedAt = new Date().toISOString();
 
   const parsed = parseBody(first.text);
@@ -99,7 +142,8 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
     currentUrl = nxt.url;
     let next: { text: string; linkHeader: string | null };
     try {
-      next = await fetchPage(currentUrl, src);
+      // Paging URLs come from the response body, so they are never treated as same-origin.
+      next = await fetchPage(currentUrl, src, false);
     } catch (err) {
       // A rate limit partway through is the one failure worth carrying forward rather than just
       // swallowing: the rows already collected are still good, but the caller has to know to wait

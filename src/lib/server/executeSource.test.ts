@@ -1,4 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+// The URL guard resolves hostnames for real, and api.test doesn't exist. Pointing DNS at a public
+// address keeps the guard switched on for these tests — which matters, because a guard that is
+// mocked away here would be untested on the path that actually uses it.
+vi.mock("dns", () => ({ promises: { lookup: async () => [{ address: "93.184.216.34", family: 4 }] } }));
+
 import { MAX_PAGES } from "@/lib/dataSources/paginate";
 import { RateLimitError } from "@/lib/dataSources/rateLimit";
 import { executeSource } from "./executeSource";
@@ -252,5 +258,72 @@ describe("executeSource rate limiting", () => {
 
     expect(table.rows).toHaveLength(2);
     expect(table.retryAfterSec).toBeUndefined();
+  });
+});
+
+describe("the URL guard on the path that actually fetches", () => {
+  it("refuses a source pointed straight at cloud metadata", async () => {
+    // The reason this guard exists: the server fetches the URL, so this would put the instance's
+    // credentials into a spreadsheet.
+    stubFetch({});
+    await expect(
+      executeSource({ type: "rest", url: "http://169.254.169.254/latest/meta-data/" }, ORIGIN)
+    ).rejects.toThrow(/not a public address/);
+  });
+
+  it("refuses a source pointed at the server's own loopback", async () => {
+    stubFetch({});
+    await expect(executeSource({ type: "rest", url: "http://127.0.0.1:9200/_all" }, ORIGIN)).rejects.toThrow(
+      /not a public address/
+    );
+  });
+
+  it("refuses a non-http scheme", async () => {
+    stubFetch({});
+    await expect(executeSource({ type: "rest", url: "file:///etc/passwd" }, ORIGIN)).rejects.toThrow(/http/);
+  });
+
+  it("re-checks after a redirect, which is how a checked URL becomes an unchecked one", async () => {
+    // fetch() following redirects by itself would take the request wherever the far end points,
+    // past the check that was made on the original URL.
+    stubFetch({
+      "https://api.test/start": { body: "", status: 302, headers: { location: "http://169.254.169.254/" } },
+    });
+    await expect(executeSource({ type: "rest", url: "https://api.test/start" }, ORIGIN)).rejects.toThrow(
+      /not a public address/
+    );
+  });
+
+  it("follows an ordinary redirect to a public host", async () => {
+    stubFetch({
+      "https://api.test/old": { body: "", status: 301, headers: { location: "https://api.test/new" } },
+      "https://api.test/new": { body: [{ a: 1 }] },
+    });
+    const table = await executeSource({ type: "rest", url: "https://api.test/old" }, ORIGIN);
+    expect(table.rows).toHaveLength(1);
+  });
+
+  it("stops a redirect loop instead of following it forever", async () => {
+    stubFetch({
+      "https://api.test/a": { body: "", status: 302, headers: { location: "https://api.test/b" } },
+      "https://api.test/b": { body: "", status: 302, headers: { location: "https://api.test/a" } },
+    });
+    await expect(executeSource({ type: "rest", url: "https://api.test/a" }, ORIGIN)).rejects.toThrow(/redirect/i);
+  });
+
+  it("lets the app reach its own demo routes, which are relative and not user-controlled", async () => {
+    // These resolve to the deployment itself, so a loopback address here is not a warning sign.
+    stubFetch({ "https://app.test/api/demo/sales": { body: [{ a: 1 }] } });
+    const table = await executeSource({ type: "rest", url: "/api/demo/sales" }, ORIGIN);
+    expect(table.rows).toHaveLength(1);
+  });
+
+  it("still checks where a relative source is redirected to", async () => {
+    stubFetch({
+      "https://app.test/api/demo/sales": { body: "", status: 302, headers: { location: "http://10.0.0.5/secrets" } },
+    });
+    await expect(executeSource({ type: "rest", url: "/api/demo/sales" }, ORIGIN)).rejects.toThrow(
+      /not a public address/
+    );
   });
 });

@@ -24,7 +24,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-450%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-498%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 450 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 498 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -184,7 +184,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 450 เคสด้วย Vitest |
+| `npm test` | รัน unit test 498 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build |
 
@@ -218,9 +218,8 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 > **ถ้า deploy เป็น demo สาธารณะ ให้ตั้ง `NEXT_PUBLIC_DEMO_MODE=1` ด้วย**
 >
 > ตัวแปรนี้ปิดฟีเจอร์ข้อมูลสดทั้งฝั่ง API (ทุก `/api/sources*` ตอบ 403) และฝั่ง UI (ซ่อนปุ่ม "ข้อมูล")
-> เหตุผลอยู่ใน [`SECURITY.md`](SECURITY.md): API ชุดนั้นไม่มี authentication และสั่งให้เซิร์ฟเวอร์
-> ยิง URL อะไรก็ได้ ซึ่งบน cloud คือช่องทาง SSRF — พอปิดแล้วที่เหลือทำงานในเบราว์เซอร์ล้วน
-> จึงเปิดให้คนทั่วไปใช้ได้อย่างสบายใจ
+> ถึงแม้ตอนนี้ API จะมี auth และกัน SSRF แล้ว (ดู [`SECURITY.md`](SECURITY.md)) การปิดไปเลย
+> ก็ยังตรงกับเจตนาของ demo มากกว่า — ไม่มีอะไรให้ปลดล็อก และที่เหลือทำงานในเบราว์เซอร์ล้วน
 >
 > อีกเรื่อง: ฟีเจอร์ข้อมูลสดเขียนไฟล์ลง `data/sources.json` ซึ่งบน serverless host อย่าง Vercel
 > ทำไม่ได้อยู่แล้วเพราะ filesystem อ่านได้อย่างเดียว ปิดไปจึงตรงกับความจริงมากกว่า
@@ -516,6 +515,26 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 
 <p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
+**ฟีเจอร์นี้ล็อกไว้ ต้องปลดก่อนใช้** — เพราะมันสั่งให้*เซิร์ฟเวอร์*ไปยิง URL แทนเรา ซึ่งเป็นความสามารถที่
+ต้องมีคนคุม ไม่ตั้ง `SOURCES_ADMIN_TOKEN` = API ตอบ 403 ทุกคำขอ ไม่ใช่เปิดทิ้งไว้ให้ใครก็ได้ที่เปิดหน้าเว็บ
+
+<p align="center"><img src="public/screenshots/24-sources-locked.png" width="820"></p>
+
+สามชั้นที่กันไว้:
+
+| | |
+|---|---|
+| **ต้องมีโทเคน** | ไม่ตั้ง = ปิดทั้งหมด (403) · เทียบแบบ constant-time · เก็บใน `sessionStorage` ปิดเบราว์เซอร์แล้วถามใหม่ |
+| **ยิงเข้าวงในไม่ได้** | เช็ก**ทุก IP ที่ DNS ตอบกลับมา** และเช็กซ้ำ**ทุก redirect** — loopback, วงในตาม RFC 1918, `169.254.169.254` (metadata ของ AWS/GCP/Azure), IPv6 link-local/unique-local และ IPv4 ที่ซ่อนใน IPv6 **ทุกรูปแบบการเขียน** |
+| **credential เข้ารหัสบนดิสก์** | AES-256-GCM ด้วย `SOURCES_SECRET_KEY` · ไม่ตั้งคีย์ = ไม่ยอมเก็บ credential เลย ดีกว่าเก็บเป็น plaintext |
+
+เรื่องที่พลาดง่ายและเจอตอนทดสอบจริง: `new URL("http://[::ffff:169.254.169.254]/")` เขียน host ใหม่เป็น
+`::ffff:a9fe:a9fe` ตัวกรองที่รู้จักแค่รูปแบบจุดทศนิยมจะปล่อยผ่านทันที — ตอนนี้แกะที่อยู่ออกมาเทียบทุกแบบแล้ว
+
+**ยังไม่ปิดสนิท 100%:** ตรวจที่อยู่เสร็จแล้วค่อยต่อ ระหว่างนั้นชื่อโดเมนอาจถูก resolve ใหม่เป็นอย่างอื่นได้
+(DNS rebinding) จะปิดสนิทต้องล็อกการเชื่อมต่อไว้กับ IP ที่ตรวจแล้ว ซึ่ง `fetch` ของ Node ไม่เปิดให้ทำ —
+เขียนบอกไว้ใน `SECURITY.md` ตรง ๆ ดีกว่าเคลมว่าแน่นหนา
+
 **API แบ่งหน้า (pagination)** — ปัญหาคือ API ส่วนใหญ่ส่งมาทีละหน้า ถ้าดึงแค่ครั้งเดียวผู้ใช้จะได้ 25 แถวแรก
 แล้วเข้าใจว่านั่นคือข้อมูลทั้งหมด ระบบจึงไล่ดึงหน้าถัดไปให้เอง โดย**ไม่ต้องตั้งค่าอะไรเพิ่ม** — อ่านสัญญาณที่ API
 บอกมาอยู่แล้ว ไล่ตามลำดับนี้:
@@ -668,7 +687,7 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (450 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (498 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -895,6 +914,10 @@ src/
     gridGeometry.ts          # ตำแหน่งแถว-คอลัมน์เป็นพิกเซล + จุดที่กราฟใหม่ไปวาง (ใช้ร่วมกับตาราง
                               # เพื่อให้ทั้งสองใช้ขนาดเดียวกันเป๊ะ) (มี test)
     demoMode.ts              # สวิตช์ปิดฟีเจอร์ข้อมูลสดสำหรับ demo สาธารณะ (อ่าน NEXT_PUBLIC_DEMO_MODE)
+    dataSources/sourcesToken.ts  # โทเคนผู้ดูแลฝั่งเบราว์เซอร์ (เก็บใน sessionStorage)
+    server/urlGuard.ts       # กัน SSRF: ตรวจ IP ที่ DNS ตอบ + ทุก redirect ก่อนยิงจริง (มี test)
+    server/sourcesAuth.ts    # ประตูของ API ข้อมูลสด ไม่ตั้งโทเคน = ปิดทั้งหมด (มี test)
+    server/secretBox.ts      # เข้ารหัส credential ของแหล่งข้อมูลด้วย AES-256-GCM (มี test)
     cloud/config.ts          # มี backend คลาวด์ต่ออยู่ไหม (ปิดไว้ถ้าไม่ตั้ง env) (มี test)
     cloud/workbook.ts        # รูปแบบงานที่เก็บบนคลาวด์ + กติกาการอ่านกลับและการชนกัน (มี test)
     cloud/client.ts          # ตัวเชื่อม Supabase (import แบบ dynamic) + auth และ CRUD ของงาน
@@ -1073,7 +1096,7 @@ flowchart LR
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 450 เคส ใน 24 ไฟล์ ด้วย Vitest
+npm test      # 498 เคส ใน 27 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -1092,12 +1115,15 @@ npm test      # 450 เคส ใน 24 ไฟล์ ด้วย Vitest
 | `sheetSort.test.ts` | 7 | ฮิวริสติกตรวจจับขอบเขต+หัวตาราง และการเรียงลำดับ (รวมกรณีค่าว่าง, จำกัดคอลัมน์ที่ย้าย) |
 | `jsonToTable.test.ts` | 10 | หา array ของ record ในการตอบกลับ, แตก object ซ้อนเป็นคอลัมน์, ตรวจจับคอลัมน์ตัวเลข, KPI object แถวเดียว |
 | `paginate.test.ts` | 19 | ตรวจจับหน้าถัดไปจาก Link header / ฟิลด์ next / cursor / พารามิเตอร์ใน URL, การหยุดเมื่อ next เป็น null, ค่าที่ไม่ใช่ลิงก์ |
-| `executeSource.test.ts` | 20 | ลูปไล่ดึงหน้าจริง (stub fetch): ขีดจำกัดแถว, เพดาน 20 หน้า, กันลูปวน, หน้ากลางพัง, รวมคอลัมน์ข้ามหน้า, auth header ทุกหน้า, 429 กลางทาง |
+| `executeSource.test.ts` | 28 | ลูปไล่ดึงหน้าจริง (stub fetch): ขีดจำกัดแถว, เพดาน 20 หน้า, กันลูปวน, หน้ากลางพัง, รวมคอลัมน์ข้ามหน้า, auth header ทุกหน้า, 429 กลางทาง และตัวกัน SSRF บนเส้นทางจริง (รวม redirect ไปที่อยู่วงใน) |
 | `rateLimit.test.ts` | 20 | อ่าน `Retry-After` (วินาที/HTTP date) และ `X-RateLimit-Reset` ทุกรูปแบบ, แยก 403 ที่โควตาหมดออกจาก 403 ธรรมดา, การคำนวณ backoff |
 | `sheetMerges.test.ts` | 15 | ช่องไหนถูก merge กลืน, การเลื่อน merge ตอนแทรก/ลบแถว-คอลัมน์, merge ที่เหลือช่องเดียวถูกทิ้ง |
 | `sheetTemplate.test.ts` | 14 | เซลล์ไหนล็อก/กรอกได้, ตัวเลือก dropdown แบบ inline และแบบอ้างช่วง, แปลงความกว้างคอลัมน์ |
 | `excelIO.test.ts` | 28 | สร้างไฟล์ .xlsx จริงแล้ววนครบรอบ: อ่านช่องกรอก/dropdown/ความกว้าง, ไฟล์ที่ไม่ protect ไม่ใช่แม่แบบ, export แล้ว import กลับได้เหมือนเดิม, และรูปแบบ (แถบสี/ขนาดตัวอักษร/เส้นขอบ/ความสูงแถว/merge) ครบรอบ รวมถึงกฎจัดรูปแบบตามเงื่อนไขทั้ง 5 แบบ และโน้ตของเซลล์ (ทั้งที่เขียนเป็นข้อความธรรมดาและ rich text ของ Excel) |
 | `charts.test.ts` | 42 | อ่านช่วงเป็นชุดข้อมูล+ป้ายกำกับ (รวมกรณีคอลัมน์ซ้ายเป็นข้อความ), ช่องว่างเมื่อไม่ใช่ตัวเลข, แกนที่รวมศูนย์, การย้าย/ย่อขยาย/หนีบกรอบไว้ในชีต, คำอธิบายสีตามชนิดกราฟ, การเลื่อนตามแทรก/ลบ |
+| `server/urlGuard.test.ts` | 21 | ที่อยู่ที่ห้ามยิงถึง (loopback, วงใน, metadata ของคลาวด์, IPv6 link-local), IPv4 ที่ซ่อนใน IPv6 ทุกรูปแบบการเขียน, scheme ที่ไม่ใช่ http, และ allowlist |
+| `server/sourcesAuth.test.ts` | 9 | ไม่ตั้งโทเคน = ปิดทั้งหมด, โทเคนถูก/ผิด/เป็นแค่บางส่วน, แยก "ปิดอยู่" ออกจาก "โทเคนผิด" |
+| `server/secretBox.test.ts` | 10 | เข้ารหัส/ถอดรหัส credential, ciphertext ไม่ซ้ำ, ตรวจจับการแก้ไข, ปฏิเสธเมื่อไม่มีคีย์, อ่านของเดิมที่เป็น plaintext ได้ |
 | `cloud/cloud.test.ts` | 15 | เปิด/ปิดตามตัวแปรแวดล้อม (รวมกรณีตั้งครึ่งเดียว), รูปแบบงานที่เก็บและการวนกลับผ่าน JSON, ปฏิเสธไฟล์จากเวอร์ชันใหม่กว่า, ตรวจจับการบันทึกทับจากอีกเครื่อง |
 | `pdfFont.test.ts` | 5 | ฝังฟอนต์ไทยลง PDF, โหลดครั้งเดียวต่อหนึ่งหน้า, ถอยไปใช้ฟอนต์เดิมเมื่อโหลดไม่ได้แทนที่จะพังทั้งไฟล์ |
 | `cellComments.test.ts` | 17 | เขียน/ลบโน้ต, ตัดช่องว่าง, เลื่อนตามแทรกแถว-คอลัมน์, โน้ตหายไปพร้อมแถวที่ถูกลบ |

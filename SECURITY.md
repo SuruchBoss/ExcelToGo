@@ -15,37 +15,66 @@ are welcome and will be credited unless you'd rather not be.
 
 Only the `main` branch. There are no released versions or maintained branches yet.
 
-## Known limitations — read this before deploying
+## Live data sources: how they are guarded
 
-Most of the app runs entirely in the browser: the spreadsheet, the formula engine, import/export
-and conditional formatting never send your data anywhere. Sheets live in that browser's
+Most of the app runs entirely in the browser: the spreadsheet, the formula engine, import/export,
+charts and conditional formatting never send your data anywhere. Sheets live in that browser's
 `localStorage`.
 
-The **live data sources** feature is different, and is a prototype. Three things about it matter
-if you put this on a server that other people can reach:
+The **live data sources** feature is the exception, because it asks the *server* to fetch a URL on
+your behalf. Three things guard it, and all three matter if you put this where other people can
+reach it.
 
-1. **The data-source API has no authentication.** `/api/sources` and `/api/sources/[id]` are open
-   to anyone who can reach the app. There are no user accounts, so there is nothing to log in to.
-   Anyone able to load the page can create, edit and delete sources.
+### 1. The API is off unless you switch it on
 
-2. **A source can point at any URL, and the server will fetch it.** There is no allowlist and no
-   block on internal addresses, so a source pointed at a link-local or private address (cloud
-   instance metadata, an internal admin service, `localhost`) will be fetched *by the server*, and
-   the response shown in the sheet. On a cloud host this is a server-side request forgery route to
-   credentials and internal services.
+`/api/sources`, `/api/sources/[id]`, `/api/sources/[id]/data` and `/api/sources/test` all require
+`SOURCES_ADMIN_TOKEN`, sent as `X-Sources-Token` (or `Authorization: Bearer`). With no token
+configured the API **refuses every request with 403 `sources_disabled`** rather than serving
+anybody — being unreachable is only a bad default if the alternative isn't "anyone on the internet
+can drive the server's HTTP client", and it is.
 
-3. **Source credentials are stored in plaintext.** An auth header attached to a source is written
-   to `data/sources.json` on the server's filesystem. It is masked (`••••••••`) when sent back to
-   the browser and is gitignored, so it does not reach the repository — but anyone with read access
-   to the host, its backups, or its disk images can read it.
+One shared operator token rather than accounts, because that matches the documented shape of the
+feature: one technical person sets the sources up, everyone else just sees the data. The browser
+keeps it in `sessionStorage`, so closing the browser asks again.
 
-**Consequence:** run it locally, or behind an authenticating proxy on a network you trust. Do not
-expose an instance to the public internet while the live-data feature is enabled unless you have
-added authentication and restricted which hosts a source may fetch.
+A wrong token is compared in constant time, and "switched off" and "wrong token" are reported
+differently so an operator can tell which they are looking at.
 
-These are limitations of the current scope rather than bugs, which is why they are written down
-here instead of being reported privately. A report that one of them can be reached in a way this
-page does not describe is still worth sending.
+### 2. A source cannot reach your private network
+
+Before every request — and again after **every redirect**, because a 302 is how a checked URL
+becomes an unchecked one — the destination is resolved and every address it resolves to is checked.
+Blocked: loopback, link-local (including `169.254.169.254`, the cloud metadata endpoint on AWS, GCP
+and Azure alike), RFC 1918 private ranges, carrier-grade NAT, multicast, and the reserved and
+documentation ranges. IPv6 link-local and unique-local go too, as do IPv4 addresses embedded in
+IPv6 in **any** of their spellings — `::ffff:169.254.169.254`, the hex form `::ffff:a9fe:a9fe` that
+a URL normalises it to, and the deprecated `::a9fe:a9fe`. Only `http` and `https` are allowed.
+
+Set `SOURCES_ALLOWED_HOSTS` to a comma-separated list to narrow it further to named hosts. The
+address checks still apply on top of it: being allowlisted is not a licence to point at loopback.
+
+**What this does not fully close:** the address is checked and then the connection is made, and in
+between the name could in principle be re-resolved to something else. Closing that completely means
+pinning the connection to the checked address, which Node's `fetch` does not expose. The bar is
+raised a very long way; it is not claimed to be airtight.
+
+### 3. Source credentials are encrypted at rest
+
+An auth header attached to a source is encrypted with AES-256-GCM under `SOURCES_SECRET_KEY` before
+it is written to `data/sources.json`, and decrypted only at the moment it is put on an outgoing
+request. Without that key configured, the app **refuses to store a credential** rather than writing
+one in the clear. Values written before this existed are still readable and are re-encrypted the
+next time that source is saved.
+
+This does not make the file safe to publish — somebody who can read the file can usually read the
+environment too — but it stops the ordinary losses: a backup copied somewhere less guarded, a
+tarball pasted into a chat, a snapshot restored onto another machine. GCM also means a tampered
+ciphertext fails loudly instead of quietly becoming somebody's `Authorization` header.
+
+### Still true
+
+The data file is per-deployment, not per-user: anyone holding the operator token sees and edits the
+same set of sources. That is the intended shape of the feature, not an oversight.
 
 ## Cloud save is optional, and it is your database
 

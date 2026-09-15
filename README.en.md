@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-450%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-498%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -35,7 +35,7 @@ of memorizing syntax, an AI assistant that suggests formulas from a natural-lang
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, and full-fidelity Excel/PDF
-export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 450 automated tests.
+export, plus optional bring-your-own-backend cloud save. Bilingual UI (Thai/English), 498 automated tests.
 
 ---
 
@@ -189,7 +189,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 450-case Vitest suite |
+| `npm test` | Run the 498-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build |
 
@@ -224,10 +224,9 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 > **Deploying a public demo? Set `NEXT_PUBLIC_DEMO_MODE=1` as well.**
 >
 > It switches the live-data feature off on both sides: every `/api/sources*` route answers 403, and the
-> UI stops offering the "Data" button. [`SECURITY.md`](SECURITY.md) explains why — that API has no
-> authentication and will make the *server* fetch any URL a visitor gives it, which on a cloud host is
-> a server-side request forgery route. With it off, everything left runs in the browser, which is safe
-> to hand to strangers.
+> UI stops offering the "Data" button. That API now requires an operator token and refuses to fetch
+> private addresses (see [`SECURITY.md`](SECURITY.md)), but switching it off outright still matches
+> what a demo is for: there is nothing to unlock, and everything left runs in the browser.
 >
 > It also matches reality on a serverless host: sources are persisted to `data/sources.json`, and
 > Vercel's filesystem is read-only, so the feature could not work there anyway.
@@ -565,6 +564,29 @@ source it came from and how often it updates, with **Refresh / Change / Remove**
 
 <p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
 
+**The feature is locked until you unlock it** — it tells the *server* to fetch a URL for you, which
+is a capability that needs an owner. With `SOURCES_ADMIN_TOKEN` unset the API answers 403 to
+everything rather than being left open to whoever loads the page.
+
+<p align="center"><img src="public/screenshots/24-sources-locked.png" width="820"></p>
+
+Three guards:
+
+| | |
+|---|---|
+| **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
+| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local and unique-local, and IPv4 embedded in IPv6 in **every spelling** |
+| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear |
+
+The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
+rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
+metadata service straight through. The address is now unpacked and checked in every spelling.
+
+**Not fully closed:** the address is checked and then the connection is made, and in between the
+name could be re-resolved to something else. Closing that needs the connection pinned to the checked
+address, which Node's `fetch` does not expose — `SECURITY.md` says so plainly rather than claiming
+the guard is airtight.
+
 **Paginated APIs** — most APIs hand back one page at a time, so a single fetch gets the user the
 first 25 rows and leaves them believing that's all the data. Following pages are therefore fetched
 automatically, with **nothing extra to configure** — the signals APIs already send are read in this
@@ -739,7 +761,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (450 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (498 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -972,6 +994,10 @@ src/
     gridGeometry.ts          # Row/column positions in pixels + where a new chart lands — shared with the
                               # grid so the two agree on exactly the same sizes (tested)
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
+    dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
+    server/urlGuard.ts       # SSRF guard: checks resolved addresses and every redirect (tested)
+    server/sourcesAuth.ts    # The gate on the live-data API — no token means off (tested)
+    server/secretBox.ts      # Encrypts a source's credential with AES-256-GCM (tested)
     cloud/config.ts          # Whether a cloud backend is attached at all (off unless set) (tested)
     cloud/workbook.ts        # The stored workbook shape, reading it back, and the conflict rule (tested)
     cloud/client.ts          # The Supabase client (dynamically imported), auth and workbook CRUD
@@ -1166,7 +1192,7 @@ flowchart LR
 ## 🧪 Testing
 
 ```bash
-npm test      # 450 cases across 24 files, via Vitest
+npm test      # 498 cases across 27 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1186,12 +1212,15 @@ tool, not a permanent regression suite).
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
 | `jsonToTable.test.ts` | 10 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects |
 | `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
-| `executeSource.test.ts` | 20 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, auth header on every page, a mid-chain 429 |
+| `executeSource.test.ts` | 28 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, auth header on every page, a mid-chain 429, and the SSRF guard on the path that actually fetches (including a redirect to a private address) |
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
 | `excelIO.test.ts` | 28 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
+| `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
+| `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
+| `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
 | `cloud/cloud.test.ts` | 15 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |

@@ -62,6 +62,13 @@ export interface Messages {
     confirmRemove: (name: string) => string;
     inSheet: string;
     inSheetEmpty: string;
+    /** The operator token that unlocks the data-source API. */
+    tokenLabel: string;
+    tokenHint: string;
+    tokenPlaceholder: string;
+    tokenRejected: string;
+    unlock: string;
+    lock: string;
     unlink: string;
     liveCellTitle: (source: string) => string;
     liveCellReadOnly: string;

@@ -9,6 +9,7 @@ import { cellRef } from "@/lib/formulaEngine/address";
 import { useT } from "@/i18n";
 import SourceRow from "./SourceRow";
 import SourceSetupDialog from "./SourceSetupDialog";
+import SourcesUnlock, { useSourcesToken } from "./SourcesUnlock";
 import { valueLabel } from "./valueLabel";
 
 /** The side panel stays a short list: what's connected, and one button per source. Choosing what
@@ -21,6 +22,7 @@ export default function DataSourcePanel() {
   const removeLiveBlock = useSheetStore((s) => s.removeLiveBlock);
   const openPicker = useSheetStore((s) => s.openDataPicker);
   const [setup, setSetup] = useState<{ open: boolean; source?: PublicDataSource }>({ open: false });
+  const token = useSourcesToken();
 
   const sourceName = (id: string) => sources.find((s) => s.id === id)?.name ?? id;
 
@@ -33,6 +35,9 @@ export default function DataSourcePanel() {
         <p className="text-xs text-zinc-500">{t.data.subtitle}</p>
       </div>
 
+      <SourcesUnlock />
+
+      {token && (
       <div className="flex flex-col gap-2 overflow-y-auto pr-1">
         {sources.length === 0 && <p className="p-4 text-center text-xs text-zinc-500">{t.data.empty}</p>}
         {sources.map((src) => (
@@ -44,13 +49,16 @@ export default function DataSourcePanel() {
           />
         ))}
       </div>
+      )}
 
-      <button
-        onClick={() => setSetup({ open: true })}
-        className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-[13px] font-medium text-zinc-500 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
-      >
-        <Plus size={15} /> {t.data.addSource}
-      </button>
+      {token && (
+        <button
+          onClick={() => setSetup({ open: true })}
+          className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-[13px] font-medium text-zinc-500 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
+        >
+          <Plus size={15} /> {t.data.addSource}
+        </button>
+      )}
 
       <div className="mt-auto border-t border-zinc-100 pt-2.5">
         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">{t.data.inSheet}</p>

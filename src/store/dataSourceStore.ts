@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { backoffSec } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, PublicDataSource, TableData } from "@/lib/dataSources/types";
+import { withSourcesToken } from "@/lib/dataSources/sourcesToken";
 import { useSheetStore } from "./sheetStore";
 
 export type SourceDraft = Omit<DataSourceConfig, "id" | "createdAt">;
@@ -22,6 +23,8 @@ interface DataSourceState {
   backoff: Record<string, BackoffState>;
 
   loadSources: () => Promise<void>;
+  /** Drops everything fetched under a token that has been given up. */
+  forgetSources: () => void;
   /** Skipped while a source is waiting out a backoff, unless `force` (a manual "refresh now"). */
   refresh: (id: string, force?: boolean) => Promise<void>;
   saveSource: (draft: SourceDraft, id?: string) => Promise<PublicDataSource>;
@@ -51,8 +54,10 @@ export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
   loading: {},
   backoff: {},
 
+  forgetSources: () => set({ sources: [], loaded: false, data: {}, errors: {}, backoff: {} }),
+
   loadSources: async () => {
-    const sources = await readJson<PublicDataSource[]>(await fetch("/api/sources", { cache: "no-store" }));
+    const sources = await readJson<PublicDataSource[]>(await fetch("/api/sources", { cache: "no-store", headers: withSourcesToken() }));
     set({ sources, loaded: true });
   },
 
@@ -65,7 +70,7 @@ export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
 
     set((s) => ({ loading: { ...s.loading, [id]: true } }));
     try {
-      const table = await readJson<TableData>(await fetch(`/api/sources/${id}/data`, { cache: "no-store" }));
+      const table = await readJson<TableData>(await fetch(`/api/sources/${id}/data`, { cache: "no-store", headers: withSourcesToken() }));
       set((s) => {
         const errors = { ...s.errors };
         const backoff = { ...s.backoff };
@@ -98,8 +103,8 @@ export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
 
   saveSource: async (draft, id) => {
     const res = id
-      ? await fetch(`/api/sources/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) })
-      : await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) });
+      ? await fetch(`/api/sources/${id}`, { method: "PUT", headers: withSourcesToken({ "Content-Type": "application/json" }), body: JSON.stringify(draft) })
+      : await fetch("/api/sources", { method: "POST", headers: withSourcesToken({ "Content-Type": "application/json" }), body: JSON.stringify(draft) });
     const saved = await readJson<PublicDataSource>(res);
     set((s) => ({
       sources: id ? s.sources.map((x) => (x.id === id ? saved : x)) : [...s.sources, saved],
@@ -114,7 +119,7 @@ export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
   },
 
   deleteSource: async (id) => {
-    await readJson<{ ok: true }>(await fetch(`/api/sources/${id}`, { method: "DELETE" }));
+    await readJson<{ ok: true }>(await fetch(`/api/sources/${id}`, { method: "DELETE", headers: withSourcesToken() }));
     set((s) => {
       const data = { ...s.data };
       const errors = { ...s.errors };
@@ -130,7 +135,7 @@ export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
   testSource: async (draft, id) => {
     const res = await fetch(`/api/sources/test${id ? `?id=${encodeURIComponent(id)}` : ""}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: withSourcesToken({ "Content-Type": "application/json" }),
       body: JSON.stringify(draft),
     });
     return readJson<TableData>(res);

@@ -1,5 +1,6 @@
 import { executeSource } from "@/lib/server/executeSource";
-import { getSource } from "@/lib/server/sourceRepo";
+import { getSource, withSecret } from "@/lib/server/sourceRepo";
+import { authFailureResponse, checkSourcesAuth } from "@/lib/server/sourcesAuth";
 import { parseSourceBody } from "../validate";
 import { fetchErrorResponse } from "../errorResponse";
 import { DEMO_MODE, demoModeResponse } from "@/lib/demoMode";
@@ -10,6 +11,8 @@ export const runtime = "nodejs";
  *  editing an existing source and left the masked secret in place, reuse the stored one. */
 export async function POST(request: Request) {
   if (DEMO_MODE) return demoModeResponse();
+  const denied = checkSourcesAuth(request);
+  if (denied) return authFailureResponse(denied);
   const url = new URL(request.url);
   const editingId = url.searchParams.get("id");
   const parsed = await parseSourceBody(request);
@@ -18,7 +21,7 @@ export async function POST(request: Request) {
   const cfg = parsed.value;
   if (cfg.authHeader?.value === "••••••••" && editingId) {
     const existing = await getSource(editingId);
-    cfg.authHeader = existing?.authHeader;
+    cfg.authHeader = existing ? withSecret(existing).authHeader : undefined;
   }
   try {
     const table = await executeSource(cfg, url.origin);
