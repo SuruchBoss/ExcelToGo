@@ -1004,6 +1004,7 @@ src/
     gridGeometry.ts          # Row/column positions in pixels + where a new chart lands — shared with the
                               # grid so the two agree on exactly the same sizes (tested)
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
+    site.ts                  # The one canonical public URL shared by metadata, sitemap and robots
     dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
     server/urlGuard.ts       # SSRF guard: checks resolved addresses and every redirect (tested)
     server/sourcesAuth.ts    # The gate on the live-data API — no token means off (tested)

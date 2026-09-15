@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai, IBM_Plex_Mono } from "next/font/google";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // Geist was here because create-next-app put it here, and it has no Thai glyphs at all — every
@@ -27,15 +28,53 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
+const DESCRIPTION =
+  "เปิดไฟล์ .xlsx ในเบราว์เซอร์แล้วคำนวณต่อได้เลย ไม่ต้องติดตั้ง ไม่ต้องสมัครสมาชิก — หน้าตาไฟล์ยังเหมือนเดิม เลือกสูตรจากรายการแทนการจำ และถาม AI เป็นภาษาคนได้";
+const TITLE = "ExcelToGo — เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์";
+
 export const metadata: Metadata = {
+  // Absolute URLs in the Open Graph tags need a base, and og:image is resolved against it — without
+  // this the preview image comes out with a relative src and no crawler can fetch it.
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "ExcelToGo — เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์",
+    default: TITLE,
     template: "%s · ExcelToGo",
   },
   // This is the line that shows in search results and link previews, so it says what the app does
   // rather than what problem it set out to solve.
-  description:
-    "เปิดไฟล์ .xlsx ในเบราว์เซอร์แล้วคำนวณต่อได้เลย ไม่ต้องติดตั้ง ไม่ต้องสมัครสมาชิก — หน้าตาไฟล์ยังเหมือนเดิม เลือกสูตรจากรายการแทนการจำ และถาม AI เป็นภาษาคนได้",
+  description: DESCRIPTION,
+  applicationName: "ExcelToGo",
+  authors: [{ name: "Suruch Boss", url: "https://github.com/SuruchBoss" }],
+  creator: "Suruch Boss",
+  keywords: [
+    "Excel",
+    "spreadsheet",
+    "xlsx",
+    "formula",
+    "ตารางคำนวณ",
+    "สูตร Excel",
+    "Next.js",
+    "React",
+    "TypeScript",
+    "open source",
+  ],
+  // opengraph-image.tsx / twitter-image.tsx supply the image; only the text lives here. Locale is
+  // Thai with English as the alternate, matching the app's own default.
+  openGraph: {
+    type: "website",
+    siteName: "ExcelToGo",
+    url: SITE_URL,
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: "th_TH",
+    alternateLocale: ["en_US"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  alternates: { canonical: SITE_URL },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

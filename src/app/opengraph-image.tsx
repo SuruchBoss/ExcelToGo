@@ -1,0 +1,90 @@
+import { ImageResponse } from "next/og";
+
+/**
+ * The link preview a recruiter sees before they ever open the repo — in a résumé, a LinkedIn post,
+ * a Slack paste. Generated rather than a committed PNG so it stays in step with the landing page's
+ * ledger look and its counts, and so there is no binary to drift out of date.
+ *
+ * Text is English only on purpose: `next/og` ships no Thai-capable font, and loading one here would
+ * mean fetching font bytes at build time. The preview is branding, not content, so Latin is enough;
+ * the app itself is fully bilingual.
+ */
+export const alt = "ExcelToGo — open an Excel file and keep working, in the browser";
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
+
+const PAPER = "#fbfaf7";
+const INK = "#16181d";
+const ASH = "#6b6f76";
+const RULE = "#e3e1da";
+const LEDGER = "#0b6b4f";
+
+export default function OgImage() {
+  const stats = [
+    ["49", "engine functions"],
+    ["32", "palette formulas"],
+    ["505", "automated tests"],
+    ["0", "formula libraries"],
+  ];
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          background: PAPER,
+          color: INK,
+          display: "flex",
+          flexDirection: "column",
+          padding: "72px 80px",
+          fontFamily: "sans-serif",
+        }}
+      >
+        {/* Eyebrow, ledger green with a filled square — the landing page's own motif */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, color: LEDGER, fontSize: 26 }}>
+          <div style={{ width: 18, height: 18, background: LEDGER }} />
+          <div style={{ letterSpacing: 1 }}>ExcelToGo · a side project</div>
+        </div>
+
+        <div
+          style={{
+            fontSize: 68,
+            fontWeight: 700,
+            lineHeight: 1.12,
+            letterSpacing: -2,
+            marginTop: 34,
+            maxWidth: 1040,
+          }}
+        >
+          Open an Excel file and keep working, in the browser
+        </div>
+
+        <div style={{ fontSize: 28, color: ASH, marginTop: 22, maxWidth: 940, lineHeight: 1.4 }}>
+          No install, no account. A hand-written formula engine, live in your browser.
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Stat row on a heavy top rule, mono figures — the "under the hood" band, flattened */}
+        <div style={{ display: "flex", borderTop: `2px solid ${INK}`, paddingTop: 28 }}>
+          {stats.map(([value, label], i) => (
+            <div
+              key={label}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+                paddingLeft: i === 0 ? 0 : 28,
+                borderLeft: i === 0 ? "none" : `1px solid ${RULE}`,
+              }}
+            >
+              <div style={{ fontSize: 60, fontWeight: 600, color: LEDGER }}>{value}</div>
+              <div style={{ fontSize: 24, color: ASH, marginTop: 6 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+    size
+  );
+}

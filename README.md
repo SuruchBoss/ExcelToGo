@@ -921,6 +921,7 @@ src/
     gridGeometry.ts          # ตำแหน่งแถว-คอลัมน์เป็นพิกเซล + จุดที่กราฟใหม่ไปวาง (ใช้ร่วมกับตาราง
                               # เพื่อให้ทั้งสองใช้ขนาดเดียวกันเป๊ะ) (มี test)
     demoMode.ts              # สวิตช์ปิดฟีเจอร์ข้อมูลสดสำหรับ demo สาธารณะ (อ่าน NEXT_PUBLIC_DEMO_MODE)
+    site.ts                  # URL สาธารณะที่ใช้ร่วมกันของ metadata/sitemap/robots (ที่เดียว ไม่ให้ขัดกัน)
     dataSources/sourcesToken.ts  # โทเคนผู้ดูแลฝั่งเบราว์เซอร์ (เก็บใน sessionStorage)
     server/urlGuard.ts       # กัน SSRF: ตรวจ IP ที่ DNS ตอบ + ทุก redirect ก่อนยิงจริง (มี test)
     server/sourcesAuth.ts    # ประตูของ API ข้อมูลสด ไม่ตั้งโทเคน = ปิดทั้งหมด (มี test)
