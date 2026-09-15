@@ -146,6 +146,16 @@ export interface Messages {
     ctaSecondary: string;
     ctaNote: string;
     screenshotAlt: string;
+    /** Copy for the live, editable sheet in the hero. The figures live in the component — they are
+     *  the same in every language — so only the labels a reader parses are here. */
+    demo: {
+      headers: string[];
+      items: string[];
+      totalLabel: string;
+      emptyCell: string;
+      hint: string;
+      caption: string;
+    };
     problemTitle: string;
     problems: { title: string; body: string }[];
     featuresTitle: string;
@@ -154,6 +164,10 @@ export interface Messages {
     features: { title: string; body: string; alt: string; points: string[] }[];
     statsTitle: string;
     stats: { value: string; label: string }[];
+    /** What the app cannot do, stated on the front page rather than buried in the README. */
+    limitsTitle: string;
+    limitsLead: string;
+    limits: { title: string; body: string }[];
     closingTitle: string;
     closingBody: string;
     footerNote: string;

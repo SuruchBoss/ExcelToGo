@@ -6,8 +6,11 @@ import { useLocaleStore } from "@/store/localeStore";
 
 /** Switches the whole app's language. Shows the *other* language's name (e.g. "EN" while
  *  Thai is active) since that's what clicking it will switch to — the common toggle-button
- *  convention, so the button never needs its own translated label. */
-export default function LanguageToggle() {
+ *  convention, so the button never needs its own translated label.
+ *
+ *  `className` lets the landing page opt out of the toolbar's zinc-and-rounded look, which would
+ *  read as a stray widget among that page's squared, ruled controls. */
+export default function LanguageToggle({ className }: { className?: string } = {}) {
   const t = useT();
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
@@ -16,7 +19,10 @@ export default function LanguageToggle() {
     <button
       onClick={() => setLocale(locale === "th" ? "en" : "th")}
       title={t.app.languageToggleLabel}
-      className="flex min-h-11 items-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:py-1.5"
+      className={
+        className ??
+        "flex min-h-11 items-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:min-h-0 sm:py-1.5"
+      }
     >
       <Languages size={15} /> {t.app.languageToggleLabel}
     </button>

@@ -712,7 +712,21 @@ to `/app` — where before you landed straight in a bare grid with nothing telli
 screenshot on it comes from the running app rather than a mockup, and it goes through the same message
 dictionary as the app, so the language you choose there carries through with you.
 
+**The table in the hero is not a screenshot — it is the engine.** `LiveSheet` imports the same
+`parseFormula` and `evaluate` the app runs on, so double-clicking a price recomputes `=B2*C2` and
+`=SUM(D2:D5)` in the visitor's browser. A spreadsheet product whose front page shows a *picture* of a
+spreadsheet is asking to be taken on trust; this asks for ten seconds instead. It also keeps itself
+honest: if the engine regresses, the front page visibly breaks.
+
 <p align="center"><img src="public/screenshots/25-landing.png" width="820"></p>
+
+The page is laid out as **ledger paper** rather than as a stack of rounded cards: hairline rules instead
+of boxes, square corners, the alternating pale-green row bands of accounting paper, monospace with tabular
+figures for every number, formula and cell address against a sans for prose, and one inverted band through
+the middle as a spine. There is not a single gradient on it.
+
+<p align="center"><img src="public/screenshots/27-landing-stats.png" width="820"></p>
+<p align="center"><sub>The inverted "Under the hood" band and the <b>What it can't do</b> section — limits stated on the front page rather than buried in the README.</sub></p>
 
 ### 🌐 Bilingual (Thai / English)
 
@@ -937,6 +951,8 @@ src/
     grid/ChartView.tsx              # The SVG drawing itself (bar/line/pie), sized to the box it is given
     grid/SelectionHandle.tsx        # The corner grip that extends a selection with a finger on touch
     grid/CommentPopover.tsx         # The box that writes or clears the selected cell's note
+    landing/LiveSheet.tsx           # The real grid in the hero — imports the app's own parser/evaluator,
+                                     # so it is not a screenshot: edits recompute in the visitor's browser
     cloud/CloudPanel.tsx            # The cloud panel: sign in, save, and open from the user's own Supabase
     grid/ConditionalFormatPanel.tsx # The conditional-formatting panel: writing rules + this sheet's list
     grid/StorageNotice.tsx          # The dismissible bar saying the data lives only in this browser

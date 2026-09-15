@@ -153,7 +153,33 @@ for (const locale of ["th", "en"]) {
     else if (found !== actual) fail(`src/i18n/${locale}.ts: landing page says ${found} ${what}, but there are ${actual}`);
   }
 }
-notes.push(`landing page: ${engineFunctions} functions, ${paletteFormulas} palette formulas, ${actualTests} tests — all counted`);
+
+// Checking only `stats` and `eyebrow` was not enough: the same counts are written out in prose
+// inside the feature copy, and that prose still read "25 formulas" and "42 functions" one commit
+// after the stat tiles were fixed. So sweep the whole landing block instead, matching any figure
+// that sits directly in front of one of the words these counts are quoted with.
+const QUOTED = {
+  "engine functions": { actual: engineFunctions, th: /(\d+)\s*ฟังก์ชัน/g, en: /(\d+)\s+(?:engine\s+)?functions/gi },
+  "palette formulas": { actual: paletteFormulas, th: /(\d+)\s*(?:รายการ|สูตร)พร้อมใช้/g, en: /(\d+)\s+(?:ready-made\s+)?formulas/gi },
+  tests: { actual: actualTests, th: /(\d+)\s*เทสต์/g, en: /(\d+)\s+(?:automated\s+)?tests/gi },
+};
+
+for (const locale of ["th", "en"]) {
+  const block = /\n  landing: \{\n([\s\S]*?)\n  \},\n/.exec(read(`src/i18n/${locale}.ts`));
+  if (!block) {
+    fail(`src/i18n/${locale}.ts: couldn't find the landing block to scan for quoted counts`);
+    continue;
+  }
+  for (const [what, { actual, [locale]: pattern }] of Object.entries(QUOTED)) {
+    for (const m of block[1].matchAll(pattern)) {
+      if (Number(m[1]) !== actual) {
+        fail(`src/i18n/${locale}.ts: landing copy says "${m[0].trim()}", but there are ${actual} ${what}`);
+      }
+    }
+  }
+}
+
+notes.push(`landing page: ${engineFunctions} functions, ${paletteFormulas} palette formulas, ${actualTests} tests — counted, in tiles and in prose`);
 
 // ----------------------------------------------------------------------------------------------
 for (const n of notes) console.log("  ok  " + n);

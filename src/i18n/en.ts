@@ -121,6 +121,14 @@ export const en: Messages = {
     ctaSecondary: "View the code on GitHub",
     ctaNote: "No sign-up, no install — your data stays in your own browser",
     screenshotAlt: "The main ExcelToGo screen",
+    demo: {
+      headers: ["Item", "Price", "Qty", "Total"],
+      items: ["Coffee", "Tea", "Bread", "Juice"],
+      totalLabel: "Total",
+      emptyCell: "(empty cell)",
+      hint: "Double-click a price or a quantity to change it, then watch the Total column and the bottom row recompute.",
+      caption: "This table is not a screenshot — it calls the same engine the app runs on, computing in your browser right now.",
+    },
     problemTitle: "What it's for",
     problems: [
       { title: "Formula syntax you can't recall", body: "Which argument does VLOOKUP take, and in what order? Here you pick from a list and click the cells instead." },
@@ -132,9 +140,9 @@ export const en: Messages = {
     features: [
       {
         title: "Drag-and-drop formulas, no syntax to memorize",
-        body: "Search 25 ready-made formulas, then drag or click one to open a parameter panel. Use the target button to pick a range off the grid instead of typing an address.",
+        body: "Search 32 ready-made formulas, then drag or click one to open a parameter panel. Use the target button to pick a range off the grid instead of typing an address.",
         alt: "The formula parameter panel",
-        points: ["Apply to one cell, a whole row, or a whole column", "Relative references adjust automatically", "A hand-written engine with 42 functions"],
+        points: ["Apply to one cell, a whole row, or a whole column", "Relative references adjust automatically", "A hand-written engine with 49 functions"],
       },
       {
         title: "Ask an AI in plain language",
@@ -161,6 +169,26 @@ export const en: Messages = {
       { value: "49", label: "engine functions" },
       { value: "498", label: "automated tests" },
       { value: "0", label: "formula libraries used" },
+    ],
+    limitsTitle: "What it can't do",
+    limitsLead: "Most landing pages leave this part out. Knowing up front what isn't there will save you more time than another feature card.",
+    limits: [
+      {
+        title: "Thai PDF export still stacks tone marks wrong",
+        body: "The Thai font is embedded and every character is legible, but a tone mark that has to sit above an upper vowel collides with it instead of rising over it — jsPDF does no OpenType shaping.",
+      },
+      {
+        title: "Charts exported to .xlsx go as images",
+        body: "Open the file in Excel and the chart is there, in position, but you can't edit it as a chart — ExcelJS can't write chart XML. A picture that matches the data beats shipping nothing.",
+      },
+      {
+        title: "No accounts, and nothing is saved to a cloud for you",
+        body: "Your work lives in this browser; clearing site data clears it. Saving across devices means pointing the app at your own Supabase project, and there is no simultaneous multi-person editing.",
+      },
+      {
+        title: "No pivot tables and no macros",
+        body: "Those two are why people go back to real Excel. This isn't trying to replace all of it — it makes the parts you reach for most open instantly in a browser.",
+      },
     ],
     closingTitle: "Try it — nothing to sign up for",
     closingBody: "It opens with sample data to play with, plus three live sources whose numbers actually move.",

@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
+/**
+ * Ledger paper, not a SaaS gradient.
+ *
+ * The palette comes from green-bar accounting paper — the ruled sheet with alternating pale green
+ * rows that bookkeepers worked on before VisiCalc, and that every spreadsheet since has been an
+ * imitation of. It gives the landing page a reference point that belongs to this product rather
+ * than to the current fashion in marketing pages, and it costs nothing: two tints and a hairline.
+ *
+ * The app itself stays on plain white — it is an instrument, and tinted rows behind live data
+ * would fight the user's own cell fills.
+ */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #16181d;
+
+  --color-paper: #fbfaf7;
+  --color-ink: #16181d;
+  --color-ash: #6b6f76;
+  --color-rule: #e3e1da;
+  --color-band: #eef3ef;
+  --color-ledger: #0b6b4f;
+  --color-ledger-ink: #08533d;
+  --color-ref: #b23a33;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-paper: var(--color-paper);
+  --color-ink: var(--color-ink);
+  --color-ash: var(--color-ash);
+  --color-rule: var(--color-rule);
+  --color-band: var(--color-band);
+  --color-ledger: var(--color-ledger);
+  --color-ledger-ink: var(--color-ledger-ink);
+  --color-ref: var(--color-ref);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
