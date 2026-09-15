@@ -109,6 +109,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 - [Project structure](#-project-structure)
 - [Formula engine](#-formula-engine)
 - [Bilingual UI (i18n)](#-bilingual-ui-i18n)
+- [Security — what was actually tested](#-security--what-was-actually-tested)
 - [Lighthouse](#-lighthouse)
 - [Testing](#-testing)
 - [What's next](#-whats-next)
@@ -1380,6 +1381,89 @@ flowchart LR
   regenerated when the language is switched, since that would risk silently overwriting a user's real data.
 
 ---
+
+## 🔐 Security — what was actually tested
+
+This section exists because it is the line between "I asked an AI for an app" and building software.
+Code that looks right and runs is not the same as code that is safe, and the only way to find out is
+to attack it.
+
+### The limits were written down first, then attacked
+
+`SECURITY.md` recorded three holes in the live-data API as "accepted risks", which was too comfortable
+an admission. All three were closed ([`b6438ba`](https://github.com/SuruchBoss/ExcelToGo/commit/b6438ba)),
+then the pentest was run again — **against a running server, not by reading the code.**
+
+### The second pass found a real one: an SSRF bypass the whole suite missed
+
+The fetcher skips its SSRF guard for URLs pointing back at the app's own origin, and decided "points at
+us" with `url.startsWith("/")`. But `//169.254.169.254/`, `/\169.254.169.254/` and `//evil.example/`
+all start with a slash too, and `new URL(url, origin)` resolves them to a foreign host — **so the guard
+was skipped for exactly the addresses it exists to block.**
+
+Proven on a running server before fixing: `//169.254.169.254/` returned an HTTP response instead of a
+refusal, and `//127.0.0.1:3000/api/sources` came back `401` from the app's own admin API — meaning the
+server had connected to a loopback address the guard is meant to refuse. On a cloud host the first of
+those is the **instance metadata endpoint**.
+
+Closed in two layers: `executeSource` decides "same origin" from the *resolved* origin rather than a
+leading slash, and `validate.ts` refuses a path whose second character is a slash or backslash before it
+ever reaches the fetcher
+([`8b92a7e`](https://github.com/SuruchBoss/ExcelToGo/commit/8b92a7e)).
+
+**Confirmed by reverting** — all four cases fail on the old code and pass on the new. The tests were not
+written to agree with whatever the code already did.
+
+### 85 security tests
+
+| File | Tests | What it covers |
+|---|---|---|
+| `urlGuard.test.ts` | 21 | Loopback, private ranges, cloud metadata, every IPv4-in-IPv6 spelling, link-local, multicast, non-http(s) schemes, hosts that don't resolve |
+| `executeSource.test.ts` | 31 | Re-checking after a redirect, cutting redirect loops, the same-origin fast path, pagination, row bounds |
+| `secretBox.test.ts` | 10 | AES-256-GCM, distinct ciphertexts, tamper detection, refusing to encrypt with no key rather than storing plain text |
+| `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
+| `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
+| `validate.test.ts` | 4 | Which URL shapes are accepted, and which paths must be refused |
+
+Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts`
+
+### OWASP Top 10, only the categories that actually apply here
+
+| Category | What is in place |
+|---|---|
+| **A01 Broken Access Control** | Every `/api/sources` handler refuses when no token is configured (403) and refuses a wrong one (401) — two distinct states so an operator can tell which happened |
+| **A02 Cryptographic Failures** | Source credentials are AES-256-GCM on disk and masked in every API response |
+| **A04 Insecure Design** | Live data is **off by default**; it takes an env var to switch on, and a public demo switches it off again at a second layer |
+| **A05 Security Misconfiguration** | No `SOURCES_ADMIN_TOKEN` means the API is closed, not open with no password |
+| **A07 Authentication Failures** | The token is compared in full, not by prefix; accepted as a dedicated header or a bearer token |
+| **A10 SSRF** | DNS is resolved and *every* returned address checked; redirects are followed and re-checked here rather than left to `fetch`; origins are compared after resolution |
+
+### Anonymous testing
+
+Every endpoint hit with no token: all six `/api/sources` handlers **fail closed**. `/api/ai/formula` is
+the one deliberately open endpoint — the assistant is the app's own feature and requiring a login to use
+it would be absurd — so it carries a ceiling of 20 requests per minute per IP with `Retry-After`.
+
+### Checked by hand but not pinned by a test — the difference matters
+
+Three more things were verified during the pentest and passed, but **have no regression test**, so
+nothing would warn you if a future change broke them:
+
+- Metadata addresses written in decimal, octal or hex — the URL parser normalises those to a plain
+  address before the guard sees them, so it simply sees `169.254.169.254`
+- The `[id]` path segment cannot escape its directory
+- An auth-header name containing CRLF is refused by `fetch` itself
+
+### Known limits, deliberately left open
+
+- **The rate-limit counters live in one process's memory.** Two instances count separately and a
+  serverless cold start forgets everything — a guard against casual abuse, **not a billing control.**
+  A real one needs shared storage, which this project deliberately does not have.
+- **No CSV-injection neutralising.** Values starting `=`, `+`, `-` or `@` are written through unchanged
+  — quietly editing someone's data is its own bug, so it is documented instead (see
+  [CSV in and out](#-csv-in-and-out)).
+- **There are no user accounts**, so there is no per-user authorisation to test. `SOURCES_ADMIN_TOKEN`
+  is an operator switch, not an account.
 
 ## 📈 Lighthouse
 

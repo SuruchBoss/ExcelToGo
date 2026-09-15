@@ -34,9 +34,11 @@ const LINKEDIN_URL = "https://www.linkedin.com/in/suruchboss";
  *  path and its pixel size are the same in every language — only the alt text needs translating. */
 const FEATURE_MEDIA = [
   { src: "/screenshots/02-formula-panel.png", width: 2720, height: 1720 },
+  { src: "/screenshots/17-styled-import.png", width: 2720, height: 1720 },
+  { src: "/screenshots/20-charts.png", width: 1440, height: 900 },
+  { src: "/screenshots/10-picker-table.png", width: 2720, height: 1720 },
+  { src: "/screenshots/31-pivot-refresh.png", width: 2200, height: 940 },
   { src: "/screenshots/04-ai-assistant.png", width: 2720, height: 1720 },
-  { src: "/screenshots/10-picker-table.png", width: 1360, height: 860 },
-  { src: "/screenshots/06-format-filter.png", width: 1280, height: 800 },
 ];
 
 const num = (i: number) => String(i + 1).padStart(2, "0");
@@ -231,7 +233,7 @@ export default function Landing() {
       <section className="bg-ink">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
           <SectionHead n="03" title={t.landing.statsTitle} inverted />
-          <dl className="mt-10 grid grid-cols-2 gap-y-9 sm:grid-cols-4 sm:gap-y-0">
+          <dl className="mt-10 grid grid-cols-2 gap-y-9 sm:grid-cols-5 sm:gap-y-0">
             {t.landing.stats.map((s, i) => (
               <div key={s.label} className={`px-1 sm:px-6 ${i > 0 ? "sm:border-l sm:border-white/15" : ""} ${i === 0 ? "sm:pl-0" : ""}`}>
                 <dd className="tabular-nums font-mono text-[2.6rem] font-medium leading-none text-white sm:text-[3rem]">{s.value}</dd>

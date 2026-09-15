@@ -135,6 +135,19 @@ const countMatches = (file, pattern) => (read(file).match(pattern) ?? []).length
 const engineFunctions = countMatches("src/lib/formulaEngine/functions.ts", /^  [A-Z][A-Z0-9.]*:/gm);
 const paletteFormulas = countMatches("src/lib/formulaCatalog.ts", /^    id: "[A-Z][A-Z0-9.]*",/gm);
 
+// The security figure is quoted on the landing page and all through the README's security section,
+// and it is the one number a reader is most entitled to be suspicious of. Counted from the files
+// that hold those tests rather than trusted, the same as every other figure here.
+const SECURITY_TEST_FILES = [
+  "src/lib/server/urlGuard.test.ts",
+  "src/lib/server/executeSource.test.ts",
+  "src/lib/server/secretBox.test.ts",
+  "src/lib/server/rateLimiter.test.ts",
+  "src/lib/server/sourcesAuth.test.ts",
+  "src/app/api/sources/validate.test.ts",
+];
+const securityTests = SECURITY_TEST_FILES.reduce((n, f) => n + countMatches(f, /^\s*it\(/gm), 0);
+
 for (const locale of ["th", "en"]) {
   const source = read(`src/i18n/${locale}.ts`);
   const stat = (label) => {
@@ -147,6 +160,7 @@ for (const locale of ["th", "en"]) {
     ["engine functions", engineFunctions, stat(locale === "th" ? "ฟังก์ชันในเอนจิน" : "engine functions")],
     ["palette formulas", paletteFormulas, stat(locale === "th" ? "สูตรพร้อมใช้" : "ready-made formulas")],
     ["tests", actualTests, stat(locale === "th" ? "เทสต์อัตโนมัติ" : "automated tests")],
+    ["security tests", securityTests, stat(locale === "th" ? "เทสต์ด้านความปลอดภัย" : "security tests")],
     ["tests (eyebrow)", actualTests, eyebrow ? Number(eyebrow[1]) : null],
   ]) {
     if (found === null) fail(`src/i18n/${locale}.ts: couldn't find the landing page's ${what} figure`);
@@ -175,8 +189,14 @@ const QUOTED = {
   },
   tests: {
     actual: actualTests,
-    th: [/(\d+)\s*เทสต์/g],
+    // The lookahead keeps this off the security figure, which is a different count in the same words.
+    th: [/(\d+)\s*เทสต์(?!\s*ด้านความปลอดภัย)/g],
     en: [/(\d+)\s+(?:automated\s+)?tests\b/gi],
+  },
+  "security tests": {
+    actual: securityTests,
+    th: [/(\d+)\s*เทสต์ด้านความปลอดภัย/g],
+    en: [/(\d+)\s+security\s+tests\b/gi],
   },
 };
 
@@ -203,7 +223,7 @@ for (const { file, locale, text } of quotingTexts) {
   }
 }
 
-notes.push(`${engineFunctions} functions / ${paletteFormulas} palette formulas / ${actualTests} tests — counted, and every place the docs or the landing page say so out loud agrees`);
+notes.push(`${engineFunctions} functions / ${paletteFormulas} palette formulas / ${actualTests} tests / ${securityTests} of them security — counted, and every place the docs or the landing page say so out loud agrees`);
 
 // ----------------------------------------------------------------------------------------------
 for (const n of notes) console.log("  ok  " + n);
