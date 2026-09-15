@@ -125,9 +125,31 @@ export function autoChartAnchor(sheet: SheetModel, range: SheetRange): ChartAnch
     (sheet.charts ?? []).some(
       (c) => c.anchor && c.anchor.row === a.row && c.anchor.col === a.col && Math.abs(c.anchor.dy - a.dy) < 2
     );
+
+  /**
+   * How many columns it takes to get past a chart's own width.
+   *
+   * Stepping one column used to be the whole move, and one column is 112px against a chart 300px
+   * wide — so the "step clear" above left the new chart covering nearly two thirds of the old one,
+   * which is the pile it exists to avoid. Columns can be resized, so the width is summed rather
+   * than divided.
+   */
+  const columnsToClear = (fromCol: number, width: number): number => {
+    let spanned = 0;
+    let steps = 0;
+    while (spanned < width && fromCol + steps < sheet.cols - 1) {
+      spanned += columnWidth(sheet, fromCol + steps);
+      steps++;
+    }
+    return Math.max(1, steps);
+  };
+
   // Bounded so a sheet whose charts happen to sit on every step can't spin here.
   for (let step = 0; step < 24 && occupied(anchor); step++) {
-    anchor = { ...anchor, col: Math.min(anchor.col + 1, Math.max(sheet.cols - 1, 0)), dy: anchor.dy + CASCADE };
+    const next = Math.min(anchor.col + columnsToClear(anchor.col, anchor.w), Math.max(sheet.cols - 1, 0));
+    // Out of room on the right: keep cascading downwards so it is still never exactly on top.
+    anchor = { ...anchor, col: next, dy: anchor.dy + (next === anchor.col ? CASCADE : 0) };
+    if (next === anchor.col && step > 0 && anchor.dy > DEFAULT_CHART_H * 4) break;
   }
   return anchor;
 }

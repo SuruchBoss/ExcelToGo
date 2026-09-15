@@ -144,3 +144,74 @@ describe("anchors and pixels convert both ways", () => {
     expect(a.row).toBe(9);
   });
 });
+
+describe("autoChartAnchor stepping clear of an existing chart", () => {
+  const range = { startRow: 0, startCol: 0, endRow: 4, endCol: 2 };
+  const sheetWith = (anchors: ReturnType<typeof autoChartAnchor>[]) => ({
+    ...createEmptySheet(20, 26),
+    charts: anchors.map((anchor, i) => ({
+      id: `c${i}`,
+      kind: "bar" as const,
+      range,
+      anchor,
+    })),
+  });
+
+  it("puts the first chart under its own range, on the range's left edge", () => {
+    const a = autoChartAnchor(createEmptySheet(20, 26), range);
+    expect(a.row).toBe(5);
+    expect(a.col).toBe(0);
+  });
+
+  /**
+   * The regression this pins. Stepping one column moved a 300px chart by 112px, so the second one
+   * covered nearly two thirds of the first — the pile the cascade exists to prevent.
+   */
+  it("steps far enough right that the second chart does not overlap the first", () => {
+    const first = autoChartAnchor(createEmptySheet(20, 26), range);
+    const second = autoChartAnchor(sheetWith([first]), range);
+    const gap = columnLeft({ ...createEmptySheet(20, 26) }, second.col) - columnLeft({ ...createEmptySheet(20, 26) }, first.col);
+    expect(gap).toBeGreaterThanOrEqual(first.w);
+  });
+
+  it("keeps stepping clear for a third chart", () => {
+    const sheet = createEmptySheet(20, 26);
+    const first = autoChartAnchor(sheet, range);
+    const second = autoChartAnchor(sheetWith([first]), range);
+    const third = autoChartAnchor(sheetWith([first, second]), range);
+    expect(third.col).toBeGreaterThan(second.col);
+    const gap = columnLeft(sheet, third.col) - columnLeft(sheet, second.col);
+    expect(gap).toBeGreaterThanOrEqual(second.w);
+  });
+
+  it("respects a narrow column's real width rather than assuming the default", () => {
+    const narrow = { ...createEmptySheet(20, 26), colWidths: Array(26).fill(40) };
+    const first = autoChartAnchor(narrow, range);
+    const second = autoChartAnchor({ ...narrow, charts: [{ id: "c0", kind: "bar" as const, range, anchor: first }] }, range);
+    // 300px of chart over 40px columns needs more columns than it would over 112px ones.
+    expect(second.col - first.col).toBeGreaterThanOrEqual(Math.ceil(first.w / 40));
+  });
+
+  it("still moves on a sheet too narrow to clear the chart's width", () => {
+    const tiny = createEmptySheet(20, 3);
+    const first = autoChartAnchor(tiny, range);
+    const second = autoChartAnchor(
+      { ...tiny, charts: [{ id: "c0", kind: "bar" as const, range, anchor: first }] },
+      range
+    );
+    // It cannot clear 300px across three 112px columns, but landing exactly on top is the one
+    // outcome that must not happen.
+    expect(second.col !== first.col || second.dy !== first.dy).toBe(true);
+  });
+
+  it("cascades downwards once there is no column left to move into", () => {
+    const tiny = createEmptySheet(20, 3);
+    const atLastColumn = { ...autoChartAnchor(tiny, range), col: 2 };
+    const next = autoChartAnchor(
+      { ...tiny, charts: [{ id: "c0", kind: "bar" as const, range, anchor: atLastColumn }] },
+      { ...range, startCol: 2 }
+    );
+    expect(next.col).toBe(2);
+    expect(next.dy).toBeGreaterThan(atLastColumn.dy);
+  });
+});
