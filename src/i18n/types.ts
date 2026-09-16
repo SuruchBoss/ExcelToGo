@@ -171,6 +171,8 @@ export interface Messages {
     limitsTitle: string;
     limitsLead: string;
     limits: { title: string; body: string }[];
+    limitsMoreText: string;
+    limitsMoreCta: string;
     closingTitle: string;
     closingBody: string;
     footerNote: string;

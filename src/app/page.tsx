@@ -264,6 +264,21 @@ export default function Landing() {
               </div>
             ))}
           </dl>
+
+          {/* The full list of limitations lives in the README, where a reader who followed the link
+              is already invested enough to want it. Two scope statements belong on a page someone
+              is deciding whether to try; fourteen do not. */}
+          <p className="mt-7 flex flex-col gap-3 px-2 text-[14.5px] leading-relaxed text-ash sm:flex-row sm:items-center sm:gap-5 sm:px-3">
+            <span className="max-w-2xl">{t.landing.limitsMoreText}</span>
+            <a
+              href={`${REPO_URL}#-สิ่งที่จะทำต่อ`}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0 whitespace-nowrap font-medium text-ledger underline underline-offset-4 hover:text-ink"
+            >
+              {t.landing.limitsMoreCta} →
+            </a>
+          </p>
         </div>
       </section>
 
