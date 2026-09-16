@@ -26,7 +26,8 @@
     "test": "vitest run",
     "check:readme": "node scripts/check-readme.mjs",
     "verify": "npm run lint && npm run check:readme && npm test && npm run build && npm run check:a11y",
-    "check:a11y": "node scripts/check-a11y.mjs"
+    "check:a11y": "node scripts/check-a11y.mjs",
+    "build:social": "node scripts/make-social-preview.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

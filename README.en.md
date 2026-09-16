@@ -188,6 +188,7 @@ Other available commands:
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
+| `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -1217,8 +1218,11 @@ src/
                              #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
+  check-a11y.mjs             # axe at two widths plus sideways-scroll checks, against a production build
+  make-social-preview.mjs    # Renders GitHub's 1280x640 card, counting its figures from source
 public/
   screenshots/               # Screenshots from the running app — used by both the landing page and this README
+  social-preview.png         # What GitHub shows when the repo is pasted — uploaded in Settings, not read from here
 ```
 
 Every component under `features/` reads/writes state via `useSheetStore` directly (never through props passed

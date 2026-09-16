@@ -20,10 +20,14 @@ const RULE = "#e3e1da";
 const LEDGER = "#0b6b4f";
 
 export default function OgImage() {
+  // Held to the real figures by `check:readme`, which parses this array. It said "505 automated
+  // tests" for months while the suite grew past 600 — a card nobody re-reads is exactly where a
+  // stale number survives longest.
   const stats = [
     ["49", "engine functions"],
     ["32", "palette formulas"],
-    ["505", "automated tests"],
+    ["644", "automated tests"],
+    ["91", "of them security"],
     ["0", "formula libraries"],
   ];
   return new ImageResponse(
@@ -74,12 +78,12 @@ export default function OgImage() {
                 display: "flex",
                 flexDirection: "column",
                 flex: 1,
-                paddingLeft: i === 0 ? 0 : 28,
+                paddingLeft: i === 0 ? 0 : 22,
                 borderLeft: i === 0 ? "none" : `1px solid ${RULE}`,
               }}
             >
-              <div style={{ fontSize: 60, fontWeight: 600, color: LEDGER }}>{value}</div>
-              <div style={{ fontSize: 24, color: ASH, marginTop: 6 }}>{label}</div>
+              <div style={{ fontSize: 52, fontWeight: 600, color: LEDGER }}>{value}</div>
+              <div style={{ fontSize: 21, color: ASH, marginTop: 6 }}>{label}</div>
             </div>
           ))}
         </div>

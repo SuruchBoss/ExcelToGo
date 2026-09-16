@@ -247,6 +247,39 @@ for (const { file, locale, text } of quotingTexts) {
 
 notes.push(`${engineFunctions} functions / ${paletteFormulas} palette formulas / ${actualTests} tests / ${securityTests} of them security — counted, and every place the docs or the landing page say so out loud agrees`);
 
+// --- 8. The two link-preview cards quote the same figures, and neither is read by a human ---------
+// `opengraph-image.tsx` had "505 automated tests" painted into it long after the suite passed 600.
+// Nobody re-reads a card that renders correctly, so the number has to answer to something.
+const OG = "src/app/opengraph-image.tsx";
+const OG_LABELS = {
+  "engine functions": engineFunctions,
+  "palette formulas": paletteFormulas,
+  "automated tests": actualTests,
+  "of them security": securityTests,
+  "formula libraries": 0,
+};
+const ogStats = [...read(OG).matchAll(/\["(\d+)", "([^"]+)"\]/g)];
+if (ogStats.length === 0) fail(`${OG}: couldn't find the stat tiles to check`);
+for (const [, value, label] of ogStats) {
+  if (!(label in OG_LABELS)) fail(`${OG}: stat "${label}" isn't one this check knows how to verify`);
+  else if (Number(value) !== OG_LABELS[label]) fail(`${OG}: card says ${value} ${label}, but there are ${OG_LABELS[label]}`);
+}
+notes.push(`${ogStats.length} stat tiles on the link-preview card, all counted`);
+
+// GitHub's social preview can't be generated per request the way the OG card is — it is an upload,
+// so a committed PNG is the only option. Check the one thing that can be checked from here: that it
+// exists and is still the size GitHub crops to. Its numbers come from `npm run build:social`, which
+// counts them from source rather than trusting a design.
+const SOCIAL = "public/social-preview.png";
+const socialPath = path.join(ROOT, SOCIAL);
+if (!fs.existsSync(socialPath)) fail(`${SOCIAL} is missing — run \`npm run build:social\``);
+else {
+  const head = fs.readFileSync(socialPath).subarray(16, 24);
+  const [w, h] = [head.readUInt32BE(0), head.readUInt32BE(4)];
+  if (w !== 1280 || h !== 640) fail(`${SOCIAL} is ${w}x${h}, but GitHub's social preview wants 1280x640`);
+  else notes.push(`${SOCIAL} is 1280x640`);
+}
+
 // ----------------------------------------------------------------------------------------------
 for (const n of notes) console.log("  ok  " + n);
 if (problems.length > 0) {

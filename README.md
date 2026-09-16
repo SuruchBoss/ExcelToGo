@@ -186,6 +186,7 @@ npm run dev
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build → check:a11y |
+| `npm run build:social` | สร้าง `public/social-preview.png` (1280×640) ใหม่ โดยนับตัวเลขบนการ์ดจากซอร์ส |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
 
@@ -1113,8 +1114,11 @@ src/
                              #     + job accessibility: axe สองความกว้างบนเบราว์เซอร์จริง
 scripts/
   check-readme.mjs           # ตรวจ README ก่อน push (ไม่มี dependency) — ดูกติกาที่ AGENTS.md
+  check-a11y.mjs             # รัน axe สองความกว้าง + เช็กการเลื่อนแนวนอน บน production build
+  make-social-preview.mjs    # สร้างการ์ด 1280×640 ของ GitHub โดยนับตัวเลขจากซอร์ส ไม่ใช่พิมพ์เอง
 public/
   screenshots/               # ภาพหน้าจอจากแอปจริง — ใช้ทั้งใน landing page และใน README นี้ (ไฟล์ชุดเดียวกัน)
+  social-preview.png         # ภาพที่ GitHub โชว์เวลาแปะลิงก์ repo — อัปโหลดใน Settings ไม่ได้อ่านจากไฟล์นี้อัตโนมัติ
 ```
 
 ทุกคอมโพเนนต์ใน `features/` อ่าน/แก้ state ผ่าน `useSheetStore` โดยตรง (ไม่ผ่าน props จาก `page.tsx`) จึงไม่ต้อง
