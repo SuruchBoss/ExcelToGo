@@ -113,6 +113,13 @@ project hosts for everyone.
 admin tool. It is rate limited instead — **20 calls per minute per client address**, refused with
 `429` and a `Retry-After` — so an open endpoint cannot be looped against your Anthropic bill.
 
+On a public demo the route does not reach Anthropic at all. `NEXT_PUBLIC_DEMO_MODE=1` makes it
+behave as if no key were configured — the local keyword matcher answers instead, which costs nothing
+and still returns a usable formula. This is checked by
+`src/app/api/ai/formula/route.test.ts`, which asserts the SDK is never even constructed while the
+switch is on *with a key present*, so the protection does not depend on anyone remembering to leave
+the key unset. Leaving it unset is still the better habit; two layers beat one.
+
 The counters are held in the serving process's memory. Two instances behind a load balancer count
 separately and a serverless cold start forgets everything, so this is a guard against casual abuse
 and runaway scripts, **not a billing control**; a real one needs shared storage, which this project

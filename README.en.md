@@ -26,7 +26,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-638%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-644%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -37,7 +37,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 638 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 644 automated tests.
 
 ---
 
@@ -184,7 +184,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 638-case Vitest suite |
+| `npm test` | Run the 644-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -214,6 +214,7 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 
 - **[Vercel](https://vercel.com)** (recommended, easiest): connect this repo to Vercel and deploy. For real
   AI, add an `ANTHROPIC_API_KEY` environment variable under Project Settings → Environment Variables.
+  (On a public demo, also set `NEXT_PUBLIC_DEMO_MODE=1` and the key goes unused — see the note below.)
 - Self-host with Docker/any Node server: `npm run build` then `npm run start`.
 
 > [!IMPORTANT]
@@ -227,13 +228,17 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 > It also matches reality on a serverless host: sources are persisted to `data/sources.json`, and
 > Vercel's filesystem is read-only, so the feature could not work there anyway.
 >
-> **Think before setting `ANTHROPIC_API_KEY` on a public demo.** `/api/ai/formula` takes no
-> authentication by design — the assistant is part of the app, and making a visitor log in to ask a
-> question would be absurd. It is now capped at **20 calls a minute per IP**, which stops a script
-> in a loop, but the counters live in the process's memory: separate instances count separately and
-> a serverless cold start forgets them. **That guards against casual abuse, it is not a billing
-> control.** Without a key the assistant falls back to local keyword matching, which costs nothing
-> and still works.
+> **`ANTHROPIC_API_KEY` and public demos.** `/api/ai/formula` takes no authentication by design —
+> the assistant is part of the app, and making a visitor log in to ask a question would be absurd.
+> It is capped at **20 calls a minute per IP**, which stops a script in a loop, but the counters live
+> in the process's memory: separate instances count separately and a serverless cold start forgets
+> them. **That guards against casual abuse, it is not a billing control.**
+>
+> The billing control is the same switch as above: **`NEXT_PUBLIC_DEMO_MODE=1` makes this route skip
+> Anthropic entirely**, even with a key configured, and fall back to local keyword matching — free,
+> and still useful. [`route.test.ts`](src/app/api/ai/formula/route.test.ts) holds that rule in place.
+> Even so, **not setting the key on a public deployment is still the safest thing to do** — two
+> layers beat one.
 
 ### 🔧 Troubleshooting
 
@@ -906,7 +911,7 @@ figures and formulas still line up in columns in Plex Mono, while Thai words on 
 set in the same family as the body text rather than in the system's default monospace face.
 
 <p align="center"><img src="public/screenshots/27-landing-stats.png" width="820"></p>
-<p align="center"><sub>The inverted "Under the hood" band and the <b>What it can't do</b> section — limits stated on the front page rather than buried in the README.</sub></p>
+<p align="center"><sub>The inverted "Under the hood" band and the <b>Where this stops on purpose</b> section — the front page says where the app stops, and sends the rest of the limits here.</sub></p>
 
 ### 🌐 Bilingual (Thai / English)
 
@@ -942,7 +947,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (638 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (644 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1414,7 +1419,7 @@ ever reaches the fetcher
 **Confirmed by reverting** — all four cases fail on the old code and pass on the new. The tests were not
 written to agree with whatever the code already did.
 
-### 85 security tests
+### 91 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -1424,8 +1429,9 @@ written to agree with whatever the code already did.
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
 | `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
 | `validate.test.ts` | 4 | Which URL shapes are accepted, and which paths must be refused |
+| `ai/formula/route.test.ts` | 6 | Demo mode must not reach Anthropic **even with an API key configured**, the local fallback still answers (not a 403), a missing question is a 400 |
 
-Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts`
+Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -1443,6 +1449,13 @@ Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/valid
 Every endpoint hit with no token: all six `/api/sources` handlers **fail closed**. `/api/ai/formula` is
 the one deliberately open endpoint — the assistant is the app's own feature and requiring a login to use
 it would be absurd — so it carries a ceiling of 20 requests per minute per IP with `Retry-After`.
+
+That ceiling stops casual abuse; it does not stop a bill. An endpoint with no auth that can call a
+model is the operator's money behind a button anyone can press, so **on a public demo
+(`NEXT_PUBLIC_DEMO_MODE=1`) this route never calls Anthropic at all**, even if the host has an
+`ANTHROPIC_API_KEY` set — it falls through to the local keyword matcher instead. The feature still
+works; what the demo gives up is the model's judgement, not the button. And it is a rule in the code,
+not a rule in whoever configured the host's memory.
 
 ### Checked by hand but not pinned by a test — the difference matters
 
@@ -1491,7 +1504,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 638 cases across 27 files, via Vitest
+npm test      # 644 cases across 36 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1592,7 +1605,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       open first (panels, menus, popovers) aren't checked.
 - [x] **Direct CSV import/export** — done (see ✨ Features): the delimiter is sniffed (`,`, `;`, tab), the BOM
       is stripped on the way in and written on the way out so Excel reads Thai, quoting follows RFC 4180, and
-      the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.- [x] **Merge cells** — done (see ✨ Features): one button for merge and split, overlapping merges are
+      the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.
+- [x] **Merge cells** — done (see ✨ Features): one button for merge and split, overlapping merges are
       absorbed, it asks first only when data would be lost, and the export carries real `<mergeCell>`
       elements. Still open: vertical centring, and freezing beyond the already-sticky headers.
 

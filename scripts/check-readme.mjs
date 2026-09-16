@@ -87,6 +87,27 @@ for (const n of quoted) {
 }
 notes.push(`${actualTests} tests in src/, matching the figure quoted in the docs`);
 
+// The suite's *file* count is quoted too, next to the case count, and nothing was watching it: the
+// READMEs said "27 files" while src/ held 35. Same drift as the case count, one line of gate away.
+function countTestFiles(dir) {
+  let n = 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) n += countTestFiles(path.join(dir, entry.name));
+    else if (entry.name.endsWith(".test.ts")) n++;
+  }
+  return n;
+}
+const actualTestFiles = countTestFiles(path.join(ROOT, "src"));
+let sawFileCount = false;
+for (const [file, text] of Object.entries(docs)) {
+  for (const m of text.matchAll(/(?:ใน|across)\s*(\d+)\s*(?:ไฟล์|files\b)/g)) {
+    sawFileCount = true;
+    if (Number(m[1]) !== actualTestFiles) fail(`${file}: says "${m[0].trim()}", but src/ has ${actualTestFiles} test files`);
+  }
+}
+if (!sawFileCount) fail("neither README states how many test files the suite has");
+notes.push(`${actualTestFiles} test files, matching the figure quoted in the docs`);
+
 // --- 4. Every lib module should appear in the project-structure listing ------------------------
 const libDir = path.join(ROOT, "src/lib");
 const libModules = fs
@@ -145,6 +166,7 @@ const SECURITY_TEST_FILES = [
   "src/lib/server/rateLimiter.test.ts",
   "src/lib/server/sourcesAuth.test.ts",
   "src/app/api/sources/validate.test.ts",
+  "src/app/api/ai/formula/route.test.ts",
 ];
 const securityTests = SECURITY_TEST_FILES.reduce((n, f) => n + countMatches(f, /^\s*it\(/gm), 0);
 

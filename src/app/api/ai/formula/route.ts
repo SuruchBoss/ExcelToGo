@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { heuristicSuggest } from "@/lib/aiHeuristic";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/types";
 import { clientKey, createRateLimiter } from "@/lib/server/rateLimiter";
+import { DEMO_MODE } from "@/lib/demoMode";
 
 export const runtime = "nodejs";
 
@@ -73,7 +74,12 @@ export async function POST(request: Request) {
   const headers = Array.isArray(body.headers) ? body.headers.slice(0, 50).map((h) => String(h).slice(0, 60)) : [];
   const locale = parseLocale(body.locale);
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // A public demo must not be able to spend the operator's Anthropic budget. This route takes no
+  // token, so a key configured on the host is billable by anyone who finds the URL, and the
+  // per-process rate limit is a speed bump, not a ceiling. The panel keeps working either way —
+  // `heuristicSuggest` runs locally and costs nothing — so the demo gives up the model's judgement,
+  // not the feature. Structural, so it holds even if someone sets the key on the demo by mistake.
+  const apiKey = DEMO_MODE ? undefined : process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return Response.json({ ...heuristicSuggest(question, selection, locale), source: "heuristic" });
   }
