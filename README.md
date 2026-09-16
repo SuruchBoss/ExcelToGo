@@ -27,14 +27,15 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-644%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-666%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
-**English TL;DR** — Google Sheets and Office on the web open .xlsx files too, but both want an account of
-theirs and both need the file uploaded to their servers first. This needs neither: the workbook is parsed and
-calculated inside the browser, so a payroll or cost-price file never leaves the machine. Beyond that, it is a
-Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
+**English TL;DR** — Describe what you want in plain Thai or English and get a working Excel formula back,
+with a sentence explaining it; one click puts it in the cell. Out of the box that runs on a local keyword
+matcher (free, nothing to configure); paste your own Anthropic API key and the question goes to the real
+Claude — from your browser straight to Anthropic, never through this app's server. Beyond the assistant, it is
+a Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
@@ -43,7 +44,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 644 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 666 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -105,6 +106,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
   - [นำเข้าไฟล์ Excel ที่มีอยู่แล้ว](#-นำเข้าไฟล์-excel-ที่มีอยู่แล้ว)
   - [ใส่สูตรแบบลากวาง](#-ใส่สูตรแบบลากวาง)
   - [ถาม AI หาสูตร](#-ถาม-ai-หาสูตร)
+  - [ใส่ API key ของคุณเอง (BYOK)](#-ใส่-api-key-ของคุณเอง-byok)
   - [ส่งออกไฟล์](#-ส่งออกไฟล์)
   - [นำเข้า/ส่งออก CSV](#-นำเข้าส่งออก-csv)
   - [ข้อมูลสดจาก API / CSV (prototype)](#-ข้อมูลสดจาก-api--csv-prototype)
@@ -185,7 +187,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 644 เคสด้วย Vitest |
+| `npm test` | รัน unit test 666 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build → check:a11y |
@@ -575,6 +577,35 @@ merge เลื่อนตามการแทรก/ลบแถวและ�
 
 <p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
 
+### 🔑 ใส่ API key ของคุณเอง (BYOK)
+
+ผู้ช่วย AI ตอบได้สองทาง และหน้าแรกเขียนบอกไว้ตรงๆ ว่าเดโมใช้ทางไหน:
+
+| ทาง | เกิดขึ้นเมื่อ | คำตอบมาจาก | ใครจ่าย |
+|---|---|---|---|
+| ตัวจับคำสำคัญในเครื่อง | ค่าเริ่มต้น | `aiHeuristic.ts` — จับคำแล้วเดาสูตรพื้นฐาน | ไม่มีใครจ่าย |
+| **Claude ตัวจริง (BYOK)** | ผู้ใช้ใส่ API key ของตัวเอง | `api.anthropic.com` ตรงจากเบราว์เซอร์ | **บัญชีของผู้ใช้เอง** |
+| Claude ตัวจริง (ฝั่งเซิร์ฟเวอร์) | ผู้ดูแลตั้ง `ANTHROPIC_API_KEY` | `/api/ai/formula` | ผู้ดูแลเครื่อง |
+
+<p align="center"><img src="public/screenshots/33-byok.png" width="560"></p>
+
+**key ไม่เคยผ่านเซิร์ฟเวอร์ของแอปนี้** คำขอวิ่งจากเบราว์เซอร์ไปหา `api.anthropic.com` โดยตรง —
+`dangerouslyAllowBrowser` ของ SDK คือสิ่งที่ปลดล็อกให้ทำแบบนี้ได้ (มันใส่ header
+`anthropic-dangerous-direct-browser-access` ที่ CORS ของ Anthropic ต้องการ) ถ้ายิง key มาที่ route ของเรา
+key จะไปนั่งอยู่ในหน่วยความจำของ process และใน log ของโฮสต์ — ทางนี้ไม่มีอะไรให้รั่ว เพราะไม่มีอะไรอยู่ตรงนี้เลย
+
+**เก็บใน `sessionStorage` ไม่ใช่ `localStorage`** ปิดแท็บแล้วหาย — key ที่ค้างใน `localStorage` บนเครื่อง
+ที่ใช้ร่วมกันจะอยู่ต่อหลังเจ้าของเดินจากไปแล้ว และแอปนี้บอกให้คนเปิดใช้โดยไม่ต้องสมัคร จะเดาว่าเครื่องเป็นของ
+คนคนเดียวไม่ได้ ต้นทุนคือพิมพ์ใหม่ตอนเปิดแท็บใหม่ ซึ่งคุ้มกับการที่มันเป็นความลับ
+
+**ยืนยันด้วย Playwright ไม่ใช่ด้วยการอ่านโค้ด** — ดัก `https://api.anthropic.com/**` กับ
+`**/api/ai/formula` พร้อมกัน แล้วถามคำถามจริง ผลคือเส้นที่สองไม่ถูกเรียกเลย (`hit our own
+/api/ai/formula: false`) ส่วนเส้นแรกได้ header `anthropic-dangerous-direct-browser-access: true`
+และคืนสูตรที่แสดงบนหน้าจอจริง
+
+> คำถาม ช่วงเซลล์ที่เลือก และชื่อหัวคอลัมน์ถูกส่งไปหา Anthropic เมื่อกดถามเท่านั้น — **ตัวไฟล์ไม่เคยถูกส่ง**
+> และถ้าไม่กด ก็ไม่มีอะไรออกจากเครื่องเลย
+
 ### 📤 ส่งออกไฟล์
 
 - **Excel**: ไฟล์ `.xlsx` เดียวที่มี**ทุกชีต**ครบ พร้อมสูตรต้นฉบับ, รูปแบบ (แถบสี/ขนาดตัวอักษร/เส้นขอบ/
@@ -859,7 +890,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (644 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (666 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -1074,6 +1105,8 @@ src/
     cellFormat.ts            # รูปแบบเซลล์ (ตัวหนา/เอียง/ขีดเส้นใต้/สี/สีพื้น/ขนาดตัวอักษร/เส้นขอบ/จัดตำแหน่ง/
                               # รูปแบบตัวเลข) + แปลงหน่วย pt↔px และเป็น/จาก numFmt ของ Excel
     aiHeuristic.ts           # ตรรกะแนะนำสูตรจากคำสำคัญ (ใช้เมื่อไม่มี ANTHROPIC_API_KEY) แบบสองภาษา
+    aiPrompt.ts              # prompt กับการแกะคำตอบ ใช้ร่วมกันทั้งฝั่งเซิร์ฟเวอร์และฝั่งเบราว์เซอร์ (BYOK)
+    byok.ts                  # เก็บ API key ของผู้ใช้ไว้ในแท็บเดียว + ปิดบังตอนแสดงผล
     sheet.ts                 # โมเดลข้อมูลตารางหลัก, คำนวณค่าทั้งชีต, ใส่สูตรตาม scope ต่างๆ, แทรก/ลบแถว-คอลัมน์
     sheetClipboard.ts        # คัดลอก/ตัด/วาง, แปลงเป็น/จาก TSV (สำหรับ paste ข้ามแอป)
     sheetSort.ts             # ตรวจจับช่วงที่จะเรียง + เรียงลำดับข้อมูล
@@ -1308,7 +1341,7 @@ flowchart LR
 
 **ยืนยันด้วยการย้อนโค้ดกลับ** — เทสต์ทั้งสี่เคสพังบนโค้ดเก่าและผ่านบนโค้ดใหม่ ไม่ได้เขียนเทสต์ให้ผ่านเฉย ๆ
 
-### 91 เทสต์ด้านความปลอดภัย
+### 103 เทสต์ด้านความปลอดภัย
 
 | ไฟล์ | เทสต์ | ครอบอะไร |
 |---|---|---|
@@ -1319,8 +1352,9 @@ flowchart LR
 | `sourcesAuth.test.ts` | 9 | ไม่ตั้ง token = ปฏิเสธทุก request, token ว่าง = ถือว่าไม่ได้ตั้ง, token ที่เป็นแค่ prefix ก็ไม่ผ่าน |
 | `validate.test.ts` | 4 | รูปแบบ URL ที่ยอมรับ และ path ที่ต้องปฏิเสธ |
 | `ai/formula/route.test.ts` | 6 | เปิด DEMO_MODE แล้วต้องไม่แตะ Anthropic **แม้จะตั้ง API key ไว้**, fallback ในเครื่องยังตอบได้ (ไม่ใช่ 403), ไม่มีคำถาม = 400 |
+| `byok.test.ts` | 12 | key ของผู้ใช้: รูปแบบที่รับ/ไม่รับ, ปิดบังตอนแสดง (เห็นพอจำได้ ไม่พอเอาไปใช้), ปิดแท็บแล้วหาย, storage ที่ถูกบล็อกต้องไม่ทำให้แผงพัง |
 
-รันแยกได้: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/`
+รันแยกได้: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts`
 
 ### OWASP Top 10 เฉพาะหมวดที่เกี่ยวกับแอปนี้จริง
 
@@ -1390,7 +1424,7 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 644 เคส ใน 36 ไฟล์ ด้วย Vitest
+npm test      # 666 เคส ใน 38 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM

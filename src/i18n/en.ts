@@ -117,13 +117,14 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No sign-up · no upload · hand-written formula engine · 644 tests",
-    headline: "Open an Excel file and keep working. Nothing gets uploaded",
+    eyebrow: "No syntax to memorise · hand-written engine · 666 tests",
+    headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
-      "Google Sheets and Office on the web open Excel files too — but both want an account of theirs, and both need the file uploaded to their servers first. This needs neither: the file is read and calculated inside your browser. It still looks like itself, colour bands, merged cells and borders intact, and you pick formulas from a list instead of remembering the syntax.",
+      "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
     ctaPrimary: "Open the app",
     ctaSecondary: "View the code on GitHub",
-    ctaNote: "Payroll, cost prices, a customer list — nothing you have to hand over first",
+    ctaNote:
+      "This demo answers from a local keyword matcher — free, nothing to configure · paste your own Anthropic API key in the app for the real Claude; the request goes from your browser straight to Anthropic.",
     screenshotAlt: "The main ExcelToGo screen",
     demo: {
       headers: ["Item", "Price", "Qty", "Total"],
@@ -137,14 +138,14 @@ export const en: Messages = {
       title: "Where this differs from Google Sheets and Office on the web",
       columns: ["ExcelToGo", "Google Sheets", "Office on the web"],
       rows: [
+        { label: "Formula palette with a drag-to-pick range button", values: ["Yes", "No", "No"], good: true },
         { label: "Account required before you can start", values: ["No", "Google account", "Microsoft account"], good: true },
         { label: "File uploaded to the provider's servers", values: ["No", "Yes", "Yes"], good: true },
-        { label: "Formula palette with a drag-to-pick range button", values: ["Yes", "No", "No"], good: true },
         { label: "Source open to inspection", values: ["Apache-2.0", "Closed", "Closed"], good: true },
         { label: "Real-time co-editing / macros", values: ["No", "Yes", "Yes"], good: false },
       ],
       disclaimer:
-        "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. What it shows is where the difference actually is, and that difference matters most when the file in front of you is one you would rather not upload.",
+        "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. For a sheet a team edits together, Google Sheets is plainly the better tool. What the table shows is the one thing neither of them can do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
     },
     problemTitle: "What it's for",
     problems: [
@@ -155,6 +156,12 @@ export const en: Messages = {
     featuresTitle: "What it does",
     featuresSubtitle: "Every screenshot below is from the running app, not a mockup",
     features: [
+      {
+        title: "Ask the AI in your own words",
+        body: "Type what you want in Thai or English. The question goes out with the range you selected, and comes back as a formula with an explanation — one button puts it in the cell.",
+        alt: "The AI assistant suggesting a formula",
+        points: ["Answers in the language you asked in", "Works without an API key (keyword fallback)", "You see the formula before it goes in"],
+      },
       {
         title: "Drag a formula in, don't memorise its syntax",
         body: "Search 32 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
@@ -185,19 +192,13 @@ export const en: Messages = {
         alt: "The notice that a summary's source data has changed",
         points: ["Sum, count, average, min, max", "Totals re-aggregate the raw values, not the cells shown", "A group with no numbers gives blank, not 0"],
       },
-      {
-        title: "Ask the AI in your own words",
-        body: "Type what you want in Thai or English. The question goes out with the range you selected, and comes back as a formula with an explanation — one button puts it in the cell.",
-        alt: "The AI assistant suggesting a formula",
-        points: ["Answers in the language you asked in", "Works without an API key (keyword fallback)", "You see the formula before it goes in"],
-      },
     ],
     statsTitle: "Under the hood",
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "644", label: "automated tests" },
-      { value: "91", label: "security tests" },
+      { value: "666", label: "automated tests" },
+      { value: "103", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -473,6 +474,19 @@ export const en: Messages = {
       "Look up a product's price from its code",
     ],
     insertAt: (address) => `Insert this formula at cell ${address}`,
+    byok: {
+      title: "Use your own API key",
+      lead: "Paste an Anthropic API key and your question goes to the real Claude — a formula that answers what you asked, not a keyword guess.",
+      placeholder: "sk-ant-...",
+      save: "Save key",
+      change: "Change key",
+      clear: "Remove key",
+      active: (masked) => `Using key ${masked} · answers now come from Claude`,
+      invalid: "That does not look like an Anthropic API key — they start with sk-ant-",
+      privacyNote:
+        "The key is kept in this tab only (sessionStorage) and is gone when you close it. Requests go from your browser straight to api.anthropic.com — never through this site's server — so the usage is billed to your own account.",
+      getKeyLink: "Get an API key at console.anthropic.com",
+    },
   },
   merge: {
     title: "Merge cells",

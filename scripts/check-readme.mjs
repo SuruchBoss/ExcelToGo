@@ -167,6 +167,7 @@ const SECURITY_TEST_FILES = [
   "src/lib/server/sourcesAuth.test.ts",
   "src/app/api/sources/validate.test.ts",
   "src/app/api/ai/formula/route.test.ts",
+  "src/lib/byok.test.ts",
 ];
 const securityTests = SECURITY_TEST_FILES.reduce((n, f) => n + countMatches(f, /^\s*it\(/gm), 0);
 

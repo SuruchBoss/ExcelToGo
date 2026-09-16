@@ -398,6 +398,21 @@ export interface Messages {
     rateLimited: (seconds: number) => string;
     examples: string[];
     insertAt: (address: string) => string;
+    /** "Bring your own key": the visitor's own Anthropic key, held in this tab only, used to call
+     *  Anthropic straight from the browser. See `src/lib/byok.ts` for why it works that way. */
+    byok: {
+      title: string;
+      lead: string;
+      placeholder: string;
+      save: string;
+      change: string;
+      clear: string;
+      /** Shown once a key is set, with the key masked — never the whole thing. */
+      active: (masked: string) => string;
+      invalid: string;
+      privacyNote: string;
+      getKeyLink: string;
+    };
   };
   merge: {
     title: string;

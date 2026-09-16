@@ -26,22 +26,23 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-644%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-666%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
-Google Sheets and Office on the web open .xlsx files too, but both want an account of theirs and both need the
-file uploaded to their servers first. This needs neither: the workbook is parsed and calculated inside the
-browser, so a payroll or cost-price file never leaves the machine.
+Describe what you want in plain Thai or English and get a working Excel formula back, with a sentence
+explaining it; one click puts it in the cell. Out of the box that runs on a local keyword matcher — free,
+nothing to configure — and pasting your own Anthropic API key sends the question to the real Claude, from your
+browser straight to Anthropic, never through this app's server.
 
-Beyond that, a Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
+Beyond the assistant, a Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 644 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 666 automated tests.
 
 ---
 
@@ -101,6 +102,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
   - [Import an existing Excel file](#-import-an-existing-excel-file)
   - [Drag-and-drop formulas](#-drag-and-drop-formulas)
   - [Ask AI for a formula](#-ask-ai-for-a-formula)
+  - [Bring your own API key (BYOK)](#-bring-your-own-api-key-byok)
   - [Export](#-export)
   - [CSV in and out](#-csv-in-and-out)
   - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
@@ -188,7 +190,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 644-case Vitest suite |
+| `npm test` | Run the 666-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -638,6 +640,37 @@ a short explanation. One click inserts it into the selected cell.
 
 <p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
 
+### 🔑 Bring your own API key (BYOK)
+
+The assistant answers one of three ways, and the landing page says plainly which one the demo uses:
+
+| Path | When | Answer comes from | Who pays |
+|---|---|---|---|
+| Local keyword matcher | The default | `aiHeuristic.ts` — matches words, guesses a basic formula | Nobody |
+| **The real Claude (BYOK)** | The visitor pastes their own API key | `api.anthropic.com`, straight from the browser | **The visitor's own account** |
+| The real Claude (server-side) | The operator sets `ANTHROPIC_API_KEY` | `/api/ai/formula` | Whoever runs the server |
+
+<p align="center"><img src="public/screenshots/33-byok.png" width="560"></p>
+
+**The key never passes through this app's server.** The request goes from the browser straight to
+`api.anthropic.com` — that is what the SDK's `dangerouslyAllowBrowser` unlocks (it adds the
+`anthropic-dangerous-direct-browser-access` header Anthropic's CORS policy requires). A key POSTed to
+our own route would sit in that process's memory and in whatever the host logs; this way there is
+nothing to leak, because there is nothing here to leak.
+
+**`sessionStorage`, not `localStorage`.** Closing the tab discards it. A key left in `localStorage`
+on a shared or library machine outlives the person who typed it, and this is a tool people are told
+to open without signing up — assuming the machine is theirs alone would be the wrong default. The
+cost is retyping it in a new tab, which is the right trade for a secret.
+
+**Verified by running it, not by reading it.** A Playwright run intercepts
+`https://api.anthropic.com/**` and `**/api/ai/formula` at the same time and asks a real question. The
+second is never called (`hit our own /api/ai/formula: false`); the first arrives with
+`anthropic-dangerous-direct-browser-access: true` and its formula is what the panel displays.
+
+> The question, the selected range and the column headers go to Anthropic only when the button is
+> pressed — **the file itself is never sent**, and if nobody presses it, nothing leaves the machine.
+
 ### 📤 Export
 
 - **Excel**: a single `.xlsx` with **every sheet** included — original formulas, formatting (fills, font sizes,
@@ -960,7 +993,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (644 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (666 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1178,6 +1211,8 @@ src/
     cellFormat.ts            # Cell formatting (bold/italic/underline/color/fill/font size/borders/alignment/
                               # number format) + pt↔px conversion and to/from Excel numFmt
     aiHeuristic.ts           # Keyword-based formula suggestion logic (used with no ANTHROPIC_API_KEY), bilingual
+    aiPrompt.ts              # The prompt and reply parsing, shared by the server route and the browser (BYOK)
+    byok.ts                  # The visitor's own API key: this tab only, masked when shown
     sheet.ts                 # The core sheet data model, whole-sheet computation, applying a formula by scope,
                               # inserting/deleting rows-columns
     sheetClipboard.ts        # Copy/cut/paste, converting to/from TSV (for cross-app pasting)
@@ -1435,7 +1470,7 @@ ever reaches the fetcher
 **Confirmed by reverting** — all four cases fail on the old code and pass on the new. The tests were not
 written to agree with whatever the code already did.
 
-### 91 security tests
+### 103 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -1446,8 +1481,9 @@ written to agree with whatever the code already did.
 | `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
 | `validate.test.ts` | 4 | Which URL shapes are accepted, and which paths must be refused |
 | `ai/formula/route.test.ts` | 6 | Demo mode must not reach Anthropic **even with an API key configured**, the local fallback still answers (not a 403), a missing question is a 400 |
+| `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
 
-Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/`
+Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -1520,7 +1556,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 644 cases across 36 files, via Vitest
+npm test      # 666 cases across 38 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so

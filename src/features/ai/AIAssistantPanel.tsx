@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { Sparkles, Loader2, KeyRound, ExternalLink } from "lucide-react";
 import { useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 import { useLocale, useT } from "@/i18n";
+import { clearKey, keyServerSnapshot, keySnapshot, looksLikeAnthropicKey, maskKey, saveKey, subscribeToKey } from "@/lib/byok";
+import { askAnthropicDirect } from "./askAnthropicDirect";
 
 interface Suggestion {
   formula: string;
@@ -20,6 +22,31 @@ export default function AIAssistantPanel() {
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // `sessionStorage` does not exist during the server render, so the key arrives through a
+  // subscription rather than an effect that sets state — see byok.ts.
+  const savedKey = useSyncExternalStore(subscribeToKey, keySnapshot, keyServerSnapshot);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [editingKey, setEditingKey] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+
+  const commitKey = () => {
+    const value = keyDraft.trim();
+    if (!looksLikeAnthropicKey(value)) {
+      setKeyError(t.ai.byok.invalid);
+      return;
+    }
+    saveKey(value);
+    setKeyDraft("");
+    setEditingKey(false);
+    setKeyError(null);
+  };
+
+  const forgetKey = () => {
+    clearKey();
+    setKeyDraft("");
+    setEditingKey(false);
+    setKeyError(null);
+  };
 
   const ask = async (q: string) => {
     if (!q.trim() || loading) return;
@@ -27,6 +54,11 @@ export default function AIAssistantPanel() {
     setError(null);
     setSuggestion(null);
     try {
+      // With the visitor's own key the request never touches this app's server — see byok.ts.
+      if (savedKey) {
+        setSuggestion(await askAnthropicDirect(savedKey, q, selectionAddress, locale));
+        return;
+      }
       const res = await fetch("/api/ai/formula", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,6 +92,81 @@ export default function AIAssistantPanel() {
 
       <div className="rounded-md bg-zinc-50 p-2 text-xs text-zinc-500">
         {t.ai.selectionLabel} <span className="font-medium text-zinc-700">{selectionAddress}</span>
+      </div>
+
+      {/* Bring your own key. Sits above the question box because it changes what the answer will
+          be — finding it after a disappointing keyword guess is finding it too late. */}
+      <div className="rounded-md border border-zinc-200 bg-white p-2.5">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700">
+          <KeyRound size={13} className="text-emerald-600" /> {t.ai.byok.title}
+        </p>
+
+        {savedKey && !editingKey ? (
+          <>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-emerald-700">{t.ai.byok.active(maskKey(savedKey))}</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => {
+                  setEditingKey(true);
+                  setKeyDraft("");
+                }}
+                className="rounded border border-zinc-300 px-2 py-1 text-[11px] text-zinc-600 hover:border-zinc-400"
+              >
+                {t.ai.byok.change}
+              </button>
+              <button onClick={forgetKey} className="rounded border border-zinc-300 px-2 py-1 text-[11px] text-zinc-600 hover:border-zinc-400">
+                {t.ai.byok.clear}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-500">{t.ai.byok.lead}</p>
+            <div className="mt-2 flex gap-2">
+              <label className="sr-only" htmlFor="byok-key">
+                {t.ai.byok.title}
+              </label>
+              <input
+                id="byok-key"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={keyDraft}
+                onChange={(e) => {
+                  setKeyDraft(e.target.value);
+                  setKeyError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitKey();
+                  }
+                }}
+                placeholder={t.ai.byok.placeholder}
+                className="min-w-0 flex-1 rounded border border-zinc-300 px-2 py-1 font-mono text-[11px] outline-none focus:border-emerald-500"
+              />
+              <button
+                onClick={commitKey}
+                disabled={!keyDraft.trim()}
+                className="shrink-0 rounded bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {t.ai.byok.save}
+              </button>
+            </div>
+            {keyError && <p className="mt-1.5 text-[11px] text-red-600">{keyError}</p>}
+            <a
+              href="https://console.anthropic.com/settings/keys"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
+            >
+              {t.ai.byok.getKeyLink}
+              <ExternalLink size={10} aria-hidden />
+            </a>
+          </>
+        )}
+
+        <p className="mt-2 border-t border-zinc-100 pt-2 text-[10px] leading-relaxed text-zinc-400">{t.ai.byok.privacyNote}</p>
       </div>
 
       <textarea

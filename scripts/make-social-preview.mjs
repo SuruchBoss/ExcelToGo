@@ -59,24 +59,27 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { width: 1280px; height: 640px; background: #fbfaf7; color: #16181d;
        font-family: "Noto Sans Thai", sans-serif; -webkit-font-smoothing: antialiased; }
-.page { height: 100%; padding: 64px 72px 56px; display: flex; flex-direction: column; }
+.page { height: 100%; padding: 46px 72px 44px; display: flex; flex-direction: column; }
 .eyebrow { display: flex; align-items: center; gap: 14px; color: #0b6b4f; font-size: 23px; letter-spacing: .5px; }
 .sq { width: 16px; height: 16px; background: #0b6b4f; }
-h1 { font-size: 62px; line-height: 1.22; letter-spacing: -1px; margin-top: 30px; max-width: 1060px;
-     font-weight: 400; -webkit-text-stroke: 1.1px #16181d; }
-.sub { font-size: 26px; color: #6b6f76; margin-top: 20px; max-width: 1000px; line-height: 1.45; }
+h1 { font-size: 52px; line-height: 1.22; letter-spacing: -1px; margin-top: 22px; max-width: 1120px;
+     font-weight: 400; -webkit-text-stroke: 1px #16181d; }
+.mono { font-family: ui-monospace, "DejaVu Sans Mono", monospace; font-size: 21px; color: #0b6b4f;
+       margin-top: 20px; padding: 11px 16px; border: 1px solid #e3e1da; background: #fff; display: inline-block; }
+.sub { font-size: 22px; color: #6b6f76; margin-top: 16px; max-width: 1040px; line-height: 1.42; }
 .spacer { flex: 1; }
-.stats { display: flex; border-top: 2px solid #16181d; padding-top: 24px; }
+.stats { display: flex; border-top: 2px solid #16181d; padding-top: 20px; }
 .stat { flex: 1; padding-left: 22px; border-left: 1px solid #e3e1da; }
 .stat:first-child { padding-left: 0; border-left: none; }
-.n { font-size: 50px; color: #0b6b4f; -webkit-text-stroke: .9px #0b6b4f; line-height: 1.1; }
+.n { font-size: 44px; color: #0b6b4f; -webkit-text-stroke: .9px #0b6b4f; line-height: 1.1; }
 .l { font-size: 19px; color: #16181d; margin-top: 6px; }
 .l small { display: block; font-size: 15px; color: #6b6f76; margin-top: 2px; }
-.url { margin-top: 22px; font-size: 21px; color: #6b6f76; }
+.url { margin-top: 16px; font-size: 19px; color: #6b6f76; }
 </style></head><body><div class="page">
-  <div class="eyebrow"><div class="sq"></div><div>ExcelToGo · ไม่ต้องสมัคร · ไม่ต้องอัปโหลดไฟล์</div></div>
-  <h1>เปิดไฟล์ Excel ทำต่อได้ทันที ไม่ต้องอัปโหลด</h1>
-  <div class="sub">Open an Excel file and keep working. Google Sheets and Office on the web need an account and an upload first; this needs neither — the file is read and calculated inside your own browser.</div>
+  <div class="eyebrow"><div class="sq"></div><div>ExcelToGo · ไม่ต้องจำสูตร ไม่ต้องสมัคร ไม่ต้องอัปโหลด</div></div>
+  <h1>พิมพ์เป็นภาษาไทย แล้วได้สูตร Excel ที่ใช้ได้จริง</h1>
+  <div class="mono">“รวมยอดขายเฉพาะสาขาเหนือ”&nbsp;&nbsp;→&nbsp;&nbsp;=SUMIF(B2:B50,"เหนือ",D2:D50)</div>
+  <div class="sub">Describe what you want and get a working Excel formula back, with an explanation. Or pick from 32 ready-made formulas and drag across the cells instead of typing addresses.</div>
   <div class="url">excel-to-go.vercel.app</div>
   <div class="spacer"></div>
   <div class="stats">${stats
