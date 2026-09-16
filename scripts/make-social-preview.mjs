@@ -17,38 +17,16 @@
  */
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import { chromium } from "playwright";
+import { ROOT, counts } from "./counts.mjs";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
-const count = (p, re) => (read(p).match(re) ?? []).length;
-
-const countTests = (dir) => {
-  let n = 0;
-  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) n += countTests(full);
-    else if (e.name.endsWith(".test.ts")) n += (fs.readFileSync(full, "utf8").match(/^\s*it\(/gm) ?? []).length;
-  }
-  return n;
-};
-
-const SECURITY_TEST_FILES = [
-  "src/lib/server/urlGuard.test.ts",
-  "src/lib/server/executeSource.test.ts",
-  "src/lib/server/secretBox.test.ts",
-  "src/lib/server/rateLimiter.test.ts",
-  "src/lib/server/sourcesAuth.test.ts",
-  "src/app/api/sources/validate.test.ts",
-  "src/app/api/ai/formula/route.test.ts",
-];
+const { engineFunctions, paletteFormulas, tests, securityTests } = counts();
 
 const stats = [
-  [String(count("src/lib/formulaEngine/functions.ts", /^  [A-Z][A-Z0-9.]*:/gm)), "ฟังก์ชันในเอนจิน", "engine functions"],
-  [String(count("src/lib/formulaCatalog.ts", /^    id: "[A-Z][A-Z0-9.]*",/gm)), "สูตรพร้อมใช้", "ready-made formulas"],
-  [String(countTests(path.join(ROOT, "src"))), "เทสต์อัตโนมัติ", "automated tests"],
-  [String(SECURITY_TEST_FILES.reduce((n, f) => n + count(f, /^\s*it\(/gm), 0)), "ด้านความปลอดภัย", "of them security"],
+  [String(engineFunctions), "ฟังก์ชันในเอนจิน", "engine functions"],
+  [String(paletteFormulas), "สูตรพร้อมใช้", "ready-made formulas"],
+  [String(tests), "เทสต์อัตโนมัติ", "automated tests"],
+  [String(securityTests), "ด้านความปลอดภัย", "of them security"],
   ["0", "ไลบรารีคำนวณสูตร", "formula libraries"],
 ];
 

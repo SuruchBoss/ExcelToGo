@@ -11,16 +11,13 @@
  */
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import { ROOT, SECURITY_TEST_FILES, countMatches, countTestFiles, countTests, read } from "./counts.mjs";
 
-// Not `import.meta.dirname`: that only exists from Node 20.11, and package.json declares 20.9 as the
-// floor. CI runs the floor, which is how the difference surfaced.
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// `ROOT`, `read` and the counting helpers come from counts.mjs — see the note at the top of it.
 const READMES = ["README.md", "README.en.md"];
 const problems = [];
 const notes = [];
 
-const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 const fail = (msg) => problems.push(msg);
 
 /**
@@ -65,16 +62,7 @@ for (const f of onDisk) {
 notes.push(`${onDisk.length} screenshots, all referenced`);
 
 // --- 3. Test counts quoted in the docs must match the suite ------------------------------------
-function countTests(dir) {
-  let n = 0;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) n += countTests(full);
-    else if (entry.name.endsWith(".test.ts")) n += (fs.readFileSync(full, "utf8").match(/^\s*it\(/gm) ?? []).length;
-  }
-  return n;
-}
-const actualTests = countTests(path.join(ROOT, "src"));
+const actualTests = countTests();
 const quoted = new Set();
 for (const text of Object.values(docs)) {
   for (const m of text.matchAll(/tests-(\d+)%20passing|(\d+)\s*(?:automated tests|เคส|cases)/g)) {
@@ -89,15 +77,7 @@ notes.push(`${actualTests} tests in src/, matching the figure quoted in the docs
 
 // The suite's *file* count is quoted too, next to the case count, and nothing was watching it: the
 // READMEs said "27 files" while src/ held 35. Same drift as the case count, one line of gate away.
-function countTestFiles(dir) {
-  let n = 0;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) n += countTestFiles(path.join(dir, entry.name));
-    else if (entry.name.endsWith(".test.ts")) n++;
-  }
-  return n;
-}
-const actualTestFiles = countTestFiles(path.join(ROOT, "src"));
+const actualTestFiles = countTestFiles();
 let sawFileCount = false;
 for (const [file, text] of Object.entries(docs)) {
   for (const m of text.matchAll(/(?:ใน|across)\s*(\d+)\s*(?:ไฟล์|files\b)/g)) {
@@ -152,23 +132,12 @@ for (const [file, text, start, end] of [
 // suite had passed 400, and claimed 25 palette formulas and 42 engine functions when the real
 // figures were 32 and 49. The README's counts were being kept honest by this script while the
 // page every visitor sees first drifted for months.
-const countMatches = (file, pattern) => (read(file).match(pattern) ?? []).length;
 const engineFunctions = countMatches("src/lib/formulaEngine/functions.ts", /^  [A-Z][A-Z0-9.]*:/gm);
 const paletteFormulas = countMatches("src/lib/formulaCatalog.ts", /^    id: "[A-Z][A-Z0-9.]*",/gm);
 
 // The security figure is quoted on the landing page and all through the README's security section,
 // and it is the one number a reader is most entitled to be suspicious of. Counted from the files
 // that hold those tests rather than trusted, the same as every other figure here.
-const SECURITY_TEST_FILES = [
-  "src/lib/server/urlGuard.test.ts",
-  "src/lib/server/executeSource.test.ts",
-  "src/lib/server/secretBox.test.ts",
-  "src/lib/server/rateLimiter.test.ts",
-  "src/lib/server/sourcesAuth.test.ts",
-  "src/app/api/sources/validate.test.ts",
-  "src/app/api/ai/formula/route.test.ts",
-  "src/lib/byok.test.ts",
-];
 const securityTests = SECURITY_TEST_FILES.reduce((n, f) => n + countMatches(f, /^\s*it\(/gm), 0);
 
 for (const locale of ["th", "en"]) {
