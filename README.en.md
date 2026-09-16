@@ -1,4 +1,4 @@
-# 📊 ExcelToGo — open an Excel file and keep working, in the browser
+# 📊 ExcelToGo — describe what you want, get an Excel formula that works
 
 **Language:** [ไทย](README.md) · English
 
@@ -7,17 +7,27 @@
 Runs in your browser; your data stays on your machine.
 (The live-data feature is switched off on the public demo — [why](SECURITY.md).)
 
-> **Open an Excel file and keep working, in the browser — no install, no account.** A `.xlsx` opens
-> still looking like itself (colour bands, merged cells, borders, row heights), and from there you can
-> **pick formulas from a drag-and-drop list** instead of remembering them, or **ask an AI** in plain
-> language. It runs on a **hand-written formula engine** (no third-party library), entirely in your
-> browser — the data never leaves your machine.
+> **Type "total sales for the northern branch" and get an Excel formula back**, with a sentence
+> saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes
+> first. Or skip the typing: **pick from 32 ready-made formulas** and drag across the cells instead
+> of typing addresses. It works out of the box with nothing to configure (a local keyword matcher,
+> free), or paste your own Anthropic API key and the question goes to the real Claude — from your
+> browser straight to Anthropic, never through this app's server.
 >
-> Three things build on that: **[live data from an API/CSV](#-live-data-from-an-api--csv-prototype)** that keeps
+> All of that happens on a `.xlsx` that **still looks like itself when it opens** (colour bands,
+> merged cells, borders, row heights), computed by a **hand-written formula engine** (no
+> third-party library), entirely in your browser — the data never leaves your machine, and there
+> is no account to create.
+>
+> Four things build on that: **[live data from an API/CSV](#-live-data-from-an-api--csv-prototype)** that keeps
 > cells current on its own (following paginated APIs and backing off when rate-limited),
 > **[imported files keeping their look](#-it-looks-like-the-file-you-opened)** (colour bands, large type,
-> borders, merged cells), and **[templates read straight out of an Excel file](#-templates-from-an-excel-file)**
-> that already know which cells are yours to fill in.
+> borders, merged cells), **[templates read straight out of an Excel file](#-templates-from-an-excel-file)**
+> that already know which cells are yours to fill in, and **[Pivot summaries](#-pivot-summarise-a-range)**
+> that group a range and write the result out as a new sheet.
+>
+> Charts exported with the `.xlsx` are **real charts you can keep editing in Excel**, not pictures —
+> the OOXML chart part is written by hand, because ExcelJS cannot write one.
 
 <p align="center">
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white">

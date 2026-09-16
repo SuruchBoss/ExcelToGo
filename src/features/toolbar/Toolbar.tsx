@@ -37,8 +37,10 @@ export default function Toolbar() {
     // chrome before the first cell. The format bar beside it already scrolls; matching it keeps the
     // two rows the same height and the same gesture.
     <div className="flex items-center gap-1.5 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-2">
-      {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
-      <Link href="/" title={t.landing.home} className="mr-2 shrink-0 text-lg font-bold text-emerald-700 hover:text-emerald-800">
+      {/* The brand doubles as the way back to the landing page, the way it does on most sites.
+          `order-first` here and on the action group below is what keeps the two of them at the head
+          of the row on a phone; see the note on that group. */}
+      <Link href="/" title={t.landing.home} className="order-first sm:order-none mr-2 shrink-0 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}
       </Link>
 
@@ -124,7 +126,12 @@ export default function Toolbar() {
         <Plus size={14} /> <span className="hidden sm:inline">{t.toolbar.addColumn}</span>
       </button>
 
-      <div className="ml-auto flex shrink-0 items-center gap-2">
+      {/* Measured at 390px: this row is 784px of content in a 390px box, and "ask AI" — the thing the
+          landing page leads with — sat at x=592, two hundred pixels past the right edge. The scroll
+          shadow says there is more, but the one button worth finding first should not be the one you
+          have to go looking for. On a phone this group is ordered to the front, right after the
+          brand; from `sm:` up `order-none` and `ml-auto` put it back on the right, unchanged. */}
+      <div className="order-first sm:order-none sm:ml-auto flex shrink-0 items-center gap-2">
         {busy ? (
           <span className="text-xs text-zinc-500">{busy}</span>
         ) : (
