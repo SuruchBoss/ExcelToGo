@@ -297,6 +297,15 @@ export interface Messages {
     describe: (test: CfTest) => string;
     orderNote: string;
   };
+  /** Shown only while the workbook is still the untouched sample, so nobody mistakes the demo
+   *  data for something they left behind. */
+  sampleNotice: {
+    text: string;
+    /** The "try this" half, hidden below `sm` — on a phone the grid is what matters, and a
+     *  four-line banner before the first row is the cost this avoids. */
+    tip: string;
+    startBlank: string;
+  };
   storageNotice: {
     /** Shown once inside the app: work lives in this browser only. The README saying so is no
      *  help to someone who has already typed an afternoon's work into the grid. */

@@ -15,12 +15,13 @@ import ChartPanel from "@/features/grid/ChartPanel";
 import PivotPanel from "@/features/grid/PivotPanel";
 import CloudPanel from "@/features/cloud/CloudPanel";
 import StorageNotice from "@/features/grid/StorageNotice";
+import SampleNotice from "@/features/grid/SampleNotice";
 import PivotNotice from "@/features/grid/PivotNotice";
 import DataPicker from "@/features/data/DataPicker";
 import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
-import { useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
+import { selectShowingSample, useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 import { useT } from "@/i18n";
 import { useEffect } from "react";
@@ -32,6 +33,7 @@ export default function Home() {
   useUndoRedoShortcuts();
   useClipboardShortcuts();
   useLiveDataPolling();
+  const showingSample = useSheetStore(selectShowingSample);
 
   // The panel covers the whole screen on a phone, so leaving it open by default meant a visitor
   // arriving from a phone saw the formula list and not one cell of the spreadsheet. Closing it on
@@ -56,7 +58,7 @@ export default function Home() {
       <FormatBar />
       <FormulaBar />
       <TemplateBar />
-      <StorageNotice />
+      {showingSample ? <SampleNotice /> : <StorageNotice />}
       <PivotNotice />
       <div className="flex min-h-0 flex-1 gap-3 p-2 sm:p-3">
         <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white outline-none">

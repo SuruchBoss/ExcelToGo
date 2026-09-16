@@ -117,7 +117,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 666 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 674 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -197,7 +197,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "666", label: "automated tests" },
+      { value: "674", label: "automated tests" },
       { value: "103", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -358,6 +358,11 @@ export const en: Messages = {
       }
     },
     orderNote: "A lower rule overrides one above it where they clash",
+  },
+  sampleNotice: {
+    text: "This is sample data, not something you left behind.",
+    tip: "Change a price and watch the Total column and the grand total move, or try Pivot and Chart on it.",
+    startBlank: "Start from a blank sheet",
   },
   storageNotice: {
     text: "Your work is saved in this browser only — never uploaded. Clearing your browser data or moving to another device loses it, so use \"Export Excel\" to keep a copy.",

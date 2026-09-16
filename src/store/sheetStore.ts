@@ -169,6 +169,9 @@ interface SheetState {
 
   setActiveSheet: (id: string) => void;
   addSheet: () => void;
+  /** Throws away the sample workbook and starts from one empty sheet. Only reachable while the
+   *  sample is untouched, so there is nothing of the user's to lose. */
+  startBlank: () => void;
   renameSheet: (id: string, name: string) => void;
   deleteSheet: (id: string) => void;
 
@@ -367,6 +370,20 @@ type PersistedSlice = Pick<SheetState, "sheets" | "activeSheetId">;
 
 const initialTab = newTab("Sheet1", seedSample());
 
+/**
+ * Is the workbook still exactly what the app opened with — the sample, untouched?
+ *
+ * Object identity, not a content comparison. Every action here replaces the sheet immutably, so
+ * anything a person does — typing, formatting, a chart, a pivot, an import, rehydrating their own
+ * saved work from localStorage — produces a different object. Comparing content would miss all of
+ * those that leave the cells alone, and "start from a blank sheet" would then quietly throw away a
+ * chart somebody had just made.
+ */
+const INITIAL_SHEET = initialTab.sheet;
+export function selectShowingSample(s: SheetState): boolean {
+  return s.sheets.length === 1 && s.sheets[0].sheet === INITIAL_SHEET;
+}
+
 export const useSheetStore = create<SheetState>()(
   persist(
     temporal(
@@ -391,6 +408,11 @@ export const useSheetStore = create<SheetState>()(
           const s = get();
           const tab = newTab(`Sheet${s.sheets.length + 1}`);
           set({ sheets: [...s.sheets, tab], activeSheetId: tab.id });
+        },
+
+        startBlank: () => {
+          const tab = newTab("Sheet1");
+          set({ sheets: [tab], activeSheetId: tab.id });
         },
 
         renameSheet: (id, name) => {
