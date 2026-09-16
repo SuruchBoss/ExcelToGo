@@ -30,7 +30,11 @@ Runs in your browser; your data stays on your machine.
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
-A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
+Google Sheets and Office on the web open .xlsx files too, but both want an account of theirs and both need the
+file uploaded to their servers first. This needs neither: the workbook is parsed and calculated inside the
+browser, so a payroll or cost-price file never leaves the machine.
+
+Beyond that, a Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
@@ -898,6 +902,14 @@ spreadsheet is asking to be taken on trust; this asks for ten seconds instead. I
 honest: if the engine regresses, the front page visibly breaks.
 
 <p align="center"><img src="public/screenshots/25-landing.png" width="820"></p>
+
+**The old pitch said nothing.** "Open Excel and keep working in the browser" is what Google Sheets and Office on
+the web already do, for free, for millions of people. The page now answers that objection directly, right under
+the hero, instead of hoping a visitor reads far enough to find the difference themselves. Every row is a
+checkable fact — and **the row this app loses is in the table too**, because a comparison the author wins
+outright is one nobody believes.
+
+<p align="center"><img src="public/screenshots/32-landing-compare.png" width="900"></p>
 
 The page is laid out as **ledger paper** rather than as a stack of rounded cards: hairline rules instead
 of boxes, square corners, the alternating pale-green row bands of accounting paper, monospace with tabular

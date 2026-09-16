@@ -9,7 +9,7 @@ import { ImageResponse } from "next/og";
  * mean fetching font bytes at build time. The preview is branding, not content, so Latin is enough;
  * the app itself is fully bilingual.
  */
-export const alt = "ExcelToGo — open an Excel file and keep working, in the browser";
+export const alt = "ExcelToGo — open an Excel file and keep working, with nothing uploaded";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -60,11 +60,11 @@ export default function OgImage() {
             maxWidth: 1040,
           }}
         >
-          Open an Excel file and keep working, in the browser
+          Open an Excel file and keep working. Nothing gets uploaded
         </div>
 
         <div style={{ fontSize: 28, color: ASH, marginTop: 22, maxWidth: 940, lineHeight: 1.4 }}>
-          No install, no account. A hand-written formula engine, live in your browser.
+          No account, no upload — the file is parsed and calculated inside your own browser.
         </div>
 
         <div style={{ flex: 1 }} />

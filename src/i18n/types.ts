@@ -160,6 +160,18 @@ export interface Messages {
       hint: string;
       caption: string;
     };
+    /** The three-column strip under the hero. It answers the first objection a visitor has —
+     *  "Google Sheets and Office already do this" — which is true, so the page has to say where
+     *  the difference actually is rather than talk past it. Every row must be a fact a reader can
+     *  check, and `disclaimer` states plainly what the table is *not* claiming. */
+    compare: {
+      title: string;
+      /** Column headers: this app first, then the two it is being measured against. */
+      columns: [string, string, string];
+      /** `values` is paired by index with `columns`; `good` marks which column the row favours. */
+      rows: { label: string; values: [string, string, string]; good: boolean }[];
+      disclaimer: string;
+    };
     problemTitle: string;
     problems: { title: string; body: string }[];
     featuresTitle: string;

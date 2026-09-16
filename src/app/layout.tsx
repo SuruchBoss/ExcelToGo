@@ -31,8 +31,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 const DESCRIPTION =
-  "เปิดไฟล์ .xlsx ในเบราว์เซอร์แล้วคำนวณต่อได้เลย ไม่ต้องติดตั้ง ไม่ต้องสมัครสมาชิก — หน้าตาไฟล์ยังเหมือนเดิม เลือกสูตรจากรายการแทนการจำ และถาม AI เป็นภาษาคนได้";
-const TITLE = "ExcelToGo — เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์";
+  "เปิดไฟล์ .xlsx ทำต่อได้ทันทีโดยไม่ต้องอัปโหลด — ไม่ต้องสมัคร ไม่ต้องติดตั้ง ไฟล์ถูกอ่านและคำนวณในเบราว์เซอร์ของคุณ หน้าตาไฟล์ยังเหมือนเดิม เลือกสูตรจากรายการแทนการจำ และถาม AI เป็นภาษาคนได้";
+const TITLE = "ExcelToGo — เปิดไฟล์ Excel ทำต่อได้ทันที ไม่ต้องอัปโหลด";
 
 export const metadata: Metadata = {
   // Absolute URLs in the Open Graph tags need a base, and og:image is resolved against it — without

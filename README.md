@@ -31,7 +31,10 @@
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
-**English TL;DR** — A Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
+**English TL;DR** — Google Sheets and Office on the web open .xlsx files too, but both want an account of
+theirs and both need the file uploaded to their servers first. This needs neither: the workbook is parsed and
+calculated inside the browser, so a payroll or cost-price file never leaves the machine. Beyond that, it is a
+Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop
 ready-made formulas instead of memorizing syntax, an AI assistant that suggests formulas from a natural-language
 question (Thai or English), and a hand-written formula engine (tokenizer → parser → evaluator, no third-party
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
@@ -803,6 +806,12 @@ dropdown ยังอยู่ ความกว้างคอลัมน์�
 ถ้าเอนจินพัง หน้าแรกจะพังให้เห็นเลย
 
 <p align="center"><img src="public/screenshots/25-landing.png" width="820"></p>
+
+**คำโปรยเดิมไม่ได้บอกอะไรเลย** — "เปิด Excel ทำต่อในเบราว์เซอร์" คือสิ่งที่ Google Sheets กับ Office ออนไลน์
+ทำได้อยู่แล้ว ฟรีกว่า และมีคนใช้เป็นล้าน หน้านี้จึงตอบข้อโต้แย้งนั้นตรงๆ ใต้หัวข้อแรกเลย แทนที่จะหวังว่าคนจะอ่านลงมาเจอเอง
+ทุกแถวเป็นข้อเท็จจริงที่ตรวจได้ และ**แถวที่แอปนี้แพ้ก็อยู่ในตารางด้วย** — ตารางเทียบที่เจ้าของชนะทุกแถวไม่มีใครเชื่อ
+
+<p align="center"><img src="public/screenshots/32-landing-compare.png" width="900"></p>
 
 หน้านี้ออกแบบเป็น **"กระดาษบัญชี"** ไม่ใช่การ์ดมุมมนลอยๆ แบบหน้าโปรโมตทั่วไป — เส้นบรรทัดคั่นแทนกล่อง มุมเหลี่ยม
 แถบเขียวอ่อนสลับแถวแบบกระดาษ ledger ตัวเลข/สูตร/ที่อยู่เซลล์ใช้ฟอนต์ monospace ส่วนคำอธิบายใช้ sans

@@ -117,13 +117,13 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "A side project · hand-written formula engine · 644 tests",
-    headline: "Open an Excel file and keep working, in the browser",
+    eyebrow: "No sign-up · no upload · hand-written formula engine · 644 tests",
+    headline: "Open an Excel file and keep working. Nothing gets uploaded",
     subheadline:
-      "No install, no account. Your .xlsx opens still looking like itself — colour bands, merged cells, borders — and then you can pick formulas from a list instead of remembering them, or just ask in plain language. It all runs in your browser; the data never leaves your machine.",
+      "Google Sheets and Office on the web open Excel files too — but both want an account of theirs, and both need the file uploaded to their servers first. This needs neither: the file is read and calculated inside your browser. It still looks like itself, colour bands, merged cells and borders intact, and you pick formulas from a list instead of remembering the syntax.",
     ctaPrimary: "Open the app",
     ctaSecondary: "View the code on GitHub",
-    ctaNote: "No sign-up, no install — your data stays in your own browser",
+    ctaNote: "Payroll, cost prices, a customer list — nothing you have to hand over first",
     screenshotAlt: "The main ExcelToGo screen",
     demo: {
       headers: ["Item", "Price", "Qty", "Total"],
@@ -132,6 +132,19 @@ export const en: Messages = {
       emptyCell: "(empty cell)",
       hint: "Double-click a price or a quantity to change it, then watch the Total column and the bottom row recompute.",
       caption: "This table is not a screenshot — it calls the same engine the app runs on, computing in your browser right now.",
+    },
+    compare: {
+      title: "Where this differs from Google Sheets and Office on the web",
+      columns: ["ExcelToGo", "Google Sheets", "Office on the web"],
+      rows: [
+        { label: "Account required before you can start", values: ["No", "Google account", "Microsoft account"], good: true },
+        { label: "File uploaded to the provider's servers", values: ["No", "Yes", "Yes"], good: true },
+        { label: "Formula palette with a drag-to-pick range button", values: ["Yes", "No", "No"], good: true },
+        { label: "Source open to inspection", values: ["Apache-2.0", "Closed", "Closed"], good: true },
+        { label: "Real-time co-editing / macros", values: ["No", "Yes", "Yes"], good: false },
+      ],
+      disclaimer:
+        "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. What it shows is where the difference actually is, and that difference matters most when the file in front of you is one you would rather not upload.",
     },
     problemTitle: "What it's for",
     problems: [

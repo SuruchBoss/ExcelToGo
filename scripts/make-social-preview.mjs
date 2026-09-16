@@ -74,9 +74,9 @@ h1 { font-size: 62px; line-height: 1.22; letter-spacing: -1px; margin-top: 30px;
 .l small { display: block; font-size: 15px; color: #6b6f76; margin-top: 2px; }
 .url { margin-top: 22px; font-size: 21px; color: #6b6f76; }
 </style></head><body><div class="page">
-  <div class="eyebrow"><div class="sq"></div><div>ExcelToGo · เอนจินคำนวณสูตรเขียนเอง ไม่ใช้ไลบรารี</div></div>
-  <h1>เปิดไฟล์ Excel แล้วคำนวณต่อได้ในเบราว์เซอร์</h1>
-  <div class="sub">Open an Excel file and keep working, in the browser. No install, no account — every formula is evaluated on your own machine.</div>
+  <div class="eyebrow"><div class="sq"></div><div>ExcelToGo · ไม่ต้องสมัคร · ไม่ต้องอัปโหลดไฟล์</div></div>
+  <h1>เปิดไฟล์ Excel ทำต่อได้ทันที ไม่ต้องอัปโหลด</h1>
+  <div class="sub">Open an Excel file and keep working. Google Sheets and Office on the web need an account and an upload first; this needs neither — the file is read and calculated inside your own browser.</div>
   <div class="url">excel-to-go.vercel.app</div>
   <div class="spacer"></div>
   <div class="stats">${stats

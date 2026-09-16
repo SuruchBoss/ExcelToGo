@@ -120,7 +120,7 @@ export default function Landing() {
               <span className="h-[7px] w-[7px] shrink-0 bg-ledger" aria-hidden />
               {t.landing.eyebrow}
             </p>
-            <h1 className="mt-5 max-w-[19ch] text-[2.05rem] font-semibold leading-[1.22] tracking-[-0.022em] text-ink sm:text-[2.75rem] lg:text-[3.05rem]">
+            <h1 className="mt-5 max-w-[22ch] text-[2.05rem] font-semibold leading-[1.22] tracking-[-0.022em] text-ink sm:text-[2.75rem] lg:text-[3.05rem]">
               {t.landing.headline}
             </h1>
             <p className="mt-5 max-w-xl text-[15.5px] leading-[1.75] text-ash">{t.landing.subheadline}</p>
@@ -146,6 +146,69 @@ export default function Landing() {
             <LiveSheet />
             <p className="mt-3.5 border-l-2 border-ledger pl-3 text-[12.5px] leading-relaxed text-ash">{t.landing.demo.caption}</p>
           </div>
+        </div>
+      </section>
+
+      {/* ── Where this differs ───────────────────────────────────────────────────────────────
+          Unnumbered on purpose: it belongs to the pitch, not to the numbered tour below it.
+          The first thing a visitor thinks is "Sheets already does this", and they are right, so
+          the page answers it here instead of hoping they read far enough to find out. Every row
+          is a checkable fact, and the row the app loses is in the table too — a comparison that
+          only the author wins is one nobody believes. */}
+      <section className="border-b border-rule bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-8 sm:py-14">
+          {/* A scrollable table has to be reachable by keyboard, or someone who cannot use a
+              pointer cannot read the columns that are off-screen at phone width. */}
+          <div
+            role="region"
+            aria-label={t.landing.compare.title}
+            tabIndex={0}
+            className="-mx-4 overflow-x-auto px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger sm:mx-0 sm:px-0"
+          >
+            <table className="w-full border-collapse text-left sm:min-w-[34rem]">
+              <caption className="mb-5 text-left text-[1.35rem] font-semibold leading-snug tracking-[-0.015em] text-ink sm:text-[1.6rem]">
+                {t.landing.compare.title}
+              </caption>
+              <thead>
+                <tr className="border-b-2 border-ink">
+                  <th scope="col" className="py-2.5 pr-2 sm:pr-4" />
+                  {t.landing.compare.columns.map((c, i) => (
+                    <th
+                      key={c}
+                      scope="col"
+                      className={`w-[19%] py-2.5 pl-1.5 font-mono text-[10.5px] leading-snug sm:w-[17%] sm:pl-3 sm:text-[12px] ${
+                        i === 0 ? "font-semibold text-ledger" : "font-normal text-ash"
+                      }`}
+                    >
+                      {c}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {t.landing.compare.rows.map((row, i) => (
+                  <tr key={row.label} className={`border-b border-rule ${i % 2 === 1 ? "bg-band/40" : ""}`}>
+                    <th scope="row" className="py-3.5 pr-2 text-[12px] font-medium leading-snug text-ink sm:pr-4 sm:text-[14px]">
+                      {row.label}
+                    </th>
+                    {row.values.map((v, j) => (
+                      <td
+                        key={t.landing.compare.columns[j]}
+                        className={`py-3.5 pl-1.5 text-[11.5px] leading-snug sm:pl-3 sm:text-[13.5px] ${
+                          j === 0 && row.good ? "font-semibold text-ledger" : "text-ash"
+                        }`}
+                      >
+                        {v}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-5 max-w-3xl border-l-2 border-rule pl-3.5 text-[13px] leading-relaxed text-ash">
+            {t.landing.compare.disclaimer}
+          </p>
         </div>
       </section>
 
