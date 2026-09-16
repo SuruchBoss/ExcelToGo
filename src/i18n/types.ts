@@ -27,6 +27,7 @@ export interface Messages {
     skipToContent: string;
     /** Shows the *other* language's name — clicking it switches to that language. */
     languageToggleLabel: string;
+    languageToggleTitle: string;
   };
   toolbar: {
     importFile: string;

@@ -7,6 +7,7 @@ export const en: Messages = {
     brand: "ExcelToGo",
     skipToContent: "Skip to main content",
     languageToggleLabel: "TH",
+    languageToggleTitle: "Switch to Thai",
   },
   toolbar: {
     importFile: "Import file",
