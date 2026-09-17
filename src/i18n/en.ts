@@ -139,13 +139,14 @@ export const en: Messages = {
       columns: ["ExcelToGo", "Google Sheets", "Office on the web"],
       rows: [
         { label: "Formula palette with a drag-to-pick range button", values: ["Yes", "No", "No"], good: true },
+        { label: "Pull from your own API or database without writing a script", values: ["Paste a URL once", "Apps Script required", "Power Query required"], good: true },
         { label: "Account required before you can start", values: ["No", "Google account", "Microsoft account"], good: true },
         { label: "File uploaded to the provider's servers", values: ["No", "Yes", "Yes"], good: true },
         { label: "Source open to inspection", values: ["Apache-2.0", "Closed", "Closed"], good: true },
         { label: "Real-time co-editing / macros", values: ["No", "Yes", "Yes"], good: false },
       ],
       disclaimer:
-        "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. For a sheet a team edits together, Google Sheets is plainly the better tool. What the table shows is the one thing neither of them can do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
+        "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. For a sheet a team edits together, Google Sheets is plainly the better tool. What the table shows is what neither of them will do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
     },
     problemTitle: "What it's for",
     problems: [
@@ -161,6 +162,12 @@ export const en: Messages = {
         body: "Type what you want in Thai or English. The question goes out with the range you selected, and comes back as a formula with an explanation — one button puts it in the cell.",
         alt: "The AI assistant suggesting a formula",
         points: ["Answers in the language you asked in", "Works without an API key (keyword fallback)", "You see the formula before it goes in"],
+      },
+      {
+        title: "Point it at your own API or database, and the values land in the cells",
+        body: "Last month's sales live in a system behind the company, and someone still exports them and pastes them in by hand. Here whoever owns the endpoint pastes a URL once; after that you pick a field and press \"put it in the sheet\" — the whole table, or one summary number — seeing the real value before you commit. It refreshes on its own and feeds straight into formulas like any other cell.",
+        alt: "The live-data picker",
+        points: ["Nested JSON is flattened into a table for you", "Paginated APIs are followed to the end", "A rate limit is waited out, not retried into", "Run it yourself — the public demo has this switched off; SECURITY.md says why"],
       },
       {
         title: "Drag a formula in, don't memorise its syntax",
@@ -179,18 +186,6 @@ export const en: Messages = {
         body: "The exported .xlsx keeps formulas as formulas rather than baked-in values, and charts export as real charts you can keep editing in Excel — which meant hand-writing the OOXML chart part, because ExcelJS can't write one. The PDF embeds a Thai font and stacks Thai tone marks in the right place.",
         alt: "A chart drawn from a range on the sheet",
         points: ["Charts are bound to cells and follow edits", "Thai in the PDF reads as Thai, not as noise", "Conditional formatting round-trips through Excel"],
-      },
-      {
-        title: "Live API data, straight into the cells",
-        body: "Someone technical adds the URL once; everyone else picks a field and presses \"insert\". Take the whole table or a single summary number, seeing the real values before deciding. Values refresh on their own schedule and work with ordinary formulas immediately.",
-        alt: "The live-data picker",
-        points: ["Nested JSON is flattened into a table for you", "Paginated APIs are followed automatically", "A rate limit makes it wait, not retry harder"],
-      },
-      {
-        title: "Pivot summaries that know when the data moved",
-        body: "Select a range, group by as many columns as you like, and get an ordinary sheet back — sortable, chartable, exportable. The summary remembers the range it read, and shows a notice with a Refresh button once the source changes.",
-        alt: "The notice that a summary's source data has changed",
-        points: ["Sum, count, average, min, max", "Totals re-aggregate the raw values, not the cells shown", "A group with no numbers gives blank, not 0"],
       },
     ],
     statsTitle: "Under the hood",
@@ -216,7 +211,7 @@ export const en: Messages = {
     limitsMoreText: "The rest of the limits are written out in the README — including the ones a promo page normally leaves out.",
     limitsMoreCta: "Read every limitation",
     closingTitle: "Try it — nothing to sign up for",
-    closingBody: "It opens with sample data to play with, plus three live sources whose numbers actually move.",
+    closingBody: "It opens with sample data to play with. Connecting an API or a database means running it yourself — the public demo switches that off on purpose.",
     footerNote: "A personal project for practising and testing ideas — still at the dev stage",
     builtBy: "Built by",
     authorName: "Suruch Boss",

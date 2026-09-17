@@ -33,13 +33,13 @@ const LINKEDIN_URL = "https://www.linkedin.com/in/suruchboss";
 /** Paired by index with `t.landing.features`. Kept out of the message dictionaries because a file
  *  path and its pixel size are the same in every language — only the alt text needs translating. */
 /** Paired by index with `landing.features` in the message files — reorder one, reorder both. */
+// Paired with `t.landing.features` by index, so the two lists move together or not at all.
 const FEATURE_MEDIA = [
   { src: "/screenshots/04-ai-assistant.png", width: 2720, height: 1720 },
+  { src: "/screenshots/10-picker-table.png", width: 2720, height: 1720 },
   { src: "/screenshots/02-formula-panel.png", width: 2720, height: 1720 },
   { src: "/screenshots/17-styled-import.png", width: 2720, height: 1720 },
   { src: "/screenshots/20-charts.png", width: 1440, height: 900 },
-  { src: "/screenshots/10-picker-table.png", width: 2720, height: 1720 },
-  { src: "/screenshots/31-pivot-refresh.png", width: 2200, height: 940 },
 ];
 
 const num = (i: number) => String(i + 1).padStart(2, "0");

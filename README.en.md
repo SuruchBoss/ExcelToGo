@@ -19,7 +19,7 @@ Runs in your browser; your data stays on your machine.
 > third-party library), entirely in your browser — the data never leaves your machine, and there
 > is no account to create.
 >
-> Four things build on that: **[live data from an API/CSV](#-live-data-from-an-api--csv-prototype)** that keeps
+> Four things build on that: **[your own API or database feeding the cells](#-live-data-from-an-api--csv-prototype)**, with no script to write, keeping
 > cells current on its own (following paginated APIs and backing off when rate-limited),
 > **[imported files keeping their look](#-it-looks-like-the-file-you-opened)** (colour bands, large type,
 > borders, merged cells), **[templates read straight out of an Excel file](#-templates-from-an-excel-file)**
@@ -101,6 +101,9 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 - [Why this project](#-why-this-project)
 - [Getting started](#-getting-started)
 - [Features](#-features)
+  - [Ask AI for a formula](#-ask-ai-for-a-formula)
+  - [Bring your own API key (BYOK)](#-bring-your-own-api-key-byok)
+  - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
   - [Spreadsheet grid](#-spreadsheet-grid)
   - [Autosave + Undo/Redo](#-autosave--undoredo)
   - [Copy / Cut / Paste](#️-copy--cut--paste)
@@ -117,11 +120,8 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
   - [Multiple sheets in one file](#-multiple-sheets-in-one-file)
   - [Import an existing Excel file](#-import-an-existing-excel-file)
   - [Drag-and-drop formulas](#-drag-and-drop-formulas)
-  - [Ask AI for a formula](#-ask-ai-for-a-formula)
-  - [Bring your own API key (BYOK)](#-bring-your-own-api-key-byok)
   - [Export](#-export)
   - [CSV in and out](#-csv-in-and-out)
-  - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
   - [It looks like the file you opened](#-it-looks-like-the-file-you-opened)
   - [Templates from an Excel file](#-templates-from-an-excel-file)
   - [A landing page that explains the app](#-a-landing-page-that-explains-the-app)
@@ -282,6 +282,176 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 ---
 
 ## ✨ Features
+
+### 🤖 Ask AI for a formula
+
+Type what you want as a plain sentence, in Thai or English — e.g. _"I want to total all sales in this column."_
+The app sends your question plus the currently selected range to the AI and gets back a suggested formula with
+a short explanation. One click inserts it into the selected cell.
+
+<p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
+
+### 🔑 Bring your own API key (BYOK)
+
+The assistant answers one of three ways, and the landing page says plainly which one the demo uses:
+
+| Path | When | Answer comes from | Who pays |
+|---|---|---|---|
+| Local keyword matcher | The default | `aiHeuristic.ts` — matches words, guesses a basic formula | Nobody |
+| **The real Claude (BYOK)** | The visitor pastes their own API key | `api.anthropic.com`, straight from the browser | **The visitor's own account** |
+| The real Claude (server-side) | The operator sets `ANTHROPIC_API_KEY` | `/api/ai/formula` | Whoever runs the server |
+
+<p align="center"><img src="public/screenshots/33-byok.png" width="560"></p>
+
+**The key never passes through this app's server.** The request goes from the browser straight to
+`api.anthropic.com` — that is what the SDK's `dangerouslyAllowBrowser` unlocks (it adds the
+`anthropic-dangerous-direct-browser-access` header Anthropic's CORS policy requires). A key POSTed to
+our own route would sit in that process's memory and in whatever the host logs; this way there is
+nothing to leak, because there is nothing here to leak.
+
+**`sessionStorage`, not `localStorage`.** Closing the tab discards it. A key left in `localStorage`
+on a shared or library machine outlives the person who typed it, and this is a tool people are told
+to open without signing up — assuming the machine is theirs alone would be the wrong default. The
+cost is retyping it in a new tab, which is the right trade for a secret.
+
+**Verified by running it, not by reading it.** A Playwright run intercepts
+`https://api.anthropic.com/**` and `**/api/ai/formula` at the same time and asks a real question. The
+second is never called (`hit our own /api/ai/formula: false`); the first arrives with
+`anthropic-dangerous-direct-browser-access: true` and its formula is what the panel displays.
+
+> The question, the selected range and the column headers go to Anthropic only when the button is
+> pressed — **the file itself is never sent**, and if nobody presses it, nothing leaves the machine.
+
+### 🔌 Live data from an API / CSV (prototype)
+
+<p align="center"><img src="public/screenshots/08-live-data.png" width="820"></p>
+
+Split into two roles so the end user touches as little technology as possible:
+
+**1) Tech sets it up once** — "Connect new data" in the **Data** panel: enter a REST API URL or a CSV/Google
+Sheets link, an auth header if needed, and a refresh interval, then "Test connection" to see how many rows and
+columns come back before saving. Config and credentials live on the server (`data/sources.json`, gitignored)
+and never reach the user's browser; the server does the fetching, so CORS isn't the user's problem.
+
+<p align="center"><img src="public/screenshots/09-source-setup.png" width="700"></p>
+
+**2) Everyday users: three clicks, no jargon** — no JSON, no API keys, no aggregate function names.
+
+| Step | What the user sees |
+|---|---|
+| 1. Select the target cell, click **"Insert into sheet"** | One primary button per source — nothing else to decide yet |
+| 2. Choose **"Whole table"** or **"A single summary number"** | A full-width preview table, or cards showing the **actual live numbers** (e.g. `9,510 · Sum of total`) — no need to know what "sum" means in the abstract |
+| 3. Confirm the target cell and click **"Insert into sheet"** | It states up front how many rows × columns it will use, and warns if that would overwrite existing content |
+
+<table>
+<tr>
+<td align="center"><b>Whole table — preview before placing</b><br>
+<img src="public/screenshots/10-picker-table.png" width="410"></td>
+<td align="center"><b>Single value — real numbers to pick from</b><br>
+<img src="public/screenshots/12-picker-values.png" width="410"></td>
+</tr>
+</table>
+
+**Once placed**, the grid scrolls to show the whole block and the side panel closes itself — left open, it sat
+over the very columns the table just landed in. Clicking the block brings up a toolbar beside it showing which
+source it came from and how often it updates, with **Refresh / Change / Remove** — no trip back to the panel.
+
+<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
+
+**The feature is locked until you unlock it** — it tells the *server* to fetch a URL for you, which
+is a capability that needs an owner. With `SOURCES_ADMIN_TOKEN` unset the API answers 403 to
+everything rather than being left open to whoever loads the page.
+
+<p align="center"><img src="public/screenshots/24-sources-locked.png" width="820"></p>
+
+Three guards:
+
+| | |
+|---|---|
+| **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
+| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local and unique-local, and IPv4 embedded in IPv6 in **every spelling** |
+| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear |
+
+The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
+rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
+metadata service straight through. The address is now unpacked and checked in every spelling.
+
+**Not fully closed:** the address is checked and then the connection is made, and in between the
+name could be re-resolved to something else. Closing that needs the connection pinned to the checked
+address, which Node's `fetch` does not expose — `SECURITY.md` says so plainly rather than claiming
+the guard is airtight.
+
+**Paginated APIs** — most APIs hand back one page at a time, so a single fetch gets the user the
+first 25 rows and leaves them believing that's all the data. Following pages are therefore fetched
+automatically, with **nothing extra to configure** — the signals APIs already send are read in this
+order:
+
+| Signal | Example | Who sends it |
+|---|---|---|
+| `Link` header with `rel="next"` | `Link: <…?page=2>; rel="next"` | GitHub, GitLab |
+| A next-page URL field in the body | `next`, `next_page_url`, `links.next`, `_links.next.href`, `@odata.nextLink` | Laravel, HAL, OData |
+| A cursor / token | `next_cursor`, `nextPageToken`, `scroll_id` → sent back as a query param | Slack, Google APIs |
+| A param the URL already carries | tech wrote `?page=1` or `?offset=0` → it gets incremented | APIs that signal nothing |
+
+That last row matters: `?page=2` is never **invented** for a URL that doesn't already have the
+param, because an API that doesn't support it would just return page 1 forever. Writing the param
+into the URL is how tech opts in.
+
+Tech sees a single field for all of this: **"Fetch up to [1000] rows"** (0 = first response only).
+The rest is guard rails — at most 20 requests per refresh, a 45-second total budget, a stop when a
+next link points back at a page already fetched, an empty page ends it, and if a page partway
+through fails, **the rows already collected are still returned** rather than the whole refresh
+being thrown away.
+
+<p align="center"><img src="public/screenshots/13-partial-data.png" width="820"></p>
+
+**And when the data is incomplete, it says so.** A silently partial table is more dangerous than a
+small one the user knows about: a "Sum" card computed from the first 40 rows of a 120-row source
+reads exactly like a real total and isn't one. So the warning appears in the **side panel**, in the
+**picker** before the user commits to a summary value, and in the tech-side **connection test**.
+
+**When an API says "too many requests"** — the problem isn't only that `HTTP 429` means nothing to a
+non-technical user. It's that the poller keeps firing on its normal interval, which is the one
+response guaranteed to keep the source broken. So:
+
+- **The wait is read from the response**: `Retry-After` (both the seconds form and the HTTP-date
+  form), falling back to the `X-RateLimit-Reset` family — which is maddeningly inconsistent (epoch
+  seconds, epoch milliseconds, or seconds-from-now), so it's told apart by magnitude rather than by
+  trusting any one convention. With nothing to go on, 60 seconds; capped at 15 minutes.
+- **429 is separated from an ordinary 403** — a 403 counts as rate limiting only when a header says
+  the remaining quota is zero (GitHub answers that way). Treating every 403 as a rate limit would
+  turn a permission error into "try again later" and leave the user waiting on something that will
+  never fix itself.
+- **Polling actually stops during the wait**, not just the message changes — verified by a test that
+  counts requests on the API side: a source on a 5s interval, 429'd with a 40s wait, received
+  **0 further requests** over the next 16 seconds. Unaffected sources keep refreshing throughout.
+- **A rate limit partway through pagination** still returns the rows already collected, with the
+  wait attached — no data lost, and the next poll doesn't walk back into the same wall.
+- **Ordinary failures back off too** (exponential from the source's own interval, capped at 15
+  minutes), so a source that is simply down stops being polled every few seconds forever.
+- The user sees plain language with a live countdown and a **"Try now"** button to override it — a
+  manual refresh always goes through, because a person clicking is a deliberate act, not the poller.
+
+<p align="center"><img src="public/screenshots/14-rate-limited.png" width="820"></p>
+
+Behind the scenes:
+
+- The app converts JSON into a table on its own (finds the largest array of records in the response, flattens
+  nested objects into `customer › name` columns). A single-row KPI object is broken out into individual values
+  you can pick field by field.
+- Linked cells are tinted green with a border around the block and a bold header row, are read-only, and
+  **refresh themselves on the source's schedule** (polling). Regular formulas (`=A10*2`, `SUM`, `VLOOKUP`) and
+  Excel/PDF export work on live data immediately, because the app writes real values into the cells.
+- Refreshes **never enter the undo history** (zundo is paused during the write) — one Ctrl+Z undoes the whole
+  placed block, and "Change" (clear the old block + place the new one) counts as a single step too.
+- **Drag and drop still works** for people who prefer it, it's just no longer the primary path.
+- The side panel keeps a "Live data in this sheet" list showing what is placed where, each with its own remove
+  button.
+- Three demo sources are seeded so it works out of the box: `/api/demo/sales` (a table whose numbers drift
+  every 5s), `/api/demo/summary` (a KPI-style object), and `/api/demo/orders` (**paginated**, 25 rows a page
+  over 120 rows, for exercising the pagination path).
+
+> Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
 
 ### 📐 Spreadsheet grid
 
@@ -648,45 +818,6 @@ references with `$` stay put).
 </tr>
 </table>
 
-### 🤖 Ask AI for a formula
-
-Type what you want as a plain sentence, in Thai or English — e.g. _"I want to total all sales in this column."_
-The app sends your question plus the currently selected range to the AI and gets back a suggested formula with
-a short explanation. One click inserts it into the selected cell.
-
-<p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
-
-### 🔑 Bring your own API key (BYOK)
-
-The assistant answers one of three ways, and the landing page says plainly which one the demo uses:
-
-| Path | When | Answer comes from | Who pays |
-|---|---|---|---|
-| Local keyword matcher | The default | `aiHeuristic.ts` — matches words, guesses a basic formula | Nobody |
-| **The real Claude (BYOK)** | The visitor pastes their own API key | `api.anthropic.com`, straight from the browser | **The visitor's own account** |
-| The real Claude (server-side) | The operator sets `ANTHROPIC_API_KEY` | `/api/ai/formula` | Whoever runs the server |
-
-<p align="center"><img src="public/screenshots/33-byok.png" width="560"></p>
-
-**The key never passes through this app's server.** The request goes from the browser straight to
-`api.anthropic.com` — that is what the SDK's `dangerouslyAllowBrowser` unlocks (it adds the
-`anthropic-dangerous-direct-browser-access` header Anthropic's CORS policy requires). A key POSTed to
-our own route would sit in that process's memory and in whatever the host logs; this way there is
-nothing to leak, because there is nothing here to leak.
-
-**`sessionStorage`, not `localStorage`.** Closing the tab discards it. A key left in `localStorage`
-on a shared or library machine outlives the person who typed it, and this is a tool people are told
-to open without signing up — assuming the machine is theirs alone would be the wrong default. The
-cost is retyping it in a new tab, which is the right trade for a secret.
-
-**Verified by running it, not by reading it.** A Playwright run intercepts
-`https://api.anthropic.com/**` and `**/api/ai/formula` at the same time and asks a real question. The
-second is never called (`hit our own /api/ai/formula: false`); the first arrives with
-`anthropic-dangerous-direct-browser-access: true` and its formula is what the panel displays.
-
-> The question, the selected range and the column headers go to Anthropic only when the button is
-> pressed — **the file itself is never sent**, and if nobody presses it, nothing leaves the machine.
-
 ### 📤 Export
 
 - **Excel**: a single `.xlsx` with **every sheet** included — original formulas, formatting (fills, font sizes,
@@ -742,137 +873,6 @@ one file and splitting them into three are surprises.
 there's no encoding detection. And values beginning `=`, `+`, `-` or `@` are written through unchanged, with
 no neutralising: taking a file built from an untrusted source and opening it in Excel is a CSV-injection
 risk you have to know about. Quietly editing someone's data is its own bug, so it's stated here instead.
-
-### 🔌 Live data from an API / CSV (prototype)
-
-<p align="center"><img src="public/screenshots/08-live-data.png" width="820"></p>
-
-Split into two roles so the end user touches as little technology as possible:
-
-**1) Tech sets it up once** — "Connect new data" in the **Data** panel: enter a REST API URL or a CSV/Google
-Sheets link, an auth header if needed, and a refresh interval, then "Test connection" to see how many rows and
-columns come back before saving. Config and credentials live on the server (`data/sources.json`, gitignored)
-and never reach the user's browser; the server does the fetching, so CORS isn't the user's problem.
-
-<p align="center"><img src="public/screenshots/09-source-setup.png" width="700"></p>
-
-**2) Everyday users: three clicks, no jargon** — no JSON, no API keys, no aggregate function names.
-
-| Step | What the user sees |
-|---|---|
-| 1. Select the target cell, click **"Insert into sheet"** | One primary button per source — nothing else to decide yet |
-| 2. Choose **"Whole table"** or **"A single summary number"** | A full-width preview table, or cards showing the **actual live numbers** (e.g. `9,510 · Sum of total`) — no need to know what "sum" means in the abstract |
-| 3. Confirm the target cell and click **"Insert into sheet"** | It states up front how many rows × columns it will use, and warns if that would overwrite existing content |
-
-<table>
-<tr>
-<td align="center"><b>Whole table — preview before placing</b><br>
-<img src="public/screenshots/10-picker-table.png" width="410"></td>
-<td align="center"><b>Single value — real numbers to pick from</b><br>
-<img src="public/screenshots/12-picker-values.png" width="410"></td>
-</tr>
-</table>
-
-**Once placed**, the grid scrolls to show the whole block and the side panel closes itself — left open, it sat
-over the very columns the table just landed in. Clicking the block brings up a toolbar beside it showing which
-source it came from and how often it updates, with **Refresh / Change / Remove** — no trip back to the panel.
-
-<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
-
-**The feature is locked until you unlock it** — it tells the *server* to fetch a URL for you, which
-is a capability that needs an owner. With `SOURCES_ADMIN_TOKEN` unset the API answers 403 to
-everything rather than being left open to whoever loads the page.
-
-<p align="center"><img src="public/screenshots/24-sources-locked.png" width="820"></p>
-
-Three guards:
-
-| | |
-|---|---|
-| **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
-| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local and unique-local, and IPv4 embedded in IPv6 in **every spelling** |
-| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear |
-
-The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
-rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
-metadata service straight through. The address is now unpacked and checked in every spelling.
-
-**Not fully closed:** the address is checked and then the connection is made, and in between the
-name could be re-resolved to something else. Closing that needs the connection pinned to the checked
-address, which Node's `fetch` does not expose — `SECURITY.md` says so plainly rather than claiming
-the guard is airtight.
-
-**Paginated APIs** — most APIs hand back one page at a time, so a single fetch gets the user the
-first 25 rows and leaves them believing that's all the data. Following pages are therefore fetched
-automatically, with **nothing extra to configure** — the signals APIs already send are read in this
-order:
-
-| Signal | Example | Who sends it |
-|---|---|---|
-| `Link` header with `rel="next"` | `Link: <…?page=2>; rel="next"` | GitHub, GitLab |
-| A next-page URL field in the body | `next`, `next_page_url`, `links.next`, `_links.next.href`, `@odata.nextLink` | Laravel, HAL, OData |
-| A cursor / token | `next_cursor`, `nextPageToken`, `scroll_id` → sent back as a query param | Slack, Google APIs |
-| A param the URL already carries | tech wrote `?page=1` or `?offset=0` → it gets incremented | APIs that signal nothing |
-
-That last row matters: `?page=2` is never **invented** for a URL that doesn't already have the
-param, because an API that doesn't support it would just return page 1 forever. Writing the param
-into the URL is how tech opts in.
-
-Tech sees a single field for all of this: **"Fetch up to [1000] rows"** (0 = first response only).
-The rest is guard rails — at most 20 requests per refresh, a 45-second total budget, a stop when a
-next link points back at a page already fetched, an empty page ends it, and if a page partway
-through fails, **the rows already collected are still returned** rather than the whole refresh
-being thrown away.
-
-<p align="center"><img src="public/screenshots/13-partial-data.png" width="820"></p>
-
-**And when the data is incomplete, it says so.** A silently partial table is more dangerous than a
-small one the user knows about: a "Sum" card computed from the first 40 rows of a 120-row source
-reads exactly like a real total and isn't one. So the warning appears in the **side panel**, in the
-**picker** before the user commits to a summary value, and in the tech-side **connection test**.
-
-**When an API says "too many requests"** — the problem isn't only that `HTTP 429` means nothing to a
-non-technical user. It's that the poller keeps firing on its normal interval, which is the one
-response guaranteed to keep the source broken. So:
-
-- **The wait is read from the response**: `Retry-After` (both the seconds form and the HTTP-date
-  form), falling back to the `X-RateLimit-Reset` family — which is maddeningly inconsistent (epoch
-  seconds, epoch milliseconds, or seconds-from-now), so it's told apart by magnitude rather than by
-  trusting any one convention. With nothing to go on, 60 seconds; capped at 15 minutes.
-- **429 is separated from an ordinary 403** — a 403 counts as rate limiting only when a header says
-  the remaining quota is zero (GitHub answers that way). Treating every 403 as a rate limit would
-  turn a permission error into "try again later" and leave the user waiting on something that will
-  never fix itself.
-- **Polling actually stops during the wait**, not just the message changes — verified by a test that
-  counts requests on the API side: a source on a 5s interval, 429'd with a 40s wait, received
-  **0 further requests** over the next 16 seconds. Unaffected sources keep refreshing throughout.
-- **A rate limit partway through pagination** still returns the rows already collected, with the
-  wait attached — no data lost, and the next poll doesn't walk back into the same wall.
-- **Ordinary failures back off too** (exponential from the source's own interval, capped at 15
-  minutes), so a source that is simply down stops being polled every few seconds forever.
-- The user sees plain language with a live countdown and a **"Try now"** button to override it — a
-  manual refresh always goes through, because a person clicking is a deliberate act, not the poller.
-
-<p align="center"><img src="public/screenshots/14-rate-limited.png" width="820"></p>
-
-Behind the scenes:
-
-- The app converts JSON into a table on its own (finds the largest array of records in the response, flattens
-  nested objects into `customer › name` columns). A single-row KPI object is broken out into individual values
-  you can pick field by field.
-- Linked cells are tinted green with a border around the block and a bold header row, are read-only, and
-  **refresh themselves on the source's schedule** (polling). Regular formulas (`=A10*2`, `SUM`, `VLOOKUP`) and
-  Excel/PDF export work on live data immediately, because the app writes real values into the cells.
-- Refreshes **never enter the undo history** (zundo is paused during the write) — one Ctrl+Z undoes the whole
-  placed block, and "Change" (clear the old block + place the new one) counts as a single step too.
-- **Drag and drop still works** for people who prefer it, it's just no longer the primary path.
-- The side panel keeps a "Live data in this sheet" list showing what is placed where, each with its own remove
-  button.
-- Three demo sources are seeded so it works out of the box: `/api/demo/sales` (a table whose numbers drift
-  every 5s), `/api/demo/summary` (a KPI-style object), and `/api/demo/orders` (**paginated**, 25 rows a page
-  over 120 rows, for exercising the pagination path).
-
-> Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
 
 ### 🎨 It looks like the file you opened
 
