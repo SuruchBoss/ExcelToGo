@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-683%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-711%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 683 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 711 automated tests.
 
 ---
 
@@ -206,7 +206,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 683-case Vitest suite |
+| `npm test` | Run the 711-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -1013,7 +1013,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (683 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (711 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1225,6 +1225,7 @@ src/
   lib/                       # Core domain logic, no React/UI coupling — editable/testable independently
     formulaEngine/           # The hand-written formula engine — tokenizer.ts, parser.ts, ast.ts, evaluator.ts,
                               # functions.ts, coerce.ts, address.ts, shift.ts, structuralShift.ts,
+                              # formulaProgram.ts (AST cache + what each formula reads),
                               # each with a matching *.test.ts run by Vitest
     formulaCatalog.ts        # The ready-made formula catalog's structure (id/params/how to build it) — the
                               # actual displayed name/description/labels come from src/i18n/th.ts,en.ts
@@ -1250,6 +1251,10 @@ src/
     chartImage.ts            # A chart as a picture (SVG → PNG) for the .xlsx and the PDF (tested)
     gridGeometry.ts          # Row/column positions in pixels + where a new chart lands — shared with the
                               # grid so the two agree on exactly the same sizes (tested)
+    sheetCompute.ts          # Works out every cell's value, and works out the next one without redoing
+                              # the rest — keeps a dependency graph (tested, with a benchmark)
+    rowWindow.ts             # Which rows a scrolled grid actually has to put in the DOM, so a
+                              # ten-thousand-row sheet does not render ten thousand rows (tested)
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
     site.ts                  # The one canonical public URL shared by metadata, sitemap and robots
     thaiMarks.ts             # Finds tone marks stacked on an upper vowel that must be redrawn higher (tested)
@@ -1324,6 +1329,77 @@ flowchart LR
   functions like `VLOOKUP`/`SUMIF` know which argument is a range), and detects **circular references** with a
   `Set` of cells currently being computed — looping back to a cell already in progress returns `#CIRCULAR!`
   instead of overflowing the call stack.
+
+### Recalculating only what changed
+
+Every keystroke used to recompute the whole sheet and **re-parse every formula in it**. Measured on
+the development machine, three formulas per row with one running-total column:
+
+| Sheet size | Cost of one keystroke |
+|---|---|
+| 200 rows (600 cells hold formulas) | 11.9 ms |
+| 1,000 rows (3,000 cells hold formulas) | 139.2 ms |
+| 3,000 rows (9,000 cells hold formulas) | **1,244.9 ms** |
+
+Past a thousand rows the grid is visibly behind the typing. At three thousand it is unusable.
+
+**Two things changed:**
+
+1. **Formulas compile once.** `formulaEngine/formulaProgram.ts` caches by formula text, so filling
+   `=A1*B1` down three thousand rows parses one formula, not three thousand per keystroke.
+2. **There is a dependency graph.** Each formula's precedents — cells and ranges — are read off its
+   syntax tree, so an edit recomputes the transitive closure of whatever reads it and nothing else.
+
+The second is only sound **because this language has no `INDIRECT` and no `OFFSET`**: every
+reference is a node already sitting in the tree, so walking it gives the complete set. Adding
+either function means the graph has to learn about references discovered at evaluation time, and
+the code says so where it matters.
+
+`TODAY()` and `NOW()` are marked **volatile** and recomputed every pass, because nothing in the
+sheet changes to say they went stale. A cache that did not know this would freeze `=TODAY()` at the
+moment it was first typed.
+
+**After** (`sheetCompute.bench.test.ts` measures this on every run, so the numbers are not memory):
+
+| | First compute | One edit |
+|---|---|---|
+| 1,000 rows (3,000 cells hold formulas) | 75 ms | **6.7 ms** |
+| 3,000 rows (9,000 cells hold formulas) | 124 ms | **7.7 ms** |
+| 3,000 rows + a running total | — | **8.5 ms** (edit near the end) |
+
+These come from one `npm run verify` on the development machine and move by roughly a factor of
+two between runs, so the test asserts on a *ratio* — one edit must cost at most a quarter of a full
+recompute — and on loose ceilings, rather than on figures a busy CI runner would fail.
+
+**The limit that is still there, and is not hidden:** editing the cell that all three thousand
+running totals read — row 1 — still costs somewhere around 1,000–1,200 ms. That is a real fan-out; three thousand
+sums genuinely have to be re-added, and the graph is right to say so. It is not a cache miss. The
+benchmark measures that case too rather than leaving it to the prose.
+
+**Proof it does not compute the wrong answer:** `sheetCompute.test.ts` makes 120 random edits and
+compares the result against a from-scratch recompute after every one, plus a second run that stacks
+200 edits before comparing. The tests also **assert how often the fast path actually ran** —
+without that, an implementation that quietly fell back to a full recompute every time would pass
+them all while doing none of the work.
+
+### A ten-thousand-row sheet does not render ten thousand rows
+
+The grid put every row in the DOM. At thirty rows that is right; at five thousand it is five
+thousand `<tr>` elements the browser lays out and hit-tests on every render, of which fewer than
+forty are on screen.
+
+`rowWindow.ts` works out which band is visible and stands two spacer rows in for the rest, so the
+scrollbar still measures exactly the same height. Checked in a browser by importing a 5,000-row
+CSV: **41 `<tr>` in the DOM**, 160,064px of scroll height, and row 5,001 still reachable.
+
+Two things it is easy to get wrong, both pinned by tests: **a filtered row must take no height at
+all**, or charts drift away from the data they sit next to; and **a merge that crosses the edge of
+the window** — the `rowSpan` lives on the top-left cell, so if that cell is above the window the
+cells it covers are not rendered either and the merge leaves a hole. The window reaches back to the
+anchor for exactly that reason.
+
+Below 200 rows nothing is virtualized: at that size the window costs more than it saves, and the
+thirty-row sheet the app starts on renders exactly as it always did.
 
 ### Two different algorithms for adjusting references
 
@@ -1576,7 +1652,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 683 cases across 40 files, via Vitest
+npm test      # 711 cases across 43 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1693,6 +1769,15 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Rate limits explained to the user** — done: reads `Retry-After`/`X-RateLimit-Reset`, genuinely stops
       polling for the duration, exponential backoff for ordinary failures, shown in plain language with a
       live countdown
+- [x] **Recalculate only what changed, and stop rendering rows nobody can see** — done (see
+      [the formula engine](#-formula-engine)): an AST cache plus a dependency graph read off the
+      syntax tree takes one edit in a 3,000-row sheet from **1,244.9 ms to 3.6 ms**, and a
+      5,000-row sheet keeps 41 `<tr>` in the DOM. Still open: editing the cell a whole column of
+      running totals reads still costs around 1,000–1,200 ms (a real fan-out, not a cache miss), and columns
+      are not windowed, only rows.
+- [ ] **Full Excel keyboard coverage** — `Ctrl+arrow` to the edge of the data,
+      `Ctrl+Shift+arrow` to extend, `Ctrl+A`, `Home`/`Ctrl+Home`, `PageUp`/`PageDown`. Today it is
+      arrows, Tab, Enter, F2, Escape and Delete.
 - [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 

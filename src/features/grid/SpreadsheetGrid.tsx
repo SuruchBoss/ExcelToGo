@@ -30,6 +30,7 @@ import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 // Shared with the chart overlay, which places charts in these same coordinates.
 import { COL_WIDTH, ROW_HEADER_WIDTH, ROW_HEIGHT } from "@/lib/gridGeometry";
+import { rowOffsets, rowWindow, scrollToShowRow } from "@/lib/rowWindow";
 import ChartOverlay from "./ChartOverlay";
 import SelectionHandle from "./SelectionHandle";
 
@@ -59,6 +60,79 @@ export default function SpreadsheetGrid() {
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
   const merges = useMemo(() => mergeLookup(sheet.merges), [sheet.merges]);
+
+  // ── Only the rows on screen go in the DOM ──────────────────────────────────────────────────
+  //
+  // Below this a sheet is small enough that a window costs more than it saves, and the default
+  // thirty-row sheet — every screenshot, every test, the demo — renders exactly as it always did.
+  const VIRTUALIZE_ABOVE = 200;
+  const OVERSCAN_PX = 600;
+  const virtualized = sheet.rows > VIRTUALIZE_ABOVE;
+
+  const [viewport, setViewport] = useState({ top: 0, height: 0 });
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !virtualized) return;
+    let queued = false;
+    const measure = () => {
+      queued = false;
+      setViewport((prev) =>
+        prev.top === container.scrollTop && prev.height === container.clientHeight
+          ? prev
+          : { top: container.scrollTop, height: container.clientHeight }
+      );
+    };
+    // One measurement per frame: a scroll fires far more often than the screen redraws, and each
+    // one of these ends in a React render.
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(measure);
+    };
+    measure();
+    container.addEventListener("scroll", onScroll, { passive: true });
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      observer.disconnect();
+    };
+  }, [virtualized]);
+
+  const offsets = useMemo(
+    () => rowOffsets(sheet.rows, (r) => sheet.rowHeights?.[r] ?? ROW_HEIGHT, hiddenRows),
+    [sheet.rows, sheet.rowHeights, hiddenRows]
+  );
+
+  const window_ = useMemo(
+    () =>
+      virtualized
+        ? rowWindow({
+            rows: sheet.rows,
+            offsets,
+            scrollTop: viewport.top,
+            viewportHeight: viewport.height,
+            overscan: OVERSCAN_PX,
+            merges: sheet.merges,
+          })
+        : { start: 0, end: sheet.rows - 1, topPad: 0, bottomPad: 0 },
+    [virtualized, sheet.rows, sheet.merges, offsets, viewport.top, viewport.height]
+  );
+
+  const visibleRows = useMemo(() => {
+    const out: number[] = [];
+    for (let r = window_.start; r <= window_.end; r++) if (!hiddenRows.has(r)) out.push(r);
+    return out;
+  }, [window_.start, window_.end, hiddenRows]);
+
+  // A selected row outside the window is not in the DOM, so it cannot scroll itself into view.
+  const focusRow = selection?.anchorRow;
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !virtualized || focusRow === undefined) return;
+    const to = scrollToShowRow(offsets, focusRow, container.scrollTop, container.clientHeight, ROW_HEIGHT);
+    if (to !== null) container.scrollTo({ top: to, left: container.scrollLeft });
+  }, [focusRow, virtualized, offsets]);
   // Recomputed from values, not stored: that is the whole point — edit a number and its colour
   // follows on the same render.
   const cfVisuals = useMemo(
@@ -130,7 +204,10 @@ export default function SpreadsheetGrid() {
     if (!first || !last) return;
     const overflowRight = last.offsetLeft + last.offsetWidth - (container.scrollLeft + container.clientWidth);
     if (overflowRight <= 0) return;
-    container.scrollLeft = Math.min(container.scrollLeft + overflowRight + 8, first.offsetLeft);
+    // scrollTo rather than assigning scrollLeft: the compiler's immutability rule reads a write
+    // through a ref as mutating the ref itself, and a method call says the same thing without it.
+    const left = Math.min(container.scrollLeft + overflowRight + 8, first.offsetLeft);
+    container.scrollTo({ left, top: container.scrollTop });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on a newly selected block, not on every refresh that resizes it
   }, [placedBlockId]);
 
@@ -289,9 +366,14 @@ export default function SpreadsheetGrid() {
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: sheet.rows }, (_, r) => r)
-            .filter((r) => !hiddenRows.has(r))
-            .map((r) => (
+          {/* One row standing in for everything scrolled past, so the scrollbar still measures the
+              whole sheet. `aria-hidden` because it is a shim, not a row anyone can be in. */}
+          {window_.topPad > 0 && (
+            <tr aria-hidden>
+              <td colSpan={sheet.cols + 1} style={{ height: window_.topPad, padding: 0, border: 0 }} />
+            </tr>
+          )}
+          {visibleRows.map((r) => (
             <tr key={r}>
               <th
                 onClick={() => selectWholeRow(r)}
@@ -502,6 +584,11 @@ export default function SpreadsheetGrid() {
               })}
             </tr>
           ))}
+          {window_.bottomPad > 0 && (
+            <tr aria-hidden>
+              <td colSpan={sheet.cols + 1} style={{ height: window_.bottomPad, padding: 0, border: 0 }} />
+            </tr>
+          )}
         </tbody>
       </table>
 

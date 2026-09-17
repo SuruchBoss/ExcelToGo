@@ -1,13 +1,9 @@
 import { CellComments, shiftComments } from "./cellComments";
 import { PivotSource } from "./pivot";
-import { parseFormula, FormulaSyntaxError } from "./formulaEngine/parser";
-import { evaluate } from "./formulaEngine/evaluator";
-import { FormulaError, FormulaValue } from "./formulaEngine/types";
-import { toDisplayString } from "./formulaEngine/coerce";
 import { cellRef, colToLetters } from "./formulaEngine/address";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
-import { CellFormat, formatNumberForDisplay } from "./cellFormat";
+import { CellFormat } from "./cellFormat";
 import { SheetTemplate } from "./sheetTemplate";
 import { MergeRange, shiftMerges } from "./sheetMerges";
 import { CfRule, shiftConditionalRules } from "./conditionalFormat";
@@ -85,10 +81,27 @@ export function cloneSheet(sheet: SheetModel): SheetModel {
   };
 }
 
+/**
+ * One cell, changed.
+ *
+ * Copy-on-write rather than `cloneSheet`, which copies every row of both grids. Two reasons, and
+ * the second is the one that matters:
+ *
+ * - A keystroke allocated the whole sheet. At three thousand rows that is six thousand arrays per
+ *   character typed.
+ * - Untouched rows come out of this with the **same array object** they went in with, which is
+ *   what lets `sheetCompute.ts` find the edit by comparing rows by reference instead of comparing
+ *   every cell. A deep copy hides a one-cell edit behind a grid of equal-but-not-identical rows.
+ *
+ * `formats` is passed through by reference, not copied. Safe because nothing writes into a sheet's
+ * grids in place without calling `cloneSheet` first — the merge, paste, clear, sort and import
+ * paths all do, and this comment is the reason they must keep doing it.
+ */
 export function setCellRaw(sheet: SheetModel, row: number, col: number, raw: string): SheetModel {
-  const next = cloneSheet(sheet);
-  next.cells[row][col] = raw;
-  return next;
+  const cells = sheet.cells.slice();
+  cells[row] = cells[row].slice();
+  cells[row][col] = raw;
+  return { ...sheet, cells };
 }
 
 export function getCellFormat(sheet: SheetModel, row: number, col: number): CellFormat {
@@ -133,65 +146,11 @@ export function addColumn(sheet: SheetModel): SheetModel {
   };
 }
 
-const CIRCULAR = new FormulaError("#CIRCULAR!");
-
-export interface ComputedSheet {
-  values: FormulaValue[][];
-  display: string[][];
-}
-
-export function computeSheet(sheet: SheetModel): ComputedSheet {
-  const memo = new Map<string, FormulaValue>();
-  const computing = new Set<string>();
-
-  function getCell(r: number, c: number): FormulaValue {
-    if (r < 0 || c < 0 || r >= sheet.rows || c >= sheet.cols) return null;
-    const key = `${r},${c}`;
-    if (memo.has(key)) return memo.get(key)!;
-    if (computing.has(key)) return CIRCULAR;
-
-    const raw = sheet.cells[r]?.[c] ?? "";
-    let result: FormulaValue;
-    if (raw.startsWith("=") && raw.length > 1) {
-      computing.add(key);
-      try {
-        const ast = parseFormula(raw.slice(1));
-        const evalRes = evaluate(ast, { getCell });
-        result = evalRes.kind === "scalar" ? evalRes.value : evalRes.rows[0]?.[0] ?? null;
-      } catch (e) {
-        result = new FormulaError(e instanceof FormulaSyntaxError ? "#SYNTAX!" : "#ERROR!");
-      }
-      computing.delete(key);
-    } else if (raw === "") {
-      result = null;
-    } else {
-      const n = Number(raw);
-      result = raw.trim() !== "" && !Number.isNaN(n) ? n : raw;
-    }
-    memo.set(key, result);
-    return result;
-  }
-
-  const values: FormulaValue[][] = [];
-  const display: string[][] = [];
-  for (let r = 0; r < sheet.rows; r++) {
-    const valueRow: FormulaValue[] = [];
-    const displayRow: string[] = [];
-    for (let c = 0; c < sheet.cols; c++) {
-      const v = getCell(r, c);
-      valueRow.push(v);
-      const numberFormat = sheet.formats[r]?.[c]?.numberFormat;
-      displayRow.push(
-        typeof v === "number" && numberFormat && numberFormat !== "general"
-          ? formatNumberForDisplay(v, numberFormat)
-          : toDisplayString(v)
-      );
-    }
-    values.push(valueRow);
-    display.push(displayRow);
-  }
-  return { values, display };
-}
+// Recalculation lives in sheetCompute.ts, which keeps a dependency graph so one edit does not
+// redo the whole sheet. Re-exported from here because a sheet and the values it works out to are
+// the same idea to every caller, and were one module until the graph arrived.
+export { computeSheet, resetComputeCache } from "./sheetCompute";
+export type { ComputedSheet } from "./sheetCompute";
 
 export type ApplyScope = "cell" | "row" | "column" | "selection";
 
