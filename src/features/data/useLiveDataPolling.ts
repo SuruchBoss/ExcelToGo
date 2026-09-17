@@ -21,7 +21,9 @@ export function useLiveDataPolling() {
     //
     // Nothing is lost by waiting. Unlocking calls loadSources() itself, and a token already
     // stored from a previous session still starts polling straight away.
-    if (DEMO_MODE || readSourcesToken() === "") return;
+    // A demo needs no token — the list endpoint answers it with the three built-ins — so only the
+    // tokenless non-demo case is still a question whose answer is known to be no.
+    if (!DEMO_MODE && readSourcesToken() === "") return;
     void useDataSourceStore.getState().loadSources().catch(() => {});
   }, [loaded]);
 

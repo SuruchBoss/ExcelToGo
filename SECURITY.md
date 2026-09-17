@@ -37,6 +37,20 @@ One shared operator token rather than accounts, because that matches the documen
 feature: one technical person sets the sources up, everyone else just sees the data. The browser
 keeps it in `sessionStorage`, so closing the browser asks again.
 
+**A public demo (`NEXT_PUBLIC_DEMO_MODE=1`) is the one exception, and it is a narrow one.** It
+answers `GET /api/sources` with three sources hard-coded in `src/lib/server/demoSources.ts`, and
+`GET /api/sources/[id]/data` for those three ids only — no token, because there is nothing to
+protect: their URLs are app-relative paths into this app's own `/api/demo/*` handlers and are
+fixed in the source tree. Every write stays refused: create, edit, delete and test all return 403
+on a demo, which is what keeps the list closed. The visitor chooses an id, never a destination, so
+the server's HTTP client has exactly three places it can go and no way to be pointed at a fourth.
+
+Before this, a demo refused the feature outright. That was the safe thing to do while it was the
+only safe thing — but it also meant the landing page advertised something nobody could try, and a
+feature nobody can see may as well not exist. `src/lib/server/demoSources.test.ts` pins the
+invariants the argument above rests on: app-relative URLs, no credential, GET only, and an id
+lookup that matches the whole string rather than a `demo-` prefix.
+
 A wrong token is compared in constant time, and "switched off" and "wrong token" are reported
 differently so an operator can tell which they are looking at.
 

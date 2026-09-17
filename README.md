@@ -5,7 +5,7 @@
 ### ▶ [ลองใช้เลย — ไม่ต้องติดตั้ง](https://excel-to-go.vercel.app)
 
 เปิดในเบราว์เซอร์ได้ทันที ข้อมูลอยู่ในเครื่องคุณเท่านั้น
-(บน demo สาธารณะปิดฟีเจอร์ข้อมูลสดไว้ — [เหตุผล](SECURITY.md))
+(บน demo สาธารณะ ข้อมูลสดเปิดให้ลองได้ 3 แหล่ง แบบอ่านอย่างเดียว — [เหตุผล](SECURITY.md))
 
 > **พิมพ์ว่า "รวมยอดขายเฉพาะสาขาเหนือ" แล้วได้สูตร Excel ที่ใช้ได้จริงกลับมา** พร้อมคำอธิบายว่ามันทำอะไร
 > กดปุ่มเดียวใส่ลงเซลล์ ไม่ต้องจำว่า SUMIF รับพารามิเตอร์อะไรก่อนหลัง — หรือถ้าไม่อยากพิมพ์ **เลือกจากสูตร
@@ -32,7 +32,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-674%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-683%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -49,7 +49,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 674 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 683 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -197,7 +197,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 674 เคสด้วย Vitest |
+| `npm test` | รัน unit test 683 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build → check:a11y |
@@ -307,6 +307,10 @@ key จะไปนั่งอยู่ในหน่วยความจำ�
 > และถ้าไม่กด ก็ไม่มีอะไรออกจากเครื่องเลย
 
 ### 🔌 ข้อมูลสดจาก API / CSV (prototype)
+
+<p align="center"><img src="public/screenshots/34-live-data.gif" width="820" alt="เลือกแหล่งข้อมูลสด กดใส่ลงตาราง แล้วตัวเลขในเซลล์ขยับเองทุก 5 วินาที"></p>
+
+<sub>อัดจาก demo สาธารณะจริง (`NEXT_PUBLIC_DEMO_MODE=1`) — แหล่งข้อมูลทั้งสามในภาพคือของที่เปิดให้ทุกคนลองได้</sub>
 
 <p align="center"><img src="public/screenshots/08-live-data.png" width="820"></p>
 
@@ -900,7 +904,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (674 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (683 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -1351,7 +1355,7 @@ flowchart LR
 
 **ยืนยันด้วยการย้อนโค้ดกลับ** — เทสต์ทั้งสี่เคสพังบนโค้ดเก่าและผ่านบนโค้ดใหม่ ไม่ได้เขียนเทสต์ให้ผ่านเฉย ๆ
 
-### 103 เทสต์ด้านความปลอดภัย
+### 112 เทสต์ด้านความปลอดภัย
 
 | ไฟล์ | เทสต์ | ครอบอะไร |
 |---|---|---|
@@ -1372,7 +1376,7 @@ flowchart LR
 |---|---|
 | **A01 Broken Access Control** | ทุก handler ของ `/api/sources` ปฏิเสธเมื่อไม่ได้ตั้ง token (403) และปฏิเสธ token ผิด (401) — แยกสองสถานะให้ operator รู้ว่าเป็นกรณีไหน |
 | **A02 Cryptographic Failures** | credential ของแหล่งข้อมูลถูกเข้ารหัส AES-256-GCM บนดิสก์ และถูก mask ในทุก response |
-| **A04 Insecure Design** | ฟีเจอร์ข้อมูลสด **ปิดเป็นค่าเริ่มต้น** ต้องตั้ง env ถึงจะเปิด และบน demo สาธารณะปิดสนิทอีกชั้น |
+| **A04 Insecure Design** | ฟีเจอร์ข้อมูลสด **ปิดเป็นค่าเริ่มต้น** ต้องตั้ง env ถึงจะเปิด บน demo สาธารณะเขียนไม่ได้เลย อ่านได้แค่ 3 แหล่งที่ hard-code ไว้ — ผู้ใช้เลือก id ไม่เคยเลือกปลายทาง |
 | **A05 Security Misconfiguration** | ไม่มี `SOURCES_ADMIN_TOKEN` = API ปิด ไม่ใช่เปิดแบบไม่มีรหัส |
 | **A07 Authentication Failures** | token เทียบแบบเต็มค่า ไม่ใช่ prefix รับทั้ง header เฉพาะและ bearer |
 | **A10 SSRF** | resolve DNS แล้วตรวจ *ทุก* ที่อยู่ที่ได้, ตามและตรวจซ้ำทุก redirect ด้วยตัวเองแทนที่จะปล่อยให้ `fetch` ตาม, เทียบ origin ที่ resolve แล้ว |
@@ -1434,7 +1438,7 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 674 เคส ใน 39 ไฟล์ ด้วย Vitest
+npm test      # 683 เคส ใน 40 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM

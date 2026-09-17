@@ -7,6 +7,7 @@ import { useDataSourceStore } from "@/store/dataSourceStore";
 import { useLiveBlocks, useSheetStore } from "@/store/sheetStore";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { useT } from "@/i18n";
+import { DEMO_MODE } from "@/lib/demoMode";
 import SourceRow from "./SourceRow";
 import SourceSetupDialog from "./SourceSetupDialog";
 import SourcesUnlock, { useSourcesToken } from "./SourcesUnlock";
@@ -23,6 +24,10 @@ export default function DataSourcePanel() {
   const openPicker = useSheetStore((s) => s.openDataPicker);
   const [setup, setSetup] = useState<{ open: boolean; source?: PublicDataSource }>({ open: false });
   const token = useSourcesToken();
+  // A public demo reads the three built-ins with no token and cannot change any of them, so the
+  // unlock box and every write control are not "disabled" here — they are absent, because there is
+  // nothing behind them to unlock or to save.
+  const unlocked = DEMO_MODE || Boolean(token);
 
   const sourceName = (id: string) => sources.find((s) => s.id === id)?.name ?? id;
 
@@ -35,9 +40,11 @@ export default function DataSourcePanel() {
         <p className="text-xs text-zinc-500">{t.data.subtitle}</p>
       </div>
 
-      <SourcesUnlock />
+      {!DEMO_MODE && <SourcesUnlock />}
 
-      {token && (
+      {DEMO_MODE && <p className="rounded-md bg-zinc-50 px-2.5 py-2 text-[11.5px] leading-relaxed text-zinc-600">{t.data.demoNote}</p>}
+
+      {unlocked && (
       <div className="flex flex-col gap-2 overflow-y-auto pr-1">
         {sources.length === 0 && <p className="p-4 text-center text-xs text-zinc-500">{t.data.empty}</p>}
         {sources.map((src) => (
@@ -45,13 +52,13 @@ export default function DataSourcePanel() {
             key={src.id}
             source={src}
             onUse={() => openPicker({ sourceId: src.id })}
-            onEdit={() => setSetup({ open: true, source: src })}
+            onEdit={DEMO_MODE ? undefined : () => setSetup({ open: true, source: src })}
           />
         ))}
       </div>
       )}
 
-      {token && (
+      {unlocked && !DEMO_MODE && (
         <button
           onClick={() => setSetup({ open: true })}
           className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-[13px] font-medium text-zinc-500 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"

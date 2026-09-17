@@ -29,6 +29,7 @@ export const en: Messages = {
     title: "Live data",
     subtitle: "Pick the data you want and insert it — it keeps itself up to date automatically",
     addSource: "Connect new data",
+    demoNote: "Public demo: all three sources are readable and can go into the sheet, but none can be added or edited — clone it and point it at your own API.",
     empty: "No data sources yet — click \"Connect new data\" to connect an API or a CSV file",
     live: "Live",
     error: "Connection failed",
@@ -117,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 674 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 683 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -167,7 +168,7 @@ export const en: Messages = {
         title: "Point it at your own API or database, and the values land in the cells",
         body: "Last month's sales live in a system behind the company, and someone still exports them and pastes them in by hand. Here whoever owns the endpoint pastes a URL once; after that you pick a field and press \"put it in the sheet\" — the whole table, or one summary number — seeing the real value before you commit. It refreshes on its own and feeds straight into formulas like any other cell.",
         alt: "The live-data picker",
-        points: ["Nested JSON is flattened into a table for you", "Paginated APIs are followed to the end", "A rate limit is waited out, not retried into", "Run it yourself — the public demo has this switched off; SECURITY.md says why"],
+        points: ["Nested JSON is flattened into a table for you", "Paginated APIs are followed to the end", "A rate limit is waited out, not retried into", "Three sources are live on this demo, read-only — pointing it at your own means running it yourself"],
       },
       {
         title: "Drag a formula in, don't memorise its syntax",
@@ -192,8 +193,8 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "49", label: "engine functions" },
-      { value: "674", label: "automated tests" },
-      { value: "103", label: "security tests" },
+      { value: "683", label: "automated tests" },
+      { value: "112", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -211,7 +212,7 @@ export const en: Messages = {
     limitsMoreText: "The rest of the limits are written out in the README — including the ones a promo page normally leaves out.",
     limitsMoreCta: "Read every limitation",
     closingTitle: "Try it — nothing to sign up for",
-    closingBody: "It opens with sample data to play with. Connecting an API or a database means running it yourself — the public demo switches that off on purpose.",
+    closingBody: "It opens with sample data to play with, and three live sources whose numbers actually move — press one into the sheet and watch it.",
     footerNote: "A personal project for practising and testing ideas — still at the dev stage",
     builtBy: "Built by",
     authorName: "Suruch Boss",

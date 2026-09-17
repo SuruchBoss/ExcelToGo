@@ -6,7 +6,6 @@ import { useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/s
 import { useT } from "@/i18n";
 import LanguageToggle from "./LanguageToggle";
 import Link from "next/link";
-import { DEMO_MODE } from "@/lib/demoMode";
 import { isCloudConfigured } from "@/lib/cloud/config";
 
 export default function Toolbar() {
@@ -157,19 +156,15 @@ export default function Toolbar() {
         >
           <Sparkles size={15} /> <span className="hidden sm:inline">{t.toolbar.askAi}</span>
         </button>
-        {/* Hidden rather than disabled on a public demo: the feature is off server-side too, so a
-            button that could only fail is worse than no button. See src/lib/demoMode.ts. */}
-        {!DEMO_MODE && (
-          <button
-            onClick={() => toggleSidebar("data")}
-            aria-label={t.toolbar.data}
-            className={`flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
-              dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
-            }`}
-          >
-            <Database size={15} /> <span className="hidden sm:inline">{t.toolbar.data}</span>
-          </button>
-        )}
+        <button
+          onClick={() => toggleSidebar("data")}
+          aria-label={t.toolbar.data}
+          className={`flex shrink-0 whitespace-nowrap min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:min-h-0 sm:min-w-0 sm:justify-start sm:px-3 sm:py-1.5 ${
+            dataOpen ? "bg-emerald-700 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+          }`}
+        >
+          <Database size={15} /> <span className="hidden sm:inline">{t.toolbar.data}</span>
+        </button>
         {/* Absent, not disabled, when no cloud backend is configured — which is the default. The
             app is open source, not a hosted service: you point it at your own Supabase project or
             you get the same browser-only app as before. See src/lib/cloud/config.ts. */}

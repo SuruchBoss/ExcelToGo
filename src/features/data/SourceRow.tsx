@@ -11,7 +11,8 @@ import { setLiveDragData } from "./dragTypes";
 interface Props {
   source: PublicDataSource;
   onUse: () => void;
-  onEdit: () => void;
+  /** Absent when the row is read-only (a public demo), which also hides Remove. */
+  onEdit?: () => void;
 }
 
 /** One ticking clock for the row, shared by "updated Ns ago" and the retry countdown. */
@@ -121,24 +122,28 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
             >
               {t.data.refresh}
             </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit();
-              }}
-              className="block w-full rounded px-2.5 py-1.5 text-left text-[13px] text-zinc-700 hover:bg-zinc-50"
-            >
-              {t.data.edit}
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                if (confirm(t.data.confirmRemove(source.name))) void deleteSource(source.id);
-              }}
-              className="block w-full rounded px-2.5 py-1.5 text-left text-[13px] text-red-600 hover:bg-red-50"
-            >
-              {t.data.remove}
-            </button>
+            {onEdit && (
+              <>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEdit();
+                  }}
+                  className="block w-full rounded px-2.5 py-1.5 text-left text-[13px] text-zinc-700 hover:bg-zinc-50"
+                >
+                  {t.data.edit}
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (confirm(t.data.confirmRemove(source.name))) void deleteSource(source.id);
+                  }}
+                  className="block w-full rounded px-2.5 py-1.5 text-left text-[13px] text-red-600 hover:bg-red-50"
+                >
+                  {t.data.remove}
+                </button>
+              </>
+            )}
           </div>
         </>
       )}

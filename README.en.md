@@ -5,7 +5,7 @@
 ### ▶ [Try it — nothing to install](https://excel-to-go.vercel.app)
 
 Runs in your browser; your data stays on your machine.
-(The live-data feature is switched off on the public demo — [why](SECURITY.md).)
+(On the public demo, live data is readable from three built-in sources — [why only three](SECURITY.md).)
 
 > **Type "total sales for the northern branch" and get an Excel formula back**, with a sentence
 > saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes
@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-674%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-683%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 674 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 683 automated tests.
 
 ---
 
@@ -206,7 +206,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 674-case Vitest suite |
+| `npm test` | Run the 683-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -323,6 +323,10 @@ second is never called (`hit our own /api/ai/formula: false`); the first arrives
 > pressed — **the file itself is never sent**, and if nobody presses it, nothing leaves the machine.
 
 ### 🔌 Live data from an API / CSV (prototype)
+
+<p align="center"><img src="public/screenshots/34-live-data.gif" width="820" alt="Picking a live source, pressing it into the sheet, and the cell changing on its own every five seconds"></p>
+
+<sub>Recorded against a real public demo build (`NEXT_PUBLIC_DEMO_MODE=1`) — the three sources in it are the ones anyone can try.</sub>
 
 <p align="center"><img src="public/screenshots/08-live-data.png" width="820"></p>
 
@@ -1009,7 +1013,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (674 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (683 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1486,7 +1490,7 @@ ever reaches the fetcher
 **Confirmed by reverting** — all four cases fail on the old code and pass on the new. The tests were not
 written to agree with whatever the code already did.
 
-### 103 security tests
+### 112 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -1507,7 +1511,7 @@ Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/valid
 |---|---|
 | **A01 Broken Access Control** | Every `/api/sources` handler refuses when no token is configured (403) and refuses a wrong one (401) — two distinct states so an operator can tell which happened |
 | **A02 Cryptographic Failures** | Source credentials are AES-256-GCM on disk and masked in every API response |
-| **A04 Insecure Design** | Live data is **off by default**; it takes an env var to switch on, and a public demo switches it off again at a second layer |
+| **A04 Insecure Design** | Live data is **off by default**; it takes an env var to switch on. A public demo refuses every write and reads only three hard-coded sources — the visitor picks an id, never a destination |
 | **A05 Security Misconfiguration** | No `SOURCES_ADMIN_TOKEN` means the API is closed, not open with no password |
 | **A07 Authentication Failures** | The token is compared in full, not by prefix; accepted as a dedicated header or a bearer token |
 | **A10 SSRF** | DNS is resolved and *every* returned address checked; redirects are followed and re-checked here rather than left to `fetch`; origins are compared after resolution |
@@ -1572,7 +1576,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 674 cases across 39 files, via Vitest
+npm test      # 683 cases across 40 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so

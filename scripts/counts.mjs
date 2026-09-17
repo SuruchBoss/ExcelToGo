@@ -24,6 +24,7 @@ export const SECURITY_TEST_FILES = [
   "src/lib/server/secretBox.test.ts",
   "src/lib/server/rateLimiter.test.ts",
   "src/lib/server/sourcesAuth.test.ts",
+  "src/lib/server/demoSources.test.ts",
   "src/app/api/sources/validate.test.ts",
   "src/app/api/ai/formula/route.test.ts",
   "src/lib/byok.test.ts",

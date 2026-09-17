@@ -49,6 +49,7 @@ export interface Messages {
     title: string;
     subtitle: string;
     addSource: string;
+    demoNote: string;
     empty: string;
     live: string;
     error: string;

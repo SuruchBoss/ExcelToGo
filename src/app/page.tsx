@@ -36,7 +36,9 @@ const LINKEDIN_URL = "https://www.linkedin.com/in/suruchboss";
 // Paired with `t.landing.features` by index, so the two lists move together or not at all.
 const FEATURE_MEDIA = [
   { src: "/screenshots/04-ai-assistant.png", width: 2720, height: 1720 },
-  { src: "/screenshots/10-picker-table.png", width: 2720, height: 1720 },
+  // Animated, so it shows the one thing a still cannot: the number arriving in the cell, and then
+  // changing again on its own. `unoptimized` because the optimiser returns a single still frame.
+  { src: "/screenshots/34-live-data.gif", width: 820, height: 478, unoptimized: true },
   { src: "/screenshots/02-formula-panel.png", width: 2720, height: 1720 },
   { src: "/screenshots/17-styled-import.png", width: 2720, height: 1720 },
   { src: "/screenshots/20-charts.png", width: 1440, height: 900 },
@@ -276,6 +278,7 @@ export default function Landing() {
                         src={media.src}
                         width={media.width}
                         height={media.height}
+                        unoptimized={"unoptimized" in media && media.unoptimized}
                         alt={f.alt}
                         sizes="(max-width: 768px) 100vw, 620px"
                         className="h-auto w-full"

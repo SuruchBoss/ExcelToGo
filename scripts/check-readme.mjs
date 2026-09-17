@@ -48,16 +48,23 @@ for (const [file, text] of Object.entries(docs)) {
 
 // --- 2. Screenshots: referenced ones exist, and none are orphaned ------------------------------
 const shotDir = path.join(ROOT, "public/screenshots");
-const onDisk = fs.existsSync(shotDir) ? fs.readdirSync(shotDir).filter((f) => f.endsWith(".png")) : [];
+// .gif as well as .png: the animated ones are the most expensive to re-record and so the ones
+// most likely to be left behind by a rename. demo.gif sat outside this check for months.
+const onDisk = fs.existsSync(shotDir) ? fs.readdirSync(shotDir).filter((f) => /\.(png|gif)$/.test(f)) : [];
 const referenced = new Set();
 for (const [file, text] of Object.entries(docs)) {
-  for (const m of text.matchAll(/public\/screenshots\/([\w.-]+\.png)/g)) {
+  for (const m of text.matchAll(/public\/screenshots\/([\w.-]+\.(?:png|gif))/g)) {
     referenced.add(m[1]);
     if (!onDisk.includes(m[1])) fail(`${file}: references public/screenshots/${m[1]}, which doesn't exist`);
   }
 }
+// The landing page writes them as "/screenshots/x" (a URL), the READMEs as "public/screenshots/x"
+// (a path). Both count as showing the file; only a file nothing points at is an orphan.
+for (const m of read("src/app/page.tsx").matchAll(/["(]\/screenshots\/([\w.-]+\.(?:png|gif))/g)) {
+  referenced.add(m[1]);
+}
 for (const f of onDisk) {
-  if (!referenced.has(f)) fail(`public/screenshots/${f} is in the repo but no README shows it`);
+  if (!referenced.has(f)) fail(`public/screenshots/${f} is in the repo but nothing shows it`);
 }
 notes.push(`${onDisk.length} screenshots, all referenced`);
 

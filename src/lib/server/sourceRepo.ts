@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { DataSourceConfig, PublicDataSource } from "@/lib/dataSources/types";
 import { decryptSecret, encryptSecret, isEncrypted } from "./secretBox";
+import { DEMO_SOURCES } from "./demoSources";
 
 // Storage is one JSON file on the server. Credentials never leave it — the API only ever returns
 // the masked PublicDataSource shape to the browser — and the credential itself is encrypted at
@@ -9,48 +10,15 @@ import { decryptSecret, encryptSecret, isEncrypted } from "./secretBox";
 const DATA_DIR = path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "sources.json");
 
-/** Seeded on first run so the panel has something live to show immediately. Both point at the
- *  app's own demo endpoints, which return fresh, drifting numbers on every call. */
-const DEFAULT_SOURCES: DataSourceConfig[] = [
-  {
-    id: "demo-sales",
-    name: "ยอดขายสด (ตัวอย่าง)",
-    type: "rest",
-    url: "/api/demo/sales",
-    method: "GET",
-    refreshSec: 5,
-    createdAt: new Date(0).toISOString(),
-  },
-  {
-    id: "demo-summary",
-    name: "สรุปวันนี้ (ตัวอย่าง)",
-    type: "rest",
-    url: "/api/demo/summary",
-    method: "GET",
-    refreshSec: 5,
-    createdAt: new Date(0).toISOString(),
-  },
-  {
-    // Returns 25 rows per page over 120 rows, so the panel shows a source that only adds up to
-    // its full size once pages have been followed.
-    id: "demo-orders",
-    name: "รายการสั่งซื้อ (ตัวอย่าง, หลายหน้า)",
-    type: "rest",
-    url: "/api/demo/orders",
-    method: "GET",
-    maxRows: 200,
-    refreshSec: 30,
-    createdAt: new Date(0).toISOString(),
-  },
-];
 
 async function readAll(): Promise<DataSourceConfig[]> {
   try {
     const raw = await fs.readFile(FILE, "utf8");
     return JSON.parse(raw) as DataSourceConfig[];
   } catch {
-    await writeAll(DEFAULT_SOURCES);
-    return DEFAULT_SOURCES;
+    // Seeded on first run so a fresh clone has something live in the panel straight away.
+    await writeAll(DEMO_SOURCES);
+    return DEMO_SOURCES;
   }
 }
 
