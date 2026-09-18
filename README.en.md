@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-711%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-731%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 711 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 731 automated tests.
 
 ---
 
@@ -112,6 +112,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
+  - [The Excel keyboard](#️-the-excel-keyboard)
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Merging cells](#-merging-cells)
@@ -206,7 +207,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 711-case Vitest suite |
+| `npm test` | Run the 731-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
@@ -654,6 +655,35 @@ reach the PDF export** (neither do fills or bold, which it doesn't carry either)
 several rules hit one cell, **the lower rule wins** — the opposite of Excel's top-priority-wins
 order. That's chosen so a rule you just added visibly does something instead of silently nothing.
 
+### ⌨️ The Excel keyboard
+
+Somebody who opens a spreadsheet moves their hands before they read anything — `Ctrl+Down` comes
+before the first word of the page. A grid that answers by moving one row has told them it is a
+mock-up.
+
+| Key | What it does |
+|---|---|
+| `Ctrl`/`Cmd` + arrow | Jump to the edge of the data: run to the end of the block if the next cell has something in it, skip the gap to the next filled cell if it does not |
+| `Shift` + arrow | Drag the far corner of the selection with you (the corner opposite the anchor is the one that moves) |
+| `Ctrl` + `Shift` + arrow | Extend all the way to the edge of the data in one press |
+| `Home` / `Ctrl+Home` | Start of the row / back to A1 |
+| `End` / `Ctrl+End` | Last filled cell in the row / the corner of everything used |
+| `PageUp` / `PageDown` | A screen at a time, **measured in pixels rather than a row count**, because an imported file's rows are not all the same height |
+| `Ctrl+A` | The table you are standing in; press again for the whole sheet, the way Excel does |
+| `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | Right/left · down/up |
+| `F2` · `Delete` · `Escape` | Edit in place · clear the selection · cancel |
+
+The view **follows the cursor in both axes**, which is not a nicety here: `Ctrl+Down` can move five
+thousand rows in one press, and a row outside the window is not in the DOM at all, so it cannot be
+asked to scroll itself into view — the position has to be worked out.
+
+> **The bug found while building this, and why the key handler is not on the cells:** `onKeyDown`
+> used to sit on each `<td>`. `Ctrl+Down` scrolls, the windowing unmounts the very cell holding
+> focus, focus falls to `<body>`, and every key after that is the browser's own scrolling rather
+> than the grid's — the app looks frozen while the values underneath are still correct. The handler
+> now lives on the scroller, with an effect that takes focus back **only from `<body>`**, never
+> from the formula bar or a panel that legitimately has it.
+
 ### 📱 Works on a phone
 
 Opening this on a phone used to show **not one cell of the spreadsheet** — the 320px side panel
@@ -1013,7 +1043,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (711 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (731 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1255,6 +1285,8 @@ src/
                               # the rest — keeps a dependency graph (tested, with a benchmark)
     rowWindow.ts             # Which rows a scrolled grid actually has to put in the DOM, so a
                               # ten-thousand-row sheet does not render ten thousand rows (tested)
+    gridNavigation.ts        # Excel's cursor rules — Ctrl+arrow to the edge of the data, Ctrl+End,
+                              # Ctrl+A around a block, Page keys measured in pixels (tested)
     demoMode.ts              # Switch that turns the live-data feature off for a public demo
     site.ts                  # The one canonical public URL shared by metadata, sitemap and robots
     thaiMarks.ts             # Finds tone marks stacked on an upper vowel that must be redrawn higher (tested)
@@ -1652,7 +1684,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 711 cases across 43 files, via Vitest
+npm test      # 731 cases across 44 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1775,9 +1807,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       5,000-row sheet keeps 41 `<tr>` in the DOM. Still open: editing the cell a whole column of
       running totals reads still costs around 1,000–1,200 ms (a real fan-out, not a cache miss), and columns
       are not windowed, only rows.
-- [ ] **Full Excel keyboard coverage** — `Ctrl+arrow` to the edge of the data,
-      `Ctrl+Shift+arrow` to extend, `Ctrl+A`, `Home`/`Ctrl+Home`, `PageUp`/`PageDown`. Today it is
-      arrows, Tab, Enter, F2, Escape and Delete.
+- [x] **Full Excel keyboard coverage** — done (see [the Excel keyboard](#️-the-excel-keyboard)):
+      `Ctrl+arrow` to the edge of the data, `Shift+arrow` to drag the selection, both together for
+      each at once, `Home`/`End`/`Ctrl+Home`/`Ctrl+End`, Page keys measured in pixels, the two-step
+      `Ctrl+A`, and the view following the cursor in both axes. Still open: `Ctrl+Space` /
+      `Shift+Space` for a whole column or row, and `Ctrl+Enter` to fill a selection at once.
 - [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 

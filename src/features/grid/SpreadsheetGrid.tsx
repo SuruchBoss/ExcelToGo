@@ -29,8 +29,9 @@ import { mergeLookup } from "@/lib/sheetMerges";
 import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 // Shared with the chart overlay, which places charts in these same coordinates.
-import { COL_WIDTH, ROW_HEADER_WIDTH, ROW_HEIGHT } from "@/lib/gridGeometry";
+import { COL_WIDTH, columnLeft, columnWidth, ROW_HEADER_WIDTH, ROW_HEIGHT } from "@/lib/gridGeometry";
 import { rowOffsets, rowWindow, scrollToShowRow } from "@/lib/rowWindow";
+import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gridNavigation";
 import ChartOverlay from "./ChartOverlay";
 import SelectionHandle from "./SelectionHandle";
 
@@ -119,20 +120,55 @@ export default function SpreadsheetGrid() {
     [virtualized, sheet.rows, sheet.merges, offsets, viewport.top, viewport.height]
   );
 
+  /**
+   * Keep the keyboard alive when the rows underneath it are recycled.
+   *
+   * A jump scrolls the grid, the scroll listener re-measures a frame later, and the `<td>` that had
+   * focus is unmounted — focus falls to `<body>` and the next keystroke is the browser's own
+   * scrolling rather than the grid's. So this watches the *rendered window*, not the cursor: the
+   * unmount happens after the cursor has already finished moving, which is why keying it on the
+   * selection missed it entirely.
+   *
+   * Only from `<body>`, never from wherever focus legitimately is — the formula bar, a panel, a
+   * dialog. Stealing focus back from those would be a worse bug than the one being fixed.
+   */
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (container && document.activeElement === document.body) container.focus({ preventScroll: true });
+  }, [window_.start, window_.end]);
+
   const visibleRows = useMemo(() => {
     const out: number[] = [];
     for (let r = window_.start; r <= window_.end; r++) if (!hiddenRows.has(r)) out.push(r);
     return out;
   }, [window_.start, window_.end, hiddenRows]);
 
-  // A selected row outside the window is not in the DOM, so it cannot scroll itself into view.
-  const focusRow = selection?.anchorRow;
+  // Follow the cursor.
+  //
+  // Two reasons, and the second one is not optional: a row outside the window is not in the DOM at
+  // all, so nothing can be asked to scroll itself into view — the position has to be worked out.
+  // And with the jump keys the cursor can now land three thousand rows away in one press, which is
+  // no use if the screen stays where it was.
+  //
+  // Keyed on the corner the keyboard is dragging rather than the anchor, so Shift+Down keeps the
+  // growing edge on screen instead of the end it is growing away from.
+  const focusRow = selection.anchorRow === selection.startRow ? selection.endRow : selection.startRow;
+  const focusCol = selection.anchorCol === selection.startCol ? selection.endCol : selection.startCol;
   useLayoutEffect(() => {
     const container = scrollRef.current;
-    if (!container || !virtualized || focusRow === undefined) return;
-    const to = scrollToShowRow(offsets, focusRow, container.scrollTop, container.clientHeight, ROW_HEIGHT);
-    if (to !== null) container.scrollTo({ top: to, left: container.scrollLeft });
-  }, [focusRow, virtualized, offsets]);
+    if (!container) return;
+    const top = scrollToShowRow(offsets, focusRow, container.scrollTop, container.clientHeight, ROW_HEIGHT);
+
+    const left = columnLeft(sheet, focusCol);
+    const right = left + columnWidth(sheet, focusCol);
+    let nextLeft: number | null = null;
+    // ROW_HEADER_WIDTH, because the row numbers are sticky and float over the left of the scroller.
+    if (left < container.scrollLeft + ROW_HEADER_WIDTH) nextLeft = Math.max(0, left - ROW_HEADER_WIDTH);
+    else if (right > container.scrollLeft + container.clientWidth) nextLeft = right - container.clientWidth;
+
+    if (top === null && nextLeft === null) return;
+    container.scrollTo({ top: top ?? container.scrollTop, left: nextLeft ?? container.scrollLeft });
+  }, [focusRow, focusCol, offsets, sheet]);
   // Recomputed from values, not stored: that is the whole point — edit a number and its colour
   // follows on the same render.
   const cfVisuals = useMemo(
@@ -258,29 +294,128 @@ export default function SpreadsheetGrid() {
     return () => window.removeEventListener("mouseup", up);
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent, row: number, col: number) => {
+  /**
+   * The hands go before the eyes do.
+   *
+   * Somebody who opens a spreadsheet presses Ctrl+Down before they read a word of the page, and a
+   * grid that answers by moving one row tells them it is a mock-up. So the jumps are here, in the
+   * shapes Excel uses: Ctrl to the edge of the data, Shift to drag the selection with you, both
+   * together to do each at once, and Home/End/Page to the extremes.
+   *
+   * The rules themselves live in `lib/gridNavigation.ts` and are tested on hand-drawn grids; what
+   * is here is only which keys reach them.
+   */
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (editing) return;
-    const move = (r: number, c: number) => {
+    const row = selection.anchorRow;
+    const col = selection.anchorCol;
+    const bounds = { rows: sheet.rows, cols: sheet.cols };
+    const isEmpty = (r: number, c: number) => (sheet.cells[r]?.[c] ?? "") === "";
+    const jump = e.ctrlKey || e.metaKey;
+    // Read at the keystroke rather than kept in state: the windowing effect only measures while
+    // it is switched on, and Page keys have to work on a small sheet too.
+    const pageHeight = scrollRef.current?.clientHeight ?? 0;
+
+    /**
+     * Move the cursor, or — holding Shift — drag the far corner of the selection to it.
+     *
+     * The corner that moves is the one opposite the anchor, worked out from the rectangle rather
+     * than stored: the anchor is always on a corner, so the other one is implied. That keeps
+     * Shift+Down twice growing the same selection instead of starting a new one each time.
+     */
+    const go = (r: number, c: number) => {
       const nr = Math.min(Math.max(r, 0), sheet.rows - 1);
       const nc = Math.min(Math.max(c, 0), sheet.cols - 1);
-      setSelection(singleCellSelection(nr, nc));
+      if (e.shiftKey) {
+        const anchor = { row: selection.anchorRow, col: selection.anchorCol };
+        setSelection(normalizeSelection(anchor, { row: nr, col: nc }));
+      } else {
+        setSelection(singleCellSelection(nr, nc));
+      }
       e.preventDefault();
     };
+
+    /** The corner the keyboard is currently dragging. */
+    const focusRow = selection.anchorRow === selection.startRow ? selection.endRow : selection.startRow;
+    const focusCol = selection.anchorCol === selection.startCol ? selection.endCol : selection.startCol;
+    const fromRow = e.shiftKey ? focusRow : row;
+    const fromCol = e.shiftKey ? focusCol : col;
+
+    const step = (dRow: number, dCol: number) => {
+      if (jump) {
+        const to = jumpToEdge(isEmpty, bounds, { row: fromRow, col: fromCol }, dRow, dCol);
+        go(to.row, to.col);
+      } else {
+        go(fromRow + dRow, fromCol + dCol);
+      }
+    };
+
     switch (e.key) {
       case "ArrowDown":
+        step(1, 0);
+        break;
       case "Enter":
-        move(row + 1, col);
+        // Enter commits and walks down a column, Shift+Enter back up it — and neither extends a
+        // selection, which is why it does not go through `step`.
+        setSelection(singleCellSelection(Math.min(Math.max(row + (e.shiftKey ? -1 : 1), 0), sheet.rows - 1), col));
+        e.preventDefault();
         break;
       case "ArrowUp":
-        move(row - 1, col);
+        step(-1, 0);
         break;
       case "ArrowLeft":
-        move(row, col - 1);
+        step(0, -1);
         break;
       case "ArrowRight":
-      case "Tab":
-        move(row, col + 1);
+        step(0, 1);
         break;
+      case "Tab":
+        setSelection(singleCellSelection(row, Math.min(Math.max(col + (e.shiftKey ? -1 : 1), 0), sheet.cols - 1)));
+        e.preventDefault();
+        break;
+      case "Home":
+        // Home to the start of the row, Ctrl+Home to the start of the sheet.
+        go(jump ? 0 : fromRow, 0);
+        break;
+      case "End": {
+        // End to the last filled cell in the row, Ctrl+End to the corner of everything used.
+        const to = jump ? usedBounds(isEmpty, bounds) : { row: fromRow, col: rowEnd(isEmpty, bounds, fromRow) };
+        go(to.row, to.col);
+        break;
+      }
+      case "PageDown":
+        go(pageStep(offsets, fromRow, pageHeight, 1), fromCol);
+        break;
+      case "PageUp":
+        go(pageStep(offsets, fromRow, pageHeight, -1), fromCol);
+        break;
+      case "a":
+      case "A": {
+        if (!jump) {
+          if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) startEdit(row, col, e.key);
+          break;
+        }
+        // Excel's two-step: the table you are standing in, then everything.
+        const block = blockAround(isEmpty, bounds, { row, col });
+        const alreadyBlock =
+          selection.startRow === block.startRow &&
+          selection.startCol === block.startCol &&
+          selection.endRow === block.endRow &&
+          selection.endCol === block.endCol;
+        const target = alreadyBlock
+          ? { startRow: 0, startCol: 0, endRow: sheet.rows - 1, endCol: sheet.cols - 1 }
+          : block;
+        setSelection({
+          anchorRow: target.startRow,
+          anchorCol: target.startCol,
+          startRow: target.startRow,
+          startCol: target.startCol,
+          endRow: target.endRow,
+          endCol: target.endCol,
+        });
+        e.preventDefault();
+        break;
+      }
       case "Delete":
       case "Backspace":
         if (!isBound(row, col)) clearSelection();
@@ -314,7 +449,16 @@ export default function SpreadsheetGrid() {
   };
 
   return (
-    <div ref={scrollRef} className="relative h-full overflow-auto bg-white" tabIndex={-1}>
+    // The keyboard is owned by the scroller, not by the cells. A cell handler worked until the
+    // grid started windowing rows: Ctrl+Down unmounts the very <td> the keystroke came from, focus
+    // falls to <body>, and every key after that is the browser's own scrolling rather than ours.
+    // Focus lands here instead, which survives any amount of the sheet being recycled.
+    <div
+      ref={scrollRef}
+      className="relative h-full overflow-auto bg-white"
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       <table className="border-separate border-spacing-0 select-none" style={{ tableLayout: "fixed" }}>
         <thead>
           <tr>
@@ -424,7 +568,6 @@ export default function SpreadsheetGrid() {
                       if (e.pointerType !== "touch" || !tappedAlreadySelected.current) return;
                       if (!editingHere && !locked) startEdit(r, c);
                     }}
-                    onKeyDown={(e) => handleKeyDown(e, r, c)}
                     onDragOver={(e) => {
                       e.preventDefault();
                       setDragOverCell({ row: r, col: c });

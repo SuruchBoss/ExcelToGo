@@ -32,7 +32,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-711%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-731%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -49,7 +49,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 711 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 731 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -110,6 +110,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
   - [จัดรูปแบบตามเงื่อนไข (Conditional Formatting)](#-จัดรูปแบบตามเงื่อนไข-conditional-formatting)
   - [คอมเมนต์ในเซลล์](#-คอมเมนต์ในเซลล์)
   - [บันทึกบนคลาวด์ (ต่อ backend ของคุณเอง)](#️-บันทึกบนคลาวด์-ต่อ-backend-ของคุณเอง)
+  - [คีย์บอร์ดแบบเดียวกับ Excel](#️-คีย์บอร์ดแบบเดียวกับ-excel)
   - [ใช้บนมือถือได้](#-ใช้บนมือถือได้)
   - [แทรก/ลบแถว-คอลัมน์](#-แทรกลบแถว-คอลัมน์)
   - [รวมเซลล์ (merge)](#-รวมเซลล์-merge)
@@ -197,7 +198,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 711 เคสด้วย Vitest |
+| `npm test` | รัน unit test 731 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → test → build → check:a11y |
@@ -586,6 +587,32 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ส่งออก PDF ก็ยังไม่รองรับ) · เมื่อกฎหลายข้อชนกันที่เซลล์เดียว **ข้อล่างทับข้อบน** ซึ่งกลับทางกับ Excel
 ที่ให้ลำดับบนสุดชนะ — เลือกแบบนี้เพราะกฎที่เพิ่งกดเพิ่มควรเห็นผลทันที ไม่ใช่เงียบหายไป
 
+### ⌨️ คีย์บอร์ดแบบเดียวกับ Excel
+
+คนที่เปิดโปรแกรมตารางขึ้นมา มือจะไปก่อนตาเสมอ — กด `Ctrl+ลูกศรลง` ตั้งแต่ยังไม่ได้อ่านอะไรบนหน้าจอเลย
+ถ้าตารางตอบด้วยการเลื่อนลงหนึ่งแถว มันบอกคนกดทันทีว่านี่เป็นแค่ของจำลอง
+
+| ปุ่ม | ทำอะไร |
+|---|---|
+| `Ctrl`/`Cmd` + ลูกศร | กระโดดไปสุดขอบข้อมูล — ถ้าช่องถัดไปมีข้อมูลจะวิ่งไปจนสุดก้อนนั้น ถ้าว่างจะข้ามช่องว่างไปหาช่องถัดไปที่มีข้อมูล |
+| `Shift` + ลูกศร | ลากขอบของช่วงที่เลือกตามไป (มุมตรงข้าม anchor เป็นตัวที่ขยับ) |
+| `Ctrl` + `Shift` + ลูกศร | ขยายช่วงไปจนสุดขอบข้อมูลในทีเดียว |
+| `Home` / `Ctrl+Home` | ต้นแถว / กลับไป A1 |
+| `End` / `Ctrl+End` | ช่องสุดท้ายที่มีข้อมูลในแถวนั้น / มุมสุดท้ายของพื้นที่ที่ใช้งานจริง |
+| `PageUp` / `PageDown` | ขึ้น-ลงทีละหนึ่งหน้าจอ **วัดเป็นพิกเซล ไม่ใช่จำนวนแถว** เพราะไฟล์ที่ import มาอาจมีความสูงแถวไม่เท่ากัน |
+| `Ctrl+A` | เลือกก้อนข้อมูลที่ยืนอยู่ กดซ้ำอีกครั้งเลือกทั้งชีต (แบบเดียวกับ Excel) |
+| `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | ไปขวา/ซ้าย · ลง/ขึ้น |
+| `F2` · `Delete` · `Escape` | แก้ในช่อง · ล้างช่วงที่เลือก · ยกเลิก |
+
+หน้าจอ**วิ่งตามเคอร์เซอร์เองทั้งแนวตั้งและแนวนอน** — จำเป็นจริง ๆ เพราะ `Ctrl+ลูกศรลง` กระโดดได้ทีละห้าพันแถว
+และแถวที่อยู่นอกจอไม่ได้ถูก render อยู่ใน DOM เลย จะสั่งให้มัน `scrollIntoView` ตัวเองก็ไม่ได้ ต้องคำนวณเอา
+
+> **บั๊กที่เจอตอนทำ และเป็นเหตุผลที่ตัวจัดการคีย์ไม่ได้อยู่บนเซลล์:** เดิม `onKeyDown` ติดอยู่กับ `<td>` แต่ละช่อง
+> พอ `Ctrl+ลูกศรลง` เลื่อนจอ ตัว `<td>` ที่ถือ focus อยู่ก็ถูกถอดออกจาก DOM (เพราะ virtualization) focus ตกไปที่
+> `<body>` แล้วทุกปุ่มหลังจากนั้นกลายเป็นการเลื่อนจอของเบราว์เซอร์เอง ไม่ใช่ของแอป — ดูเหมือนแอปค้าง
+> ทั้งที่ค่ายังเปลี่ยนถูก ตัวจัดการจึงย้ายไปอยู่ที่ตัว scroller และมี effect คอยดึง focus กลับมา
+> **เฉพาะตอนที่มันตกไปที่ `<body>` เท่านั้น** ไม่ใช่ตอนที่ focus ไปอยู่ที่แถบสูตรหรือพาเนลอื่นโดยชอบธรรม
+
 ### 📱 ใช้บนมือถือได้
 
 เดิมเปิดบนมือถือแล้ว**ไม่เห็นตารางเลยสักช่อง** — แถบสูตรด้านข้างกว้าง 320px แย่งพื้นที่จนเหลือแค่คอลัมน์เลขแถว
@@ -904,7 +931,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (711 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (731 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -1140,6 +1167,8 @@ src/
                               # ไว้ เพื่อให้แก้เซลล์เดียวไม่ต้องคิดใหม่ทั้งแผ่น (มี test + benchmark)
     rowWindow.ts             # คิดว่าแถวไหนต้องอยู่ใน DOM จริง ๆ ตอนเลื่อน ตารางหมื่นแถวจึงไม่วาดหมื่นแถว
                               # (มี test)
+    gridNavigation.ts        # กติกาการเดินเคอร์เซอร์ด้วยคีย์บอร์ดแบบ Excel — Ctrl+ลูกศรสุดขอบข้อมูล,
+                              # Ctrl+End, Ctrl+A เลือกก้อน, Page ขึ้น-ลงวัดเป็นพิกเซล (มี test)
     demoMode.ts              # สวิตช์ปิดฟีเจอร์ข้อมูลสดสำหรับ demo สาธารณะ (อ่าน NEXT_PUBLIC_DEMO_MODE)
     site.ts                  # URL สาธารณะที่ใช้ร่วมกันของ metadata/sitemap/robots (ที่เดียว ไม่ให้ขัดกัน)
     thaiMarks.ts             # หาวรรณยุกต์ที่ซ้อนบนสระบนและต้องวาดยกขึ้น (ใช้ตอนส่งออก PDF) (มี test)
@@ -1506,7 +1535,7 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 711 เคส ใน 43 ไฟล์ ด้วย Vitest
+npm test      # 731 เคส ใน 44 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
@@ -1611,8 +1640,11 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
       ในชีต 3,000 แถวลดจาก **1,244.9 ms เหลือ 3.6 ms** และตาราง 5,000 แถวมี `<tr>` ใน DOM แค่ 41 ตัว
       ยังเหลือ: การแก้เซลล์ที่ running total ทั้งคอลัมน์อ่านอยู่ยังกินราว 1,000–1,200 ms (fan-out จริง ไม่ใช่แคชพลาด)
       และยังไม่ได้ทำ virtualization แนวคอลัมน์
-- [ ] **คีย์บอร์ดให้ครบแบบ Excel** — `Ctrl+ลูกศร` กระโดดสุดขอบข้อมูล, `Ctrl+Shift+ลูกศร` ขยายช่วง,
-      `Ctrl+A`, `Home`/`Ctrl+Home`, `PageUp`/`PageDown` — ตอนนี้มีแค่ลูกศร/Tab/Enter/F2/Escape/Delete
+- [x] **คีย์บอร์ดให้ครบแบบ Excel** — ทำแล้ว (ดูหัวข้อ [คีย์บอร์ดแบบเดียวกับ Excel](#️-คีย์บอร์ดแบบเดียวกับ-excel)):
+      `Ctrl+ลูกศร` สุดขอบข้อมูล, `Shift+ลูกศร` ลากช่วง, `Ctrl+Shift+ลูกศร` ทำทั้งสองอย่าง,
+      `Home`/`End`/`Ctrl+Home`/`Ctrl+End`, `PageUp`/`PageDown` วัดเป็นพิกเซล, `Ctrl+A` สองจังหวะ
+      และหน้าจอวิ่งตามเคอร์เซอร์ทั้งสองแกน ยังเหลือ: `Ctrl+Space`/`Shift+Space` เลือกทั้งคอลัมน์/แถว
+      และการแก้หลายเซลล์พร้อมกันด้วย `Ctrl+Enter`
 - [ ] **แหล่งข้อมูลแบบฐานข้อมูล** (Postgres/MySQL) — เฟสถัดไป: tech เลือกตาราง/เซฟ query ครั้งเดียว user ไม่เห็น SQL
 - [ ] **Realtime แบบ push (SSE/WebSocket)** แทน polling, และการกรองข้อมูลสดจาก UI ก่อนวาง
 
