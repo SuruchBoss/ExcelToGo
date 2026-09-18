@@ -190,6 +190,17 @@ export const th: Messages = {
       },
     ],
     statsTitle: "เบื้องหลัง",
+    // The test count sits directly above this on the page, so the "N passed, yet 43% unusable"
+    // pairing is left to the README. On a page whose job is to make someone try the app, that
+    // juxtaposition spends the numbers above it to make a point about process.
+    statsStory: {
+      title: "เทสต์ที่ mock ไว้ จับเรื่องนี้ไม่ได้",
+      body: [
+        "เทสต์ของผู้ช่วย AI ทุกตัวใช้ mock — มันตอบตามที่คนเขียนเทสต์คิดว่ามันจะตอบ พอเอา API key จริงมายิงคำถามธรรมดา คำตอบหลายข้อใช้ฟังก์ชันที่เอนจินนี้ไม่มี กลายเป็น #NAME? ในเซลล์ หลังผู้ใช้กดปุ่มที่เขียนว่า “ใส่ลงตาราง”",
+        "แก้สองชั้น: เติมฟังก์ชันที่ขาดลงเอนจินสิบตัว และบอกโมเดลว่าแอปนี้มีอะไรบ้าง โดยสร้างรายการจากโค้ดของเอนจินเอง ไม่ได้พิมพ์มือ — สำเนาที่สองคือตัวที่จะเพี้ยน",
+        "การแก้ครั้งแรกทำให้แย่ลง: มันเปลี่ยน #NAME? ที่มองเห็น เป็น =SUM(A2:A20) ที่คืน 0 เงียบ ๆ ตอนถูกถามให้ต่อข้อความ",
+      ],
+    },
     stats: [
       { value: "32", label: "สูตรพร้อมใช้" },
       { value: "59", label: "ฟังก์ชันในเอนจิน" },

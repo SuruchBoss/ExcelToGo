@@ -181,6 +181,8 @@ export interface Messages {
     features: { title: string; body: string; alt: string; points: string[] }[];
     statsTitle: string;
     stats: { value: string; label: string }[];
+    /** The one thing the numbers above cannot say: what the test suite did not catch. */
+    statsStory: { title: string; body: string[] };
     /** What the app cannot do, stated on the front page rather than buried in the README. */
     limitsTitle: string;
     limitsLead: string;

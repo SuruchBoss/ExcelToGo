@@ -308,6 +308,23 @@ export default function Landing() {
               </div>
             ))}
           </dl>
+
+          {/* The figures above are what a reader can check. This is the one thing they cannot
+              say — that a suite can be green and still be looking the wrong way. It sits on the
+              inverted band with them rather than in the feature list, because it is about how the
+              app was built, not about what it does. */}
+          <div className="mt-14 border-t border-white/15 pt-10 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] md:gap-12">
+            <h3 className="text-[1.15rem] font-semibold leading-[1.45] tracking-[-0.01em] text-white sm:text-[1.3rem]">
+              {t.landing.statsStory.title}
+            </h3>
+            <div className="mt-5 space-y-4 md:mt-0">
+              {t.landing.statsStory.body.map((line) => (
+                <p key={line} className="max-w-2xl text-[14.5px] leading-[1.8] text-white/65">
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

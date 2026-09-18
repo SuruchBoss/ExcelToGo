@@ -190,6 +190,17 @@ export const en: Messages = {
       },
     ],
     statsTitle: "Under the hood",
+    // The test count sits directly above this, so the "N passed, yet 43% unusable" pairing is left
+    // to the README. On a page meant to get someone to try the app, that juxtaposition spends the
+    // numbers above it to make a point about process.
+    statsStory: {
+      title: "What a mocked test could not catch",
+      body: [
+        "Every test of the assistant mocks the model — it returns what the test author imagined it would. Put a real API key behind it and ask ordinary questions, and several answers used functions this engine does not have: #NAME? in the cell, right after pressing a button labelled “insert”.",
+        "Fixed on both sides: the ten missing functions are in the engine, and the model is now told what exists here — from a list generated out of the engine's own code rather than written by hand, because a second copy is the one that goes stale.",
+        "The first attempt made it worse. It traded a visible #NAME? for =SUM(A2:A20) quietly returning 0 when the question was about joining text.",
+      ],
+    },
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "59", label: "engine functions" },

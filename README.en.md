@@ -94,6 +94,21 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
+---
+
+### 🧪 What 765 passing tests could not catch
+
+Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
+API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
+does not have** (`TEXTJOIN`, `FIND`, `RANK.EQ`, `SUMPRODUCT`, `CEILING`, `CHAR`). All valid Excel;
+all `#NAME?` in the cell, right after pressing a button labelled "insert".
+
+Then **the first fix made it worse.** The rule started as "give the closest formula the list
+allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
+error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
+
+→ [The whole story, and the fix](#-ask-ai-for-a-formula) · repeatable with `npm run check:ai`
+
 ## 📋 Table of Contents
 
 - [Try it in 60 seconds](#️-try-it-in-60-seconds)
@@ -1721,6 +1736,12 @@ Testing is focused on the **formula engine, sort logic, JSON-to-table conversion
 they run fast and give high confidence. UI/interaction behavior was verified manually with Playwright during
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
+
+> **765 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> the model, so it returns what the test author imagined. A test count says what you thought to ask,
+> not whether you asked enough. Only a real API key found this: see
+> [What 765 passing tests could not catch](#-what-765-passing-tests-could-not-catch), repeatable
+> with `npm run check:ai`.
 
 | File | Cases | Tests |
 |---|---|---|
