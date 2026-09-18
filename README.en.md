@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-917%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-923%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 917 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 923 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 917 passing tests could not catch
+### 🧪 What 923 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 917 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 923 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -246,11 +246,12 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 917-case Vitest suite |
+| `npm test` | Run the 923-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
+| `npm run check:e2e` | Drives the real app through 5 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
-| `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y |
+| `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
@@ -1287,7 +1288,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (917 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (923 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2004,18 +2005,39 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 917 cases across 55 files, via Vitest
+npm test      # 923 cases across 55 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
-they run fast and give high confidence. UI/interaction behavior was verified manually with Playwright during
-development of each feature (the scripts weren't committed to the repo — they were a temporary verification
-tool, not a permanent regression suite).
+they run fast and give high confidence.
 
-> **917 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+**But not one of those 923 cases opens the app**, and nearly every bug this project found by hand lived in
+the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
+announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
+assistant sent a range including its text header, because the context builder read raw `sheet.cells`
+instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
+
+```bash
+npm run check:e2e   # 5 flows in a real browser (needs a build)
+```
+
+Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
+is left is the seams — type a formula and watch the value move on screen · export `.xlsx` through the real
+button and import that file back through the real input, then check that the formula is still a formula and
+the Thai is still Thai · walk the grid on the keyboard alone and watch focus follow the cursor · undo · and
+whether a change away from the cursor is announced at all. Every flow also fails on an uncaught page error,
+because a flow that passes every assertion while the console fills with exceptions React swallowed has not
+passed.
+
+**Each gate was proved by breaking it first** — take `say(...)` out of `addRow` and the fifth flow fails at
+once; disable `ArrowRight` in the grid and two assertions in the third fail. (The first attempt at that
+second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
+code. Proving a gate means checking that the thing you meant to break actually broke.)
+
+> **923 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 917 passing tests could not catch](#-what-917-passing-tests-could-not-catch), repeatable
+> [What 923 passing tests could not catch](#-what-923-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2125,6 +2147,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       violations, because it does not exist until you press a button; a state that cannot be opened fails
       the gate rather than being skipped. Still open: the other panels, menus and popovers are not in that
       list yet.
+- [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
+      through 5 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
+      project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
+      it. Still open: the AI panel (it needs the model mocked), charts, pivots and touch drag-select.
 - [x] **The grid speaks the ARIA grid pattern** — done: `role="grid"`, row/column counts and per-cell
       indices that survive virtualization, `scope` on both header directions, `aria-selected`, one
       roving tab stop, and focus that follows the cursor. Found by using the app with the keyboard,

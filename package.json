@@ -25,8 +25,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "check:readme": "node scripts/check-readme.mjs",
-    "verify": "npm run lint && npm run check:readme && npm test && npm run build && npm run check:a11y",
+    "verify": "npm run lint && npm run check:readme && npm test && npm run build && npm run check:a11y && npm run check:e2e",
     "check:a11y": "node scripts/check-a11y.mjs",
+    "check:e2e": "node scripts/check-e2e.mjs",
     "build:social": "node scripts/make-social-preview.mjs",
     "check:ai": "node scripts/check-ai.mjs"
   },

@@ -43,15 +43,32 @@ describe("what it does with input that is not what it expected", () => {
   // Each of these is a real state storage can be in: a first visit, a half-written value, a key
   // left over from a future version. The boundary has one branch — "is there anything to offer" —
   // so every one of them has to come back as an empty list rather than as a throw.
-  it.each([
-    ["nothing stored at all", null],
-    ["an empty string", ""],
-    ["JSON that does not parse", "{oh no"],
-    ["valid JSON that is not an object", "42"],
-    ["an object with no sheets", JSON.stringify({ state: {} })],
-    ["sheets that is not an array", JSON.stringify({ state: { sheets: { a: 1 } } })],
-  ])("returns nothing for %s", (_label, raw) => {
-    expect(rescueSheets(raw as string | null)).toEqual([]);
+  //
+  // Written out rather than as `it.each`, because the docs quote a test count and `check:readme`
+  // counts `it(` in the source. A table here would contribute one case to the docs and six to the
+  // run, and the number in the README would quietly stop being true.
+  it("returns nothing when there is nothing stored at all", () => {
+    expect(rescueSheets(null)).toEqual([]);
+  });
+
+  it("returns nothing for an empty string", () => {
+    expect(rescueSheets("")).toEqual([]);
+  });
+
+  it("returns nothing for JSON that does not parse", () => {
+    expect(rescueSheets("{oh no")).toEqual([]);
+  });
+
+  it("returns nothing for valid JSON that is not an object", () => {
+    expect(rescueSheets("42")).toEqual([]);
+  });
+
+  it("returns nothing for an object with no sheets", () => {
+    expect(rescueSheets(JSON.stringify({ state: {} }))).toEqual([]);
+  });
+
+  it("returns nothing when sheets is not an array", () => {
+    expect(rescueSheets(JSON.stringify({ state: { sheets: { a: 1 } } }))).toEqual([]);
   });
 
   it("skips a tab whose cells are missing and still rescues its neighbour", () => {

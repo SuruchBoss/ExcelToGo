@@ -1,6 +1,6 @@
 name: CI
 
-# The same four gates AGENTS.md asks for before a push, enforced here so they hold even when
+# The same gates AGENTS.md asks for before a push, enforced here so they hold even when
 # someone forgets — including on a machine that isn't the one they were developed on.
 on:
   push:
@@ -95,3 +95,41 @@ jobs:
 
       - name: axe on both pages, at a phone width and a desktop one
         run: npm run check:a11y
+
+  # Separate from the accessibility job even though both build the app and download a browser.
+  # The cost is two parallel jobs instead of one; what it buys is a red cross that names which
+  # kind of failure it was — a violation in the markup, or the app not working — without opening
+  # the log. That distinction is worth more than the minutes.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.12"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Drive the app the way a person does
+        run: npm run check:e2e

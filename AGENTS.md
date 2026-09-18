@@ -7,14 +7,14 @@
 Run one command and get it green before committing:
 
 ```bash
-npm run verify     # lint → check:readme → test → build → check:a11y
+npm run verify     # lint → check:readme → test → build → check:a11y → check:e2e
 ```
 
-GitHub Actions รันห้าด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
-ด่าน a11y แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
+GitHub Actions รันหกด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
 รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same five gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y gate is its
-own job because it needs a browser) — running them yourself
+GitHub Actions runs the same six gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
+are jobs of their own because they need a browser) — running them yourself
 first is still faster than waiting for CI to tell you.
 
 `npm run check:a11y` รัน axe บนทั้งสองหน้า ที่ **390px และ 1280px** (WCAG 2.0/2.1/2.2 A+AA) แล้วเช็ก
@@ -23,6 +23,14 @@ first is still faster than waiting for CI to tell you.
 `npm run check:a11y` runs axe on both pages at **390px and 1280px** (WCAG 2.0/2.1/2.2 A+AA), then checks
 for sideways scroll at 360/390/820/1280/1440. Two widths because one was not enough: an audit run only at
 desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
+
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 5 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+เดินด้วยคีย์บอร์ดล้วน, undo และ "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม" เกณฑ์เลือก flow มีข้อเดียว:
+**unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
+`npm run check:e2e` drives the real app in a browser through 5 flows — type a formula and watch the value
+move, export `.xlsx` and import it back, keyboard only, undo, and whether a change away from the cursor is
+announced. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
+there. What is left is the seams, which is where every bug in this project has actually lived.
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:
 `npm run check:readme` is dependency-free and catches what the eye misses:

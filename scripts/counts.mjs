@@ -41,7 +41,21 @@ function walk(dir, onFile) {
 export function countTests(dir = path.join(ROOT, "src")) {
   let n = 0;
   walk(dir, (full, name) => {
-    if (name.endsWith(".test.ts")) n += (fs.readFileSync(full, "utf8").match(/^\s*it\(/gm) ?? []).length;
+    if (!name.endsWith(".test.ts")) return;
+    const source = fs.readFileSync(full, "utf8");
+    // A table-driven block contributes one `it(` to this count and one case *per row* to the run,
+    // so the moment one is written the number in the README stops being true — silently, because
+    // both sides still agree with themselves. Counting the rows here would mean parsing them; this
+    // suite is small enough that writing the cases out is the cheaper answer, and a loud failure
+    // is better than a quiet drift either way. (Caught for real: six rows, docs said 917, vitest
+    // ran 923, every gate green.)
+    if (/^\s*(it|test)\.each/m.test(source)) {
+      throw new Error(
+        `${name}: it.each/test.each is not counted by check:readme, so the test count in the docs ` +
+          `would drift. Write the cases out as plain it(...) blocks.`
+      );
+    }
+    n += (source.match(/^\s*it\(/gm) ?? []).length;
   });
   return n;
 }
