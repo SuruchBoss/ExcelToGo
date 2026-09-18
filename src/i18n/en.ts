@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 765 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 788 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -204,7 +204,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "59", label: "engine functions" },
-      { value: "765", label: "automated tests" },
+      { value: "788", label: "automated tests" },
       { value: "112", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -440,6 +440,8 @@ export const en: Messages = {
     insertColumnLeft: "Insert column left",
     deleteColumn: "Delete this column",
     extendSelection: "Drag to extend the selection",
+    label: "Spreadsheet",
+    cornerHeader: "Row number",
   },
   palette: {
     title: "Ready-made formulas",
@@ -476,7 +478,7 @@ export const en: Messages = {
     selectionLabel: "Current selection:",
     textareaPlaceholder: "e.g. I want to total all sales in this column",
     askButton: "Ask AI",
-    heuristicNote: "* AI isn't connected yet (set ANTHROPIC_API_KEY) — this suggestion is based on basic keyword matching",
+    heuristicNote: "* No API key yet, so this is a keyword guess — paste a key in the box above for a real answer",
     connectionError: "Sorry, something went wrong connecting to AI. Please try again.",
     rateLimited: (seconds) => `Too many questions too quickly — try again in ${seconds}s.`,
     examples: [
@@ -528,8 +530,8 @@ export const en: Messages = {
       upper: "Converts text to all uppercase",
       today: "Shows today's date",
     },
-    fallback:
-      "AI isn't set up yet (ANTHROPIC_API_KEY), so here's a basic formula to start with. Try picking a formula from the left panel instead, or add an API key for smarter suggestions.",
+    noMatch:
+      "I can't tell which formula you want — without a key this assistant only matches keywords, so it won't guess. Pick one from the Formulas panel on the left, or paste an API key in the box above and ask again.",
   },
   formulas: {
     SUM: {

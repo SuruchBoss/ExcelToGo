@@ -375,6 +375,10 @@ export interface Messages {
     deleteColumn: string;
     /** The touch grip that pulls a selection out to a range. */
     extendSelection: string;
+    /** Names the grid itself. A `role="grid"` with no name is announced as "grid" and nothing else. */
+    label: string;
+    /** The blank corner above the row numbers, which is a column header with no text in it. */
+    cornerHeader: string;
   };
   palette: {
     title: string;
@@ -444,7 +448,10 @@ export interface Messages {
    *  ANTHROPIC_API_KEY is configured), keyed by rule id. */
   aiHeuristic: {
     rules: Record<string, string>;
-    fallback: string;
+    /** Shown when no rule matched. Named for what it says, because it no longer offers a formula:
+     *  the old `fallback` handed back SUM for anything unrecognised, which is how "join these
+     *  names" became a number nobody questioned. */
+    noMatch: string;
   };
   formulas: Record<string, FormulaMessage>;
 }
