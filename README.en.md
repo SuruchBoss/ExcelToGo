@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-765%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-788%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 765 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 788 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 765 passing tests could not catch
+### 🧪 What 788 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -106,6 +106,26 @@ all `#NAME?` in the cell, right after pressing a button labelled "insert".
 Then **the first fix made it worse.** The rule started as "give the closest formula the list
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
+
+**And it happened again, in a different place.** With every gate green — 788 tests, `axe` clean on
+both pages at two widths — an hour of clicking through the public build the way a first-time visitor
+would found three things no gate can see:
+
+- Half-insert a formula from the palette and **all six sidebar buttons went dead.** They still set
+  the mode in the store; a `pending ? … : mode` render just outranked it. Escape did nothing either,
+  so the press arrived later, attached to whichever click finally cancelled the formula.
+- The keyword matcher — which on the public demo is not a fallback but the *only* thing anyone sees
+  — answered _"add up all the sales"_ with `=SUM(E2)`, the total of one cell, and _"join the product
+  name and the category"_ with `=SUM(E2)` again. The system prompt has forbidden the model from
+  substituting like that since the fix above. Nothing had ever told the matcher.
+- `axe` passed the grid at four viewport/page combinations while it was, to a screen reader, an
+  ordinary table you could not drive: no `role="grid"`, no `aria-selected`, no `scope` on the
+  headers, every cell tabbable, and **the browser's focus stayed on A1 while Ctrl+↓ moved the cursor
+  to A10** — the sheet moved in silence. axe was right to pass. A `<table>` with `<th>` *is* a valid
+  table. It just was not what this is.
+
+All four are fixed. The lesson each time is the same one: a green suite says the code does what the
+tests say, and nothing whatever about whether that is the right thing.
 
 → [The whole story, and the fix](#-ask-ai-for-a-formula) · repeatable with `npm run check:ai`
 
@@ -222,7 +242,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 765-case Vitest suite |
+| `npm test` | Run the 788-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
@@ -329,6 +349,27 @@ as "give the closest formula the list allows", so _"join all the names into one 
 for an invisible wrong number.** The rule now forbids substituting an unrelated function and asks
 for a warning instead.
 
+**Then the same mistake turned up in the matcher that answers when there is no key** — which, on the
+public demo, is not a fallback but the only thing anyone ever sees. Two failures, both found by
+using the demo rather than by testing it:
+
+- Every unmatched question fell through to `SUM`. _"Join the product name and the category"_ came
+  back as `=SUM(E2)`. The prompt had forbidden the model from doing this; nobody had told the code.
+  It now returns **no formula at all** and says so in an amber card with no Insert button. A
+  question it cannot answer is a better outcome than an answer it cannot justify.
+- The range was whatever cell you had highlighted, so _"add up all the sales"_ with one cell
+  selected meant `=SUM(E2)` — the total of one number. `aiRange.ts` now works out what the cursor is
+  *pointing at*, the way AutoSum has since 1985: the run of filled cells it stands in or sits under,
+  minus a text header on top of numbers. On this app's own sample sheet that turns the same question
+  into `=SUM(E2:E10)`, which is 7,495. The headers go along with it too — the API route had accepted
+  a `headers` field since the feature shipped and no caller had ever filled it in.
+
+One subtlety worth its own note: the widening reads the **computed** sheet, not the raw one. Column E
+of the sample is nine `=C2*D2` formulas, so reading the raw cells made every number in it look like
+text, the header rule never fired, and the range came back as `E1:E10` with the word "รวม" inside.
+`SUM` ignores text, so the *total was right and the range was wrong* — the kind of bug that survives
+because the number on screen looks fine.
+
 Repeatable with `npm run check:ai` (needs your own key; not part of `npm run verify`, because it
 costs money).
 
@@ -338,7 +379,7 @@ The assistant answers one of three ways, and the landing page says plainly which
 
 | Path | When | Answer comes from | Who pays |
 |---|---|---|---|
-| Local keyword matcher | The default | `aiHeuristic.ts` — matches words, guesses a basic formula | Nobody |
+| Local keyword matcher | The default | `aiHeuristic.ts` — matches words; **declines when nothing matches** | Nobody |
 | **The real Claude (BYOK)** | The visitor pastes their own API key | `api.anthropic.com`, straight from the browser | **The visitor's own account** |
 | The real Claude (server-side) | The operator sets `ANTHROPIC_API_KEY` | `/api/ai/formula` | Whoever runs the server |
 
@@ -1083,7 +1124,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (765 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (788 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1303,6 +1344,7 @@ src/
                               # number format) + pt↔px conversion and to/from Excel numFmt
     aiHeuristic.ts           # Keyword-based formula suggestion logic (used with no ANTHROPIC_API_KEY), bilingual
     aiPrompt.ts              # The prompt and reply parsing, shared by the server route and the browser (BYOK)
+    aiRange.ts               # Which cells a question is about, from where the cursor is (AutoSum) + the headers sent along
     byok.ts                  # The visitor's own API key: this tab only, masked when shown
     sheet.ts                 # The core sheet data model, whole-sheet computation, applying a formula by scope,
                               # inserting/deleting rows-columns
@@ -1719,6 +1761,18 @@ Measured against a local production build (`npm run build && npm run start`) wit
 **Accessibility 100 on both pages**, which agrees with the [`check:a11y`](#-testing) gate that runs axe on
 every PR — two different tools, same answer.
 
+**Both of them were also wrong about the grid, and worth saying so.** Lighthouse 100 and axe clean at
+four viewport/page combinations, while the sheet was to a screen reader an ordinary data table you
+could not drive: no `role="grid"`, no `aria-selected`, no `scope` on the headers, every one of ten
+thousand cells its own tab stop, and the browser's focus parked on A1 while `Ctrl+↓` moved the cursor
+to A10 in silence. Neither tool was at fault — a `<table>` with `<th>` is a valid table, and they
+were grading the thing they were shown. The grid now declares itself: `role="grid"` with
+`aria-rowcount`/`aria-colcount`, `aria-rowindex` per row and `aria-colindex` per cell (the only way
+"row 2,003 of 5,000" exists at all when forty rows are in the DOM), `scope` on both header
+directions, `aria-selected` tracking the range, one roving tab stop instead of one per cell, and DOM
+focus that follows the cursor — including the *moving* corner when Shift extends a selection, since
+the anchor staying put is how a growing selection goes unannounced.
+
 **Performance is not 90, and the only thing Lighthouse flags is `unused-javascript`, ~59KB (~300ms)** —
 mostly Next's own framework chunks that aren't needed for the first frame. Going further means cutting into
 the framework bundle itself, which isn't a trade worth making here. Written down rather than rounded up.
@@ -1729,7 +1783,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 765 cases across 45 files, via Vitest
+npm test      # 788 cases across 47 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1737,10 +1791,10 @@ they run fast and give high confidence. UI/interaction behavior was verified man
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
 
-> **765 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **788 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 765 passing tests could not catch](#-what-765-passing-tests-could-not-catch), repeatable
+> [What 788 passing tests could not catch](#-what-788-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -1834,6 +1888,15 @@ What's not done yet, and why — to show this is a known gap, not something forg
       widths is the whole point** — the previous audit ran at desktop width only and reported zero
       violations while eight buttons below 640px had no accessible name. Still open: states you have to
       open first (panels, menus, popovers) aren't checked.
+- [x] **The grid speaks the ARIA grid pattern** — done: `role="grid"`, row/column counts and per-cell
+      indices that survive virtualization, `scope` on both header directions, `aria-selected`, one
+      roving tab stop, and focus that follows the cursor. Found by using the app with the keyboard,
+      not by any gate — axe passed all four runs while it was still an undriveable table. Still open:
+      an `aria-live` summary for things that happen away from the cursor (a sort, an import, a paste),
+      and none of it is verified against a real screen reader.
+- [ ] **A keyboard-shortcut reference in the app** — the Excel keys (`Ctrl+↓`, `Ctrl+A`'s two-step,
+      `Home`/`End`, `Page` keys) all work and nothing on screen says they exist. A blind run found no
+      help button, no shortcut list, and no mention of `Ctrl+` anywhere outside the undo/redo tooltips.
 - [x] **Direct CSV import/export** — done (see ✨ Features): the delimiter is sniffed (`,`, `;`, tab), the BOM
       is stripped on the way in and written on the way out so Excel reads Thai, quoting follows RFC 4180, and
       the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.
