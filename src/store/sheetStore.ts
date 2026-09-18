@@ -40,8 +40,9 @@ import {
   toTsv,
 } from "@/lib/sheet";
 import { autoChartAnchor } from "@/lib/gridGeometry";
-import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
+import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, headerRow } from "@/lib/aiRange";
+import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
 import { FormulaValue } from "@/lib/formulaEngine/types";
 import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
 // ExcelJS (~400KB) and jsPDF + autoTable are loaded on demand, not with the store.
@@ -163,6 +164,14 @@ interface SheetState {
    *  since folding a toolbar away isn't sheet content. */
   formatBarOpen: boolean;
   busy: string | null;
+  /**
+   * The last thing worth saying out loud, and a sequence number.
+   *
+   * The number is not decoration: a screen reader announces a live region when its *text changes*,
+   * so sorting the same column twice would set identical text and say nothing the second time. The
+   * announcer swaps between two regions on the parity of this, which guarantees a change either way.
+   */
+  announcement: { text: string; seq: number } | null;
   clipboard: ClipboardState | null;
   /** Which source the "what do you want to insert" dialog is open for, and whether it's changing
    *  an existing block rather than adding one. Opened from the panel and from a block's toolbar. */
@@ -385,6 +394,35 @@ export function selectShowingSample(s: SheetState): boolean {
   return s.sheets.length === 1 && s.sheets[0].sheet === INITIAL_SHEET;
 }
 
+/**
+ * Builds the partial state that says something out loud.
+ *
+ * Spread into whatever an action already returns — `{ ...updateActiveSheet(...), ...say(text) }` —
+ * so announcing costs one line at the place that knows what happened, rather than a second pass
+ * that has to work it out again from the result.
+ *
+ * Only for changes a sighted user watches happen *somewhere other than the cursor*: a sort that
+ * reorders rows under them, a paste that fills cells below the fold, a filter that makes rows
+ * vanish. Moving the cursor is already announced by focus landing on the cell, and repeating it
+ * here would make the grid talk over itself.
+ */
+/** How a range is said out loud: one cell is its address, a block is the two corners. */
+function rangeLabel(sel: { startRow: number; startCol: number; endRow: number; endCol: number }): string {
+  return sel.startRow === sel.endRow && sel.startCol === sel.endCol
+    ? cellRef(sel.startRow, sel.startCol)
+    : rangeRefString(sel.startRow, sel.startCol, sel.endRow, sel.endCol);
+}
+
+let announceSeq = 0;
+function say(text: string): { announcement: { text: string; seq: number } } {
+  return { announcement: { text, seq: ++announceSeq } };
+}
+
+/** Test seam: the counter is module state, and a test that asserts on `seq` needs it to start over. */
+export function resetAnnouncements() {
+  announceSeq = 0;
+}
+
 export const useSheetStore = create<SheetState>()(
   persist(
     temporal(
@@ -397,6 +435,7 @@ export const useSheetStore = create<SheetState>()(
         sidebarMode: "palette",
         formatBarOpen: true,
         busy: null,
+        announcement: null,
         clipboard: null,
         dataPicker: null,
 
@@ -440,9 +479,25 @@ export const useSheetStore = create<SheetState>()(
             return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
           }),
         addRow: () =>
-          set((s) => (refusedStructuralChange(activeTab(s).sheet) ? {} : { sheets: withActiveSheet(s, (tab) => addRow(tab.sheet)) })),
+          set((s) =>
+            refusedStructuralChange(activeTab(s).sheet)
+              ? {}
+              : {
+                  sheets: withActiveSheet(s, (tab) => addRow(tab.sheet)),
+                  // The toolbar's "+ row" appends at the bottom, which on any sheet worth having is
+                  // off the screen entirely — the most literal "away from the cursor" there is.
+                  ...say(getMessages().live.rowAppended(activeTab(s).sheet.rows + 1)),
+                }
+          ),
         addColumn: () =>
-          set((s) => (refusedStructuralChange(activeTab(s).sheet) ? {} : { sheets: withActiveSheet(s, (tab) => addColumn(tab.sheet)) })),
+          set((s) =>
+            refusedStructuralChange(activeTab(s).sheet)
+              ? {}
+              : {
+                  sheets: withActiveSheet(s, (tab) => addColumn(tab.sheet)),
+                  ...say(getMessages().live.columnAppended(activeTab(s).sheet.cols + 1)),
+                }
+          ),
 
         unlockTemplate: () =>
           set((s) => ({
@@ -463,6 +518,7 @@ export const useSheetStore = create<SheetState>()(
             return {
               sheets: withActiveSheet(s, () => next),
               selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
+              ...say(getMessages().live.rowDeleted(selection.anchorRow + 1)),
             };
           }),
 
@@ -475,6 +531,7 @@ export const useSheetStore = create<SheetState>()(
             return {
               sheets: withActiveSheet(s, () => next),
               selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
+              ...say(getMessages().live.columnDeleted(colToLetters(selection.anchorCol))),
             };
           }),
 
@@ -482,14 +539,20 @@ export const useSheetStore = create<SheetState>()(
           set((s) =>
             refusedStructuralChange(activeTab(s).sheet)
               ? {}
-              : { sheets: updateActiveSheet(s, (sheet, selection) => insertRowBefore(sheet, selection.anchorRow)) }
+              : {
+                  sheets: updateActiveSheet(s, (sheet, selection) => insertRowBefore(sheet, selection.anchorRow)),
+                  ...say(getMessages().live.rowInserted(activeSelectionOf(s).anchorRow + 1)),
+                }
           ),
 
         insertColumnAtSelection: () =>
           set((s) =>
             refusedStructuralChange(activeTab(s).sheet)
               ? {}
-              : { sheets: updateActiveSheet(s, (sheet, selection) => insertColumnBefore(sheet, selection.anchorCol)) }
+              : {
+                  sheets: updateActiveSheet(s, (sheet, selection) => insertColumnBefore(sheet, selection.anchorCol)),
+                  ...say(getMessages().live.columnInserted(colToLetters(activeSelectionOf(s).anchorCol))),
+                }
           ),
 
         clearSelection: () =>
@@ -500,6 +563,7 @@ export const useSheetStore = create<SheetState>()(
               sheets: updateActiveSheet(s, (sheet, selection) =>
                 clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol)
               ),
+              ...say(getMessages().live.cleared(rangeLabel(sel))),
             };
           }),
 
@@ -508,7 +572,7 @@ export const useSheetStore = create<SheetState>()(
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-          set({ clipboard: { ...block, cut: false } });
+          set({ clipboard: { ...block, cut: false }, ...say(getMessages().live.copied(rangeLabel(selection))) });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
@@ -517,7 +581,7 @@ export const useSheetStore = create<SheetState>()(
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-          set({ clipboard: { ...block, cut: true } });
+          set({ clipboard: { ...block, cut: true }, ...say(getMessages().live.cut(rangeLabel(selection))) });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
@@ -556,13 +620,26 @@ export const useSheetStore = create<SheetState>()(
                 }
                 clearedClipboard = null;
               }
-              return { sheets: withActiveSheet(s, () => next), clipboard: clearedClipboard };
+              return {
+                sheets: withActiveSheet(s, () => next),
+                clipboard: clearedClipboard,
+                ...say(
+                  getMessages().live.pasted(
+                    clipboard.rows.length,
+                    clipboard.rows[0]?.length ?? 0,
+                    cellRef(targetRow, targetCol)
+                  )
+                ),
+              };
             }
             if (externalText) {
               const rows = parseTsv(externalText);
               if (rows.length > 0) {
                 const next = pastePlainTextBlock(sheet, rows, targetRow, targetCol);
-                return { sheets: withActiveSheet(s, () => next) };
+                return {
+                  sheets: withActiveSheet(s, () => next),
+                  ...say(getMessages().live.pasted(rows.length, rows[0]?.length ?? 0, cellRef(targetRow, targetCol))),
+                };
               }
             }
             return {};
@@ -579,26 +656,39 @@ export const useSheetStore = create<SheetState>()(
               const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
               return sortRange(sheet, computed, range, selection.anchorCol, ascending);
             }),
+            // Rows move under a cursor that stays put — the change nobody watching the cell would
+            // notice, which is exactly what the live region is for.
+            ...say(getMessages().live.sorted(colToLetters(activeSelectionOf(s).anchorCol), ascending)),
             };
           }),
 
         setColumnFilter: (col, values) =>
-          set((s) => ({
-            filtersBySheetId: {
-              ...s.filtersBySheetId,
-              [s.activeSheetId]: { ...s.filtersBySheetId[s.activeSheetId], [col]: values },
-            },
-          })),
+          set((s) => {
+            const next = { ...s.filtersBySheetId[s.activeSheetId], [col]: values };
+            const { display } = computeSheet(activeTab(s).sheet);
+            return {
+              filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: next },
+              // Counted through the same function the grid hides rows with, rather than a second
+              // reckoning that could disagree with what is on screen.
+              ...say(getMessages().live.filtered(colToLetters(col), visibleRowCount(display, next), display.length)),
+            };
+          }),
 
         clearColumnFilter: (col) =>
           set((s) => {
             const current = { ...s.filtersBySheetId[s.activeSheetId] };
             delete current[col];
-            return { filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: current } };
+            return {
+              filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: current },
+              ...say(getMessages().live.filterCleared(colToLetters(col))),
+            };
           }),
 
         clearAllFilters: () =>
-          set((s) => ({ filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: {} } })),
+          set((s) => ({
+            filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: {} },
+            ...say(getMessages().live.allFiltersCleared(computeSheet(activeTab(s).sheet).display.length)),
+          })),
 
         toggleBold: () =>
           set((s) => ({
@@ -771,7 +861,15 @@ export const useSheetStore = create<SheetState>()(
          * which is why the button asks first when there is actually something to lose.
          */
         toggleMerge: () =>
-          set((s) => ({
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            const willSplit = rangeHasMerge(activeTab(s).sheet.merges, {
+              startRow: sel.startRow,
+              startCol: sel.startCol,
+              endRow: sel.endRow,
+              endCol: sel.endCol,
+            });
+            return {
             sheets: updateActiveSheet(s, (sheet, selection) => {
               const range = {
                 startRow: selection.startRow,
@@ -789,7 +887,13 @@ export const useSheetStore = create<SheetState>()(
               next.merges = result.merges;
               return next;
             }),
-          })),
+            ...say(
+              willSplit
+                ? getMessages().live.unmerged(rangeLabel(sel))
+                : getMessages().live.merged(rangeLabel(sel))
+            ),
+            };
+          }),
 
         setSelection: (sel) =>
           set((s) => {
@@ -957,16 +1061,21 @@ export const useSheetStore = create<SheetState>()(
               })
             ),
             pending: null,
+            ...say(getMessages().live.formulaInserted(`=${body}`, cellRef(pending.anchorRow, pending.anchorCol))),
           }));
         },
 
         insertAIFormula: (formula) =>
-          set((s) => ({
-            sheets: updateActiveSheet(s, (sheet, selection) => {
-              const raw = formula.startsWith("=") ? formula : `=${formula}`;
-              return setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw);
-            }),
-          })),
+          set((s) => {
+            const raw = formula.startsWith("=") ? formula : `=${formula}`;
+            const sel = activeSelectionOf(s);
+            return {
+              sheets: updateActiveSheet(s, (sheet, selection) =>
+                setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw)
+              ),
+              ...say(getMessages().live.formulaInserted(raw, cellRef(sel.anchorRow, sel.anchorCol))),
+            };
+          }),
 
         importFromFile: async (file) => {
           set({ busy: getMessages().store.busyImporting });
@@ -987,13 +1096,19 @@ export const useSheetStore = create<SheetState>()(
               const sheet = sheetFromGrid(rows);
               const name = file.name.replace(/\.csv$/i, "").slice(0, 31) || "CSV";
               const sheets = [newTab(name, sheet)];
-              set({ sheets, activeSheetId: sheets[0].id, selectionBySheetId: {}, filtersBySheetId: {} });
+              set({
+                sheets,
+                activeSheetId: sheets[0].id,
+                selectionBySheetId: {},
+                filtersBySheetId: {},
+                ...say(getMessages().live.imported(sheets.length)),
+              });
               return;
             }
             const { importWorkbookFromFile } = await import("@/lib/excelIO");
             const imported = await importWorkbookFromFile(file);
             const sheets = imported.map((w) => newTab(w.name, w.sheet));
-            set({ sheets, activeSheetId: sheets[0].id });
+            set({ sheets, activeSheetId: sheets[0].id, ...say(getMessages().live.imported(sheets.length)) });
           } catch (err) {
             console.error(err);
             alert(getMessages().store.importError);
@@ -1009,7 +1124,15 @@ export const useSheetStore = create<SheetState>()(
          */
         replaceWorkbook: (sheets) => {
           if (sheets.length === 0) return;
-          set({ sheets, activeSheetId: sheets[0].id, selectionBySheetId: {}, filtersBySheetId: {}, pending: null });
+          set({
+            sheets,
+            activeSheetId: sheets[0].id,
+            selectionBySheetId: {},
+            filtersBySheetId: {},
+            pending: null,
+            // The largest "away from the cursor" there is: every cell on the screen just changed.
+            ...say(getMessages().live.imported(sheets.length)),
+          });
         },
 
         exportXlsx: async () => {
@@ -1234,20 +1357,10 @@ export function useHiddenRows(): ReadonlySet<number> {
   const filters = useActiveFilters();
   const { display } = useComputedSheet();
   return useMemo(() => {
-    const cols = Object.keys(filters);
-    if (cols.length === 0) return EMPTY_HIDDEN_ROWS;
-    const hidden = new Set<number>();
-    rows: for (let r = 0; r < display.length; r++) {
-      for (const colStr of cols) {
-        const col = Number(colStr);
-        const value = display[r]?.[col] ?? "";
-        if (!filters[col].includes(value)) {
-          hidden.add(r);
-          continue rows;
-        }
-      }
-    }
-    return hidden;
+    // The stable empty set matters: Zustand compares snapshots by reference, and a fresh `new Set()`
+    // every render would re-render the grid forever.
+    if (Object.keys(filters).length === 0) return EMPTY_HIDDEN_ROWS;
+    return hiddenRowsFor(display, filters);
   }, [filters, display]);
 }
 
@@ -1269,12 +1382,20 @@ export function useCanRedo() {
   return useStore(useSheetStore.temporal, (s) => s.futureStates.length > 0);
 }
 
+/**
+ * Undo and redo say so out loud, because they are the one action whose effect is unbounded: it
+ * might put back a cell you just cleared, or unpick a sort that moved a thousand rows. Naming what
+ * changed would mean diffing two whole sheets on every press; "undone" at least confirms the press
+ * landed, which is the part the screen otherwise tells only the eyes.
+ */
 export function undoSheet() {
   useSheetStore.temporal.getState().undo();
+  useSheetStore.setState(say(getMessages().live.undone));
 }
 
 export function redoSheet() {
   useSheetStore.temporal.getState().redo();
+  useSheetStore.setState(say(getMessages().live.redone));
 }
 
 /** Global Ctrl/Cmd+Z (undo) and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y (redo) shortcuts. Ignored while
