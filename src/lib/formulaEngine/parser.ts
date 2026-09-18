@@ -108,6 +108,14 @@ class Parser {
     }
     if (t.type === "BOOL") {
       this.next();
+      // Excel spells the same value two ways: the literal `TRUE` and the zero-argument function
+      // `TRUE()`. The tokenizer makes both start as a BOOL token, so without this the second form
+      // died on its own parentheses — `IF(TRUE(),1,2)` was a syntax error while `IF(TRUE,1,2)`
+      // worked. Found by the property tests, which generate `TRUE()` because Excel accepts it.
+      if (this.peek().type === "LPAREN" && this.tokens[this.pos + 1]?.type === "RPAREN") {
+        this.next();
+        this.next();
+      }
       return { type: "bool", value: t.value === "TRUE" };
     }
     if (t.type === "REFERR") {

@@ -1,7 +1,7 @@
 /**
  * The end-to-end gate: the app driven the way a person drives it.
  *
- * 923 unit tests cover the functions. Not one of them opens the app. Every bug this project found
+ * 937 unit tests cover the functions. Not one of them opens the app. Every bug this project found
  * the hard way lived in the wiring *between* well-tested pieces, where a unit test cannot look:
  *
  * - The toolbar's "+ row" button called `addRow`, which never announced anything, while the tested

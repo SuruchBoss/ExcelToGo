@@ -128,3 +128,23 @@ describe("an argument left out", () => {
     expect(ast.args).toHaveLength(0);
   });
 });
+
+describe("TRUE and FALSE, written both ways", () => {
+  // Excel accepts the bare literal and the zero-argument function form, and treats them as the
+  // same value. Only the first parsed here: `IF(TRUE(),1,2)` was a syntax error while
+  // `IF(TRUE,1,2)` worked. Found by the property tests, which generate `TRUE()` because Excel
+  // does accept it — no example test had ever written one.
+  it("reads TRUE() as the same node as TRUE", () => {
+    expect(parseFormula("TRUE()")).toEqual(parseFormula("TRUE"));
+    expect(parseFormula("FALSE()")).toEqual(parseFormula("FALSE"));
+  });
+
+  it("reads it as an argument, which is where it actually gets typed", () => {
+    expect(parseFormula("IF(TRUE(),1,2)")).toEqual(parseFormula("IF(TRUE,1,2)"));
+  });
+
+  it("still refuses TRUE with something inside the brackets", () => {
+    // `TRUE(1)` is not a thing in Excel either, and quietly accepting it would hide a typo.
+    expect(() => parseFormula("TRUE(1)")).toThrow();
+  });
+});

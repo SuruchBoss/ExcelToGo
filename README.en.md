@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-923%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-937%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 923 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 937 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 923 passing tests could not catch
+### 🧪 What 937 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 923 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 937 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -246,7 +246,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 923-case Vitest suite |
+| `npm test` | Run the 937-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 5 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements (needs a build) |
@@ -1288,7 +1288,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (923 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (937 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2005,13 +2005,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 923 cases across 55 files, via Vitest
+npm test      # 937 cases across 56 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 923 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 937 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2029,23 +2029,49 @@ whether a change away from the cursor is announced at all. Every flow also fails
 because a flow that passes every assertion while the console fills with exceptions React swallowed has not
 passed.
 
+### The tests with no formulas written in them
+
+The other engine tests say *this formula gives this value*. They were written by the same person who
+wrote the engine, from the same understanding of it — so they share its blind spots. A precedence bug
+survives an example suite by being consistently wrong in the test and in the code. `property.test.ts`
+names no formula at all: each test states something that must hold for *every* formula, then throws
+thousands of generated ones at it.
+
+The generator and the shrinker are about 80 hand-written lines rather than fast-check, for the same
+reason the engine has no formula library. Every run is seeded and prints its seed on failure, so
+`SEED=12345 npx vitest run property` replays it exactly.
+
+**It found two real gaps on the first run — both in ground the engine's 147 example tests never covered:**
+
+| What it found | What is actually true |
+|---|---|
+| `IF(TRUE(),1,2)` was a syntax error | Excel accepts `TRUE` and `TRUE()` alike; this engine accepted only the first. The generator writes `TRUE()` because Excel takes it — no example test ever had |
+| `SUM(A1:A3)` over 1, TRUE, 2 gave 4 | Excel gives 3: a logical value in a *cell* is ignored, while one passed as an argument still counts. A number that is one too high looks exactly like a number that is right |
+
+Both are fixed and pinned by example tests. **And the properties themselves were proved by breaking
+things**: make `a-b-c` parse as `a-(b-c)` — destroying left-associativity — and the property fails at
+once, while **all 147 of the engine's example tests still pass**. That is the entire argument for this file, in one
+measurement.
+
 **Each gate was proved by breaking it first** — take `say(...)` out of `addRow` and the fifth flow fails at
 once; disable `ArrowRight` in the grid and two assertions in the third fail. (The first attempt at that
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **923 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **937 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 923 passing tests could not catch](#-what-923-passing-tests-could-not-catch), repeatable
+> [What 937 passing tests could not catch](#-what-937-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
 |---|---|---|
 | `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
-| `parser.test.ts` | 17 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
+| `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
+| `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
+| `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 78 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `functions.test.ts` | 81 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
@@ -2056,7 +2082,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `excelIO.test.ts` | 28 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
+| `excelIO.test.ts` | 32 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
 | `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
@@ -2147,6 +2173,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       violations, because it does not exist until you press a button; a state that cannot be opened fails
       the gate rather than being skipped. Still open: the other panels, menus and popovers are not in that
       list yet.
+- [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
+      only rules that must hold for every formula, checked against thousands of generated ones with a
+      hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
+      (`TRUE()` failing to parse, `SUM` counting logical values sitting in cells), both now fixed. Still
+      open: no property covers the `.xlsx` round trip, and the cross-sheet resolver is not generated against.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
       through 5 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this

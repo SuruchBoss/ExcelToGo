@@ -11,6 +11,10 @@ function flattenNumbers(args: EvalResult[]): number[] | FormulaError {
     for (const v of flattenResult(arg)) {
       if (isBlank(v)) continue;
       if (isError(v)) return v;
+      // A logical value sitting in a *cell* is ignored, exactly as Excel does: `SUM(A1:A3)` over
+      // 1, TRUE, 2 is 3, not 4. Passed directly it still counts — `SUM(1,TRUE,2)` is 4 — which is
+      // why this tests the source and not just the type. Found by the property tests.
+      if (isRange && typeof v === "boolean") continue;
       if (isRange && typeof v === "string") {
         const n = Number(v.trim());
         if (!Number.isNaN(v.trim() === "" ? NaN : n)) out.push(n);

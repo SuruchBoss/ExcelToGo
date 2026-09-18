@@ -438,3 +438,21 @@ describe("dates read the day they say, in any timezone", () => {
     expect(calc('YEAR("2024-01-01")', [[""]])).toBe(2024);
   });
 });
+
+describe("logical values inside a range", () => {
+  // Excel counts a logical passed as an argument and ignores one sitting in a cell. The engine
+  // counted both, so a column with a `=TRUE()` in it summed one too high — silently, since the
+  // number still looked like a number. Found by the property tests: SUM over a random grid did
+  // not match a hand-written oracle.
+  it("ignores a TRUE in a cell, the way Excel does", () => {
+    expect(calc("SUM(A1:A3)", [[1], [true], [2]])).toBe(3);
+  });
+
+  it("still counts one passed straight in as an argument", () => {
+    expect(calc("SUM(1,TRUE,2)")).toBe(4);
+  });
+
+  it("ignores it in AVERAGE as well, which changes the divisor too", () => {
+    expect(calc("AVERAGE(A1:A3)", [[1], [true], [3]])).toBe(2);
+  });
+});
