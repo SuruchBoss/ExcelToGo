@@ -18,6 +18,12 @@
  * The server is started and stopped here rather than by the caller, so `npm run check:a11y` is one
  * command with no setup around it. It needs a production build to exist — CI builds first, and so
  * does `npm run verify`.
+ *
+ * A third pass opens things before checking them, for the same reason there are two widths: a page
+ * as it first loads is not the only page there is. The shortcut dialog was written, the gate stayed
+ * green, and running axe against it by hand found two serious violations inside it — group headings
+ * at 2.62:1, and a scrolling list no keyboard could reach. Neither could ever have been caught by
+ * looking at `/app` as it loads, because neither exists until someone presses a button.
  */
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
@@ -31,6 +37,23 @@ const PAGES = ["/", "/app"];
 const AXE_WIDTHS = [390, 1280];
 /** Narrowest phone still worth supporting, two tablet-ish sizes, two desktops. */
 const OVERFLOW_WIDTHS = [360, 390, 820, 1280, 1440];
+/**
+ * States that only exist once someone opens them.
+ *
+ * `open` does whatever it takes to get there and returns a name for the report. Keep these to
+ * things a first-time visitor reaches in one press — the point is covering what the load-time scan
+ * structurally cannot, not re-testing the app through a second harness.
+ */
+const OPENED_STATES = [
+  {
+    name: "shortcuts dialog",
+    path: "/app",
+    async open(page) {
+      await page.getByRole("button", { name: /^(คีย์ลัด|Keyboard shortcuts)$/ }).first().click();
+      await page.waitForSelector('[role="dialog"]', { timeout: 10_000 });
+    },
+  },
+];
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 const failures = [];
@@ -90,6 +113,29 @@ try {
     }
   }
 
+  for (const state of OPENED_STATES) {
+    for (const width of AXE_WIDTHS) {
+      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const page = await ctx.newPage();
+      await page.goto(ORIGIN + state.path, { waitUntil: "networkidle" });
+      let violations = [];
+      try {
+        await state.open(page);
+        ({ violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze());
+        note(violations.length === 0, `axe ${state.name} @${width}: ${violations.length} violations`);
+      } catch (err) {
+        // A state that cannot be opened is a failure, not a skip: silently checking nothing is how
+        // a gate goes green over a thing it stopped looking at.
+        note(false, `axe ${state.name} @${width}: could not open it — ${String(err.message).split("\n")[0]}`);
+      }
+      for (const v of violations) {
+        console.log(`        [${v.impact}] ${v.id} — ${v.help} (${v.nodes.length} node(s))`);
+        for (const n of v.nodes.slice(0, 3)) console.log(`          ${n.html.slice(0, 120)}`);
+      }
+      await ctx.close();
+    }
+  }
+
   for (const path of PAGES) {
     for (const width of OVERFLOW_WIDTHS) {
       const ctx = await browser.newContext({ viewport: { width, height: 900 } });
@@ -109,4 +155,5 @@ if (failures.length > 0) {
   console.error(`\ncheck:a11y — ${failures.length} check(s) failed`);
   process.exit(1);
 }
-console.log(`\ncheck:a11y — ${PAGES.length * (AXE_WIDTHS.length + OVERFLOW_WIDTHS.length)} checks passed`);
+const total = PAGES.length * (AXE_WIDTHS.length + OVERFLOW_WIDTHS.length) + OPENED_STATES.length * AXE_WIDTHS.length;
+console.log(`\ncheck:a11y — ${total} checks passed`);
