@@ -18,6 +18,7 @@ import StorageNotice from "@/features/grid/StorageNotice";
 import SampleNotice from "@/features/grid/SampleNotice";
 import PivotNotice from "@/features/grid/PivotNotice";
 import DataPicker from "@/features/data/DataPicker";
+import LiveAnnouncer from "@/features/a11y/LiveAnnouncer";
 import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
@@ -54,6 +55,7 @@ export default function Home() {
   return (
     <div className="flex h-screen flex-col bg-zinc-50">
       <SkipLink />
+      <LiveAnnouncer />
       <Toolbar />
       <FormatBar />
       <FormulaBar />

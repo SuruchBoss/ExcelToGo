@@ -367,6 +367,33 @@ export interface Messages {
     clearFilter: string;
     ok: string;
   };
+  /**
+   * What the live region says. Everything here describes a change that happens *away from the
+   * cursor* — moving the cursor is announced by focus landing on the cell and needs nothing here,
+   * and saying it twice is worse than not saying it.
+   */
+  live: {
+    sorted: (column: string, ascending: boolean) => string;
+    filtered: (column: string, visible: number, total: number) => string;
+    filterCleared: (column: string) => string;
+    allFiltersCleared: (total: number) => string;
+    pasted: (rows: number, cols: number, at: string) => string;
+    cleared: (range: string) => string;
+    copied: (range: string) => string;
+    cut: (range: string) => string;
+    rowAppended: (total: number) => string;
+    columnAppended: (total: number) => string;
+    rowInserted: (row: number) => string;
+    rowDeleted: (row: number) => string;
+    columnInserted: (column: string) => string;
+    columnDeleted: (column: string) => string;
+    merged: (range: string) => string;
+    unmerged: (range: string) => string;
+    formulaInserted: (formula: string, at: string) => string;
+    imported: (sheets: number) => string;
+    undone: string;
+    redone: string;
+  };
   shortcuts: {
     title: string;
     subtitle: string;
