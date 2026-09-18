@@ -34,6 +34,7 @@ import { rowOffsets, rowWindow, scrollToShowRow } from "@/lib/rowWindow";
 import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gridNavigation";
 import ChartOverlay from "./ChartOverlay";
 import SelectionHandle from "./SelectionHandle";
+import FillHandle from "./FillHandle";
 
 
 export default function SpreadsheetGrid() {
@@ -44,6 +45,8 @@ export default function SpreadsheetGrid() {
   const commitCell = useSheetStore((s) => s.setCellRaw);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
   const clearSelection = useSheetStore((s) => s.clearSelection);
+  const fillWithinSelection = useSheetStore((s) => s.fillWithinSelection);
+  const fillFrom = useSheetStore((s) => s.fillFrom);
   const clipboard = useSheetStore((s) => s.clipboard);
   const clearClipboard = useSheetStore((s) => s.clearClipboard);
   const deleteSelectedRow = useSheetStore((s) => s.deleteSelectedRow);
@@ -407,6 +410,27 @@ export default function SpreadsheetGrid() {
         break;
       case "PageUp":
         go(pageStep(offsets, fromRow, pageHeight, -1), fromCol);
+        break;
+      // Excel's fill keys, and the only way to reach the fill handle without a pointer. `D` fills
+      // the selection down from its first row, `R` rightwards from its first column — which is
+      // what the handle does when you drag it, so one implementation serves both.
+      case "d":
+      case "D":
+        if (jump) {
+          fillWithinSelection("down");
+          e.preventDefault();
+          break;
+        }
+        startEdit(row, col, e.key);
+        break;
+      case "r":
+      case "R":
+        if (jump) {
+          fillWithinSelection("right");
+          e.preventDefault();
+          break;
+        }
+        startEdit(row, col, e.key);
         break;
       case "a":
       case "A": {
@@ -792,6 +816,13 @@ export default function SpreadsheetGrid() {
         </tbody>
       </table>
 
+      <FillHandle
+        sheet={sheet}
+        selection={selection}
+        hiddenRows={hiddenRows}
+        scrollRef={scrollRef}
+        onFill={fillFrom}
+      />
       <SelectionHandle
         sheet={sheet}
         selection={selection}

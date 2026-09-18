@@ -69,6 +69,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "nextCell", combos: [["Tab"]], handles: ["Tab"] },
       { id: "prevCell", combos: [["Shift", "Tab"]], handles: [] },
       { id: "clear", combos: [["Delete"], ["Backspace"]], handles: ["Delete", "Backspace"] },
+      { id: "fillDown", combos: [["Mod", "D"]], handles: ["d", "D"] },
+      { id: "fillRight", combos: [["Mod", "R"]], handles: ["r", "R"] },
     ],
   },
   {

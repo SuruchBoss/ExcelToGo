@@ -16,6 +16,7 @@ import {
   ChartKind,
   ChartSpec,
   clearRange,
+  ensureBounds,
   cloneSheet,
   ClipboardBlock,
   computeSheet,
@@ -46,6 +47,7 @@ import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/addre
 import { autoSumRange, headerRow } from "@/lib/aiRange";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
 import { renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
+import { fillBlock, fillTargetFor, fillWithin, type FillTarget } from "@/lib/fillSeries";
 import type { Axis } from "@/lib/formulaEngine/structuralShift";
 import { FormulaValue } from "@/lib/formulaEngine/types";
 import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
@@ -58,7 +60,7 @@ import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
 // import costs nothing a user can perceive: the work only starts when they click Import or Export.
 import { FormulaDef } from "@/lib/formulaCatalog";
 import { addMerge, rangeHasMerge, removeMerges } from "@/lib/sheetMerges";
-import { isSingleCell, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
+import { isSingleCell, normalizeSelection, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
 import { getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
@@ -218,6 +220,10 @@ interface SheetState {
   applyLiveData: (sourceId: string, table: TableData) => void;
 
   clearSelection: () => void;
+  /** Continues the selection into the block ending at (row, col) — the fill handle. */
+  fillFrom: (row: number, col: number) => void;
+  /** Excel's Ctrl+D / Ctrl+R: the selection's first line fills the rest of it. */
+  fillWithinSelection: (axis: "down" | "right") => void;
   copySelection: () => void;
   cutSelection: () => void;
   pasteAtSelection: (externalText?: string) => void;
@@ -445,6 +451,45 @@ function structuralOp(
   return edited.map((t, i) => (fixed[i] === t.sheet ? t : { ...t, sheet: fixed[i] }));
 }
 
+/**
+ * Applies a fill, whichever way it was asked for.
+ *
+ * Both entry points work out two rectangles and hand them here, so the handle and the keys cannot
+ * drift apart in what they actually write. Template-locked cells are skipped rather than refused:
+ * a fill that crosses one should fill around it, not give up.
+ */
+function applyFill(
+  set: (fn: (s: SheetState) => Partial<SheetState>) => void,
+  get: () => SheetState,
+  source: FillTarget,
+  target: FillTarget
+): void {
+  const s = get();
+  const { sheet } = activeTab(s);
+  if (refusedByTemplate(sheet, target.startRow, target.startCol, target.endRow, target.endCol)) return;
+  const writes = fillBlock((r, c) => sheet.cells[r]?.[c] ?? "", source, target);
+  if (writes.length === 0) return;
+
+  set(() => {
+    const next = cloneSheet(ensureBounds(sheet, target.endRow + 1, target.endCol + 1));
+    let written = 0;
+    for (const w of writes) {
+      if (isTemplateLocked(next.template, w.row, w.col)) continue;
+      next.cells[w.row][w.col] = w.value;
+      written++;
+    }
+    const grown = normalizeSelection(
+      { row: Math.min(source.startRow, target.startRow), col: Math.min(source.startCol, target.startCol) },
+      { row: Math.max(source.endRow, target.endRow), col: Math.max(source.endCol, target.endCol) }
+    );
+    return {
+      sheets: withActiveSheet(s, () => next),
+      selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: grown },
+      ...say(getMessages().live.filled(written, rangeLabel(grown))),
+    };
+  });
+}
+
 /** How a range is said out loud: one cell is its address, a block is the two corners. */
 function rangeLabel(sel: { startRow: number; startCol: number; endRow: number; endCol: number }): string {
   return sel.startRow === sel.endRow && sel.startCol === sel.endCol
@@ -606,6 +651,35 @@ export const useSheetStore = create<SheetState>()(
                   ...say(getMessages().live.columnInserted(colToLetters(activeSelectionOf(s).anchorCol))),
                 }
           ),
+
+        /**
+         * The fill handle, and the keys that do the same thing without one.
+         *
+         * Reads the *raw* text rather than the computed values, because continuing `=A1*2` means
+         * moving its references, not copying the number it happens to show. `fillSeries.ts` decides
+         * which cells get what; this only applies the writes and grows the selection over them.
+         */
+        fillFrom: (row, col) => {
+          const sel = activeSelectionOf(get());
+          const source: FillTarget = {
+            startRow: sel.startRow,
+            startCol: sel.startCol,
+            endRow: sel.endRow,
+            endCol: sel.endCol,
+          };
+          const target = fillTargetFor(source, row, col);
+          if (target) applyFill(set, get, source, target);
+        },
+
+        /** Excel's Ctrl+D and Ctrl+R: the first line of the selection fills the rest of it. */
+        fillWithinSelection: (axis) => {
+          const sel = activeSelectionOf(get());
+          const split = fillWithin(
+            { startRow: sel.startRow, startCol: sel.startCol, endRow: sel.endRow, endCol: sel.endCol },
+            axis
+          );
+          if (split) applyFill(set, get, split.source, split.target);
+        },
 
         clearSelection: () =>
           set((s) => {

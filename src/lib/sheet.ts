@@ -287,6 +287,6 @@ export type { SheetRange } from "./sheetRange";
 // Re-exported so `@/lib/sheet` stays the one import surface for sheet operations, even though
 // clipboard and sort logic live in their own focused modules.
 export type { ClipboardBlock } from "./sheetClipboard";
-export { copyRange, pasteClipboardBlock, pastePlainTextBlock, clearRange, toTsv, parseTsv } from "./sheetClipboard";
+export { copyRange, pasteClipboardBlock, pastePlainTextBlock, clearRange, ensureBounds, toTsv, parseTsv } from "./sheetClipboard";
 export type { SortRange } from "./sheetSort";
 export { detectSortRange, sortRange } from "./sheetSort";

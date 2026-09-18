@@ -31,7 +31,7 @@ export function copyRange(
   return { rows, formats, startRow, startCol };
 }
 
-function ensureBounds(sheet: SheetModel, minRows: number, minCols: number): SheetModel {
+export function ensureBounds(sheet: SheetModel, minRows: number, minCols: number): SheetModel {
   let next = sheet;
   while (next.rows < minRows) next = addRow(next);
   while (next.cols < minCols) next = addColumn(next);

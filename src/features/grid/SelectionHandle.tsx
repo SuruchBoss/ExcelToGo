@@ -35,7 +35,7 @@ function subscribeCoarse(onChange: () => void): () => void {
   return () => query.removeEventListener("change", onChange);
 }
 
-function useCoarsePointer(): boolean {
+export function useCoarsePointer(): boolean {
   return useSyncExternalStore(
     subscribeCoarse,
     () => window.matchMedia("(pointer: coarse)").matches,

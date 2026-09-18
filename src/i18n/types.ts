@@ -379,6 +379,7 @@ export interface Messages {
     allFiltersCleared: (total: number) => string;
     pasted: (rows: number, cols: number, at: string) => string;
     cleared: (range: string) => string;
+    filled: (cells: number, range: string) => string;
     copied: (range: string) => string;
     cut: (range: string) => string;
     rowAppended: (total: number) => string;
@@ -419,6 +420,8 @@ export interface Messages {
     deleteColumn: string;
     /** The touch grip that pulls a selection out to a range. */
     extendSelection: string;
+    /** The mouse grip on the same corner, which continues the selection instead. */
+    fillHandle: string;
     /** Names the grid itself. A `role="grid"` with no name is announced as "grid" and nothing else. */
     label: string;
     /** The blank corner above the row numbers, which is a column header with no text in it. */
