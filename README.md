@@ -32,7 +32,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-737%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-765%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -49,7 +49,7 @@ merged cells — and a protected file is read as a fill-in template that knows w
 also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
 when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 737 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 765 automated tests. บันทึกบนคลาวด์มีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -198,7 +198,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 737 เคสด้วย Vitest |
+| `npm test` | รัน unit test 765 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
 | `npm run check:ai` | ถาม Claude จริงด้วย key ของคุณ แล้วเช็กว่าสูตรที่ได้เอนจินนี้รันได้จริงไหม — ไม่อยู่ใน `verify` เพราะต้องใช้ key และมีค่าใช้จ่าย |
@@ -278,6 +278,24 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 พร้อมช่วงเซลล์ที่เลือกอยู่ไปให้ AI แนะนำสูตร พร้อมคำอธิบายสั้นๆ กดปุ่มเดียวเพื่อใส่สูตรลงเซลล์ทันที
 
 <p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
+
+**สิ่งที่รู้ได้ก็ต่อเมื่อทดสอบด้วย key จริง** — เทสต์ทุกตัวในชุดนี้ mock Anthropic ไว้ คือมันตอบตามที่คนเขียน
+เทสต์คิดว่ามันจะตอบ พอเอา API key จริงมายิงคำถามธรรมดา 14 ข้อ ปรากฏว่า **6 คำตอบใช้ฟังก์ชันที่เอนจินนี้ไม่มี**
+(`TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR`) เป็นสูตร Excel ที่ถูกต้องทุกตัว
+แต่ขึ้น `#NAME?` ในเซลล์ หลังผู้ใช้กดปุ่มที่เขียนว่า "ใส่ลงตาราง" — **43% ของฟีเจอร์ที่เอามาชูโรง**
+
+แก้สองชั้น:
+
+1. **เติมฟังก์ชันที่ขาดลงเอนจิน** สิบตัว เพราะโจทย์จริงเอื้อมหามัน (ดู[ฟังก์ชันที่รองรับ](#ฟังก์ชันที่รองรับ))
+2. **บอกโมเดลว่าแอปนี้มีอะไรบ้าง** โดยสร้างรายการจาก `FUNCTIONS` ของเอนจินเอง ไม่ได้พิมพ์มือ — สำเนาที่สอง
+   คือตัวที่จะเพี้ยน และที่นี่สำเนาที่เพี้ยนคือตัวที่กำลังบอกโมเดลว่าใช้อะไรได้
+
+**ความพยายามแก้ครั้งแรกทำให้แย่ลง** และนั่นคือส่วนที่ควรบันทึกไว้ — กฎเวอร์ชันแรกเขียนว่า "ถ้าทำไม่ได้
+ให้ตอบสูตรที่ใกล้เคียงที่สุดเท่าที่มีในรายการ" โมเดลจึงตอบคำถาม _"ต่อชื่อทั้งหมดเป็นบรรทัดเดียว"_
+ด้วย `=SUM(A2:A20)` ซึ่งได้ `0` ในเซลล์เงียบๆ **เปลี่ยน error ที่มองเห็นเป็นตัวเลขผิดที่มองไม่เห็น**
+กฎปัจจุบันจึงห้ามสลับไปใช้ฟังก์ชันที่ไม่ตรงโจทย์ และให้เตือนแทนถ้าทำไม่ได้จริง
+
+รันซ้ำได้ด้วย `npm run check:ai` (ต้องมี key ของคุณเอง ไม่อยู่ใน `npm run verify` เพราะมีค่าใช้จ่าย)
 
 ### 🔑 ใส่ API key ของคุณเอง (BYOK)
 
@@ -932,7 +950,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (737 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (765 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -1228,7 +1246,7 @@ flowchart LR
     Raw["สูตรดิบ<br/>เช่น =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>แยกเป็น token"]
     Tok --> Par["parser.ts<br/>สร้าง AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>เดิน AST คำนวณผล"]
-    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>49 ฟังก์ชัน"]
+    Eval -->|"เรียกฟังก์ชัน"| Fn["functions.ts<br/>59 ฟังก์ชัน"]
     Eval -->|"getCell(row, col)"| Sheet[("ค่า/สูตรของ<br/>เซลล์อื่นในชีต")]
     Sheet -.-> Eval
     Eval --> Result["ค่าตัวเลข/ข้อความ<br/>หรือ FormulaError"]
@@ -1319,17 +1337,22 @@ flowchart LR
 
 ### ฟังก์ชันที่รองรับ
 
-แถบสูตรที่ลากวางได้แสดงแค่ **32 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **49 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
+แถบสูตรที่ลากวางได้แสดงแค่ **32 สูตร** ที่ใช้บ่อยที่สุด แต่ตัวเอนจินจริงรองรับ **59 ฟังก์ชัน** — ที่เหลือพิมพ์ตรง
 ในเซลล์ได้เลยแม้ไม่มีการ์ดในแถบสูตร (เช่น `=MID(...)`, `=YEAR(...)`, `=PROPER(...)`):
 
 | หมวดหมู่ | อยู่ในแถบสูตร (32) | พิมพ์ตรงในเซลล์ได้เพิ่ม |
 |---|---|---|
-| คณิตศาสตร์ | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
-| สถิติ | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` |
+| คณิตศาสตร์ | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` `CEILING` `FLOOR` `SUMPRODUCT` |
+| สถิติ | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` `RANK` `RANK.EQ` |
 | ตรรกะ | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
-| ข้อความ | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` |
+| ข้อความ | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` `TEXTJOIN` `SUBSTITUTE` `FIND` `SEARCH` `CHAR` `CODE` |
 | วันที่ | `TODAY` `NOW` `DATEDIF` | `DAY` `MONTH` `YEAR` |
 | ค้นหา | `VLOOKUP` `XLOOKUP` `INDEX` `MATCH` | — |
+
+> **สิบตัวท้ายมาจากการถามโมเดลจริง ไม่ได้ไล่ตามคู่มือ Excel** — `TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT`
+> `CEILING` `CHAR` (กับเพื่อนร่วมตระกูล `SEARCH` `SUBSTITUTE` `FLOOR` `CODE`) คือฟังก์ชันที่ผู้ช่วย AI
+> ตอบกลับมาแล้วเอนจินรันไม่ได้ ตอนทดสอบด้วย API key จริง — ดู
+> [ผู้ช่วย AI](#-ถาม-ai-หาสูตร) ว่าทำไมถึงรู้เรื่องนี้
 
 **`INDEX` + `MATCH` แทน `VLOOKUP` ได้ และทำสิ่งที่ VLOOKUP ทำไม่ได้** — `VLOOKUP` ค้นได้เฉพาะจากคอลัมน์ซ้ายสุด
 ของตาราง และผูกกับ "ลำดับคอลัมน์ที่เท่าไร" ซึ่งพังเงียบๆ เมื่อมีคนแทรกคอลัมน์:
@@ -1536,7 +1559,7 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 737 เคส ใน 44 ไฟล์ ด้วย Vitest
+npm test      # 765 เคส ใน 45 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM

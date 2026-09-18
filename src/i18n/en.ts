@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 737 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 765 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -174,7 +174,7 @@ export const en: Messages = {
         title: "Drag a formula in, don't memorise its syntax",
         body: "Search 32 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
         alt: "The formula parameter panel",
-        points: ["49 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
+        points: ["59 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
       },
       {
         title: "An imported .xlsx still looks like itself",
@@ -192,8 +192,8 @@ export const en: Messages = {
     statsTitle: "Under the hood",
     stats: [
       { value: "32", label: "ready-made formulas" },
-      { value: "49", label: "engine functions" },
-      { value: "737", label: "automated tests" },
+      { value: "59", label: "engine functions" },
+      { value: "765", label: "automated tests" },
       { value: "112", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],

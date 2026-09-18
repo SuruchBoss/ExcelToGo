@@ -329,6 +329,108 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     toDisplayString(scalarOf(args[0])).replace(/\w\S*/g, (t) => t[0].toUpperCase() + t.slice(1).toLowerCase()),
   TRIM: (args) => toDisplayString(scalarOf(args[0])).trim().replace(/\s+/g, " "),
   LEN: (args) => toDisplayString(scalarOf(args[0])).length,
+
+  // ── Added because the assistant kept asking for them ──────────────────────────────────────
+  //
+  // Run against the real model, fourteen ordinary questions produced six formulas this engine had
+  // no function for. Telling the model to stay inside the list was the honest fix and a poor one:
+  // "join these names with commas" came back as a warning that the app cannot do it. For the
+  // feature the landing page leads with, the answer is to be able to do it.
+  //
+  // Each of these is here because a real question reached for it, not because the Excel reference
+  // has it.
+
+  /** `TEXTJOIN(", ", TRUE, A2:A20)` — the one the assistant asked for most. */
+  TEXTJOIN: (args) => {
+    const delimiter = toDisplayString(scalarOf(args[0]));
+    const ignoreEmpty = toBoolean(scalarOf(args[1]));
+    if (isError(ignoreEmpty)) return ignoreEmpty;
+    const parts: string[] = [];
+    for (const arg of args.slice(2)) {
+      for (const v of flattenResult(arg)) {
+        if (isError(v)) return v;
+        if (ignoreEmpty && isBlank(v)) continue;
+        parts.push(toDisplayString(v));
+      }
+    }
+    return parts.join(delimiter);
+  },
+
+  /** 1-based like Excel, and `#VALUE!` rather than 0 when the text isn't there. */
+  FIND: (args) => findIn(args, true),
+  /** FIND that ignores case. Excel's SEARCH also takes wildcards; this one does not. */
+  SEARCH: (args) => findIn(args, false),
+
+  SUBSTITUTE: (args) => {
+    const text = toDisplayString(scalarOf(args[0]));
+    const from = toDisplayString(scalarOf(args[1]));
+    const to = toDisplayString(scalarOf(args[2]));
+    if (from === "") return text;
+    if (!args[3]) return text.split(from).join(to);
+    const which = toNumber(scalarOf(args[3]));
+    if (isError(which)) return which;
+    if (which < 1) return ERR_VALUE;
+    // Only the nth occurrence, which is what the fourth argument is for.
+    let seen = 0;
+    let at = text.indexOf(from);
+    while (at !== -1) {
+      if (++seen === Math.trunc(which)) return text.slice(0, at) + to + text.slice(at + from.length);
+      at = text.indexOf(from, at + from.length);
+    }
+    return text;
+  },
+
+  CHAR: (args) => {
+    const code = toNumber(scalarOf(args[0]));
+    if (isError(code)) return code;
+    const n = Math.trunc(code);
+    // Excel's range. CHAR(10) is the line break people actually want.
+    if (n < 1 || n > 255) return ERR_VALUE;
+    return String.fromCharCode(n);
+  },
+  CODE: (args) => {
+    const text = toDisplayString(scalarOf(args[0]));
+    if (text === "") return ERR_VALUE;
+    return text.charCodeAt(0);
+  },
+
+  CEILING: (args) => roundToStep(args, "up"),
+  FLOOR: (args) => roundToStep(args, "down"),
+
+  /**
+   * Element-wise product of matching cells, summed.
+   *
+   * Text and blanks count as zero, as in Excel. Note the limit: `SUMPRODUCT(1/COUNTIF(...))` — the
+   * classic unique-count trick — needs array arithmetic this evaluator does not do, so it still
+   * will not work. What does work is the ordinary use, `SUMPRODUCT(qty, price)`.
+   */
+  SUMPRODUCT: (args) => {
+    if (args.length === 0) return ERR_VALUE;
+    const grids = args.map(requireRange);
+    const rows = grids[0].length;
+    const cols = grids[0][0]?.length ?? 0;
+    for (const g of grids) {
+      if (g.length !== rows || (g[0]?.length ?? 0) !== cols) return ERR_VALUE;
+    }
+    let total = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let product = 1;
+        for (const g of grids) {
+          const v = g[r]?.[c] ?? null;
+          if (isError(v)) return v;
+          product *= numericOrZero(v);
+        }
+        total += product;
+      }
+    }
+    return total;
+  },
+
+  /** `RANK(D2, $D$2:$D$50)` — and the modern spelling, which is what the assistant writes. */
+  RANK: (args) => rankIn(args),
+  "RANK.EQ": (args) => rankIn(args),
+
   LEFT: (args) => {
     const s = toDisplayString(scalarOf(args[0]));
     const n = args[1] ? toNumber(scalarOf(args[1])) : 1;
@@ -751,6 +853,75 @@ function criteriaPairs(
 }
 
 const ERR_REF_LOCAL = new FormulaError("#REF!");
+
+/** Shared by FIND and SEARCH, which differ only in whether case matters. */
+function findIn(args: EvalResult[], caseSensitive: boolean): FormulaValue {
+  const needleRaw = toDisplayString(scalarOf(args[0]));
+  const hayRaw = toDisplayString(scalarOf(args[1]));
+  const needle = caseSensitive ? needleRaw : needleRaw.toLowerCase();
+  const hay = caseSensitive ? hayRaw : hayRaw.toLowerCase();
+
+  let start = 1;
+  if (args[2]) {
+    const n = toNumber(scalarOf(args[2]));
+    if (isError(n)) return n;
+    start = Math.trunc(n);
+  }
+  if (start < 1 || start > hay.length + 1) return ERR_VALUE;
+
+  const at = hay.indexOf(needle, start - 1);
+  // Excel answers #VALUE! rather than 0, so a missing match can't be mistaken for a position.
+  return at === -1 ? ERR_VALUE : at + 1;
+}
+
+/** CEILING and FLOOR: round away from or towards zero, to a multiple. */
+function roundToStep(args: EvalResult[], direction: "up" | "down"): FormulaValue {
+  const value = toNumber(scalarOf(args[0]));
+  if (isError(value)) return value;
+  const stepArg = args[1] ? toNumber(scalarOf(args[1])) : 1;
+  if (isError(stepArg)) return stepArg;
+  if (stepArg === 0) return 0;
+  // Excel refuses a positive number with a negative step and vice versa.
+  if (value !== 0 && Math.sign(value) !== Math.sign(stepArg)) return ERR_NUM;
+  const steps = value / stepArg;
+  const rounded = direction === "up" ? Math.ceil(steps) : Math.floor(steps);
+  // Back through a rounding pass: 0.1-sized steps otherwise land on 4.800000000000001.
+  return Number((rounded * stepArg).toPrecision(15));
+}
+
+/** Text and blanks are zero here, as they are to Excel's SUMPRODUCT. */
+function numericOrZero(v: FormulaValue): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  const n = Number(toDisplayString(v).trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** RANK / RANK.EQ: position within a range, ties sharing the higher place. */
+function rankIn(args: EvalResult[]): FormulaValue {
+  const target = toNumber(scalarOf(args[0]));
+  if (isError(target)) return target;
+
+  const numbers: number[] = [];
+  for (const v of requireRange(args[1]).flat()) {
+    if (isError(v)) return v;
+    if (isBlank(v) || typeof v === "boolean") continue;
+    const n = Number(toDisplayString(v).trim());
+    if (Number.isFinite(n) && toDisplayString(v).trim() !== "") numbers.push(n);
+  }
+
+  let ascending = false;
+  if (args[2]) {
+    const order = toNumber(scalarOf(args[2]));
+    if (isError(order)) return order;
+    ascending = order !== 0;
+  }
+
+  // Excel answers #N/A for a value that is not in the range at all, rather than inventing a place.
+  if (!numbers.includes(target)) return ERR_NA;
+  const ahead = numbers.filter((n) => (ascending ? n < target : n > target)).length;
+  return ahead + 1;
+}
 
 function scalarOf(arg: EvalResult | undefined): FormulaValue {
   if (!arg) return null;

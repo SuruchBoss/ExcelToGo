@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-737%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-765%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 737 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 765 automated tests.
 
 ---
 
@@ -207,7 +207,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 737-case Vitest suite |
+| `npm test` | Run the 765-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
@@ -292,6 +292,30 @@ The app sends your question plus the currently selected range to the AI and gets
 a short explanation. One click inserts it into the selected cell.
 
 <p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
+
+**What only a real key could show.** Every test of this feature mocks Anthropic — which means it
+returns whatever the test author imagined it would. Put a real API key behind it and ask fourteen
+ordinary questions, and **six answers used functions this engine does not have** (`TEXTJOIN`,
+`FIND`, `RANK.EQ`, `SUMPRODUCT`, `CEILING`, `CHAR`). All valid Excel; all `#NAME?` in the cell,
+after the user pressed a button labelled "insert". **43% of the feature the landing page leads
+with.**
+
+Fixed on both sides:
+
+1. **The ten missing functions are in the engine now**, because real questions reached for them —
+   see [supported functions](#supported-functions).
+2. **The model is told what exists here**, from a list generated out of `FUNCTIONS` rather than
+   written by hand: a second copy is the one that goes stale, and here the stale copy would be the
+   one telling the model what it may use.
+
+**The first attempt at that made things worse**, which is the part worth keeping. The rule started
+as "give the closest formula the list allows", so _"join all the names into one line"_ came back as
+`=SUM(A2:A20)` — `0` in the cell, no error, nothing to notice. **A visible `#NAME?` had been traded
+for an invisible wrong number.** The rule now forbids substituting an unrelated function and asks
+for a warning instead.
+
+Repeatable with `npm run check:ai` (needs your own key; not part of `npm run verify`, because it
+costs money).
 
 ### 🔑 Bring your own API key (BYOK)
 
@@ -1044,7 +1068,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (737 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (765 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1348,7 +1372,7 @@ flowchart LR
     Raw["Raw formula text<br/>e.g. =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>splits into tokens"]
     Tok --> Par["parser.ts<br/>builds an AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>walks the AST to compute a result"]
-    Eval -->|"calls"| Fn["functions.ts<br/>49 functions"]
+    Eval -->|"calls"| Fn["functions.ts<br/>59 functions"]
     Eval -->|"getCell(row, col)"| Sheet[("other cells' values/formulas<br/>in the sheet")]
     Sheet -.-> Eval
     Eval --> Result["a number/text value,<br/>or a FormulaError"]
@@ -1450,17 +1474,22 @@ thing:
 ### Supported functions
 
 The drag-and-drop palette shows only the **32 most commonly used** formulas, but the engine itself supports
-**49 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
+**59 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
 `=YEAR(...)`, `=PROPER(...)`):
 
 | Category | In the palette (32) | Also available by typing |
 |---|---|---|
-| Math | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` |
-| Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` |
+| Math | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` `CEILING` `FLOOR` `SUMPRODUCT` |
+| Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` `RANK` `RANK.EQ` |
 | Logic | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
-| Text | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` |
+| Text | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` `TEXTJOIN` `SUBSTITUTE` `FIND` `SEARCH` `CHAR` `CODE` |
 | Date | `TODAY` `NOW` `DATEDIF` | `DAY` `MONTH` `YEAR` |
 | Lookup | `VLOOKUP` `XLOOKUP` `INDEX` `MATCH` | — |
+
+> **The last ten came from asking the real model, not from working through the Excel reference.**
+> `TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR` — and their obvious companions `SEARCH`
+> `SUBSTITUTE` `FLOOR` `CODE` — are what the assistant answered with while this engine had no such
+> function. See [Ask AI for a formula](#-ask-ai-for-a-formula) for how that was found.
 
 **`INDEX` + `MATCH` replaces `VLOOKUP` and does what it cannot** — `VLOOKUP` can only search the
 leftmost column of a table, and hard-codes *which column number* to return, which breaks silently
@@ -1685,7 +1714,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 737 cases across 44 files, via Vitest
+npm test      # 765 cases across 45 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so

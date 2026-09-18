@@ -24,9 +24,9 @@ export default function OgImage() {
   // tests" for months while the suite grew past 600 — a card nobody re-reads is exactly where a
   // stale number survives longest.
   const stats = [
-    ["49", "engine functions"],
+    ["59", "engine functions"],
     ["32", "palette formulas"],
-    ["737", "automated tests"],
+    ["765", "automated tests"],
     ["112", "of them security"],
     ["0", "formula libraries"],
   ];
