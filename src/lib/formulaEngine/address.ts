@@ -24,6 +24,29 @@ export function cellRef(row: number, col: number): string {
   return `${colToLetters(col)}${row + 1}`;
 }
 
+/**
+ * The sheet half of `Sheet2!A1`, quoted or not.
+ *
+ * Unquoted names allow Thai, because this app's own sheets are called สรุป and ยอดขาย long before
+ * anyone types `Sheet2`. Quoted names allow anything but a quote, which is how Excel writes a name
+ * with a space in it: `'ยอดขาย Q1'!A1`. A doubled `''` inside quotes is one literal quote, again
+ * following Excel.
+ */
+const SHEET_PREFIX_RE = /^(?:'((?:[^']|'')+)'|([^\s'!,()+\-*/^&=<>%:]+))!/;
+
+/** Splits `Sheet2!A1` into its two halves. `sheet` is null for a plain, same-sheet reference. */
+export function splitSheetRef(ref: string): { sheet: string | null; ref: string } {
+  const m = SHEET_PREFIX_RE.exec(ref);
+  if (!m) return { sheet: null, ref };
+  const name = m[1] !== undefined ? m[1].replace(/''/g, "'") : m[2];
+  return { sheet: name, ref: ref.slice(m[0].length) };
+}
+
+/** The inverse: writes a name back, quoting it only when it needs quoting. */
+export function sheetRefPrefix(sheet: string): string {
+  return /^[^\s'!,()+\-*/^&=<>%:]+$/.test(sheet) ? `${sheet}!` : `'${sheet.replace(/'/g, "''")}'!`;
+}
+
 const CELL_RE = /^\$?([A-Za-z]{1,3})\$?(\d+)$/;
 const RANGE_RE = /^\$?([A-Za-z]{1,3})\$?(\d+):\$?([A-Za-z]{1,3})\$?(\d+)$/;
 

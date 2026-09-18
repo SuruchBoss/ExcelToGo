@@ -1,5 +1,32 @@
 import { tokenize } from "./tokenizer";
-import { colToLetters, lettersToCol } from "./address";
+import { colToLetters, lettersToCol, sheetRefPrefix, splitSheetRef } from "./address";
+
+/**
+ * Which sheet was edited, and which sheet's formulas are being rewritten.
+ *
+ * Inserting a row is not a fact about one sheet any more. `=Sheet2!A5` sitting in Sheet1 has to
+ * move when a row appears in *Sheet2* and stay exactly where it is when one appears in Sheet1 —
+ * and a bare `A5` is the opposite, since it names the sheet it is written on. One pair of names
+ * decides both.
+ */
+export interface ShiftScope {
+  /** The sheet the row or column op happened in. */
+  opSheet: string;
+  /** The sheet whose formulas are being rewritten. */
+  formulaSheet: string;
+}
+
+const sameSheet = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/** Whether a reference written as `token` points at the sheet that was edited. */
+function pointsAtEditedSheet(prefix: string | null, scope: ShiftScope | undefined): boolean {
+  if (prefix !== null) {
+    // Without a scope the caller is the old single-sheet path, which knows nothing about other
+    // sheets; leaving a qualified reference alone is the only safe answer it can give.
+    return scope ? sameSheet(prefix, scope.opSheet) : false;
+  }
+  return scope ? sameSheet(scope.formulaSheet, scope.opSheet) : true;
+}
 
 export type Axis = "row" | "col";
 
@@ -71,18 +98,35 @@ function adjustRangeToken(token: string, axis: Axis, opIndex: number, delta: 1 |
  * deleted row/column, or a range that collapses entirely, becomes the literal text "#REF!" —
  * the same way Excel shows a broken reference after a structural edit.
  */
-export function adjustFormulaForStructuralOp(body: string, axis: Axis, opIndex: number, delta: 1 | -1): string {
+export function adjustFormulaForStructuralOp(
+  body: string,
+  axis: Axis,
+  opIndex: number,
+  delta: 1 | -1,
+  scope?: ShiftScope
+): string {
   const tokens = tokenize(body);
   let out = "";
+  /** Splits the sheet prefix off, adjusts the address, and writes the prefix back unchanged. */
+  const qualified = (token: string, adjust: (ref: string) => string): string => {
+    const { sheet, ref } = splitSheetRef(token);
+    if (!pointsAtEditedSheet(sheet, scope)) return token;
+    const next = adjust(ref);
+    // A reference that broke is `#REF!` on its own — Excel drops the sheet name with it, because
+    // there is no longer an address for it to qualify.
+    if (next === REF_ERROR || sheet === null) return next;
+    return `${sheetRefPrefix(sheet)}${next}`;
+  };
+
   for (const t of tokens) {
     switch (t.type) {
       case "EOF":
         break;
       case "CELL":
-        out += adjustCellToken(t.value, axis, opIndex, delta);
+        out += qualified(t.value, (ref) => adjustCellToken(ref, axis, opIndex, delta));
         break;
       case "RANGE":
-        out += adjustRangeToken(t.value, axis, opIndex, delta);
+        out += qualified(t.value, (ref) => adjustRangeToken(ref, axis, opIndex, delta));
         break;
       case "STRING":
         out += `"${t.value.replace(/"/g, '""')}"`;

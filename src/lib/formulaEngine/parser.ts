@@ -1,6 +1,6 @@
 import { tokenize, Token } from "./tokenizer";
 import { AstNode } from "./ast";
-import { parseCellRef, parseRangeRef } from "./address";
+import { parseCellRef, parseRangeRef, splitSheetRef } from "./address";
 
 export class FormulaSyntaxError extends Error {}
 
@@ -116,15 +116,26 @@ class Parser {
     }
     if (t.type === "RANGE") {
       this.next();
-      const r = parseRangeRef(t.value);
+      // The sheet prefix rides on the token so the tokenizer can keep the reference in one piece;
+      // it is split here, where the node that carries it is built.
+      const { sheet, ref } = splitSheetRef(t.value);
+      const r = parseRangeRef(ref);
       if (!r) throw new FormulaSyntaxError(`Invalid range: ${t.value}`);
-      return { type: "range", startRow: r.startRow, startCol: r.startCol, endRow: r.endRow, endCol: r.endCol };
+      return {
+        type: "range",
+        startRow: r.startRow,
+        startCol: r.startCol,
+        endRow: r.endRow,
+        endCol: r.endCol,
+        ...(sheet ? { sheet } : {}),
+      };
     }
     if (t.type === "CELL") {
       this.next();
-      const c = parseCellRef(t.value);
+      const { sheet, ref } = splitSheetRef(t.value);
+      const c = parseCellRef(ref);
       if (!c) throw new FormulaSyntaxError(`Invalid cell reference: ${t.value}`);
-      return { type: "cell", row: c.row, col: c.col };
+      return { type: "cell", row: c.row, col: c.col, ...(sheet ? { sheet } : {}) };
     }
     if (t.type === "FUNC") {
       this.next();

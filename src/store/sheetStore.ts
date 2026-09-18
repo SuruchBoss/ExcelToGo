@@ -19,6 +19,8 @@ import {
   cloneSheet,
   ClipboardBlock,
   computeSheet,
+  createWorkbookResolver,
+  type CrossSheetResolver,
   copyRange,
   createEmptySheet,
   deleteColumn,
@@ -43,6 +45,8 @@ import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, headerRow } from "@/lib/aiRange";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
+import { renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
+import type { Axis } from "@/lib/formulaEngine/structuralShift";
 import { FormulaValue } from "@/lib/formulaEngine/types";
 import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
 // ExcelJS (~400KB) and jsPDF + autoTable are loaded on demand, not with the store.
@@ -421,6 +425,26 @@ export function selectShowingSample(s: SheetState): boolean {
  * vanish. Moving the cursor is already announced by focus landing on the cell, and repeating it
  * here would make the grid talk over itself.
  */
+/**
+ * A row/column op on the active sheet, plus the reference fix-up every other sheet needs.
+ *
+ * `edit` does the work on the sheet being changed — it already rewrites that sheet's own formulas.
+ * What it cannot do is reach the other tabs, and once `=Data!A5` is a thing somebody can type, the
+ * other tabs are holding references into the sheet that just moved.
+ */
+function structuralOp(
+  s: SheetState,
+  axis: Axis,
+  opIndex: number,
+  delta: 1 | -1,
+  edit: (sheet: SheetModel) => SheetModel
+): SheetTab[] {
+  const activeName = activeTab(s).name;
+  const edited = s.sheets.map((t) => (t.id === s.activeSheetId ? { ...t, sheet: edit(t.sheet) } : t));
+  const fixed = shiftOtherSheetsForStructuralOp(edited, activeName, axis, opIndex, delta);
+  return edited.map((t, i) => (fixed[i] === t.sheet ? t : { ...t, sheet: fixed[i] }));
+}
+
 /** How a range is said out loud: one cell is its address, a block is the two corners. */
 function rangeLabel(sel: { startRow: number; startCol: number; endRow: number; endCol: number }): string {
   return sel.startRow === sel.endRow && sel.startCol === sel.endCol
@@ -473,7 +497,16 @@ export const useSheetStore = create<SheetState>()(
         renameSheet: (id, name) => {
           const trimmed = name.trim();
           if (!trimmed) return;
-          set((s) => ({ sheets: s.sheets.map((t) => (t.id === id ? { ...t, name: trimmed } : t)) }));
+          set((s) => {
+            const before = s.sheets.find((t) => t.id === id);
+            if (!before || before.name === trimmed) return {};
+            // Formulas name a sheet by its name, so renaming a tab would otherwise break every
+            // formula pointing at it. Excel rewrites them silently, and someone renaming "Sheet2"
+            // to "ยอดขาย" is not thinking about anybody's formulas.
+            const renamed = s.sheets.map((t) => (t.id === id ? { ...t, name: trimmed } : t));
+            const fixed = renameSheetInFormulas(renamed, before.name, trimmed);
+            return { sheets: renamed.map((t, i) => (fixed[i] === t.sheet ? t : { ...t, sheet: fixed[i] })) };
+          });
         },
 
         deleteSheet: (id) => {
@@ -531,7 +564,7 @@ export const useSheetStore = create<SheetState>()(
             const selection = activeSelectionOf(s);
             const next = deleteRow(sheet, selection.anchorRow);
             return {
-              sheets: withActiveSheet(s, () => next),
+              sheets: structuralOp(s, "row", selection.anchorRow, -1, () => next),
               selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
               ...say(getMessages().live.rowDeleted(selection.anchorRow + 1)),
             };
@@ -544,7 +577,7 @@ export const useSheetStore = create<SheetState>()(
             const selection = activeSelectionOf(s);
             const next = deleteColumn(sheet, selection.anchorCol);
             return {
-              sheets: withActiveSheet(s, () => next),
+              sheets: structuralOp(s, "col", selection.anchorCol, -1, () => next),
               selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
               ...say(getMessages().live.columnDeleted(colToLetters(selection.anchorCol))),
             };
@@ -555,7 +588,9 @@ export const useSheetStore = create<SheetState>()(
             refusedStructuralChange(activeTab(s).sheet)
               ? {}
               : {
-                  sheets: updateActiveSheet(s, (sheet, selection) => insertRowBefore(sheet, selection.anchorRow)),
+                  sheets: structuralOp(s, "row", activeSelectionOf(s).anchorRow, 1, (sheet) =>
+                    insertRowBefore(sheet, activeSelectionOf(s).anchorRow)
+                  ),
                   ...say(getMessages().live.rowInserted(activeSelectionOf(s).anchorRow + 1)),
                 }
           ),
@@ -565,7 +600,9 @@ export const useSheetStore = create<SheetState>()(
             refusedStructuralChange(activeTab(s).sheet)
               ? {}
               : {
-                  sheets: updateActiveSheet(s, (sheet, selection) => insertColumnBefore(sheet, selection.anchorCol)),
+                  sheets: structuralOp(s, "col", activeSelectionOf(s).anchorCol, 1, (sheet) =>
+                    insertColumnBefore(sheet, activeSelectionOf(s).anchorCol)
+                  ),
                   ...say(getMessages().live.columnInserted(colToLetters(activeSelectionOf(s).anchorCol))),
                 }
           ),
@@ -1290,7 +1327,16 @@ export function selectActiveSelection(s: SheetState): SelectionRect {
 /** Recomputes derived cell values/display strings, memoized on the active sheet's reference. */
 export function useComputedSheet() {
   const sheet = useSheetStore(selectActiveSheet);
-  return useMemo(() => computeSheet(sheet), [sheet]);
+  const sheets = useSheetStore((s) => s.sheets);
+  // Against the whole workbook, because a formula may name another tab. Memoised on `sheets` as
+  // well as `sheet`: editing a sheet this one reads leaves this one's object identical, and
+  // recomputing only when the visible sheet changes is exactly how a stale number stays on screen.
+  return useMemo(() => computeSheet(sheet, createWorkbookResolver(sheets)), [sheet, sheets]);
+}
+
+/** The resolver for the workbook as it is right now — for the places outside React that compute. */
+export function workbookResolver(s: SheetState): CrossSheetResolver {
+  return createWorkbookResolver(s.sheets);
 }
 
 export function useSelectionAddress() {

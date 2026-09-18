@@ -149,7 +149,8 @@ export function addColumn(sheet: SheetModel): SheetModel {
 // Recalculation lives in sheetCompute.ts, which keeps a dependency graph so one edit does not
 // redo the whole sheet. Re-exported from here because a sheet and the values it works out to are
 // the same idea to every caller, and were one module until the graph arrived.
-export { computeSheet, resetComputeCache } from "./sheetCompute";
+export { computeSheet, createWorkbookResolver, resetComputeCache } from "./sheetCompute";
+export type { CrossSheetResolver, WorkbookTab } from "./sheetCompute";
 export type { ComputedSheet } from "./sheetCompute";
 
 export type ApplyScope = "cell" | "row" | "column" | "selection";

@@ -18,6 +18,17 @@ export interface Token {
 }
 
 const REF_ERROR_RE = /^#REF!/i;
+/**
+ * A sheet name followed by `!`, tried before anything else that could swallow it.
+ *
+ * Order is the whole trick: `Sheet2` on its own matches `IDENT_RE` and would be tokenised as a
+ * function name, and `A1` in `A1!B2` matches `CELL_RE`. Both would be wrong, and neither would
+ * fail loudly — the formula would simply mean something else. So the qualified form is matched
+ * first and emitted as *one* token, prefix included, which also keeps `structuralShift.ts` able to
+ * see which sheet a reference belongs to while it rewrites the text.
+ */
+const SHEET_QUALIFIED_RE =
+  /^(?:'(?:[^']|'')+'|[^\s'!,()+\-*/^&=<>%:]+)!\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?/;
 const RANGE_RE = /^\$?[A-Za-z]{1,3}\$?\d+:\$?[A-Za-z]{1,3}\$?\d+/;
 const CELL_RE = /^\$?[A-Za-z]{1,3}\$?\d+/;
 const NUMBER_RE = /^\d+(\.\d+)?/;
@@ -58,6 +69,18 @@ export function tokenize(input: string): Token[] {
     if (refErrMatch) {
       tokens.push({ type: "REFERR", value: "#REF!" });
       s = s.slice(refErrMatch[0].length);
+      continue;
+    }
+    const qualified = SHEET_QUALIFIED_RE.exec(s);
+    if (qualified) {
+      // Upper-cased only past the `!`: sheet names are the user's own words and `ยอดขาย` has no
+      // upper case, while `sheet2` and `Sheet2` must still be the same sheet — matched by name
+      // case-insensitively where the lookup happens, not by mangling it here.
+      const bang = qualified[0].lastIndexOf("!");
+      const name = qualified[0].slice(0, bang);
+      const ref = qualified[0].slice(bang + 1).toUpperCase();
+      tokens.push({ type: ref.includes(":") ? "RANGE" : "CELL", value: `${name}!${ref}` });
+      s = s.slice(qualified[0].length);
       continue;
     }
     const rangeMatch = RANGE_RE.exec(s);

@@ -4,7 +4,8 @@ import { toNumber, toDisplayString } from "./coerce";
 import { FUNCTIONS } from "./functions";
 
 export interface EvalContext {
-  getCell(row: number, col: number): FormulaValue;
+  /** `sheet` is the name written before a `!`, absent for a reference to the sheet being computed. */
+  getCell(row: number, col: number, sheet?: string): FormulaValue;
 }
 
 export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
@@ -16,7 +17,7 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
     case "bool":
       return scalar(node.value);
     case "cell":
-      return scalar(ctx.getCell(node.row, node.col));
+      return scalar(ctx.getCell(node.row, node.col, node.sheet));
     case "referror":
       return scalar(ERR_REF);
     case "missing":
@@ -26,7 +27,7 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
       for (let r = node.startRow; r <= node.endRow; r++) {
         const row: FormulaValue[] = [];
         for (let c = node.startCol; c <= node.endCol; c++) {
-          row.push(ctx.getCell(r, c));
+          row.push(ctx.getCell(r, c, node.sheet));
         }
         rows.push(row);
       }

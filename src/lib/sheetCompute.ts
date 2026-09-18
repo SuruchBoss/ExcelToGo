@@ -38,6 +38,68 @@ import { formatNumberForDisplay } from "./cellFormat";
  */
 
 const CIRCULAR = new FormulaError("#CIRCULAR!");
+const REF = new FormulaError("#REF!");
+
+/**
+ * What another sheet looks like to the sheet reading it.
+ *
+ * Three outcomes rather than a nullable result, because they mean different things in a cell:
+ * a name nobody has is `#REF!`, a name currently being computed further up the stack is a cycle
+ * that spans sheets, and only the third is an answer.
+ */
+export type ForeignLookup =
+  | { kind: "sheet"; computed: ComputedSheet; source: SheetModel }
+  | { kind: "missing" }
+  | { kind: "cycle" };
+
+export interface CrossSheetResolver {
+  /** Case-insensitively, the way Excel matches a sheet name written in a formula. */
+  lookup(name: string): ForeignLookup;
+}
+
+export interface WorkbookTab {
+  name: string;
+  sheet: SheetModel;
+}
+
+/**
+ * Lets the sheets of a workbook read each other.
+ *
+ * Built per compute rather than kept around, because it memoises: a sheet read by five formulas is
+ * computed once, and `computeSheet` itself is identity-cached underneath, so a resolver built for a
+ * workbook nothing has changed does no work at all.
+ *
+ * The `computing` set is what makes a cycle across sheets terminate. Within one sheet the evaluator
+ * already catches re-entry per cell; across sheets the recursion is one level up — `Sheet1!A1` asks
+ * for Sheet2, which asks for Sheet1 — and without this it is an infinite descent rather than a
+ * `#CIRCULAR!`.
+ */
+export function createWorkbookResolver(tabs: WorkbookTab[]): CrossSheetResolver {
+  const byName = new Map<string, SheetModel>();
+  for (const tab of tabs) byName.set(tab.name.toLowerCase(), tab.sheet);
+  const done = new Map<string, ComputedSheet>();
+  const computing = new Set<string>();
+
+  const resolver: CrossSheetResolver = {
+    lookup(name: string): ForeignLookup {
+      const key = name.toLowerCase();
+      const source = byName.get(key);
+      if (!source) return { kind: "missing" };
+      const cached = done.get(key);
+      if (cached) return { kind: "sheet", computed: cached, source };
+      if (computing.has(key)) return { kind: "cycle" };
+      computing.add(key);
+      try {
+        const computed = computeSheet(source, resolver);
+        done.set(key, computed);
+        return { kind: "sheet", computed, source };
+      } finally {
+        computing.delete(key);
+      }
+    },
+  };
+  return resolver;
+}
 
 export interface ComputedSheet {
   values: FormulaValue[][];
@@ -55,6 +117,37 @@ interface Snapshot {
   rangeReaders: Map<number, PrecedentRange[]>;
   /** Formula cells that read the clock, so they are dirty on every pass. */
   volatile: Set<number>;
+  /**
+   * Foreign sheets this result was computed against, by lower-cased name, holding the *computed
+   * result* that was read — or null for a name that resolved to nothing.
+   *
+   * The result rather than the source sheet, and the difference is the whole correctness of this.
+   * Comparing source objects catches one level and stops: with C reading B and B reading A, editing
+   * A leaves B's *source* untouched, so C would see nothing move and hand back a stale number. A
+   * computed result, though, is a fresh object whenever it was actually recomputed, and asking for
+   * it re-runs B's own staleness check first — so one comparison carries the whole chain. Found by
+   * a test that walked three sheets, not by reading the code.
+   *
+   * Recording the misses matters as much as the hits: a formula reading `Budget!A1` while no such
+   * sheet exists has to come back to life the moment somebody makes one.
+   */
+  externals: Map<string, ComputedSheet | null>;
+}
+
+/**
+ * Whether anything this result read from another sheet has moved underneath it.
+ *
+ * Asking the resolver recomputes those sheets, transitively, which is the point — it is cheap
+ * because every step of it is identity-cached and memoised for the life of the resolver.
+ */
+function externalsStale(snap: Snapshot, resolver: CrossSheetResolver | undefined): boolean {
+  if (snap.externals.size === 0) return false;
+  if (!resolver) return true;
+  for (const [name, seen] of snap.externals) {
+    const now = resolver.lookup(name);
+    if ((now.kind === "sheet" ? now.computed : null) !== seen) return true;
+  }
+  return false;
 }
 
 /**
@@ -115,12 +208,43 @@ function run(
   display: string[][],
   pending: Uint8Array,
   programs: Map<number, FormulaProgram>,
-  own: (row: number) => void
+  own: (row: number) => void,
+  resolver: CrossSheetResolver | undefined,
+  externals: Map<string, ComputedSheet | null>
 ): void {
   const { rows, cols } = sheet;
   const computing = new Set<number>();
 
-  function getCell(r: number, c: number): FormulaValue {
+  /**
+   * A reference into another sheet.
+   *
+   * Every outcome is recorded in `externals`, misses included, because "there is no sheet called
+   * Budget" is a fact that expires the moment somebody makes one.
+   */
+  function foreign(name: string, r: number, c: number): FormulaValue {
+    const key = name.toLowerCase();
+    if (!resolver) {
+      externals.set(key, null);
+      return REF;
+    }
+    const found = resolver.lookup(name);
+    if (found.kind === "cycle") {
+      // Not recorded: a cycle is a property of this pass, not of a sheet that was read, and
+      // remembering it would make the result look stale for ever.
+      return CIRCULAR;
+    }
+    if (found.kind === "missing") {
+      externals.set(key, null);
+      return REF;
+    }
+    externals.set(key, found.computed);
+    const grid = found.computed.values;
+    if (r < 0 || c < 0 || r >= grid.length) return null;
+    return grid[r]?.[c] ?? null;
+  }
+
+  function getCell(r: number, c: number, sheetName?: string): FormulaValue {
+    if (sheetName !== undefined) return foreign(sheetName, r, c);
     if (r < 0 || c < 0 || r >= rows || c >= cols) return null;
     const flat = r * cols + c;
     if (pending[flat] === 0) return values[r][c];
@@ -190,7 +314,7 @@ function unlink(snap: Snapshot, key: number): void {
   snap.volatile.delete(key);
 }
 
-function fullCompute(sheet: SheetModel): Snapshot {
+function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined): Snapshot {
   const { rows, cols } = sheet;
   const values: FormulaValue[][] = Array.from({ length: rows }, () => new Array<FormulaValue>(cols));
   const display: string[][] = Array.from({ length: rows }, () => new Array<string>(cols));
@@ -202,6 +326,7 @@ function fullCompute(sheet: SheetModel): Snapshot {
     dependents: new Map(),
     rangeReaders: new Map(),
     volatile: new Set(),
+    externals: new Map(),
   };
 
   // Compile first: `run` needs every formula's program to be findable, and the graph has to exist
@@ -216,7 +341,7 @@ function fullCompute(sheet: SheetModel): Snapshot {
   }
 
   const pending = new Uint8Array(rows * cols).fill(1);
-  run(sheet, values, display, pending, snap.programs, () => {});
+  run(sheet, values, display, pending, snap.programs, () => {}, resolver, snap.externals);
   return snap;
 }
 
@@ -260,7 +385,12 @@ function diffSheets(prev: SheetModel, next: SheetModel): Diff | null {
   return { changed, restyled };
 }
 
-function incrementalCompute(prev: Snapshot, sheet: SheetModel, diff: Diff): Snapshot | null {
+function incrementalCompute(
+  prev: Snapshot,
+  sheet: SheetModel,
+  diff: Diff,
+  resolver: CrossSheetResolver | undefined
+): Snapshot | null {
   const { rows, cols } = sheet;
 
   // The closure is taken against the *old* graph on purpose: what has to be recomputed is what
@@ -324,6 +454,10 @@ function incrementalCompute(prev: Snapshot, sheet: SheetModel, diff: Diff): Snap
     dependents: new Map(),
     rangeReaders: new Map(prev.rangeReaders),
     volatile: new Set(prev.volatile),
+    // Carried forward, not rebuilt: this pass only recomputes the dirty cells, so it sees only the
+    // foreign sheets those happen to read. Dropping the rest would make the next staleness check
+    // blind to them.
+    externals: new Map(prev.externals),
   };
   for (const [precedent, readers] of prev.dependents) snap.dependents.set(precedent, new Set(readers));
 
@@ -342,7 +476,7 @@ function incrementalCompute(prev: Snapshot, sheet: SheetModel, diff: Diff): Snap
     const c = key % 16384;
     if (r < rows && c < cols) pending[r * cols + c] = 1;
   }
-  run(sheet, values, display, pending, snap.programs, own);
+  run(sheet, values, display, pending, snap.programs, own, resolver, snap.externals);
 
   // A number format change moves no value, so it only has to be re-rendered.
   for (const key of diff.restyled) {
@@ -370,22 +504,27 @@ function remember(snap: Snapshot): ComputedSheet {
  * is not their business, and the result is identical either way — which is what the property test
  * checks rather than assumes.
  */
-export function computeSheet(sheet: SheetModel): ComputedSheet {
+export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): ComputedSheet {
+  // The identity cache has to be asked about the rest of the workbook too. A sheet whose own cells
+  // are untouched is still out of date when a sheet it reads has moved, and this fast path is
+  // exactly where that would be missed — the object is the same, so nothing else would notice.
+  const byIdentitySnap = snapshots.find((s) => s.sheet === sheet);
   const hit = byIdentity.get(sheet);
-  if (hit) {
+  if (hit && !(byIdentitySnap && externalsStale(byIdentitySnap, resolver))) {
     computeStats.identity++;
     return hit;
   }
 
   for (let i = 0; i < snapshots.length; i++) {
     const prev = snapshots[i];
+    if (externalsStale(prev, resolver)) continue;
     if (prev.sheet === sheet) {
       computeStats.identity++;
       return prev.result;
     }
     const diff = diffSheets(prev.sheet, sheet);
     if (!diff || (diff.changed.length === 0 && diff.restyled.length === 0)) continue;
-    const next = incrementalCompute(prev, sheet, diff);
+    const next = incrementalCompute(prev, sheet, diff, resolver);
     if (next) {
       computeStats.incremental++;
       return remember(next);
@@ -393,7 +532,7 @@ export function computeSheet(sheet: SheetModel): ComputedSheet {
   }
 
   computeStats.full++;
-  return remember(fullCompute(sheet));
+  return remember(fullCompute(sheet, resolver));
 }
 
 /**
