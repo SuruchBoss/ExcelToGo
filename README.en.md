@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-788%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-801%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 788 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 801 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 788 passing tests could not catch
+### 🧪 What 801 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 788 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 801 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -242,7 +242,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 788-case Vitest suite |
+| `npm test` | Run the 801-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
@@ -765,6 +765,35 @@ asked to scroll itself into view — the position has to be worked out.
 > now lives on the scroller, with an effect that takes focus back **only from `<body>`**, never
 > from the formula bar or a panel that legitimately has it.
 
+**And then nothing on screen said any of it existed.** Every key above worked, and a run through
+the public build the way a first-time visitor would found no help button, no shortcut list, and no
+mention of `Ctrl+` anywhere outside the undo and redo tooltips. A feature only its author knows
+about is not a feature. `Ctrl`/`Cmd`+`/` or `F1` opens the sheet, as does the keyboard button at the
+end of the sheet-tab strip:
+
+<p align="center"><img src="public/screenshots/35-shortcuts.png" width="760"></p>
+
+Not `?`, which is what most web apps use: the grid starts editing a cell on any printable character,
+so `?` with the sheet focused — which is nearly always — would put a question mark in a cell instead
+of opening anything.
+
+**The list is a second copy of what the handlers do**, which is the shape of every stale claim this
+project has shipped. So a test reads the handler's source and compares: a key handled and not listed
+fails, a key listed and handled nowhere fails, and if the extraction itself ever stops matching, a
+third test catches that too — otherwise both of the others would pass by finding nothing. All three
+were confirmed by breaking the code on purpose and watching them go red.
+
+Two more things the gates could not have told me, both found by looking:
+
+- The button went in the toolbar first. At 1360px that row fitted its thirteen buttons with nothing
+  to spare, and one more pushed 42px past the edge, clipping the language toggle on every laptop
+  under 1440. It lives at the end of the sheet-tab strip instead, which had the room.
+- `npm run check:a11y` was green the whole time, because axe only ever saw `/app` as it loads and
+  this dialog does not exist until you press something. Run against it open, axe found two serious
+  violations inside it — headings at 2.62:1, and a scrolling list no keyboard could reach. Both are
+  fixed, and **the gate now opens the dialog and checks it too**, so the next one gets caught by CI
+  rather than by me remembering to look.
+
 ### 📱 Works on a phone
 
 Opening this on a phone used to show **not one cell of the spreadsheet** — the 320px side panel
@@ -1124,7 +1153,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (788 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (801 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1345,6 +1374,7 @@ src/
     aiHeuristic.ts           # Keyword-based formula suggestion logic (used with no ANTHROPIC_API_KEY), bilingual
     aiPrompt.ts              # The prompt and reply parsing, shared by the server route and the browser (BYOK)
     aiRange.ts               # Which cells a question is about, from where the cursor is (AutoSum) + the headers sent along
+    keyboardShortcuts.ts     # Every shortcut in one list; a test reads the handlers' source and fails if the two disagree
     byok.ts                  # The visitor's own API key: this tab only, masked when shown
     sheet.ts                 # The core sheet data model, whole-sheet computation, applying a formula by scope,
                               # inserting/deleting rows-columns
@@ -1783,7 +1813,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 788 cases across 47 files, via Vitest
+npm test      # 801 cases across 48 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1791,10 +1821,10 @@ they run fast and give high confidence. UI/interaction behavior was verified man
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
 
-> **788 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **801 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 788 passing tests could not catch](#-what-788-passing-tests-could-not-catch), repeatable
+> [What 801 passing tests could not catch](#-what-801-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -1886,17 +1916,21 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Accessibility checks in CI** — done: `npm run check:a11y` runs axe (WCAG 2.0/2.1/2.2 A+AA) on both
       pages at 390px and 1280px and checks for sideways scroll at five widths, as its own CI job. **Two
       widths is the whole point** — the previous audit ran at desktop width only and reported zero
-      violations while eight buttons below 640px had no accessible name. Still open: states you have to
-      open first (panels, menus, popovers) aren't checked.
+      violations while eight buttons below 640px had no accessible name. **It now also opens things before
+      checking them** — the shortcut dialog passed every load-time scan while containing two serious
+      violations, because it does not exist until you press a button; a state that cannot be opened fails
+      the gate rather than being skipped. Still open: the other panels, menus and popovers are not in that
+      list yet.
 - [x] **The grid speaks the ARIA grid pattern** — done: `role="grid"`, row/column counts and per-cell
       indices that survive virtualization, `scope` on both header directions, `aria-selected`, one
       roving tab stop, and focus that follows the cursor. Found by using the app with the keyboard,
       not by any gate — axe passed all four runs while it was still an undriveable table. Still open:
       an `aria-live` summary for things that happen away from the cursor (a sort, an import, a paste),
       and none of it is verified against a real screen reader.
-- [ ] **A keyboard-shortcut reference in the app** — the Excel keys (`Ctrl+↓`, `Ctrl+A`'s two-step,
-      `Home`/`End`, `Page` keys) all work and nothing on screen says they exist. A blind run found no
-      help button, no shortcut list, and no mention of `Ctrl+` anywhere outside the undo/redo tooltips.
+- [x] **A keyboard-shortcut reference in the app** — done (see [the Excel keyboard](#️-the-excel-keyboard)):
+      `Ctrl`/`Cmd`+`/` or `F1`, or the button at the end of the sheet-tab strip. The list is kept honest by
+      a test that reads the handlers' source, so a key cannot be added, renamed or removed without the sheet
+      failing. Still open: it covers the grid and the global handlers, not the keys inside individual panels.
 - [x] **Direct CSV import/export** — done (see ✨ Features): the delimiter is sniffed (`,`, `;`, tab), the BOM
       is stripped on the way in and written on the way out so Excel reads Thai, quoting follows RFC 4180, and
       the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.
