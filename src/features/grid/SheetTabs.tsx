@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
+import ShortcutsButton from "@/features/help/ShortcutsButton";
 import clsx from "clsx";
 
 export default function SheetTabs() {
@@ -75,6 +76,7 @@ export default function SheetTabs() {
       >
         <Plus size={16} />
       </button>
+      <ShortcutsButton />
     </div>
   );
 }

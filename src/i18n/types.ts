@@ -367,6 +367,17 @@ export interface Messages {
     clearFilter: string;
     ok: string;
   };
+  shortcuts: {
+    title: string;
+    subtitle: string;
+    /** The toolbar button, and the dialog's own row telling you how you got here. */
+    open: string;
+    close: string;
+    /** Not a key: the wording for "start typing and the cell opens". */
+    anyKey: string;
+    groups: Record<string, string>;
+    items: Record<string, string>;
+  };
   grid: {
     filterColumnTitle: string;
     insertRowAbove: string;
