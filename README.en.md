@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-823%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-900%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 823 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 900 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 823 passing tests could not catch
+### 🧪 What 900 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 823 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 900 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -148,6 +148,9 @@ tests say, and nothing whatever about whether that is the right thing.
   - [Cell comments](#-cell-comments)
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
   - [The Excel keyboard](#️-the-excel-keyboard)
+  - [Formulas across sheets](#-formulas-across-sheets)
+  - [The fill handle](#️-the-fill-handle)
+  - [Find and replace](#-find-and-replace)
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Merging cells](#-merging-cells)
@@ -242,7 +245,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 823-case Vitest suite |
+| `npm test` | Run the 900-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
@@ -794,6 +797,103 @@ Two more things the gates could not have told me, both found by looking:
   fixed, and **the gate now opens the dialog and checks it too**, so the next one gets caught by CI
   rather than by me remembering to look.
 
+### 🔗 Formulas across sheets
+
+`=Sheet2!A1` used to be `#SYNTAX!`. The app has had tabs, and a pivot that reads its source sheet,
+since early on — but every sheet was an island as far as a formula was concerned, and a real `.xlsx`
+with a cross-sheet formula in it imported as an error.
+
+```
+=ยอดขาย!A1 + ยอดขาย!A2          unquoted Thai names
+='ยอดขาย Q1'!A1:B5              quoted, for a name with a space
+=SUM(Sheet2!A1:A10)             a range, matched however either side capitalised it
+```
+
+The reference travels the whole way — tokenizer, AST, parser, evaluator, dependency graph,
+structural shifts and rename — and three parts of that were harder than they look:
+
+**Order in the tokenizer.** `Sheet2` on its own matches the identifier rule and would be read as a
+function name; `A1` in `A1!B2` matches the cell rule. Both would be wrong and **neither would fail
+loudly** — the formula would simply mean something else. The qualified form is matched first and
+emitted as one token, prefix included.
+
+**Staleness, where a test found the bug.** A sheet whose own cells are untouched is still out of
+date when a sheet it reads has moved, and the identity cache is exactly where that goes unnoticed —
+the object is the same. The first version recorded which foreign *sheet* it had read, which catches
+one level and stops: with C reading B and B reading A, editing A leaves B's source untouched and C
+hands back a stale number. It now records the foreign *computed result*, which is a fresh object
+whenever it was really recomputed and whose retrieval re-runs that sheet's own staleness check
+first — one comparison carries the whole chain.
+
+**Cycles that span sheets** end in `#CIRCULAR!` rather than an infinite descent. Within a sheet the
+evaluator already catches re-entry per cell; Sheet1 → Sheet2 → Sheet1 recurses a level above that,
+so the resolver holds the set of sheets currently being computed.
+
+Renaming a tab rewrites the formulas that named it, quoting or unquoting as the new name needs.
+Inserting a row in one sheet moves `Sheet2!A5` everywhere and leaves every bare `A5` alone, because
+those name the sheet they are written on. A sheet that does not exist is `#REF!`, and comes back to
+life if someone creates one by that name.
+
+### 🖱️ The fill handle
+
+The first thing anyone does to a spreadsheet is drag the corner. This app had the corner grip —
+touch uses it to pull a selection out — and nothing behind it on a mouse.
+
+<p align="center"><img src="public/screenshots/37-fill-handle.png" width="820"></p>
+
+```
+5, 10        → 15, 20, 25        a constant gap
+10, 8        → 6, 4, 2           downwards
+1, 4, 9      → 1, 4, 9           repeated, not extrapolated
+0.1, 0.2     → 0.3, 0.4          not 0.30000000000000004
+จ, อ         → พ, พฤ, ศ
+พ.ย., ธ.ค.   → ม.ค., ก.พ.        wrapping the year
+Q3           → Q4, Q1, Q2
+Item 08      → Item 09, Item 10  keeping the padding
+=A1*2        → =A2*2, =A3*2      moved, never extended
+```
+
+Thai lists come first in that table because this app does. `จ อ พ` is a week to the people who will
+use it, and continuing `Mon Tue` but not `จ อ` would be building for somebody else.
+
+**Two deliberate refusals.** A run whose gap is not constant is repeated rather than extrapolated —
+Excel fits a trend line to 1, 4, 9, and a wrong guess in a spreadsheet is a number nobody questions.
+And a drag that wanders diagonally picks one axis, because filling both would overwrite a rectangle
+nobody asked for.
+
+`Ctrl+D` and `Ctrl+R` do the same thing from the keyboard, taking the selection's first row or
+column as the source — and they are the only way to reach any of this without a pointer, which
+matters after the accessibility work. The shortcut sheet's drift test caught them the moment they
+were added, which is what it is for.
+
+The grip is split by pointer type rather than shown to everyone: a finger cannot sweep a range any
+other way, so touch keeps it for selecting. And the fill commits on release rather than filling
+live, which matters for undo as much as for nerves — one drag is one step back, not one per cell.
+
+### 🔎 Find and replace
+
+`Ctrl+F` is reflex, and it did nothing here — which became *more* conspicuous, not less, the moment
+a shortcut sheet went in advertising "the same keys as Excel".
+
+<p align="center"><img src="public/screenshots/36-find-replace.png" width="820"></p>
+
+It searches the **raw text, not the displayed result**, and the panel says so rather than leaving
+you to find out. That is the decision everything else follows from: what you are looking for in a
+spreadsheet is usually what you typed, and what you mean to replace is always what you typed —
+rewriting a formula's result would mean writing a number over the formula that produced it. So
+`=SUM(B1:B9)` is found by searching `SUM`. The cost, stated in the panel, is that searching `1250`
+does not find a cell showing `1,250` that a formula produced.
+
+Match case, whole cell, and all sheets. `Enter` and `Shift+Enter` step forwards and back, wrapping,
+and Find Next walks the sheet in reading order rather than nearest-first — pressing it ten times
+should go where your eye would, and a list that reorders itself around the cursor makes the tenth
+press a surprise. **Replace all is one undo step**, because a hundred entries in the history for one
+button press means pressing Ctrl+Z a hundred times to find out what it did.
+
+It deliberately preempts the browser's own find bar, which searches the DOM — and the DOM holds the
+forty rows the grid has decided to render, so on a five-thousand-row sheet it would report "not
+found" for text that is plainly there.
+
 ### 📱 Works on a phone
 
 Opening this on a phone used to show **not one cell of the spreadsheet** — the 320px side panel
@@ -1153,7 +1253,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (823 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (900 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1376,6 +1476,9 @@ src/
     aiRange.ts               # Which cells a question is about, from where the cursor is (AutoSum) + the headers sent along
     keyboardShortcuts.ts     # Every shortcut in one list; a test reads the handlers' source and fails if the two disagree
     sheetFilter.ts           # Which rows a filter hides — shared by the grid and by the spoken row count
+    fillSeries.ts            # What dragging the corner continues into — numbers, Thai days and months, quarters, formulas
+    sheetSearch.ts           # Find and replace over the raw text rather than the displayed result
+    workbookRefs.ts          # The formula rewrites that are not a fact about one sheet: cross-sheet shifts, renames
     byok.ts                  # The visitor's own API key: this tab only, masked when shown
     sheet.ts                 # The core sheet data model, whole-sheet computation, applying a formula by scope,
                               # inserting/deleting rows-columns
@@ -1862,7 +1965,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 823 cases across 50 files, via Vitest
+npm test      # 900 cases across 54 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1870,10 +1973,10 @@ they run fast and give high confidence. UI/interaction behavior was verified man
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
 
-> **823 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **900 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 823 passing tests could not catch](#-what-823-passing-tests-could-not-catch), repeatable
+> [What 900 passing tests could not catch](#-what-900-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -1946,7 +2049,16 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **A ceiling on `/api/ai/formula`** — done: 20 calls a minute per address, refused with `429`
       and a `Retry-After`. Still open: the counters are per process, so this guards against casual
       abuse rather than acting as a billing control across instances
-- [ ] **Merged cells** and freezing beyond the already-sticky header row/column
+- [x] **Formulas across sheets** — done (see [formulas across sheets](#-formulas-across-sheets)):
+      `=Sheet2!A1`, Thai names unquoted, cross-sheet staleness that follows a chain rather than one
+      link, and cycles that span sheets. Still open: `.xlsx` export writes computed values, so a
+      round trip through this app loses the formula itself — cross-sheet or otherwise.
+- [x] **The fill handle** — done (see [the fill handle](#️-the-fill-handle)): numbers, Thai days and
+      months, quarters, `Item 08`, and formulas whose references move. Still open: dragging *inwards*
+      to clear, and Excel's right-drag menu of fill options.
+- [x] **Find and replace** — done (see [find and replace](#-find-and-replace)). Still open: searching
+      the displayed value as well as the raw text, and regular expressions.
+- [ ] **Freezing panes** beyond the already-sticky header row/column
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
 - [x] **Cell comments** — done (see ✨ Features): a note per cell with an amber corner, following
