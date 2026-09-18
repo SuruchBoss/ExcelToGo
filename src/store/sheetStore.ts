@@ -48,6 +48,7 @@ import { autoSumRange, headerRow } from "@/lib/aiRange";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
 import { renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
 import { fillBlock, fillTargetFor, fillWithin, type FillTarget } from "@/lib/fillSeries";
+import { findMatches, replaceIn, type Match, type SearchOptions } from "@/lib/sheetSearch";
 import type { Axis } from "@/lib/formulaEngine/structuralShift";
 import { FormulaValue } from "@/lib/formulaEngine/types";
 import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
@@ -224,6 +225,12 @@ interface SheetState {
   fillFrom: (row: number, col: number) => void;
   /** Excel's Ctrl+D / Ctrl+R: the selection's first line fills the rest of it. */
   fillWithinSelection: (axis: "down" | "right") => void;
+  /** Moves the cursor onto a match, switching sheets if it is on another one. */
+  goToMatch: (match: Match) => void;
+  /** Rewrites one cell. Returns whether it changed, so the caller can count. */
+  replaceOne: (match: Match, needle: string, replacement: string, options: SearchOptions) => boolean;
+  /** Rewrites every match in one undo step, and answers how many cells changed. */
+  replaceAll: (needle: string, replacement: string, options: SearchOptions) => number;
   copySelection: () => void;
   cutSelection: () => void;
   pasteAtSelection: (externalText?: string) => void;
@@ -679,6 +686,67 @@ export const useSheetStore = create<SheetState>()(
             axis
           );
           if (split) applyFill(set, get, split.source, split.target);
+        },
+
+        goToMatch: (match) =>
+          set((s) => ({
+            activeSheetId: match.sheetId,
+            selectionBySheetId: {
+              ...s.selectionBySheetId,
+              [match.sheetId]: singleCellSelection(match.row, match.col),
+            },
+          })),
+
+        replaceOne: (match, needle, replacement, options) => {
+          const s = get();
+          const tab = s.sheets.find((t) => t.id === match.sheetId);
+          if (!tab) return false;
+          const raw = tab.sheet.cells[match.row]?.[match.col] ?? "";
+          const next = replaceIn(raw, needle, replacement, options);
+          if (next === raw) return false;
+          if (isTemplateLocked(tab.sheet.template, match.row, match.col)) return false;
+          set({
+            sheets: s.sheets.map((t) =>
+              t.id === match.sheetId ? { ...t, sheet: setCellRaw(t.sheet, match.row, match.col, next) } : t
+            ),
+            ...say(getMessages().live.replacedOne(rangeLabel(singleCellSelection(match.row, match.col)))),
+          });
+          return true;
+        },
+
+        /**
+         * One pass, one undo step.
+         *
+         * Replacing cell by cell through `replaceOne` would put a hundred entries in the undo
+         * history for one press of a button labelled "replace all" — and the person who pressed it
+         * by mistake would have to press Ctrl+Z a hundred times to find out.
+         */
+        replaceAll: (needle, replacement, options) => {
+          const s = get();
+          const searchable = s.sheets.map((t) => ({ id: t.id, name: t.name, sheet: t.sheet }));
+          const scope = options.allSheets ? searchable : searchable.filter((t) => t.id === s.activeSheetId);
+          const matches = findMatches(scope, needle, options);
+          if (matches.length === 0) return 0;
+
+          const edited = new Map<string, SheetModel>();
+          let changed = 0;
+          for (const m of matches) {
+            const tab = s.sheets.find((t) => t.id === m.sheetId);
+            if (!tab) continue;
+            const current = edited.get(m.sheetId) ?? tab.sheet;
+            if (isTemplateLocked(current.template, m.row, m.col)) continue;
+            const raw = current.cells[m.row]?.[m.col] ?? "";
+            const next = replaceIn(raw, needle, replacement, options);
+            if (next === raw) continue;
+            edited.set(m.sheetId, setCellRaw(current, m.row, m.col, next));
+            changed++;
+          }
+          if (changed === 0) return 0;
+          set({
+            sheets: s.sheets.map((t) => (edited.has(t.id) ? { ...t, sheet: edited.get(t.id)! } : t)),
+            ...say(getMessages().live.replacedAll(changed)),
+          });
+          return changed;
         },
 
         clearSelection: () =>

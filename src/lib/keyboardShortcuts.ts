@@ -96,6 +96,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { id: "escape", combos: [["Escape"]], handles: ["Escape"] },
       { id: "saveComment", combos: [["Mod", "Enter"]], handles: [] },
+      { id: "find", combos: [["Mod", "F"], ["Mod", "H"]], handles: [] },
       { id: "help", combos: [["Mod", "/"], ["F1"]], handles: [] },
     ],
   },

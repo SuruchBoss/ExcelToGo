@@ -19,6 +19,8 @@ import SampleNotice from "@/features/grid/SampleNotice";
 import PivotNotice from "@/features/grid/PivotNotice";
 import DataPicker from "@/features/data/DataPicker";
 import LiveAnnouncer from "@/features/a11y/LiveAnnouncer";
+import FindPanel from "@/features/search/FindPanel";
+import { useFindDialog } from "@/features/search/useFindDialog";
 import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
@@ -45,6 +47,7 @@ export default function Home() {
     }
   }, []);
 
+  const find = useFindDialog();
   const sidebarMode = useSheetStore((s) => s.sidebarMode);
   const hasPending = useSheetStore((s) => s.pending !== null);
   const setSidebarMode = useSheetStore((s) => s.setSidebarMode);
@@ -56,6 +59,7 @@ export default function Home() {
     <div className="flex h-screen flex-col bg-zinc-50">
       <SkipLink />
       <LiveAnnouncer />
+      {find.open && <FindPanel onClose={find.close} />}
       <Toolbar />
       <FormatBar />
       <FormulaBar />

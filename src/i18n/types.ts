@@ -380,6 +380,8 @@ export interface Messages {
     pasted: (rows: number, cols: number, at: string) => string;
     cleared: (range: string) => string;
     filled: (cells: number, range: string) => string;
+    replacedOne: (at: string) => string;
+    replacedAll: (cells: number) => string;
     copied: (range: string) => string;
     cut: (range: string) => string;
     rowAppended: (total: number) => string;
@@ -400,6 +402,26 @@ export interface Messages {
     pivotRefreshed: (rows: number, cols: number) => string;
     undone: string;
     redone: string;
+  };
+  find: {
+    title: string;
+    close: string;
+    searchPlaceholder: string;
+    replacePlaceholder: string;
+    replace: string;
+    replaceAll: string;
+    matchCase: string;
+    wholeCell: string;
+    allSheets: string;
+    next: string;
+    previous: string;
+    /** Says plainly that this searches what was typed, not what is displayed. */
+    hint: string;
+    noMatches: string;
+    /** Before Find Next has been pressed there is no "current" match, so the index is left out
+     *  entirely — "0 of 3" reads like a bug. */
+    found: (total: number) => string;
+    count: (index: number, total: number, at: string) => string;
   };
   shortcuts: {
     title: string;
