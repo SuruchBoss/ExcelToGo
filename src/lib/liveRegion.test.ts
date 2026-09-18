@@ -86,4 +86,63 @@ describe("what the messages read like", () => {
   it("gives a paste its shape and its landing place", () => {
     expect(MESSAGES.en.live.pasted(3, 2, "A1")).toBe("Pasted 3 rows by 2 columns at A1");
   });
+
+  it("names the kind of chart and where it was drawn from", () => {
+    expect(MESSAGES.en.live.chartAdded("Bar", "A1:C10")).toBe("Added a bar chart from A1:C10");
+    expect(MESSAGES.th.live.chartAdded("แท่ง", "A1:C10")).toContain("A1:C10");
+  });
+
+  it("says how many charts are left, and reads right when none are", () => {
+    // "0 left" is a sentence nobody says out loud; the zero case gets its own wording.
+    expect(MESSAGES.en.live.chartRemoved(2)).toBe("Chart deleted, 2 left");
+    expect(MESSAGES.en.live.chartRemoved(0)).toBe("Chart deleted, none left on this sheet");
+    expect(MESSAGES.th.live.chartRemoved(0)).not.toContain("0");
+  });
+
+  it("gives a new pivot its name and its size, and says the app moved to it", () => {
+    // Building a pivot switches the active sheet — the largest jump the app makes without the
+    // user navigating, and the one most worth hearing about.
+    expect(MESSAGES.en.live.pivotBuilt("Pivot 1", 12, 4)).toBe(
+      "Built pivot sheet “Pivot 1”, 12 rows by 4 columns, and opened it"
+    );
+    expect(MESSAGES.th.live.pivotBuilt("สรุปข้อมูล 1", 12, 4)).toContain("12");
+  });
+
+  it("separates refreshing a pivot from building one", () => {
+    expect(MESSAGES.en.live.pivotRefreshed(12, 4)).not.toContain("Built");
+    expect(MESSAGES.en.live.pivotRefreshed(12, 4)).toContain("refreshed");
+  });
+});
+
+describe("what is deliberately left silent", () => {
+  /**
+   * Each of these is a decision, not a gap, and each is here so that "it says nothing" cannot be
+   * mistaken later for "nobody got round to it".
+   */
+  it("has no message for the pie-series picker, which is a native select", () => {
+    // A `<select>` announces its own `<option>` when it changes; a live region on top of that is
+    // the same double-talk that keeps cursor movement out of the announcer.
+    expect(Object.keys(MESSAGES.th.live)).not.toContain("pieSeriesChanged");
+    expect(STORE).toContain("Deliberately says nothing");
+  });
+
+  it("never announces from the live-data actions, which run on a timer", () => {
+    // A region that announces itself every few seconds is not an accessibility feature, it is a
+    // fault. Asserted against the action bodies rather than against key names, because a manual
+    // pivot refresh *is* announced and a name-based rule cannot tell the two apart — the first
+    // attempt at this test matched `pivotRefreshed` and failed on its own overreach.
+    for (const action of ["applyLiveData", "addLiveBlock", "replaceLiveBlock"]) {
+      // Eight spaces: the implementations sit at that indent, the interface declarations at two.
+      // Matching the name alone finds the declaration first and runs on for ten thousand
+      // characters, straight past the `say` helper — which is how the first version of this test
+      // "caught" an announcement that was never there.
+      const start = STORE.indexOf(`\n        ${action}: (`);
+      expect(start, `${action} implementation not found — this extraction has gone stale`).toBeGreaterThan(-1);
+      const rest = STORE.slice(start + 1);
+      const nextAction = rest.search(/\n {8}(?:\/\*\*|\/\/ |[a-zA-Z]\w*: )/);
+      const body = nextAction === -1 ? rest : rest.slice(0, nextAction);
+      expect(body.length, `${action} body came out empty`).toBeGreaterThan(40);
+      expect(body.includes("say("), `${action} announces, and it runs on a timer`).toBe(false);
+    }
+  });
 });

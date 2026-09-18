@@ -271,12 +271,27 @@ interface SheetState {
  * Returns null when the range can't produce a pivot: the header row is the range's first row, so
  * there has to be at least one row of data under it, and grouping has to yield something.
  */
+/**
+ * The sheet a pivot produces, *and how big the pivot on it actually is*.
+ *
+ * The size is returned rather than read back off the sheet because the sheet is a blank 30×10
+ * canvas with the result written into its corner — `out.rows` is the canvas, not the answer. Said
+ * out loud that difference is the whole message: a four-column summary announced as "30 rows by 10
+ * columns" is worse than saying nothing, because it sounds like a fact.
+ */
+interface RenderedPivot {
+  sheet: SheetModel;
+  /** Header, body and the closing total — the block a reader would see. */
+  rows: number;
+  cols: number;
+}
+
 function renderPivotSheet(
   sourceSheet: SheetModel,
   range: PivotSource["range"],
   config: PivotConfig,
   sourceSheetId: string
-): SheetModel | null {
+): RenderedPivot | null {
   if (range.endRow <= range.startRow) return null;
   const computed = computeSheet(sourceSheet);
 
@@ -311,7 +326,7 @@ function renderPivotSheet(
   }
 
   out.pivot = { sheetId: sourceSheetId, range, config, hash: hashValues(rows) };
-  return out;
+  return { sheet: out, rows: lines.length, cols: result.header.length };
 }
 
 function activeTab(s: SheetState): SheetTab {
@@ -723,8 +738,15 @@ export const useSheetStore = create<SheetState>()(
           if (!out) return false;
 
           const m = getMessages();
-          const tab = newTab(nextPivotName(s.sheets, m.pivot.sheetName), out);
-          set({ sheets: [...s.sheets, tab], activeSheetId: tab.id, sidebarMode: "none" });
+          const tab = newTab(nextPivotName(s.sheets, m.pivot.sheetName), out.sheet);
+          set({
+            sheets: [...s.sheets, tab],
+            activeSheetId: tab.id,
+            sidebarMode: "none",
+            // The biggest jump the app makes: a sheet that did not exist a moment ago, and the app
+            // is now looking at it instead of the one you were on.
+            ...say(m.live.pivotBuilt(tab.name, out.rows, out.cols)),
+          });
           return true;
         },
 
@@ -745,13 +767,18 @@ export const useSheetStore = create<SheetState>()(
 
           const out = renderPivotSheet(source.sheet, spec.range, spec.config, spec.sheetId);
           if (!out) return false;
-          set({ sheets: s.sheets.map((t) => (t.id === target.id ? { ...t, sheet: out } : t)) });
+          set({
+            sheets: s.sheets.map((t) => (t.id === target.id ? { ...t, sheet: out.sheet } : t)),
+            ...say(getMessages().live.pivotRefreshed(out.rows, out.cols)),
+          });
           return true;
         },
 
         // A chart reads whatever is selected when it's made, like Excel's "insert chart".
         addChart: (kind) =>
-          set((s) => ({
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            return {
             sheets: updateActiveSheet(s, (sheet, selection) => {
               const chart: ChartSpec = {
                 id: `chart-${Date.now().toString(36)}-${idCounter++}`,
@@ -766,15 +793,25 @@ export const useSheetStore = create<SheetState>()(
               };
               return { ...cloneSheet(sheet), charts: [...(sheet.charts ?? []), chart] };
             }),
-          })),
+            // A chart is drawn on top of the grid rather than in it, so nothing a screen reader
+            // walks would ever mention that one had appeared.
+            ...say(getMessages().live.chartAdded(getMessages().charts.kinds[kind], rangeLabel(sel))),
+            };
+          }),
 
         removeChart: (id) =>
-          set((s) => ({
-            sheets: updateActiveSheet(s, (sheet) => {
-              const kept = (sheet.charts ?? []).filter((c) => c.id !== id);
-              return { ...cloneSheet(sheet), charts: kept.length > 0 ? kept : undefined };
-            }),
-          })),
+          set((s) => {
+            const remaining = (activeTab(s).sheet.charts ?? []).filter((c) => c.id !== id).length;
+            return {
+              sheets: updateActiveSheet(s, (sheet) => {
+                const kept = (sheet.charts ?? []).filter((c) => c.id !== id);
+                return { ...cloneSheet(sheet), charts: kept.length > 0 ? kept : undefined };
+              }),
+              // The button that did this vanishes with the chart, so without this the press lands
+              // in silence and focus falls to nowhere in particular.
+              ...say(getMessages().live.chartRemoved(remaining)),
+            };
+          }),
 
         setChartKind: (id, kind) =>
           set((s) => ({
@@ -782,6 +819,7 @@ export const useSheetStore = create<SheetState>()(
               ...cloneSheet(sheet),
               charts: (sheet.charts ?? []).map((c) => (c.id === id ? { ...c, kind } : c)),
             })),
+            ...say(getMessages().live.chartKindChanged(getMessages().charts.kinds[kind])),
           })),
 
         // Written once when a drag ends, never while it runs: every set() here is an undo step,
@@ -795,6 +833,11 @@ export const useSheetStore = create<SheetState>()(
               // as a second, stale answer to the same question.
               charts: (sheet.charts ?? []).map((c) => (c.id === id ? { ...c, anchor, frame: undefined } : c)),
             })),
+            // Written once when the drag ends, so this says the result rather than narrating the
+            // journey. Dragging is a pointer gesture, but a screen reader and a mouse are not
+            // mutually exclusive — someone who can see enough to drag still benefits from hearing
+            // where it landed.
+            ...say(getMessages().live.chartMoved(cellRef(anchor.row, anchor.col))),
           })),
 
         setCellComment: (row, col, text) =>
@@ -805,6 +848,15 @@ export const useSheetStore = create<SheetState>()(
             })),
           })),
 
+        /**
+         * Deliberately says nothing.
+         *
+         * Every other chart action announces itself, because a chart is drawn over the grid and
+         * nothing a screen reader walks would otherwise mention it. This one is driven by a native
+         * `<select>` whose `<option>`s carry the series names, and a select announces its own
+         * choice the moment it changes. A live region on top of that is the same double-talk that
+         * keeps cursor movement out of the announcer.
+         */
         setPieSeries: (id, seriesIndex) =>
           set((s) => ({
             sheets: updateActiveSheet(s, (sheet) => ({

@@ -391,6 +391,12 @@ export interface Messages {
     unmerged: (range: string) => string;
     formulaInserted: (formula: string, at: string) => string;
     imported: (sheets: number) => string;
+    chartAdded: (kind: string, range: string) => string;
+    chartRemoved: (remaining: number) => string;
+    chartKindChanged: (kind: string) => string;
+    chartMoved: (at: string) => string;
+    pivotBuilt: (name: string, rows: number, cols: number) => string;
+    pivotRefreshed: (rows: number, cols: number) => string;
     undone: string;
     redone: string;
   };

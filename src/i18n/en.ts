@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 817 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 823 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -204,7 +204,7 @@ export const en: Messages = {
     stats: [
       { value: "32", label: "ready-made formulas" },
       { value: "59", label: "engine functions" },
-      { value: "817", label: "automated tests" },
+      { value: "823", label: "automated tests" },
       { value: "112", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -452,6 +452,13 @@ export const en: Messages = {
     unmerged: (range) => `Split the merged cells in ${range}`,
     formulaInserted: (formula, at) => `Inserted ${formula} at ${at}`,
     imported: (sheets) => `File imported, ${sheets} sheets`,
+    chartAdded: (kind, range) => `Added a ${kind.toLowerCase()} chart from ${range}`,
+    chartRemoved: (remaining) =>
+      remaining === 0 ? "Chart deleted, none left on this sheet" : `Chart deleted, ${remaining} left`,
+    chartKindChanged: (kind) => `Changed to a ${kind.toLowerCase()} chart`,
+    chartMoved: (at) => `Chart moved to ${at}`,
+    pivotBuilt: (name, rows, cols) => `Built pivot sheet “${name}”, ${rows} rows by ${cols} columns, and opened it`,
+    pivotRefreshed: (rows, cols) => `Pivot refreshed from its source, ${rows} rows by ${cols} columns`,
     undone: "Undone",
     redone: "Redone",
   },
