@@ -120,22 +120,6 @@ export default function SpreadsheetGrid() {
     [virtualized, sheet.rows, sheet.merges, offsets, viewport.top, viewport.height]
   );
 
-  /**
-   * Keep the keyboard alive when the rows underneath it are recycled.
-   *
-   * A jump scrolls the grid, the scroll listener re-measures a frame later, and the `<td>` that had
-   * focus is unmounted — focus falls to `<body>` and the next keystroke is the browser's own
-   * scrolling rather than the grid's. So this watches the *rendered window*, not the cursor: the
-   * unmount happens after the cursor has already finished moving, which is why keying it on the
-   * selection missed it entirely.
-   *
-   * Only from `<body>`, never from wherever focus legitimately is — the formula bar, a panel, a
-   * dialog. Stealing focus back from those would be a worse bug than the one being fixed.
-   */
-  useLayoutEffect(() => {
-    const container = scrollRef.current;
-    if (container && document.activeElement === document.body) container.focus({ preventScroll: true });
-  }, [window_.start, window_.end]);
 
   const visibleRows = useMemo(() => {
     const out: number[] = [];
@@ -225,6 +209,41 @@ export default function SpreadsheetGrid() {
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [editing?.row, editing?.col]);
+
+  /**
+   * Put the browser's focus where the cursor is.
+   *
+   * Two jobs in one effect, because they are the same move.
+   *
+   * The first is keeping the keyboard alive when the rows underneath it are recycled: a jump
+   * scrolls the grid, the scroll listener re-measures a frame later, and the `<td>` that had focus
+   * is unmounted — focus falls to `<body>` and the next keystroke is the browser's own scrolling
+   * rather than the grid's. That is why the window is in the dependency list as well as the
+   * cursor: the unmount happens after the cursor has finished moving.
+   *
+   * The second is that a screen reader announces a cell when focus lands on it, and nothing else.
+   * Before this, selection and focus were separate things — Ctrl+↓ moved the cursor from A1 to A10
+   * while the browser's focus stayed on A1, so the sheet moved under a blind user in total silence.
+   * The selection ring was the only report that anything had happened.
+   *
+   * It follows the *moving* corner, not the anchor. Shift+Down leaves the anchor exactly where it
+   * was, so keying this on the anchor would grow the selection in the same silence the bug above
+   * was about. For a single cell the two corners are the same cell and nothing changes.
+   *
+   * Never from focus that is legitimately elsewhere — the formula bar, a panel, a dialog, or the
+   * cell editor. Stealing it back from those would be a worse bug than either of the ones fixed.
+   */
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || editing) return;
+    const active = document.activeElement;
+    const ours = active === document.body || active === container || (active instanceof Node && container.contains(active));
+    if (!ours) return;
+    const cell = container.querySelector<HTMLElement>(`td[data-row="${focusRow}"][data-col="${focusCol}"]`);
+    // No cell means the cursor is on a row scrolled out of the window, hidden by a filter, or
+    // swallowed by a merge. The scroller still holds the keyboard, so the keys keep working.
+    (cell ?? container).focus({ preventScroll: true });
+  }, [focusRow, focusCol, window_.start, window_.end, editing]);
 
   // Placing a block wide enough to run past the right edge used to leave the user staring at its
   // first two columns with no sign the rest existed. Scroll just far enough to show the whole
@@ -459,16 +478,45 @@ export default function SpreadsheetGrid() {
       tabIndex={-1}
       onKeyDown={handleKeyDown}
     >
-      <table className="border-separate border-spacing-0 select-none" style={{ tableLayout: "fixed" }}>
+      {/*
+        `role="grid"`, and the row/column counts that go with it.
+        ------------------------------------------------------------------------------------------
+        The axe gate passed this grid at four viewport/page combinations while it was, to a screen
+        reader, a plain data table you could not drive: no grid role, no selected state, headers
+        with no `scope`, and every cell tabbable so Tab walked one cell at a time through ten
+        thousand of them. axe was right to pass — a `<table>` with `<th>` *is* a valid table. It
+        just was not what this is.
+
+        The counts are declared rather than implied because the sheet is windowed: about forty rows
+        of five thousand are in the DOM at any moment, so `aria-rowcount` and the per-row
+        `aria-rowindex` are the only way the answer to "row 2,003 of 5,000" exists at all. The
+        header row is index 1, so data row `r` is `r + 2`; likewise the row-number column is
+        column 1, so data column `c` is `c + 2`.
+      */}
+      <table
+        role="grid"
+        aria-label={t.grid.label}
+        aria-multiselectable
+        aria-rowcount={sheet.rows + 1}
+        aria-colcount={sheet.cols + 1}
+        className="border-separate border-spacing-0 select-none"
+        style={{ tableLayout: "fixed" }}
+      >
         <thead>
-          <tr>
+          <tr aria-rowindex={1}>
             <th
+              scope="col"
+              aria-colindex={1}
               className="sticky top-0 left-0 z-30 border-b border-r border-zinc-200 bg-zinc-100"
               style={{ width: ROW_HEADER_WIDTH, minWidth: ROW_HEADER_WIDTH, height: ROW_HEIGHT }}
-            />
+            >
+              <span className="sr-only">{t.grid.cornerHeader}</span>
+            </th>
             {Array.from({ length: sheet.cols }, (_, c) => (
               <th
                 key={c}
+                scope="col"
+                aria-colindex={c + 2}
                 onClick={() => selectWholeColumn(c)}
                 onContextMenu={(e) => openHeaderMenu(e, "col", c)}
                 className={clsx(
@@ -518,8 +566,10 @@ export default function SpreadsheetGrid() {
             </tr>
           )}
           {visibleRows.map((r) => (
-            <tr key={r}>
+            <tr key={r} aria-rowindex={r + 2}>
               <th
+                scope="row"
+                aria-colindex={1}
                 onClick={() => selectWholeRow(r)}
                 onContextMenu={(e) => openHeaderMenu(e, "row", r)}
                 className={clsx(
@@ -548,7 +598,14 @@ export default function SpreadsheetGrid() {
                 return (
                   <td
                     key={c}
-                    tabIndex={0}
+                    role="gridcell"
+                    aria-selected={isInSelection(r, c)}
+                    aria-colindex={c + 2}
+                    aria-readonly={locked || undefined}
+                    // One tab stop for the whole grid, not one per cell — the roving tabindex the
+                    // grid pattern calls for. Every cell was tabbable before, which on the sample
+                    // sheet alone meant walking three hundred Tab presses to reach the sheet tabs.
+                    tabIndex={isActive(r, c) ? 0 : -1}
                     data-row={r}
                     data-col={c}
                     rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
