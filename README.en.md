@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-801%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-817%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 801 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 817 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 801 passing tests could not catch
+### 🧪 What 817 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 801 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 817 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -242,7 +242,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 801-case Vitest suite |
+| `npm test` | Run the 817-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
@@ -1153,7 +1153,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (801 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (817 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1375,6 +1375,7 @@ src/
     aiPrompt.ts              # The prompt and reply parsing, shared by the server route and the browser (BYOK)
     aiRange.ts               # Which cells a question is about, from where the cursor is (AutoSum) + the headers sent along
     keyboardShortcuts.ts     # Every shortcut in one list; a test reads the handlers' source and fails if the two disagree
+    sheetFilter.ts           # Which rows a filter hides — shared by the grid and by the spoken row count
     byok.ts                  # The visitor's own API key: this tab only, masked when shown
     sheet.ts                 # The core sheet data model, whole-sheet computation, applying a formula by scope,
                               # inserting/deleting rows-columns
@@ -1803,6 +1804,34 @@ directions, `aria-selected` tracking the range, one roving tab stop instead of o
 focus that follows the cursor — including the *moving* corner when Shift extends a selection, since
 the anchor staying put is how a growing selection goes unannounced.
 
+**Focus only ever announces where the cursor is, though.** Sort a column and the rows reorder under a
+cursor that has not moved; paste and forty cells fill in below the fold; filter and half the sheet
+disappears. Every one of those was silence. A polite live region now says what happened, with the
+numbers that make it useful:
+
+| You do this | It says |
+|---|---|
+| Sort column C | `Sorted column C ascending` |
+| Filter column B | `Filtered column B: 4 of 9 rows shown` |
+| Paste a block | `Pasted 3 rows by 2 columns at A1` |
+| Select A2:B3 and press Delete | `Cleared A2:B3` |
+| Merge, then split | `Merged A17:B17 into one cell` · `Split the merged cells in A17:B17` |
+| Import a file | `File imported, 3 sheets` |
+| `Ctrl+Z` | `Undone` |
+
+Two regions, alternating on a sequence number, because a screen reader announces a live region when
+its text **changes** — sorting the same column twice writes identical words, and one node would say
+it once. Measured: the same sort three times in a row moves the text B → A → B.
+
+Moving the cursor deliberately says nothing. Focus already announces the cell, and a grid that
+repeats itself is worse than one that stays quiet. Verified the same way — arrows, `Ctrl+↓`,
+`PageDown` and `Shift+↓` in sequence leave both regions untouched.
+
+Live data is left out on purpose: it re-polls every few seconds, and a region that announces itself
+every five seconds is not an accessibility feature, it is a fault. Charts and pivots are not covered
+yet either, and **none of this has been heard by a real screen reader** — what is verified is that
+the right text reaches the right region at the right moment.
+
 **Performance is not 90, and the only thing Lighthouse flags is `unused-javascript`, ~59KB (~300ms)** —
 mostly Next's own framework chunks that aren't needed for the first frame. Going further means cutting into
 the framework bundle itself, which isn't a trade worth making here. Written down rather than rounded up.
@@ -1813,7 +1842,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 801 cases across 48 files, via Vitest
+npm test      # 817 cases across 50 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1821,10 +1850,10 @@ they run fast and give high confidence. UI/interaction behavior was verified man
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
 
-> **801 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **817 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 801 passing tests could not catch](#-what-801-passing-tests-could-not-catch), repeatable
+> [What 817 passing tests could not catch](#-what-817-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -1925,8 +1954,14 @@ What's not done yet, and why — to show this is a known gap, not something forg
       indices that survive virtualization, `scope` on both header directions, `aria-selected`, one
       roving tab stop, and focus that follows the cursor. Found by using the app with the keyboard,
       not by any gate — axe passed all four runs while it was still an undriveable table. Still open:
-      an `aria-live` summary for things that happen away from the cursor (a sort, an import, a paste),
-      and none of it is verified against a real screen reader.
+      none of it is verified against a real screen reader.
+- [x] **A spoken summary of what happens away from the cursor** — done: a polite live region says what a
+      sort, filter, paste, clear, merge, insert, import or undo just did, with the numbers (`Filtered
+      column B: 4 of 9 rows shown`). Two regions alternating, because a screen reader announces on text
+      *change* and sorting the same column twice writes the same words. Moving the cursor stays silent —
+      focus already announces the cell, and saying it twice is worse than not saying it. Still open: live
+      data refreshes itself every few seconds and is deliberately left out, charts and pivots are not
+      covered, and — as above — no real screen reader has heard any of it.
 - [x] **A keyboard-shortcut reference in the app** — done (see [the Excel keyboard](#️-the-excel-keyboard)):
       `Ctrl`/`Cmd`+`/` or `F1`, or the button at the end of the sheet-tab strip. The list is kept honest by
       a test that reads the handlers' source, so a key cannot be added, renamed or removed without the sheet
