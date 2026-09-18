@@ -174,7 +174,19 @@ export interface Messages {
       disclaimer: string;
     };
     problemTitle: string;
-    problems: { title: string; body: string }[];
+    problemLead: string;
+    /** The three labels down the left of every scenario. */
+    problemLabels: { pain: string; solution: string; gain: string };
+    /**
+     * Told as a situation rather than a category.
+     *
+     * "Can't remember formulas" is a feature list wearing a problem's clothes — nobody reads it and
+     * thinks *that is me*. A scenario a reader recognises does the work the feature list cannot:
+     * `pain` is what actually goes wrong, `solution` is what this app does instead, and `gain` is
+     * the only line that answers the question a visitor is really asking, which is what they get
+     * for moving.
+     */
+    problems: { scenario: string; pain: string; solution: string; gain: string }[];
     featuresTitle: string;
     featuresSubtitle: string;
     /** Paired by index with the screenshots listed in the landing page component. */

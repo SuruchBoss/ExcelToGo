@@ -215,30 +215,47 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── 01 · What it's for ───────────────────────────────────────────────────────────────── */}
+      {/* ── 01 · Scenario → pain → what happens here → what you get ─────────────────────────── */}
       <section className="border-b border-rule bg-white">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="01" title={t.landing.problemTitle} />
-          <dl className="mt-1">
+          <SectionHead n="01" title={t.landing.problemTitle} lead={t.landing.problemLead} />
+          {/* An <ol>, because the scenarios are numbered on screen. The printed numbers only
+              repeat the list's own ordering, so they are decorative. */}
+          <ol className="mt-1">
             {t.landing.problems.map((p, i) => (
-              <div
-                key={p.title}
-                className={`grid gap-x-6 gap-y-1.5 border-b border-rule px-2 py-5 sm:grid-cols-[minmax(0,19rem)_1fr] sm:px-3 ${
-                  i % 2 === 1 ? "bg-band/40" : ""
-                }`}
+              <li
+                key={p.scenario}
+                className={`flex gap-3 border-b border-rule px-2 py-7 sm:gap-4 sm:px-3 ${i % 2 === 1 ? "bg-band/40" : ""}`}
               >
-                {/* Number and title are one term, so they live together in the <dt> — a <dl> group
-                    may only hold <dt>/<dd>, not a stray <span>. The number is decorative. */}
-                <dt className="flex gap-3 text-[15.5px] font-semibold leading-snug text-ink sm:gap-4">
-                  <span aria-hidden className="tabular-nums shrink-0 pt-0.5 font-mono text-[11px] font-normal text-ash">
-                    {num(i)}
-                  </span>
-                  {p.title}
-                </dt>
-                <dd className="text-[14.5px] leading-relaxed text-ash">{p.body}</dd>
-              </div>
+                <span aria-hidden className="tabular-nums shrink-0 pt-[0.2rem] font-mono text-[11px] text-ash">
+                  {num(i)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[15.5px] font-semibold leading-snug text-ink sm:text-[1.05rem]">{p.scenario}</h3>
+                  {/* The same three labels on every scenario, on purpose: once a reader has seen
+                      them, they can skim straight to the only line they came for — the last one. */}
+                  <dl className="mt-3.5 space-y-2.5">
+                    {(
+                      [
+                        [t.landing.problemLabels.pain, p.pain, false],
+                        [t.landing.problemLabels.solution, p.solution, false],
+                        [t.landing.problemLabels.gain, p.gain, true],
+                      ] as const
+                    ).map(([label, body, isGain]) => (
+                      <div key={label} className="grid gap-x-5 gap-y-0.5 sm:grid-cols-[minmax(0,9rem)_1fr]">
+                        <dt className={`text-[12.5px] font-semibold leading-relaxed ${isGain ? "text-ledger" : "text-ash"}`}>
+                          {label}
+                        </dt>
+                        <dd className={`text-[14.5px] leading-relaxed ${isGain ? "font-medium text-ink" : "text-ash"}`}>
+                          {body}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </li>
             ))}
-          </dl>
+          </ol>
         </div>
       </section>
 

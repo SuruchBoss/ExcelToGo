@@ -149,11 +149,35 @@ export const en: Messages = {
       disclaimer:
         "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. For a sheet a team edits together, Google Sheets is plainly the better tool. What the table shows is what neither of them will do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
     },
-    problemTitle: "What it's for",
+    problemTitle: "If any of this sounds familiar",
+    problemLead:
+      "Every situation below is one that actually prompted a piece of this app — not a feature list rewritten to look like a problem. If none of them is your week, this probably is not built for you.",
+    problemLabels: { pain: "What goes wrong", solution: "What happens here", gain: "What you get for moving" },
     problems: [
-      { title: "Formula syntax you can't recall", body: "Which argument does VLOOKUP take, and in what order? Here you pick from a list and click the cells instead." },
-      { title: "Mistyped cell addresses", body: "Was it C2:C4 or C2:D4? Hit the target button and drag the range straight off the grid — no typing." },
-      { title: "Data stuck in another system", body: "The latest sales sit in some back-office system and get exported by hand every time. Connect the API once and the cells keep themselves current." },
+      {
+        scenario: "It's three in the afternoon and your manager wants the northern-branch total today",
+        pain: "You know it's SUMIF, you just can't recall what goes where. So you open a tab, search, find an example built on someone else's ranges, and translate it back onto your own file.",
+        solution: "Type \"total sales for the northern branch\" in plain English — or Thai — and get the formula back with an explanation of what it does. Or skip typing: pick from 32 ready-made formulas and fill the fields one at a time.",
+        gain: "You stop leaving the file to find the answer somewhere else, and you read the formula and its explanation before it goes in, instead of pasting first and finding out later.",
+      },
+      {
+        scenario: "The total is in. It looks about right. It isn't.",
+        pain: "C2:C4 and C2:D4 differ by one character, both compute happily, and neither shows an error. You find out when someone asks why this number doesn't match the other report.",
+        solution: "Press the target button and drag the range off the real grid — what you get is the cells you pointed at, not the address you typed. Drag the bottom-right corner to fill a formula down the column: references move with it, and $A$1 stays put, as it should.",
+        gain: "It removes the most expensive class of spreadsheet bug there is — the number that is quietly wrong because nothing in the file says otherwise.",
+      },
+      {
+        scenario: "Start of the month again: export the figures from the back office and paste them into the same file",
+        pain: "The data already exists in a system. Getting it to the person who needs it still costs an export, a paste and a re-format every single time — and the file you send is stale the second it leaves.",
+        solution: "Whoever owns the endpoint pastes a URL once. After that you pick a field and press \"put it in the sheet\" — the whole table, or a single summary number. It refreshes on its own and feeds into formulas like any other cell.",
+        gain: "One monthly chore nobody wanted disappears, and the number in the file is the number now, not the number at the moment somebody clicked export.",
+      },
+      {
+        scenario: "A payroll file, or a customer list, that you are not allowed to upload anywhere",
+        pain: "Every online tool that would be more convenient wants you to sign in first, and then the file lives on their servers. For some work that ends the conversation before it starts.",
+        solution: "All of this runs in the browser. No account, no upload, the file never leaves the machine — except when you press the AI assistant, which sends the question, the range and the column headers, never the file, and sends nothing at all if you don't press it. The whole source is there to read.",
+        gain: "You can start using it without waiting for anyone's approval, and answer \"so where does the data go?\" by pointing at code rather than at a policy page.",
+      },
     ],
     featuresTitle: "What it does",
     featuresSubtitle: "Every screenshot below is from the running app, not a mockup",

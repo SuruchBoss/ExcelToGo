@@ -1204,6 +1204,15 @@ outright is one nobody believes.
 
 <p align="center"><img src="public/screenshots/32-landing-compare.png" width="900"></p>
 
+**The first section stopped being a feature list.** It used to read "formula syntax you can't recall",
+"mistyped cell addresses", "data stuck in another system" — capabilities dressed up as problems, and
+nobody reads one of those and thinks *that is me*. It is now four situations told as situations, each
+with the same three lines under it: **what goes wrong** (what actually happens) · **what happens here**
+(what the app does instead) · **what you get for moving** (the only line a visitor came for). That last
+line is set darker than the other two, because after one pass a reader skips straight to it.
+
+<p align="center"><img src="public/screenshots/38-landing-problems.png" width="900"></p>
+
 The page is laid out as **ledger paper** rather than as a stack of rounded cards: hairline rules instead
 of boxes, square corners, the alternating pale-green row bands of accounting paper, monospace with tabular
 figures for every number, formula and cell address against a sans for prose, and one inverted band through
