@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
-import { computeSheet, createEmptySheet, SheetModel } from "./sheet";
+import { computeSheet, createEmptySheet, createWorkbookResolver, setCellRaw, SheetModel } from "./sheet";
 import { evaluateConditionalFormats } from "./conditionalFormat";
 import { cellKey } from "./sheetTemplate";
 
@@ -333,5 +333,57 @@ describe("cell comments through a round-trip", () => {
     const blob = await exportWorkbookToXlsxBlob(exportable(createEmptySheet(3, 3), "ว่าง"));
     const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
     expect(again.comments).toBeUndefined();
+  });
+});
+
+/**
+ * The README used to list "a round trip loses the formula" as a known limitation, and it was not
+ * true: `writeSheetToWorksheet` has written `{ formula, result }` for a long time. A limitation
+ * nobody re-checks outlives the bug it described, so the claim is now pinned by a test instead of
+ * by memory — if the writer ever falls back to writing numbers, this is what says so.
+ */
+describe("formulas through an export → import cycle", () => {
+  /** Two tabs, because the interesting reference is the one that points at the *other* sheet. */
+  function workbook() {
+    let one = createEmptySheet(4, 3);
+    one = setCellRaw(one, 0, 0, "10");
+    one = setCellRaw(one, 1, 0, "20");
+    one = setCellRaw(one, 2, 0, "=SUM(A1:A2)");
+    let two = createEmptySheet(4, 3);
+    two = setCellRaw(two, 0, 0, "=Sheet1!A3*2");
+    two = setCellRaw(two, 1, 0, "=IF($A$1>50,\"มาก\",\"น้อย\")");
+    return [
+      { name: "Sheet1", sheet: one, computed: computeSheet(one) },
+      { name: "Sheet2", sheet: two, computed: computeSheet(two) },
+    ];
+  }
+
+  async function cycle() {
+    const blob = await exportWorkbookToXlsxBlob(workbook());
+    return importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+  }
+
+  it("keeps a formula as a formula, not the number it happened to produce", async () => {
+    const back = await cycle();
+    expect(back[0].sheet.cells[2][0]).toBe("=SUM(A1:A2)");
+  });
+
+  it("keeps a cross-sheet reference pointing at the other sheet", async () => {
+    const back = await cycle();
+    expect(back[1].sheet.cells[0][0]).toBe("=Sheet1!A3*2");
+  });
+
+  it("keeps an absolute reference absolute", async () => {
+    // `$A$1` surviving as `A1` would be silent: the value is identical until someone fills down.
+    const back = await cycle();
+    expect(back[1].sheet.cells[1][0]).toContain("$A$1");
+  });
+
+  it("recomputes to the same values it had before the trip", async () => {
+    const before = workbook();
+    const back = await cycle();
+    const resolver = createWorkbookResolver(back.map((t) => ({ name: t.name, sheet: t.sheet })));
+    expect(computeSheet(back[0].sheet, resolver).values[2][0]).toBe(before[0].computed.values[2][0]);
+    expect(computeSheet(back[1].sheet, resolver).values[0][0]).toBe(60); // (10 + 20) * 2
   });
 });

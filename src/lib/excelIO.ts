@@ -659,13 +659,7 @@ export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promi
   }
 }
 
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+/** Re-exported so the existing `import { downloadBlob } from "@/lib/excelIO"` call sites keep
+ *  working. The implementation moved to its own module because the crash boundary needs it too and
+ *  cannot afford to pull ExcelJS in. */
+export { downloadBlob } from "./download";

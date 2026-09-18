@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-900%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-917%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 900 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 917 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 900 passing tests could not catch
+### 🧪 What 917 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 900 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 917 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -141,6 +141,7 @@ tests say, and nothing whatever about whether that is the right thing.
   - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
   - [Spreadsheet grid](#-spreadsheet-grid)
   - [Autosave + Undo/Redo](#-autosave--undoredo)
+  - [The app can break and you still get your file out](#-the-app-can-break-and-you-still-get-your-file-out)
   - [Copy / Cut / Paste](#️-copy--cut--paste)
   - [Cell formatting](#-cell-formatting)
   - [Charts from the sheet](#-charts-from-the-sheet)
@@ -245,7 +246,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 900-case Vitest suite |
+| `npm test` | Run the 917-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
@@ -559,6 +560,30 @@ Behind the scenes:
   sync).
 - **Ctrl+Z** / **Ctrl+Y** (or Ctrl+Shift+Z) undo/redo content edits only — moving the selection or switching
   sheet tabs doesn't count as history.
+
+### 🩹 The app can break and you still get your file out
+
+When a render throws, what you used to get was Next's bare crash page: no explanation, no way back,
+and — the part that actually matters in a spreadsheet — no sign of whether the work was gone. **It was
+never gone.** The sheet lives in `localStorage` and a render crash never touched it, but nothing on the
+screen said so, which from the outside is indistinguishable from having lost it.
+
+So this screen does three things, in the order a person cares about them: says the data is safe, offers
+it as one downloadable CSV per tab right now, and only then offers to try again.
+
+<p align="center"><img src="public/screenshots/39-crash-rescue.png" width="760"></p>
+
+The rescue (`crashRescue.ts`) **touches no store, no model and no formula engine** — those three are the
+prime suspects for whatever just threw. It reads the raw JSON out of `localStorage` with the same posture
+it would read a file someone uploaded: every field may be missing or the wrong type (there are tests for
+each of those states, and none of them throws). Formulas come out as the text you typed rather than as
+values, because nothing on this path evaluates anything, deliberately.
+
+There are two layers: `error.tsx` catches a throw inside the page, `global-error.tsx` a throw inside the
+layout. The second is rendered as its own document, **which means the app's stylesheet is not loaded** —
+so it is styled inline in a system font. A fallback that still depends on a stylesheet loading is one
+more thing that can fail at the moment everything else already has. The behaviour is shared through one
+hook, so the two screens may look different but cannot act differently.
 
 ### ✂️ Copy / Cut / Paste
 
@@ -1262,7 +1287,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (900 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (917 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1498,6 +1523,11 @@ src/
                               # and conditional formatting, which need identical behaviour
     cellComments.ts          # Notes attached to cells, and how they follow an insert/delete (tested)
     csv.ts                   # CSV read/write: delimiter sniffing, BOM, RFC 4180 quoting
+    download.ts              # Handing a Blob to the browser as a file — its own module because the
+                              # crash screen needs it and must not pull ExcelJS into that path
+    crashRescue.ts           # Rescues the sheet out of localStorage when a render throws and offers it
+                              # as one CSV per tab — touches no store, model or engine, since any of
+                              # those may be what broke (tested)
     charts.ts                # Charts: reading a range into series and labels, the axis, the frame a chart
                               # is moved and resized by, its cell anchor, a pie's series, the legend
                               # per kind, shifting (tested)
@@ -1974,7 +2004,7 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 900 cases across 54 files, via Vitest
+npm test      # 917 cases across 55 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
@@ -1982,10 +2012,10 @@ they run fast and give high confidence. UI/interaction behavior was verified man
 development of each feature (the scripts weren't committed to the repo — they were a temporary verification
 tool, not a permanent regression suite).
 
-> **900 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **917 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 900 passing tests could not catch](#-what-900-passing-tests-could-not-catch), repeatable
+> [What 917 passing tests could not catch](#-what-917-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2060,8 +2090,12 @@ What's not done yet, and why — to show this is a known gap, not something forg
       abuse rather than acting as a billing control across instances
 - [x] **Formulas across sheets** — done (see [formulas across sheets](#-formulas-across-sheets)):
       `=Sheet2!A1`, Thai names unquoted, cross-sheet staleness that follows a chain rather than one
-      link, and cycles that span sheets. Still open: `.xlsx` export writes computed values, so a
-      round trip through this app loses the formula itself — cross-sheet or otherwise.
+      link, and cycles that span sheets. **This line used to say "`.xlsx` export writes computed
+      values, so a round trip loses the formula", and that was not true** — the writer has been
+      sending `{ formula, result }` for a long time, and plain formulas, cross-sheet references and
+      `$A$1` all come back intact. A limitation nobody re-checks outlives the bug it described, so
+      the claim is pinned by tests now instead of by memory: make the writer emit numbers instead
+      of formulas and four of them fail immediately.
 - [x] **The fill handle** — done (see [the fill handle](#️-the-fill-handle)): numbers, Thai days and
       months, quarters, `Item 08`, and formulas whose references move. Still open: dragging *inwards*
       to clear, and Excel's right-drag menu of fill options.
