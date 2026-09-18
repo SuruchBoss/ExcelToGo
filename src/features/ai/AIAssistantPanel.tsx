@@ -2,13 +2,15 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Sparkles, Loader2, KeyRound, ExternalLink } from "lucide-react";
-import { useSelectionAddress, useSheetStore } from "@/store/sheetStore";
+import clsx from "clsx";
+import { useAIContext, useSheetStore } from "@/store/sheetStore";
 import { useLocale, useT } from "@/i18n";
 import { clearKey, keyServerSnapshot, keySnapshot, looksLikeAnthropicKey, maskKey, saveKey, subscribeToKey } from "@/lib/byok";
 import { askAnthropicDirect } from "./askAnthropicDirect";
 
 interface Suggestion {
-  formula: string;
+  /** `null` when the keyword matcher had no rule for the question — see aiHeuristic.ts. */
+  formula: string | null;
   explanation: string;
   source: "ai" | "heuristic";
 }
@@ -16,7 +18,7 @@ interface Suggestion {
 export default function AIAssistantPanel() {
   const t = useT();
   const locale = useLocale();
-  const selectionAddress = useSelectionAddress();
+  const { address: selectionAddress, range, headers } = useAIContext();
   const onInsert = useSheetStore((s) => s.insertAIFormula);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,14 +57,16 @@ export default function AIAssistantPanel() {
     setSuggestion(null);
     try {
       // With the visitor's own key the request never touches this app's server — see byok.ts.
+      // `range`, not `selectionAddress`: with a single cell highlighted those differ, and the
+      // range is the one that makes "add up this column" mean a column. See aiRange.ts.
       if (savedKey) {
-        setSuggestion(await askAnthropicDirect(savedKey, q, selectionAddress, locale));
+        setSuggestion(await askAnthropicDirect(savedKey, q, range, locale, headers));
         return;
       }
       const res = await fetch("/api/ai/formula", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, selection: selectionAddress, locale }),
+        body: JSON.stringify({ question: q, selection: range, headers, locale }),
       });
       // "Too many, too fast" is a different situation from "the AI is unreachable", and the user
       // can act on it — so it says how long to wait instead of the generic connection error.
@@ -209,19 +213,34 @@ export default function AIAssistantPanel() {
 
       {error && <p className="rounded bg-red-50 p-2 text-xs text-red-600">{error}</p>}
 
+      {/* A declined answer is not an answer in a quieter colour — it is amber, it carries no
+          formula, and it offers no Insert button, because there is nothing to insert. The version
+          this replaces handed back `=SUM(...)` for every question it did not understand, in the
+          same green card as a real answer, above the same green button. */}
       {suggestion && (
-        <div className="mt-1 flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3">
-          <code className="text-sm font-semibold text-emerald-900">{suggestion.formula}</code>
-          <p className="text-xs text-emerald-700">{suggestion.explanation}</p>
-          {suggestion.source === "heuristic" && (
-            <p className="text-[10px] text-emerald-400">{t.ai.heuristicNote}</p>
+        <div
+          className={clsx(
+            "mt-1 flex flex-col gap-2 rounded-md border p-3",
+            suggestion.formula ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
           )}
-          <button
-            onClick={() => onInsert(suggestion.formula)}
-            className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-          >
-            {t.ai.insertAt(selectionAddress.split(":")[0])}
-          </button>
+        >
+          {suggestion.formula ? (
+            <>
+              <code className="text-sm font-semibold text-emerald-900">{suggestion.formula}</code>
+              <p className="text-xs text-emerald-700">{suggestion.explanation}</p>
+              {suggestion.source === "heuristic" && (
+                <p className="text-[10px] text-emerald-400">{t.ai.heuristicNote}</p>
+              )}
+              <button
+                onClick={() => onInsert(suggestion.formula!)}
+                className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+              >
+                {t.ai.insertAt(selectionAddress.split(":")[0])}
+              </button>
+            </>
+          ) : (
+            <p className="text-xs leading-relaxed text-amber-800">{suggestion.explanation}</p>
+          )}
         </div>
       )}
     </div>

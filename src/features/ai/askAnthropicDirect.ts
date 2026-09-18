@@ -12,7 +12,8 @@ import { AI_MAX_TOKENS, AI_MODEL, SYSTEM_PROMPTS, buildUserMessage, parseFormula
 import { Locale } from "@/i18n/types";
 
 export interface AskResult {
-  formula: string;
+  /** `null` only from the keyword matcher, which now declines rather than guessing SUM. */
+  formula: string | null;
   explanation: string;
   source: "ai" | "heuristic";
 }
@@ -21,7 +22,8 @@ export async function askAnthropicDirect(
   apiKey: string,
   question: string,
   selection: string | undefined,
-  locale: Locale
+  locale: Locale,
+  headers: string[] = []
 ): Promise<AskResult> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   // `dangerouslyAllowBrowser` is the point rather than a workaround: the key belongs to the person
@@ -33,7 +35,7 @@ export async function askAnthropicDirect(
     model: AI_MODEL,
     max_tokens: AI_MAX_TOKENS,
     system: SYSTEM_PROMPTS[locale],
-    messages: [{ role: "user", content: buildUserMessage(question, selection) }],
+    messages: [{ role: "user", content: buildUserMessage(question, selection, headers) }],
   });
 
   const textBlock = response.content.find((b) => b.type === "text");
