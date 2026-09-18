@@ -41,6 +41,7 @@ import {
 } from "@/lib/sheet";
 import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
+import { autoSumRange, headerRow } from "@/lib/aiRange";
 import { FormulaValue } from "@/lib/formulaEngine/types";
 import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
 // ExcelJS (~400KB) and jsPDF + autoTable are loaded on demand, not with the store.
@@ -803,9 +804,26 @@ export const useSheetStore = create<SheetState>()(
             };
           }),
 
-        setSidebarMode: (mode) => set({ sidebarMode: mode }),
+        /**
+         * Both of these drop a half-filled formula, and that is the whole point.
+         *
+         * The panel used to render `pending ? <Params/> : <by mode/>`, so `pending` silently
+         * outranked the mode. Press SUM in the palette and then any of the six sidebar buttons —
+         * formulas, data, AI, chart, pivot, conditional formatting — and nothing at all happened:
+         * no panel change, no pressed state. The mode *was* being stored; it just never reached
+         * the screen. Worse, it arrived later: cancel the formula and you landed wherever your
+         * dead press had pointed, one action after you made it.
+         *
+         * Clearing it here means a sidebar button always does what its label says, on the press
+         * that says it.
+         */
+        setSidebarMode: (mode) => set({ sidebarMode: mode, pending: null }),
         toggleFormatBar: () => set((s) => ({ formatBarOpen: !s.formatBarOpen })),
-        toggleSidebar: (mode) => set((s) => ({ sidebarMode: s.sidebarMode === mode ? "none" : mode })),
+        // While a formula is pending the button never collapses the panel, it switches to it:
+        // "back to the formula list" is what pressing สูตร means when a SUM is half-filled, and
+        // closing the sidebar outright would hide the list they were reaching for.
+        toggleSidebar: (mode) =>
+          set((s) => ({ sidebarMode: s.sidebarMode === mode && !s.pending ? "none" : mode, pending: null })),
 
         addLiveBlock: (input, table) =>
           set((s) => ({
@@ -1103,6 +1121,46 @@ export function useComputedSheet() {
 export function useSelectionAddress() {
   const selection = useSheetStore(selectActiveSelection);
   return selectionToAddress(selection);
+}
+
+export interface AIContext {
+  /** Where the cursor is, for the "ช่วงที่เลือกอยู่" line and the Insert button. */
+  address: string;
+  /** What the question is probably *about* — see `aiRange.ts`. */
+  range: string;
+  headers: string[];
+}
+
+/**
+ * What the assistant should be told about the sheet, beyond the question itself.
+ *
+ * It used to be told the selection and nothing else, so one highlighted cell became `=SUM(E2)` and
+ * the `headers` field the API route has always accepted went unfilled by every caller. Widening
+ * happens here rather than inside `heuristicSuggest` because the sheet lives here — the matcher
+ * runs on the server too, where there is no sheet to read.
+ */
+export function useAIContext(): AIContext {
+  const sheet = useSheetStore(selectActiveSheet);
+  const selection = useSheetStore(selectActiveSelection);
+  return useMemo(() => {
+    const address = selectionToAddress(selection);
+    // The *computed* sheet, not the raw one. On this app's own sample data column E is nine
+    // `=C2*D2` formulas, so reading `sheet.cells` made every number in it look like text: the
+    // "drop a header that sits on top of numbers" rule never fired, and the range came back as
+    // E1:E10 with the word "รวม" inside it. SUM ignores text, so the total was right and the range
+    // was wrong — the kind of bug that survives because the number on screen looks fine.
+    const { display } = computeSheet(sheet);
+    const valueAt = (r: number, c: number) => display[r]?.[c] ?? "";
+    const bounds = { rows: sheet.rows, cols: sheet.cols };
+    const headers = headerRow(valueAt, bounds);
+    // A selection of more than one cell already says what it means; only a lone cursor is ambiguous.
+    if (!isSingleCell(selection)) return { address, range: address, headers };
+    const run = autoSumRange(valueAt, bounds, { row: selection.anchorRow, col: selection.anchorCol });
+    const range = run
+      ? rangeRefString(run.startRow, selection.anchorCol, run.endRow, selection.anchorCol)
+      : address;
+    return { address, range, headers };
+  }, [sheet, selection]);
 }
 
 const EMPTY_FORMAT: CellFormat = {};

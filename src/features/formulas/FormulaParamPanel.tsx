@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { ApplyScope } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { isSingleCell } from "@/types/sheet-ui";
@@ -15,6 +16,24 @@ export default function FormulaParamPanel() {
   const onChange = useSheetStore((s) => s.updatePending);
   const onInsert = useSheetStore((s) => s.insertPending);
   const onCancel = useSheetStore((s) => s.cancelPending);
+
+  /**
+   * Escape gets you out, from wherever you are.
+   *
+   * On `window` rather than on this panel, because the parameter form is only half of where you
+   * work while a formula is pending: picking a range means clicking cells, so focus is usually in
+   * the grid, and a handler on this subtree would never see the key. Measured before the fix —
+   * Escape did nothing at all, and the only exit was finding the Cancel button by eye.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
 
   if (!pending) return null;
   const { def, values } = pending;
