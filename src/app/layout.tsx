@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { IBM_Plex_Sans_Thai, IBM_Plex_Mono } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -79,7 +80,19 @@ export const metadata: Metadata = {
   alternates: { canonical: SITE_URL },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/**
+ * Rendered per request, on purpose.
+ *
+ * `connection()` is what turns off prerendering, and it is here rather than on each page because
+ * the reason is the same for all of them: `src/proxy.ts` mints a CSP nonce per request, and Next
+ * can only stamp that nonce onto its inline scripts while it is rendering *for* a request. A page
+ * prerendered at build time has no nonce in it, the browser refuses every script, and the app is a
+ * blank document — which is exactly what happened the first time this was tried without this line.
+ *
+ * The cost was measured before it was accepted; the numbers are in the README.
+ */
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  await connection();
   return (
     <html
       lang="th"

