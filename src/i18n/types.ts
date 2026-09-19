@@ -511,6 +511,9 @@ export interface Messages {
       active: (masked: string) => string;
       invalid: string;
       privacyNote: string;
+      /** The honest half of the privacy note: a key in the page can be read by anything in the
+       *  page, so the advice is to bring one that can be thrown away. */
+      keyAdviceNote: string;
       getKeyLink: string;
     };
   };

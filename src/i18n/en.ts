@@ -618,6 +618,8 @@ export const en: Messages = {
       invalid: "That does not look like an Anthropic API key — they start with sk-ant-",
       privacyNote:
         "The key is kept in this tab only (sessionStorage) and is gone when you close it. Requests go from your browser straight to api.anthropic.com — never through this site's server — so the usage is billed to your own account.",
+      keyAdviceNote:
+        "Use a key made for this, not your main one: a key held in a web page can be read by anything running in that page. Revoke it when you are done.",
       getKeyLink: "Get an API key at console.anthropic.com",
     },
   },

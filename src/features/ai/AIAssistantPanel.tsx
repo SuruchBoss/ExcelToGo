@@ -175,6 +175,11 @@ export default function AIAssistantPanel() {
         <p className="mt-2 border-t border-zinc-100 pt-2 text-[10px] leading-relaxed text-zinc-500">
           {t.ai.byok.privacyNote}
         </p>
+        {/* The other half of the same truth, and it goes next to the box rather than in the README:
+            a key kept in a page is readable by anything running in that page. The advice that
+            follows from it — bring one you can throw away — is only useful before the paste, so it
+            is here and not in a doc nobody opens. */}
+        <p className="mt-1.5 text-[10px] leading-relaxed text-amber-700">{t.ai.byok.keyAdviceNote}</p>
       </div>
 
       <textarea

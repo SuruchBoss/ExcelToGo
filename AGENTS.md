@@ -32,13 +32,14 @@ formula palette, AI, live data, conditional formatting, charts, pivots, find/rep
 dialog, 30 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 7 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
-เดินด้วยคีย์บอร์ดล้วน, undo, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม" และผู้ช่วย AI (stub route ไว้
-ทั้งกรณีตอบปกติและกรณีโดน rate limit) เกณฑ์เลือก flow มีข้อเดียว:
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 8 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+เดินด้วยคีย์บอร์ดล้วน, undo, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
+ทั้งกรณีตอบปกติและกรณีโดน rate limit) และ CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 7 flows — type a formula and watch the value
+`npm run check:e2e` drives the real app in a browser through 8 flows — type a formula and watch the value
 move, export `.xlsx` and import it back, keyboard only, undo, whether a change away from the cursor is
-announced, and the AI assistant with its route stubbed (both a normal answer and a rate limit). Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
+announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
+(served, blocking exfiltration, and not tripping the app up). Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:

