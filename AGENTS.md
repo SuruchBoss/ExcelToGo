@@ -7,13 +7,14 @@
 Run one command and get it green before committing:
 
 ```bash
-npm run verify     # lint → check:readme → test → check:mutants → build → check:a11y → check:e2e
+npm run verify     # lint → check:readme → check:deps → test → check:mutants
+                   #   → build → check:bundle → check:a11y → check:e2e
 ```
 
-GitHub Actions รันเจ็ดด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+GitHub Actions รันเก้าด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
 ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
 รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same seven gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
+GitHub Actions runs the same nine gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
 are jobs of their own because they need a browser) — running them yourself
 first is still faster than waiting for CI to tell you.
 
@@ -32,15 +33,28 @@ formula palette, AI, live data, conditional formatting, charts, pivots, find/rep
 dialog, 30 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 8 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 9 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
 เดินด้วยคีย์บอร์ดล้วน, undo, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
 ทั้งกรณีตอบปกติและกรณีโดน rate limit) และ CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 8 flows — type a formula and watch the value
+`npm run check:e2e` drives the real app in a browser through 9 flows — type a formula and watch the value
 move, export `.xlsx` and import it back, keyboard only, undo, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up). Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
+
+`npm run check:deps` ไม่ได้แค่รัน `npm audit` — ทุก advisory ต้อง**ถูกแก้ หรือถูกเขียนไว้พร้อมเหตุผลและวันหมดอายุ**
+ตัวที่ไม่มีใครเขียนถึงทำให้ด่านตก และ**entry ที่เลยวันรีวิวก็ทำให้ตกเหมือนกัน** เพราะความเสี่ยงที่ยอมรับไว้โดยไม่มีวันหมดอายุ
+ไม่ใช่การตัดสินใจ มันคือความเคยชิน · ถ้าต่อ registry ไม่ได้ ด่านจะบอกว่าไม่ได้ตรวจ ไม่ใช่แดงมั่ว
+`npm run check:bundle` มีงบขนาดเขียนไว้ และเช็กด้วยว่าไลบรารี Supabase ยัง**อยู่ chunk ของตัวเองแยกต่างหาก**
+ส่วนคำถามว่ามีใคร*ขอ*โหลด chunk นั้นจริงไหม อยู่ใน `check:e2e` เพราะต้องใช้เบราว์เซอร์ตอบ
+`npm run check:deps` is not just `npm audit`: every advisory must be **fixed, or written down with a reason
+and a review date**. One nobody has written about fails the gate, and **an entry past its date fails too** —
+an accepted risk with no expiry is not a decision, it is a habit. With no registry it says it checked nothing
+rather than going red.
+`npm run check:bundle` carries written size budgets and checks that the Supabase client is still **in a chunk
+of its own**. Whether anything ever *asks* for that chunk is a `check:e2e` flow, because only a browser can
+answer it.
 
 `npm run check:mutants` ทุบเอนจินทีละจุด (32 mutant, seed คงที่) แล้วถามว่าเทสต์แดงไหม — **"1,088 เทสต์"
 บอกว่ามีกี่ข้อ ไม่ได้บอกว่ามันจับบั๊กได้** ตัวที่รอดคือช่องโหว่จริง รอบแรกเจอหก แล้วเขียนเทสต์ใหม่หกข้อจากมัน

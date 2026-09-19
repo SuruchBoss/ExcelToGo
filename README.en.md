@@ -251,11 +251,13 @@ Other available commands:
 | `npm run lint` | Check code quality with ESLint |
 | `npm test` | Run the 1088-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
+| `npm run check:deps` | Every advisory is fixed, or written down with a reason and a review date |
+| `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
-| `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
+| `npm run check:e2e` | Drives the real app through 9 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
-| `npm run verify` | Everything, before a push: lint → check:readme → test → check:mutants → build → check:a11y → check:e2e |
+| `npm run verify` | Everything, before a push: lint → check:readme → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
@@ -1706,6 +1708,8 @@ src/
                              #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
+  check-deps.mjs             # Every advisory accounted for, with a reason and an expiry date
+  check-bundle.mjs           # Size budgets, and the cloud client staying in a chunk of its own
   check-mutants.mjs          # Breaks the engine a character at a time and asks if the suite notices
   check-a11y.mjs             # axe at two widths plus sideways-scroll checks, against a production build
   make-social-preview.mjs    # Renders GitHub's 1280x640 card, counting its figures from source
@@ -2234,7 +2238,7 @@ assistant sent a range including its text header, because the context builder re
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 8 flows in a real browser (needs a build)
+npm run check:e2e   # 9 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -2480,6 +2484,13 @@ What's not done yet, and why — to show this is a known gap, not something forg
       that nothing was watching. The pinned sample now kills 31 of 32; the last one is an equivalent mutant
       and is documented as such. Still open: it only covers the formula engine, and one whole suite run per
       mutant means it cannot cover much more without getting slow.
+- [x] **Supply-chain and size gates** — done: `check:deps` requires every advisory to be fixed or written
+      down with a reason *and a review date*, so an accepted risk expires instead of becoming a habit; two
+      are currently accepted and both say why. `check:bundle` carries written size budgets and checks the
+      Supabase client is still in a chunk of its own, with a browser flow proving nothing asks for it.
+      CodeQL runs weekly as well as on every push, because an advisory that lands next month is new
+      information about code that has not changed. Still open: no gate on what a *page load* transfers,
+      only on what is built.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,
@@ -2490,7 +2501,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       script is not a file and cannot be hashed, so the page never hydrated at all. The price is
       prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 8 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 9 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

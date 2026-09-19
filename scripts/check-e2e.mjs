@@ -1,7 +1,7 @@
 /**
  * The end-to-end gate: the app driven the way a person drives it.
  *
- * 980 unit tests cover the functions. Not one of them opens the app. Every bug this project found
+ * 1,088 unit tests cover the functions. Not one of them opens the app. Every bug this project found
  * the hard way lived in the wiring *between* well-tested pieces, where a unit test cannot look:
  *
  * - The toolbar's "+ row" button called `addRow`, which never announced anything, while the tested
@@ -23,6 +23,7 @@
  * and coming back in, the keyboard, and whether anything is said out loud.
  */
 import { spawn } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -306,6 +307,32 @@ const FLOWS = [
       await typeInCell(page, 2, 0, "=SUM(A1:A2)");
       await page.waitForFunction(() => document.querySelector('td[data-row="2"][data-col="0"]')?.innerText.trim() === "30");
       note(own.length === 0, "and the app itself trips over none of it", own.join(" · "));
+    },
+  },
+  {
+    name: "the cloud client is built, and never downloaded",
+    async run(page) {
+      // The README says a deployment with no cloud configured never downloads the ~250KB Supabase
+      // client. `check:bundle` proves it sits in a chunk of its own; only a browser can prove that
+      // nobody asks for that chunk. The two halves together are the claim.
+      //
+      // Worth a flow of its own because it is so easy to lose by accident: one static import
+      // anywhere in the reachable graph — and the live-editing store is now imported by the grid —
+      // folds the library into a chunk the page loads anyway, and nothing else would notice.
+      const chunks = join(process.cwd(), ".next", "static", "chunks");
+      const cloudChunks = readdirSync(chunks)
+        .filter((name) => name.endsWith(".js"))
+        .filter((name) => readFileSync(join(chunks, name), "utf8").includes("SupabaseClient"));
+      note(cloudChunks.length === 1, `the cloud client is in exactly one chunk (${cloudChunks.length})`);
+
+      const asked = [];
+      page.on("response", (r) => {
+        const name = r.url().split("/").pop() ?? "";
+        if (cloudChunks.includes(name)) asked.push(name);
+      });
+      await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await typeInCell(page, 0, 0, "1");
+      note(asked.length === 0, "and no page load asks for it", asked.join(" "));
     },
   },
   {
