@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRescue } from "@/features/crash/useRescue";
+import { buildReport, sendReport } from "@/lib/errorReport";
 
 /**
  * What the person sees when a render throws.
@@ -23,9 +24,17 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
   const { files, download } = useRescue();
 
   useEffect(() => {
-    // No telemetry endpoint to send this to — nothing about this app phones home — so the console
-    // is where it goes, next to the stack React already logged.
     console.error("ExcelToGo crashed while rendering:", error);
+    // And, if this deployment configured somewhere to send it, a scrubbed report — so a bug that
+    // only fires on one imported file is not something the operator finds out about never. Nothing
+    // is sent unless `NEXT_PUBLIC_ERROR_REPORT_URL` is set, which no default deployment does; see
+    // `lib/errorReport.ts` for the fixed list of what a report may contain.
+    sendReport(
+      buildReport(error, {
+        path: typeof window === "undefined" ? "" : window.location.pathname,
+        userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+      })
+    );
   }, [error]);
 
   return (

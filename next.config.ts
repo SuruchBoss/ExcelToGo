@@ -23,6 +23,23 @@ import type { NextConfig } from "next";
  * was removed from the spec and never shipped. The exits are narrowed; that is not the same as
  * XSS being fixed, and the README says so in the same words.
  */
+/**
+ * Where crash reports may be posted, when a deployment has chosen somewhere.
+ *
+ * In `connect-src` for the same reason Supabase is: the policy names every origin this page may
+ * talk to, so an endpoint that is configured but not listed would be blocked — and a crash
+ * reporter silently refused by the CSP is worse than none, because the operator believes they have
+ * one.
+ */
+const REPORT_ORIGIN = (() => {
+  try {
+    const url = process.env.NEXT_PUBLIC_ERROR_REPORT_URL?.trim();
+    return url ? new URL(url).origin : "";
+  } catch {
+    return "";
+  }
+})();
+
 const SUPABASE_ORIGIN = (() => {
   // Only present when someone has attached their own Supabase project; the default deployment has
   // no cloud backend, and then the origin must not be in the policy at all.
@@ -46,7 +63,7 @@ const csp = [
   "font-src 'self' data:",
   // The whole point. `api.anthropic.com` is the BYOK path; the Supabase origin appears only on a
   // deployment that configured one; everything else this app fetches is its own routes.
-  ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN].filter(Boolean).join(" "),
+  ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN, REPORT_ORIGIN].filter(Boolean).join(" "),
   // Downloads go through a blob: URL, which counts as a navigation.
   "object-src 'none'",
   "base-uri 'self'",

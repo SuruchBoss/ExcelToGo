@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1106%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1122%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1106 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1122 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1106 passing tests could not catch
+### 🧪 What 1122 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1106 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1122 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -249,7 +249,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1106-case Vitest suite |
+| `npm test` | Run the 1122-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -593,6 +593,27 @@ layout. The second is rendered as its own document, **which means the app's styl
 so it is styled inline in a system font. A fallback that still depends on a stylesheet loading is one
 more thing that can fail at the moment everything else already has. The behaviour is shared through one
 hook, so the two screens may look different but cannot act differently.
+
+**And now the operator hears about it — if they asked to.** The crash screen got the user's work
+back out and told nobody else, so a bug that only fires on one imported file could run for months
+unnoticed. Set `NEXT_PUBLIC_ERROR_REPORT_URL` to your own collector and both boundaries post a
+report to it; leave it unset — the default, and what the public demo does — and nothing is sent,
+because there is no default endpoint to forget to unset.
+
+This is in tension with the one thing the app promises, so what a report may contain is a fixed
+list rather than "the error object": a message, Next's digest, a trimmed stack, the **path without
+its query string**, the browser's user-agent, and a timestamp. Message and stack are capped, so one
+report cannot become a data channel.
+
+And the stack is **scrubbed** before it leaves, because a thrown error carries whatever was in
+scope: an Anthropic key the visitor pasted, a Supabase token, an email address — and any run of
+Thai, which in a stack from this app is a cell, a sheet name or a file name rather than anything
+about the code. An ordinary English stack comes through untouched, which is checked too: a redactor
+that eats the trace reports nothing useful.
+
+The report endpoint's origin joins `connect-src` automatically. A collector that is configured but
+not in the policy would be blocked silently, which is worse than having none — the operator would
+believe they had one.
 
 ### ✂️ Copy / Cut / Paste
 
@@ -1414,7 +1435,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1106 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1122 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1656,6 +1677,7 @@ src/
     sheetCodec.ts            # Between the in-memory model (a full grid) and what goes into localStorage
                               # (only the cells holding something) — the old ceiling came from the
                               # sheet's size rather than its contents. Reads the old shape too (tested)
+    errorReport.ts           # Crash reports for the operator (off unless a URL is set) — keys, tokens, emails and Thai text scrubbed first (tested)
     crashRescue.ts           # Rescues the sheet out of localStorage when a render throws and offers it
                               # as one CSV per tab — touches no store, model or engine, since any of
                               # those may be what broke (tested)
@@ -2095,7 +2117,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 143 security tests
+### 159 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2110,6 +2132,7 @@ nothing but the anon key, which is the thing that used to work.
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
 | `cloud/policies.test.ts` | 13 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
+| `errorReport.test.ts` | 16 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
 Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/liveMessage.test.ts`
@@ -2254,13 +2277,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1106 cases across 68 files, via Vitest
+npm test      # 1122 cases across 69 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1106 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1122 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2354,10 +2377,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1106 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1122 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1106 passing tests could not catch](#-what-1106-passing-tests-could-not-catch), repeatable
+> [What 1122 passing tests could not catch](#-what-1122-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2525,6 +2548,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       cannot read pixels; it notices the world moving under them, which is what let an image reading
       "519 tests" survive for days, and then one reading "980 tests". <!-- historic --> Still open: nothing watches a screenshot whose *layout* went
       stale, only its figures.
+- [x] **Crash reports for the operator** — done: both error boundaries post a scrubbed report when
+      `NEXT_PUBLIC_ERROR_REPORT_URL` is set, and nothing at all when it is not. What a report may contain
+      is a fixed list; keys, tokens, emails and Thai text come out of the stack first, and the endpoint's
+      origin joins `connect-src` automatically. Still open: nothing reports an error that is *caught* —
+      a failed import or a refused fetch is still only a message on screen.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,

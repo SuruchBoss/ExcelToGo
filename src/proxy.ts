@@ -24,6 +24,23 @@ import { NextRequest, NextResponse } from "next/server";
  * inject a `<script src>` pointing at our own origin is still allowed by `'self'`. With it, only
  * the nonce'd scripts and what *they* load may run, and a plain `'self'` source is ignored.
  */
+/**
+ * Where crash reports may be posted, when a deployment has chosen somewhere.
+ *
+ * In `connect-src` for the same reason Supabase is: the policy names every origin this page may
+ * talk to, so an endpoint that is configured but not listed would be blocked — and a crash
+ * reporter silently refused by the CSP is worse than none, because the operator believes they have
+ * one.
+ */
+const REPORT_ORIGIN = (() => {
+  try {
+    const url = process.env.NEXT_PUBLIC_ERROR_REPORT_URL?.trim();
+    return url ? new URL(url).origin : "";
+  } catch {
+    return "";
+  }
+})();
+
 const SUPABASE_ORIGIN = (() => {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -48,7 +65,7 @@ function policy(nonce: string, dev: boolean): string {
     "font-src 'self' data:",
     // The exfiltration control, and the original reason this policy exists: the visitor's own
     // Anthropic key lives in sessionStorage, so the places this page may talk to are named.
-    ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN].filter(Boolean).join(" "),
+    ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN, REPORT_ORIGIN].filter(Boolean).join(" "),
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
