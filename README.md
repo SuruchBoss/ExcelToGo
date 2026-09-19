@@ -238,13 +238,14 @@ npm run dev
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
 | `npm test` | รัน unit test 1093 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
+| `npm run check:screens` | ตัวเลขที่พิมพ์อยู่บนภาพหน้าจอยังตรงกับซอร์สไหม |
 | `npm run check:deps` | ทุก advisory ต้องถูกแก้หรือถูกเขียนไว้พร้อมเหตุผลและวันหมดอายุ |
 | `npm run check:bundle` | งบขนาด bundle + ไลบรารีคลาวด์ต้องอยู่ chunk แยก (ต้อง build ก่อน) |
 | `npm run check:mutants` | ทุบเอนจินทีละจุดแล้วดูว่าเทสต์จับได้ไหม — 31/32 (ไม่ต้อง build) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
 | `npm run check:e2e` | ขับแอปจริงในเบราว์เซอร์ 9 flow: พิมพ์สูตร, ส่งออก-นำเข้า `.xlsx`, คีย์บอร์ดล้วน, undo, เสียงประกาศ, ผู้ช่วย AI, CSP (ต้อง build ก่อน) |
 | `npm run check:ai` | ถาม Claude จริงด้วย key ของคุณ แล้วเช็กว่าสูตรที่ได้เอนจินนี้รันได้จริงไหม — ไม่อยู่ใน `verify` เพราะต้องใช้ key และมีค่าใช้จ่าย |
-| `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
+| `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
 | `npm run build:social` | สร้าง `public/social-preview.png` (1280×640) ใหม่ โดยนับตัวเลขบนการ์ดจากซอร์ส |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
@@ -1580,6 +1581,7 @@ src/
                              #     + job accessibility: axe สองความกว้างบนเบราว์เซอร์จริง
 scripts/
   check-readme.mjs           # ตรวจ README ก่อน push (ไม่มี dependency) — ดูกติกาที่ AGENTS.md
+  check-screenshots.mjs      # ตัวเลขบนภาพหน้าจอยังตรงกับซอร์สไหม (ภาพใหม่ต้องมีรายการเสมอ)
   check-deps.mjs             # advisory ทุกตัวต้องมีคนเขียนถึง พร้อมเหตุผลและวันหมดอายุ
   check-bundle.mjs           # งบขนาด bundle + ไลบรารีคลาวด์ต้องอยู่ chunk แยกของตัวเอง
   check-mutants.mjs          # ทุบเอนจินทีละจุด แล้วถามว่าชุดเทสต์แดงไหม (ไม่มี dependency)
@@ -2235,6 +2237,10 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
       Supabase ยังอยู่ chunk ของตัวเอง โดยมี flow ในเบราว์เซอร์พิสูจน์ว่าไม่มีใครขอโหลดมัน ·
       CodeQL รันทุกสัปดาห์ด้วย ไม่ใช่แค่ตอน push เพราะ advisory ที่ออกเดือนหน้าคือข้อมูลใหม่ของโค้ดชุดเดิม
       ยังเหลือ: ยังไม่มีด่านวัดว่า*การโหลดหนึ่งหน้า*ส่งไบต์ไปเท่าไร วัดแค่สิ่งที่ build ออกมา
+- [x] **ด่านจับภาพหน้าจอที่ค้าง** — ทำแล้ว: `check:screens` ให้ภาพแต่ละไฟล์ประกาศว่าพิมพ์ตัวเลขอะไรไว้
+      เก็บค่าตอนถ่าย แล้วเรียกชื่อไฟล์ออกมาเมื่อตัวเลขขยับโดยที่ภาพยังไม่ถูกถ่ายใหม่ มันอ่านพิกเซลไม่ได้
+      แต่รู้ว่าโลกขยับใต้ภาพ ซึ่งเป็นสิ่งที่ทำให้ "519 เทสต์" กับ "980 เทสต์" อยู่รอดได้หลายวัน <!-- historic -->
+      ยังเหลือ: ไม่มีอะไรจับภาพที่*หน้าตา*ค้าง จับแต่ตัวเลข
 - [x] **Content-Security-Policy + security headers** — ทำแล้ว (`next.config.ts`): `connect-src` ระบุ
       เฉพาะ `api.anthropic.com` กับ origin ของ Supabase ถ้าตั้งไว้ สคริปต์ที่ถูกแทรกเข้ามาจึงส่ง API key
       ของผู้ใช้ออกไปข้างนอกไม่ได้ พร้อม `frame-ancestors`, `object-src`, `base-uri`, `form-action`,

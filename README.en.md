@@ -251,13 +251,14 @@ Other available commands:
 | `npm run lint` | Check code quality with ESLint |
 | `npm test` | Run the 1093-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
+| `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:deps` | Every advisory is fixed, or written down with a reason and a review date |
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 9 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
-| `npm run verify` | Everything, before a push: lint → check:readme → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
+| `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
@@ -1710,6 +1711,7 @@ src/
                              #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
+  check-screenshots.mjs      # Figures printed on a screenshot vs. the source (a new image needs an entry)
   check-deps.mjs             # Every advisory accounted for, with a reason and an expiry date
   check-bundle.mjs           # Size budgets, and the cloud client staying in a chunk of its own
   check-mutants.mjs          # Breaks the engine a character at a time and asks if the suite notices
@@ -2493,6 +2495,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       CodeQL runs weekly as well as on every push, because an advisory that lands next month is new
       information about code that has not changed. Still open: no gate on what a *page load* transfers,
       only on what is built.
+- [x] **A gate for stale screenshots** — done: `check:screens` has each image declare which counted
+      figures it prints, records them at retake, and names the file when a count moves without one. It
+      cannot read pixels; it notices the world moving under them, which is what let an image reading
+      "519 tests" survive for days, and then one reading "980 tests". <!-- historic --> Still open: nothing watches a screenshot whose *layout* went
+      stale, only its figures.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,

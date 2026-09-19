@@ -47,6 +47,12 @@ jobs:
       - name: README is still true
         run: npm run check:readme
 
+      # A screenshot makes claims no other gate can read. This one cannot read them either — it
+      # notices that a figure printed on an image has moved in the source since the image was
+      # taken, which is how "519 tests" and "980 tests" both survived for days.
+      - name: No screenshot has gone stale
+        run: npm run check:screens
+
       # One Node version: the dependency tree is the same on all three, and asking the registry
       # three times for the same answer is three chances to fail for a reason unrelated to the
       # commit. The gate refuses to guess when the registry is unreachable rather than going red.

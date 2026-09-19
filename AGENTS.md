@@ -7,14 +7,14 @@
 Run one command and get it green before committing:
 
 ```bash
-npm run verify     # lint → check:readme → check:deps → test → check:mutants
+npm run verify     # lint → check:readme → check:screens → check:deps → test → check:mutants
                    #   → build → check:bundle → check:a11y → check:e2e
 ```
 
-GitHub Actions รันเก้าด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+GitHub Actions รันสิบด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
 ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
 รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same nine gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
+GitHub Actions runs the same ten gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
 are jobs of their own because they need a browser) — running them yourself
 first is still faster than waiting for CI to tell you.
 
@@ -83,6 +83,12 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
   ลงแค่สำเนาเดียว การ์ดจึงเขียน 91 ทั้งที่ทุกที่อื่นเขียน 103 และไม่มีด่านไหนจับได้เพราะการ์ดเป็น PNG
   เพิ่มไฟล์เทสต์ความปลอดภัยใหม่ ให้เติมใน `SECURITY_TEST_FILES` ของไฟล์นั้นที่เดียว
 - จำนวน *ไฟล์* เทสต์ที่เขียนไว้ตรงกับของจริง (เคยเขียน 27 ทั้งที่มี 35)
+- ตัวเลขที่เป็น *เรื่องเล่า* ไม่ใช่การเคลม (เช่น "ภาพที่เขียนว่า 519 เทสต์ รอดมาได้หลายวัน") ให้ใส่
+  `<!-- historic -->` ไว้**บรรทัดเดียวกับตัวเลข** ด่านจะข้ามให้ · มาร์กเกอร์ตั้งใจให้ดูเกะกะ เพราะการเอาไป
+  ปิดเลขที่ค้างจริง ๆ ควรเป็นสิ่งที่ต้องตั้งใจทำ
+  A number that is *a story* rather than a claim ("an image reading 519 tests survived for days") takes
+  `<!-- historic -->` **on the same line as the number**. The marker is deliberately ugly: using it to
+  silence a genuinely stale figure should be an obvious thing to be doing on purpose.
 
 ### สิ่งที่สคริปต์เช็กแทนไม่ได้ — ต้องอ่านเอง
 ### What the script can't check — read it yourself
@@ -99,12 +105,21 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
   Both READMEs change together, always.
 - **ตัวเลขที่เคลมต้องนับมาจริง** เช่น จำนวนสูตร/ฟังก์ชัน — เคยเขียนผิดมาแล้ว (22/41 ทั้งที่จริงคือ 25/42)
   Counts must come from counting. A wrong one shipped before: 22/41 claimed, 25/42 actual.
-- **ภาพหน้าจอก็เคลมตัวเลขได้ และไม่มีด่านไหนอ่านมันออก** — `check:readme` นับเทสต์จาก *ข้อความ* ภาพ
+- **ภาพหน้าจอก็เคลมตัวเลขได้** — ตอนนี้มี `npm run check:screens` คอยจับแล้ว: ภาพแต่ละไฟล์ประกาศไว้ว่า
+  *พิมพ์ตัวเลขอะไรไว้บ้าง* และ `screenshots.json` เก็บค่าตอนถ่ายครั้งล่าสุด พอตัวเลขในซอร์สขยับแล้วภาพยังไม่ถูกถ่ายใหม่
+  ด่านจะเรียกชื่อไฟล์นั้นออกมา **ไฟล์ใหม่ในโฟลเดอร์ต้องมีรายการใน `SHOWS` เสมอ** — `[]` คือการตัดสินใจ
+  ไม่มีรายการคือการลืม · ถ่ายใหม่แล้วรัน `npm run check:screens -- --bless` · **bless ทั้งที่ยังไม่ถ่ายใหม่
+  คือวิธีเดียวที่จะทำให้ด่านนี้ไร้ค่า**
+  A screenshot makes claims too, and `npm run check:screens` now watches them: each image declares which
+  counted figures it prints, `screenshots.json` records what they were when it was taken, and a count that
+  moves without a retake is named. **A new file in the folder needs an entry in `SHOWS`** — `[]` is a
+  decision, a missing entry is an oversight. Retake, then `npm run check:screens -- --bless`. **Blessing
+  without retaking is the one way to make this gate worthless.**
+- **เดิมทีข้อนี้เขียนว่าไม่มีด่านไหนอ่านภาพออก** — `check:readme` นับเทสต์จาก *ข้อความ* ภาพ
   landing page ที่เขียนว่า "519 เทสต์" จึงผ่านทุกด่านอยู่หลายวันทั้งที่จริงเป็น 577 เปลี่ยน UI หรือตัวเลขที่
   โชว์อยู่ในภาพเมื่อไร ต้องถ่ายใหม่เมื่อนั้น
-  A screenshot makes claims too, and no gate can read it. `check:readme` counts tests in *text*, so a
-  landing-page image reading "519 tests" passed every gate for days while the real figure was 577.
-  Change the UI or a number it shows, and the screenshot has to be retaken.
+  The gate above exists because of it, and it still only watches *figures*. Change the UI itself — a
+  layout, a label, a colour — and no gate can tell; that one is still on you to retake.
 
 ### เรื่องอื่นที่ทำเป็นปกติ / Other habits
 
