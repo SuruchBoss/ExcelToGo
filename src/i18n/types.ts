@@ -290,6 +290,9 @@ export interface Messages {
     appliesTo: (range: string) => string;
     selectFirst: string;
     kindLabel: string;
+    /** Accessible names for the two selects that have no visible label of their own — a screen
+     *  reader otherwise announces "combo box" and nothing else. */
+    operatorLabel: string;
     kinds: { compare: string; textContains: string; rank: string; colorScale: string; dataBar: string };
     operators: Record<CfComparison, string>;
     valueLabel: string;

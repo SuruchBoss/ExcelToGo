@@ -170,7 +170,11 @@ export default function AIAssistantPanel() {
           </>
         )}
 
-        <p className="mt-2 border-t border-zinc-100 pt-2 text-[10px] leading-relaxed text-zinc-400">{t.ai.byok.privacyNote}</p>
+        {/* zinc-400 on white is 2.85:1 — the same failure the shortcut dialog had, in the same
+            rule, found the same way: by opening the thing before scanning it. */}
+        <p className="mt-2 border-t border-zinc-100 pt-2 text-[10px] leading-relaxed text-zinc-500">
+          {t.ai.byok.privacyNote}
+        </p>
       </div>
 
       <textarea

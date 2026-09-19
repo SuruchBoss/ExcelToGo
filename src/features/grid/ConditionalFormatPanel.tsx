@@ -110,8 +110,19 @@ export default function ConditionalFormatPanel() {
       <div className="rounded-lg border border-zinc-200 p-3">
         <p className="text-xs font-medium text-emerald-800">{t.conditionalFormat.appliesTo(rangeLabel)}</p>
 
-        <label className="mt-3 block text-xs font-medium text-zinc-600">{t.conditionalFormat.kindLabel}</label>
-        <select value={kind} onChange={(e) => setKind(e.target.value as CfKind)} className={clsx(fieldClass, "mt-1")}>
+        {/* `htmlFor`, not just proximity: a label sitting above a select looks associated and is
+            not. axe rated this critical — a screen reader announced "combo box" with no clue what
+            it chose. Found once the a11y gate started opening the panels instead of only scanning
+            the page as it loads. */}
+        <label htmlFor="cf-kind" className="mt-3 block text-xs font-medium text-zinc-600">
+          {t.conditionalFormat.kindLabel}
+        </label>
+        <select
+          id="cf-kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as CfKind)}
+          className={clsx(fieldClass, "mt-1")}
+        >
           {KINDS.map((k) => (
             <option key={k} value={k}>
               {t.conditionalFormat.kinds[k]}
@@ -121,7 +132,14 @@ export default function ConditionalFormatPanel() {
 
         {kind === "compare" && (
           <div className="mt-2 flex flex-col gap-2">
-            <select value={op} onChange={(e) => setOp(e.target.value as CfComparison)} className={fieldClass}>
+            {/* No visible label of its own — the options read as a sentence next to the value box
+                — so the name is given directly rather than inventing a heading for it. */}
+            <select
+              aria-label={t.conditionalFormat.operatorLabel}
+              value={op}
+              onChange={(e) => setOp(e.target.value as CfComparison)}
+              className={fieldClass}
+            >
               {OPERATORS.map((o) => (
                 <option key={o} value={o}>
                   {t.conditionalFormat.operators[o]}
@@ -179,7 +197,12 @@ export default function ConditionalFormatPanel() {
         )}
 
         {kind === "colorScale" && (
-          <select value={scale} onChange={(e) => setScale(e.target.value as typeof scale)} className={clsx(fieldClass, "mt-2")}>
+          <select
+            aria-label={t.conditionalFormat.scaleLabel}
+            value={scale}
+            onChange={(e) => setScale(e.target.value as typeof scale)}
+            className={clsx(fieldClass, "mt-2")}
+          >
             {SCALE_KEYS.map((k) => (
               <option key={k} value={k}>
                 {t.conditionalFormat.scales[k]}

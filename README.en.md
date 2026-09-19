@@ -249,7 +249,7 @@ Other available commands:
 | `npm test` | Run the 948-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
-| `npm run check:e2e` | Drives the real app through 5 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements (needs a build) |
+| `npm run check:e2e` | Drives the real app through 7 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
@@ -2027,7 +2027,7 @@ assistant sent a range including its text header, because the context builder re
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 5 flows in a real browser (needs a build)
+npm run check:e2e   # 7 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -2037,6 +2037,17 @@ the Thai is still Thai · walk the grid on the keyboard alone and watch focus fo
 whether a change away from the cursor is announced at all. Every flow also fails on an uncaught page error,
 because a flow that passes every assertion while the console fills with exceptions React swallowed has not
 passed.
+
+**The AI assistant is in there too**, with `/api/ai/formula` stubbed. It is the only part of the app that
+talks to a server and the part with the worst record — its unit tests mock the model, so they answer the way
+whoever wrote them expected. Stubbing the route tests everything *around* the model, deterministically: the
+range the panel actually sends (the shipped bug counted the header row into it), the returned formula
+computing once inserted, and a `429` saying how many seconds to wait rather than collapsing into the generic
+"could not connect" — the difference between an error a person can act on and one they cannot.
+
+> Writing that flow, the first assertion reported the app sending `A1:A10` instead of `A1:A2`. **The fixture
+> was wrong, not the app**: the sample sheet fills A–E for ten rows, so the range the app chose was right.
+> Moving the numbers to the empty column F made it pass — and made the assertion mean something.
 
 ### The tests with no formulas written in them
 
@@ -2181,18 +2192,26 @@ What's not done yet, and why — to show this is a known gap, not something forg
       violations while eight buttons below 640px had no accessible name. **It now also opens things before
       checking them** — the shortcut dialog passed every load-time scan while containing two serious
       violations, because it does not exist until you press a button; a state that cannot be opened fails
-      the gate rather than being skipped. Still open: the other panels, menus and popovers are not in that
-      list yet.
+      the gate rather than being skipped. **Every panel is now in that list** — formula palette, AI
+      assistant, live data, conditional formatting, charts, pivots and find/replace, 30 checks in all — and
+      the first run that opened them found two more straight away: `zinc-400` text on white in the AI panel
+      (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
+      all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
+      associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
+      configured) and the live-data picker, which needs a source first.
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
       only rules that must hold for every formula, checked against thousands of generated ones with a
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
       (`TRUE()` failing to parse, `SUM` counting logical values sitting in cells), both now fixed. Still
       open: no property covers the `.xlsx` round trip, and the cross-sheet resolver is not generated against.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 5 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 7 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
-      it. Still open: the AI panel (it needs the model mocked), charts, pivots and touch drag-select.
+      it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
+      sends (the shipped bug counted the header row into it), the suggested formula actually computing once
+      inserted, and a 429 telling the person how many seconds to wait instead of failing quietly. Still
+      open: charts, pivots and touch drag-select.
 - [x] **The grid speaks the ARIA grid pattern** — done: `role="grid"`, row/column counts and per-cell
       indices that survive virtualization, `scope` on both header directions, `aria-selected`, one
       roving tab stop, and focus that follows the cursor. Found by using the app with the keyboard,

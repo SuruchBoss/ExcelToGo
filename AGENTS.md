@@ -24,12 +24,21 @@ first is still faster than waiting for CI to tell you.
 for sideways scroll at 360/390/820/1280/1440. Two widths because one was not enough: an audit run only at
 desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 5 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
-เดินด้วยคีย์บอร์ดล้วน, undo และ "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม" เกณฑ์เลือก flow มีข้อเดียว:
+ด่านนี้ยัง **เปิดพาเนลขึ้นมาตรวจด้วย** ไม่ใช่สแกนแค่หน้าตอนโหลด — พาเลตสูตร, AI, ข้อมูลสด, conditional
+formatting, กราฟ, pivot, ค้นหา/แทนที่ และหน้าคีย์ลัด รวม 30 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
+`OPENED_STATES` เมื่อนั้น** และสถานะที่เปิดไม่ขึ้นถือว่าด่านตก ไม่ใช่ข้าม
+The gate also **opens panels before scanning them** rather than only scanning the page as it loads — the
+formula palette, AI, live data, conditional formatting, charts, pivots, find/replace and the shortcut
+dialog, 30 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
+open fails the gate rather than being skipped.
+
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 7 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+เดินด้วยคีย์บอร์ดล้วน, undo, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม" และผู้ช่วย AI (stub route ไว้
+ทั้งกรณีตอบปกติและกรณีโดน rate limit) เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 5 flows — type a formula and watch the value
-move, export `.xlsx` and import it back, keyboard only, undo, and whether a change away from the cursor is
-announced. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
+`npm run check:e2e` drives the real app in a browser through 7 flows — type a formula and watch the value
+move, export `.xlsx` and import it back, keyboard only, undo, whether a change away from the cursor is
+announced, and the AI assistant with its route stubbed (both a normal answer and a rate limit). Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:

@@ -326,6 +326,7 @@ export const en: Messages = {
     appliesTo: (range: string) => `Applies to ${range}`,
     selectFirst: "Select a range in the grid first, then add a rule",
     kindLabel: "Condition",
+    operatorLabel: "Comparison",
     kinds: {
       compare: "Compare to a number",
       textContains: "Text contains",

@@ -1,7 +1,7 @@
 /**
  * The end-to-end gate: the app driven the way a person drives it.
  *
- * 937 unit tests cover the functions. Not one of them opens the app. Every bug this project found
+ * 948 unit tests cover the functions. Not one of them opens the app. Every bug this project found
  * the hard way lived in the wiring *between* well-tested pieces, where a unit test cannot look:
  *
  * - The toolbar's "+ row" button called `addRow`, which never announced anything, while the tested
@@ -185,6 +185,70 @@ const FLOWS = [
 
       await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "first");
       note(true, "Ctrl+Z restores the previous value");
+    },
+  },
+  {
+    name: "the AI assistant puts a working formula in the cell",
+    async run(page) {
+      // The only part of the app that talks to a server, and the part with the worst record: its
+      // unit tests mock the model, so they answer the way whoever wrote them expected. Stubbing
+      // the route here tests everything *around* the model — what the panel sends, what it does
+      // with the reply, and whether the formula it inserts actually computes — which is where the
+      // real failures were.
+      let posted = null;
+      await page.route("**/api/ai/formula", async (route) => {
+        posted = JSON.parse(route.request().postData() || "{}");
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ formula: "=SUM(F1:F2)", explanation: "รวมค่าในช่วง F1:F2", source: "claude" }),
+        });
+      });
+
+      // Column F, because the sample sheet fills A–E for ten rows. Putting the numbers in A meant
+      // the run above the cursor was A1:A10, not A1:A2, and the first version of this flow read
+      // that as a bug in the app when it was a bug in the fixture.
+      await typeInCell(page, 0, 5, "10");
+      await typeInCell(page, 1, 5, "20");
+      await cell(page, 2, 5).click();
+
+      await page.locator('button[aria-label="ถาม AI"]').first().click();
+      const panel = page.locator("aside");
+      await panel.locator("textarea").fill("รวมคอลัมน์นี้ให้หน่อย");
+      await panel.getByRole("button", { name: "ถาม AI" }).click();
+      await panel.locator("code").first().waitFor({ timeout: 10_000 });
+
+      // The range the panel sends is the bug that shipped once: it went out including the text
+      // header above the numbers, because the context was built from raw cells instead of values.
+      note(posted?.selection === "F1:F2", `it sends the filled run above the cursor (sent ${JSON.stringify(posted?.selection)})`);
+      note(posted?.question === "รวมคอลัมน์นี้ให้หน่อย", "the question reaches the route unchanged");
+
+      await panel.getByRole("button", { name: /ใส่สูตรนี้ที่เซลล์/ }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="2"][data-col="5"]')?.innerText.trim() === "30");
+      note(true, "the suggested formula lands in the cell and computes to 30");
+    },
+  },
+  {
+    name: "a rate limit is shown, not swallowed",
+    async run(page) {
+      // 429 is the one error a person can act on, so it has to say how long to wait rather than
+      // fall into the generic "could not connect". A silent failure here looks like a broken app.
+      await page.route("**/api/ai/formula", (route) =>
+        route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ retryAfterSec: 42 }) })
+      );
+
+      await page.locator('button[aria-label="ถาม AI"]').first().click();
+      const panel = page.locator("aside");
+      await panel.locator("textarea").fill("อะไรก็ได้");
+      await panel.getByRole("button", { name: "ถาม AI" }).click();
+
+      const said = await panel
+        .locator("p", { hasText: "42" })
+        .first()
+        .innerText()
+        .catch(() => "");
+      note(said.includes("42"), `it says how long to wait ("${said.trim()}")`);
+      note((await panel.locator("code").count()) === 0, "and offers no formula to insert");
     },
   },
   {

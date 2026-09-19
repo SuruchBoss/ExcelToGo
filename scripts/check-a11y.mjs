@@ -44,6 +44,26 @@ const OVERFLOW_WIDTHS = [360, 390, 820, 1280, 1440];
  * things a first-time visitor reaches in one press — the point is covering what the load-time scan
  * structurally cannot, not re-testing the app through a second harness.
  */
+/** Opens a side panel from the button that carries this exact accessible name, then waits for it. */
+const panel = (name, opener) => ({
+  name,
+  path: "/app",
+  async open(page) {
+    // These buttons toggle. On a wide screen one panel is already open — the formula palette is
+    // the store's default — so a single click on it *closes* the sidebar instead of opening
+    // anything. That is not hypothetical: "formula palette @1280" reported itself unopenable on
+    // the first run while the same state passed at 390px, where the panel starts closed.
+    const aside = page.locator("aside");
+    await page.locator(opener).first().click();
+    if (!(await aside.first().isVisible().catch(() => false))) {
+      await page.locator(opener).first().click();
+    }
+    // Every panel lives in that one <aside>; waiting for a heading inside it means waiting for the
+    // panel's own content rather than for the box it arrives in.
+    await page.locator("aside h2, aside h3").first().waitFor({ state: "visible", timeout: 10_000 });
+  },
+});
+
 const OPENED_STATES = [
   {
     name: "shortcuts dialog",
@@ -51,6 +71,30 @@ const OPENED_STATES = [
     async open(page) {
       await page.getByRole("button", { name: /^(คีย์ลัด|Keyboard shortcuts)$/ }).first().click();
       await page.waitForSelector('[role="dialog"]', { timeout: 10_000 });
+    },
+  },
+  // Selected by the `title`/`aria-label` the button actually carries, rather than by its visible
+  // text: below 640px the text is hidden and the attribute is the whole accessible name, so this
+  // is the one selector that means the same thing at both widths the gate runs at.
+  panel("formula palette", 'button[aria-label="สูตร"]'),
+  panel("AI assistant panel", 'button[aria-label="ถาม AI"]'),
+  panel("live data panel", 'button[aria-label="ข้อมูล"]'),
+  panel("conditional formatting panel", 'button[title="จัดรูปแบบตามเงื่อนไข"]'),
+  panel("chart panel", 'button[title="กราฟ"]'),
+  panel("pivot panel", 'button[title="สรุปข้อมูล (Pivot)"]'),
+  // The cloud panel is deliberately absent unless a Supabase backend is configured, which it is
+  // not here and is not by default — so there is no button to press and nothing to scan. Listing
+  // it would be a check that fails for the wrong reason. It is scanned when someone runs the gate
+  // against their own configured instance.
+  {
+    name: "find and replace",
+    path: "/app",
+    async open(page) {
+      // No button opens this one — it is a shortcut, which is also the only way a keyboard user
+      // reaches it, so pressing the keys is the honest way to get there.
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      await page.keyboard.press("Control+f");
+      await page.locator('input[type="search"], [role="dialog"], aside').first().waitFor({ state: "visible", timeout: 10_000 });
     },
   },
 ];

@@ -326,6 +326,7 @@ export const th: Messages = {
     appliesTo: (range: string) => `ใช้กับช่วง ${range}`,
     selectFirst: "เลือกช่วงในตารางก่อน แล้วค่อยเพิ่มกฎ",
     kindLabel: "เงื่อนไข",
+    operatorLabel: "ตัวเปรียบเทียบ",
     kinds: {
       compare: "เทียบกับตัวเลข",
       textContains: "ข้อความมีคำว่า",
