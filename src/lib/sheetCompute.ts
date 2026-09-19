@@ -1,5 +1,6 @@
 import type { SheetModel } from "./sheet";
 import { evaluate } from "./formulaEngine/evaluator";
+import { nameScope } from "./namedRanges";
 import {
   compileFormula,
   FormulaProgram,
@@ -270,6 +271,8 @@ function run(
    * same array filled on an earlier pass, which is why the spill map is consulted rather than just
    * the raw text: the second pass would otherwise find its own output blocking it.
    */
+  let arraysWritten = 0;
+
   function spillInto(r: number, c: number, grid: FormulaValue[][]): FormulaValue {
     const h = grid.length;
     const w = grid.reduce((max, row) => Math.max(max, row.length), 0);
@@ -288,6 +291,7 @@ function run(
     }
 
     spill.set(anchor, anchor);
+    arraysWritten++;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         if (y === 0 && x === 0) continue;
@@ -329,7 +333,7 @@ function run(
     const raw = sheet.cells[r]?.[c] ?? "";
     let result: FormulaValue;
     if (isFormula(raw)) {
-      const program = programs.get(key) ?? compileFormula(raw.slice(1));
+      const program = programs.get(key) ?? compileFormula(raw.slice(1), nameScope(sheet.names));
       if (!program.ast) {
         result = program.error!;
       } else {
@@ -360,14 +364,18 @@ function run(
     }
   };
 
-  const before = spill.size;
   sweep();
-  // A second sweep only when an array appeared during the first, and only then because the first
-  // sweep discovers the spill regions while it is already half-way through using them. With the
-  // map built, the anchor-first rule above makes the order stop mattering. Two passes and no more:
-  // a third would only differ for an array whose own shape depends on where another one landed,
-  // which this engine does not let you write.
-  if (spill.size > before) {
+  // A second sweep only when an array was written during the first, and only then because the
+  // first sweep discovers the spill regions while it is already half-way through using them. With
+  // the map built, the anchor-first rule above makes the order stop mattering. Two passes and no
+  // more: a third would only differ for an array whose own shape depends on where another one
+  // landed, which this engine does not let you write.
+  //
+  // The condition used to be "the map grew", which was the same thing while every pass started
+  // from an empty map. The incremental path starts from the previous pass's map, where an array
+  // that merely *changed shape* can leave the size equal or smaller — so what is counted now is
+  // the writing, not the size.
+  if (arraysWritten > 0) {
     pending.fill(1);
     sweep();
   }
@@ -401,6 +409,7 @@ function unlink(snap: Snapshot, key: number): void {
 
 function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined): Snapshot {
   const { rows, cols } = sheet;
+  const names = nameScope(sheet.names);
   const values: FormulaValue[][] = Array.from({ length: rows }, () => new Array<FormulaValue>(cols));
   const display: string[][] = Array.from({ length: rows }, () => new Array<string>(cols));
 
@@ -422,7 +431,7 @@ function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined
     if (!row) continue;
     for (let c = 0; c < cols; c++) {
       const raw = row[c] ?? "";
-      if (isFormula(raw)) link(snap, packCell(r, c), compileFormula(raw.slice(1)));
+      if (isFormula(raw)) link(snap, packCell(r, c), compileFormula(raw.slice(1), names));
     }
   }
 
@@ -441,6 +450,11 @@ interface Diff {
 /** Null when the sheets are too different to be worth an incremental pass. */
 function diffSheets(prev: SheetModel, next: SheetModel): Diff | null {
   if (prev.rows !== next.rows || prev.cols !== next.cols) return null;
+  // Redefining a name changes what formulas mean without changing a single cell's text, so the
+  // cell-by-cell diff below would find nothing to do and every formula reading that name would
+  // keep its old answer. There is no partial version of this — any formula on the sheet might use
+  // it — so the whole sheet is recomputed.
+  if (prev.names !== next.names) return null;
 
   const changed: number[] = [];
   const restyled: number[] = [];
@@ -490,11 +504,44 @@ function incrementalCompute(
     }
   }
 
+  /**
+   * Anchor → the cells its array filled last time, so a spill can be followed in both directions.
+   *
+   * The map the engine keeps points the other way (cell → anchor), which answers "who put this
+   * here" but not "what did this array cover". Both questions have to be answered here: typing
+   * into a spilled cell blocks the array, so its anchor has to run again; and an anchor that runs
+   * again may return a smaller array, so the cells it used to fill have to be cleared. Missing
+   * either direction leaves half an array on screen, which is worse than a slow recompute.
+   */
+  const region = new Map<number, number[]>();
+  for (const [cell, anchor] of prev.result.spill) {
+    if (cell === anchor) continue;
+    const cells = region.get(anchor);
+    if (cells) cells.push(cell);
+    else region.set(anchor, [cell]);
+  }
+
   const ceiling = Math.max(64, Math.floor(rows * cols * MAX_DIRTY_FRACTION));
   while (queue.length > 0) {
     const key = queue.pop()!;
     const row = Math.floor(key / 16384);
     const col = key % 16384;
+
+    // Both directions of the spill relationship, walked with everything else so that whatever the
+    // anchor's own recompute drags in is dragged in too.
+    const owner = prev.result.spill.get(key);
+    if (owner !== undefined && owner !== key && !dirty.has(owner)) {
+      dirty.add(owner);
+      queue.push(owner);
+    }
+    const covered = region.get(key);
+    if (covered) {
+      for (const cell of covered) {
+        if (dirty.has(cell)) continue;
+        dirty.add(cell);
+        queue.push(cell);
+      }
+    }
 
     const direct = prev.dependents.get(key);
     if (direct) {
@@ -531,11 +578,20 @@ function incrementalCompute(
     display[r] = display[r].slice();
   };
 
-  // Started empty rather than copied: the dirty cells are about to be recomputed, and an array
-  // that no longer spills has to stop being in the map. Cells outside the dirty set keep their
-  // values, and `computeSheet` refuses the incremental path entirely once a sheet has arrays in
-  // it — see the guard there and the reason for it.
-  const spill = new Map<number, number>();
+  // Carried forward, then emptied only where an array is about to run again.
+  //
+  // This used to start empty, and `computeSheet` refused the incremental path altogether once a
+  // sheet had any array on it — one `FILTER` anywhere turned every keystroke into a full recompute
+  // of the whole sheet. Starting from the previous map is what makes the incremental path safe
+  // here: cells an array filled keep their values unless that array is one of the ones rerunning,
+  // and the entries for the ones that are rerunning are dropped below so a shrinking array leaves
+  // nothing behind.
+  const spill = new Map(prev.result.spill);
+  for (const key of dirty) {
+    if (prev.result.spill.get(key) !== key) continue;
+    spill.delete(key);
+    for (const cell of region.get(key) ?? []) spill.delete(cell);
+  }
   const snap: Snapshot = {
     sheet,
     result: { values, display, spill },
@@ -553,12 +609,13 @@ function incrementalCompute(
   for (const [precedent, readers] of prev.dependents) snap.dependents.set(precedent, new Set(readers));
 
   // Now the graph can be brought up to date, because the closure above is already taken.
+  const names = nameScope(sheet.names);
   for (const key of diff.changed) {
     const r = Math.floor(key / 16384);
     const c = key % 16384;
     unlink(snap, key);
     const raw = sheet.cells[r]?.[c] ?? "";
-    if (isFormula(raw)) link(snap, key, compileFormula(raw.slice(1)));
+    if (isFormula(raw)) link(snap, key, compileFormula(raw.slice(1), names));
   }
 
   const pending = new Uint8Array(rows * cols);
@@ -615,12 +672,6 @@ export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): 
     }
     const diff = diffSheets(prev.sheet, sheet);
     if (!diff || (diff.changed.length === 0 && diff.restyled.length === 0)) continue;
-    // A sheet with array formulas on it goes the full route. The incremental pass recomputes a
-    // closure of cells; an array writes into cells *outside* that closure, and deleting one has to
-    // clear them again. Tracking that properly means putting spill regions in the dependency
-    // graph, which is a bigger change than the feature has earned yet — and a stale half-erased
-    // array on screen is a worse bug than a slower recompute.
-    if (prev.result.spill.size > 0) continue;
     const next = incrementalCompute(prev, sheet, diff, resolver);
     if (next) {
       computeStats.incremental++;

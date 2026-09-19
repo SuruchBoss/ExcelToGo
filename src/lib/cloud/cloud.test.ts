@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { isCloudConfigured } from "./config";
-import { readWorkbook, toSummary, WORKBOOK_FORMAT, workbookPayload, wouldOverwriteNewer } from "./workbook";
+import {
+  describeVersionAge,
+  isInvitableEmail,
+  normaliseEmail,
+  readWorkbook,
+  toSummary,
+  WORKBOOK_FORMAT,
+  workbookPayload,
+  wouldOverwriteNewer,
+} from "./workbook";
 import { createEmptySheet } from "@/lib/sheet";
 import { SheetTab } from "@/store/sheetStore";
 
@@ -91,11 +100,70 @@ describe("noticing another device got there first", () => {
 });
 
 describe("the listing shape", () => {
-  it("renames the column to what the UI reads", () => {
-    expect(toSummary({ id: "a", name: "งาน", updated_at: "2026-01-01T00:00:00.000Z" })).toEqual({
+  it("renames the columns to what the UI reads", () => {
+    expect(toSummary({ id: "a", name: "งาน", updated_at: "2026-01-01T00:00:00.000Z", user_id: "u1" })).toEqual({
       id: "a",
       name: "งาน",
       updatedAt: "2026-01-01T00:00:00.000Z",
+      ownerId: "u1",
     });
+  });
+
+  it("carries the owner, because the listing now holds other people's workbooks too", () => {
+    // Only an owner can invite, remove or delete. Without this field the UI would offer buttons
+    // the database refuses, which reads as a broken app rather than as a rule.
+    expect(toSummary({ id: "a", name: "x", updated_at: "", user_id: "u2" }).ownerId).toBe("u2");
+  });
+});
+
+describe("who can be invited", () => {
+  it("accepts an ordinary address", () => {
+    for (const email of ["somchai@example.com", "a@b.co", "first.last+tag@sub.domain.co.th"]) {
+      expect(isInvitableEmail(email)).toBe(true);
+    }
+  });
+
+  it("refuses what could not possibly match a sign-in", () => {
+    for (const junk of ["", "  ", "somchai", "@example.com", "somchai@", "a@b@c", "has space@x.com"]) {
+      expect(isInvitableEmail(junk)).toBe(false);
+    }
+  });
+
+  it("refuses one longer than the column allows, rather than letting the database say no", () => {
+    expect(isInvitableEmail(`${"a".repeat(310)}@example.com`)).toBe(false);
+  });
+
+  it("matches however the invitation was capitalised", () => {
+    // The trigger lower-cases on the way in; this is the other half, and without it an invitation
+    // to Somchai@example.com is never removable by someone who types it back in lower case.
+    expect(normaliseEmail("  Somchai@Example.COM ")).toBe("somchai@example.com");
+  });
+});
+
+describe("how an earlier version is described", () => {
+  const now = new Date("2026-03-10T12:00:00.000Z");
+  const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+
+  it("is relative while relative is the easier thing to place", () => {
+    // "2 hours ago" answers the question people are actually asking — is this the one from before
+    // lunch — and an ISO timestamp does not.
+    expect(describeVersionAge(ago(0), now, "en")).toBe("just now");
+    expect(describeVersionAge(ago(5), now, "en")).toBe("5 min ago");
+    expect(describeVersionAge(ago(120), now, "en")).toBe("2 h ago");
+    expect(describeVersionAge(ago(60 * 24 * 3), now, "en")).toBe("3 d ago");
+  });
+
+  it("turns into a date once relative stops helping", () => {
+    // "9 days ago" is no easier to place than a date, and harder to compare between two versions.
+    expect(describeVersionAge(ago(60 * 24 * 9), now, "en")).not.toContain("ago");
+  });
+
+  it("says it in Thai too", () => {
+    expect(describeVersionAge(ago(5), now, "th")).toBe("5 นาทีที่แล้ว");
+    expect(describeVersionAge(ago(0), now, "th")).toBe("เมื่อครู่");
+  });
+
+  it("hands back a timestamp it cannot read rather than showing NaN", () => {
+    expect(describeVersionAge("not a date", now, "en")).toBe("not a date");
   });
 });

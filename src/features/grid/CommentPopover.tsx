@@ -90,7 +90,7 @@ export default function CommentPopover({
           </button>
         )}
       </div>
-      <p className="mt-1.5 text-[11px] text-zinc-400">{t.comments.hint}</p>
+      <p className="mt-1.5 text-[11px] text-zinc-500">{t.comments.hint}</p>
     </div>
   );
 }

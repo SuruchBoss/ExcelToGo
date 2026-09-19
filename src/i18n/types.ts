@@ -116,7 +116,15 @@ export interface Messages {
       type: string;
       typeRest: string;
       typeCsv: string;
-      typeDb: string;
+      typePostgres: string;
+      typeMysql: string;
+      connection: string;
+      connectionPlaceholder: string;
+      connectionHint: string;
+      query: string;
+      queryPlaceholder: string;
+      queryHint: string;
+      queryProblem: Record<string, string>;
       url: string;
       urlPlaceholder: string;
       method: string;
@@ -255,6 +263,88 @@ export interface Messages {
     working: string;
     privacy: string;
   };
+  share: {
+    /** Inviting other accounts to one saved workbook. */
+    title: string;
+    subtitle: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    invite: string;
+    invited: string;
+    sharedWith: (n: number) => string;
+    nobody: string;
+    remove: string;
+    confirmRemove: (email: string) => string;
+    ownerOnly: string;
+    sharedWithYou: string;
+    needsWorkbook: string;
+  };
+  names: {
+    /** Names people give to ranges, so a formula can say what it means. */
+    title: string;
+    short: string;
+    openTitle: string;
+    subtitle: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    refersTo: (ref: string) => string;
+    add: string;
+    rename: string;
+    remove: (name: string) => string;
+    empty: string;
+    defined: (name: string, range: string) => string;
+    deleted: (name: string) => string;
+    problem: {
+      empty: string;
+      looksLikeRef: string;
+      badChars: string;
+      reserved: string;
+      tooLong: string;
+      taken: string;
+    };
+    hint: string;
+  };
+  validation: {
+    /** Rules the person set on what may go in a cell, and the refusals they cause. */
+    title: string;
+    /** The format-bar button's own label, which has a toolbar's worth of room rather than a heading's. */
+    short: string;
+    subtitle: string;
+    openTitle: string;
+    kindList: string;
+    kindNumber: string;
+    kindLength: string;
+    listLabel: string;
+    listPlaceholder: string;
+    minLabel: string;
+    maxLabel: string;
+    lengthLabel: string;
+    apply: string;
+    clear: string;
+    applied: (range: string) => string;
+    cleared: (range: string) => string;
+    noneHere: string;
+    hasRule: (what: string) => string;
+    refused: {
+      notInList: (ref: string) => string;
+      notANumber: (ref: string) => string;
+      tooSmall: (ref: string) => string;
+      tooLarge: (ref: string) => string;
+      tooLong: (ref: string) => string;
+    };
+  };
+  versions: {
+    /** Earlier states of a cloud workbook, kept by the database. */
+    title: string;
+    subtitle: string;
+    none: string;
+    count: (n: number) => string;
+    open: string;
+    confirmOpen: (when: string) => string;
+    opened: string;
+    needsWorkbook: string;
+    limit: string;
+  };
   collab: {
     /** Live editing with other people in the same saved workbook. */
     title: string;
@@ -388,6 +478,10 @@ export interface Messages {
     pickRowField: string;
   };
   formulaBar: {
+    /** The ranges the selected formula reads, shown beside it and read out. */
+    reads: string;
+    readsElsewhere: string;
+    readsTitle: string;
     placeholder: string;
   };
   sheetTabs: {
@@ -409,6 +503,9 @@ export interface Messages {
    * and saying it twice is worse than not saying it.
    */
   live: {
+    /** Freezing is a band of the screen changing behaviour, none of it where the cursor is. */
+    frozen: (rows: number, cols: number) => string;
+    unfrozen: string;
     sorted: (column: string, ascending: boolean) => string;
     filtered: (column: string, visible: number, total: number) => string;
     filterCleared: (column: string) => string;
@@ -469,6 +566,12 @@ export interface Messages {
     anyKey: string;
     groups: Record<string, string>;
     items: Record<string, string>;
+  };
+  freeze: {
+    /** The pane split: rows and columns that stay put while the rest scrolls. */
+    freeze: string;
+    unfreeze: string;
+    title: string;
   };
   grid: {
     filterColumnTitle: string;

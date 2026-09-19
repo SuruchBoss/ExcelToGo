@@ -1,6 +1,7 @@
 import { AstNode } from "./ast";
 import { parseFormula, FormulaSyntaxError } from "./parser";
 import { FormulaError } from "./types";
+import { type NameScope, substituteNames } from "../namedRanges";
 
 /**
  * What a formula compiles to: its syntax tree, the cells it reads, and whether it can ever be
@@ -104,13 +105,19 @@ const cache = new Map<string, FormulaProgram>();
  * worst case to leave uncached: it is the state a formula is in for as long as someone is still
  * typing it.
  */
-export function compileFormula(body: string): FormulaProgram {
-  const hit = cache.get(body);
+export function compileFormula(body: string, scope?: NameScope): FormulaProgram {
+  // A sheet with no names keys the cache by the formula text alone, exactly as before: the common
+  // case pays nothing for a feature it is not using. With names, the table's fingerprint joins the
+  // key, so redefining one recompiles the formulas that read it rather than serving a tree built
+  // around the old rectangle — and the dependency graph is built from that tree.
+  const key = scope ? `${scope.key}\u0000${body}` : body;
+  const hit = cache.get(key);
   if (hit) return hit;
 
   const program: FormulaProgram = { ast: null, error: null, cells: [], ranges: [], volatile: false };
   try {
-    program.ast = parseFormula(body);
+    const parsed = parseFormula(body);
+    program.ast = scope ? substituteNames(parsed, scope) : parsed;
     walk(program.ast, program);
   } catch (e) {
     program.ast = null;
@@ -119,12 +126,12 @@ export function compileFormula(body: string): FormulaProgram {
 
   if (cache.size >= CACHE_LIMIT) {
     let drop = Math.floor(CACHE_LIMIT / 2);
-    for (const key of cache.keys()) {
-      cache.delete(key);
+    for (const oldest of cache.keys()) {
+      cache.delete(oldest);
       if (--drop <= 0) break;
     }
   }
-  cache.set(body, program);
+  cache.set(key, program);
   return program;
 }
 

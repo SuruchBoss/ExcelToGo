@@ -11,15 +11,22 @@ import {
   BarChart3,
   MessageSquareText,
   Palette,
+  ShieldCheck,
+  Snowflake,
+  Tag,
   Table2,
   TableCellsMerge,
 } from "lucide-react";
 import { getComment, NumberFormat } from "@/lib/sheet";
 import { isSingleCell } from "@/types/sheet-ui";
 import { mergeWouldDiscard, rangeHasMerge } from "@/lib/sheetMerges";
+import { isFrozen } from "@/lib/sheetFreeze";
+import { ruleAt } from "@/lib/dataValidation";
 import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import CommentPopover from "@/features/grid/CommentPopover";
+import ValidationPopover from "@/features/grid/ValidationPopover";
+import NamesPopover from "@/features/grid/NamesPopover";
 import clsx from "clsx";
 
 export default function FormatBar() {
@@ -36,6 +43,8 @@ export default function FormatBar() {
   const selection = useSheetStore(selectActiveSelection);
   const setCellComment = useSheetStore((s) => s.setCellComment);
   const [commentAt, setCommentAt] = useState<{ x: number; y: number } | null>(null);
+  const [validationAt, setValidationAt] = useState<{ x: number; y: number } | null>(null);
+  const [namesAt, setNamesAt] = useState<{ x: number; y: number } | null>(null);
   const singleCell = isSingleCell(selection);
   // Whether the button currently splits rather than joins.
   const merging = rangeHasMerge(sheet.merges, {
@@ -45,9 +54,12 @@ export default function FormatBar() {
     endCol: selection.endCol,
   });
   const existingComment = getComment(sheet.comments, selection.anchorRow, selection.anchorCol) ?? "";
+  const anchorRule = ruleAt(sheet, selection.anchorRow, selection.anchorCol);
   const chartOpen = useSheetStore((s) => s.sidebarMode === "chart");
   const pivotOpen = useSheetStore((s) => s.sidebarMode === "pivot");
   const toggleMerge = useSheetStore((s) => s.toggleMerge);
+  const toggleFreeze = useSheetStore((s) => s.toggleFreeze);
+  const frozen = isFrozen(sheet.freeze);
   // Three stacked bars ate a fifth of a 768px laptop screen before a single grid row appeared.
   // Formatting is the least-used of the three, so the whole row folds away — hiding only its
   // contents saved 14px and not one extra row, which is decoration rather than a fix.
@@ -145,6 +157,22 @@ export default function FormatBar() {
         <span className="hidden sm:inline">{merging ? t.merge.split : t.merge.join}</span>
       </button>
 
+      <button
+        onClick={toggleFreeze}
+        // Disabled at A1 because there is nothing above or to the left of it to freeze, and a
+        // button that looks live and does nothing is worse than one that says it cannot.
+        disabled={!frozen && selection.anchorRow === 0 && selection.anchorCol === 0}
+        aria-label={frozen ? t.freeze.unfreeze : t.freeze.freeze}
+        title={frozen ? t.freeze.unfreeze : t.freeze.title}
+        className={clsx(
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400 sm:h-7 sm:min-w-0 sm:justify-start",
+          frozen ? "border-blue-400 bg-blue-50 text-blue-800" : "border-zinc-300 text-zinc-700"
+        )}
+      >
+        <Snowflake size={14} />{" "}
+        <span className="hidden sm:inline">{frozen ? t.freeze.unfreeze : t.freeze.freeze}</span>
+      </button>
+
       <div className="mx-1 h-5 w-px bg-zinc-200" />
 
       <button
@@ -212,6 +240,46 @@ export default function FormatBar() {
           onClose={() => setCommentAt(null)}
         />
       )}
+
+      {/* A rectangle, not a single cell: a dropdown is something you put on a column, and a
+          feature that could only do one cell at a time would be set up one cell at a time. */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          const box = e.currentTarget.getBoundingClientRect();
+          setValidationAt({ x: Math.min(box.left, window.innerWidth - 332), y: box.bottom + 6 });
+        }}
+        title={t.validation.openTitle}
+        className={clsx(
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
+          anchorRule
+            ? "border-emerald-500 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+            : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+        )}
+      >
+        <ShieldCheck size={14} /> <span className="hidden sm:inline">{t.validation.short}</span>
+      </button>
+
+      {validationAt && <ValidationPopover anchor={validationAt} onClose={() => setValidationAt(null)} />}
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          const box = e.currentTarget.getBoundingClientRect();
+          setNamesAt({ x: Math.min(box.left, window.innerWidth - 332), y: box.bottom + 6 });
+        }}
+        title={t.names.openTitle}
+        className={clsx(
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
+          sheet.names
+            ? "border-sky-500 bg-sky-50 text-sky-800 hover:bg-sky-100"
+            : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+        )}
+      >
+        <Tag size={14} /> <span className="hidden sm:inline">{t.names.short}</span>
+      </button>
+
+      {namesAt && <NamesPopover anchor={namesAt} onClose={() => setNamesAt(null)} />}
 
       <button
         onClick={() => toggleSidebar("chart")}

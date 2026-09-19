@@ -20,6 +20,10 @@ export const countMatches = (p, re) => (read(p).match(re) ?? []).length;
 /** Every file whose cases are counted as security tests. Add new ones here and nowhere else. */
 export const SECURITY_TEST_FILES = [
   "src/lib/server/urlGuard.test.ts",
+  "src/lib/server/dbGuard.test.ts",
+  "src/lib/server/executeDbSource.test.ts",
+  "src/lib/server/sourceRepo.test.ts",
+  "src/lib/dataSources/sqlGuard.test.ts",
   "src/lib/server/executeSource.test.ts",
   "src/lib/server/secretBox.test.ts",
   "src/lib/server/rateLimiter.test.ts",
@@ -30,6 +34,8 @@ export const SECURITY_TEST_FILES = [
   "src/lib/byok.test.ts",
   "src/lib/csvInjection.test.ts",
   "src/lib/cloud/liveMessage.test.ts",
+  "src/lib/cloud/policies.test.ts",
+  "src/lib/errorReport.test.ts",
 ];
 
 function walk(dir, onFile) {

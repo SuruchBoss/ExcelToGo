@@ -1,3 +1,6 @@
+import type { FreezePanes } from "./sheetFreeze";
+import type { CellValidation } from "./dataValidation";
+import type { NameTable } from "./namedRanges";
 import { CellComments, shiftComments } from "./cellComments";
 import { PivotSource } from "./pivot";
 import { cellRef, colToLetters } from "./formulaEngine/address";
@@ -35,6 +38,14 @@ export interface SheetModel {
   comments?: CellComments;
   /** Set on a sheet that *is* a pivot: where it was built from, so it can be rebuilt. See pivot.ts. */
   pivot?: PivotSource;
+  /** Rows and columns that stay put while the rest scrolls. Absent means nothing is frozen. See
+   *  sheetFreeze.ts. */
+  freeze?: FreezePanes;
+  /** Rules the person building the sheet set on what may go in a cell. See dataValidation.ts. */
+  validation?: CellValidation;
+  /** Names given to ranges, so formulas can say what they mean. Scoped to this sheet — see the
+   *  header of namedRanges.ts for why, and what that costs. */
+  names?: NameTable;
 }
 
 export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): SheetModel {

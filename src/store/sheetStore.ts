@@ -63,7 +63,11 @@ import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
 import { FormulaDef } from "@/lib/formulaCatalog";
 import { addMerge, rangeHasMerge, removeMerges } from "@/lib/sheetMerges";
 import { isSingleCell, normalizeSelection, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
-import { getMessages } from "@/i18n";
+import { shiftFormulaRefs } from "@/lib/formulaEngine/shift";
+import { shiftFreeze, toggleFreezeAt } from "@/lib/sheetFreeze";
+import { checkValue, ruleAt, shiftValidation, ValidationRule, withValidation } from "@/lib/dataValidation";
+import { nameKey, nameProblem, refForSelection, shiftNames, withName, withoutName, type NameProblem } from "@/lib/namedRanges";
+import { getLocale, getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
@@ -194,6 +198,17 @@ interface SheetState {
   deleteSheet: (id: string) => void;
 
   setCellRaw: (row: number, col: number, raw: string) => void;
+  /** Sets or clears what may go in the selected cells. See dataValidation.ts. */
+  setValidation: (rule: ValidationRule | undefined) => void;
+  /**
+   * Names the current selection, or renames an existing name's target to it.
+   *
+   * Answers with what was wrong rather than throwing or silently doing nothing: the panel needs to
+   * put the reason next to the box, and "the name you typed is already taken" is the one piece of
+   * information a refusal has to carry.
+   */
+  defineName: (label: string, replacing?: string) => NameProblem | null;
+  deleteName: (label: string) => void;
   /**
    * Writes one cell on a named tab on behalf of somebody else in the same workbook.
    *
@@ -235,6 +250,21 @@ interface SheetState {
   fillFrom: (row: number, col: number) => void;
   /** Excel's Ctrl+D / Ctrl+R: the selection's first line fills the rest of it. */
   fillWithinSelection: (axis: "down" | "right") => void;
+  /**
+   * Puts what is in the anchor cell into every cell of the selection, in one undoable step.
+   *
+   * Excel's `Ctrl+Enter`. Distinct from `fillWithinSelection`, which takes the selection's first
+   * row or column as the source: here the source is the one cell the cursor is on, and it goes
+   * everywhere. References shift as they would in a drag-fill, because filling a formula that kept
+   * pointing at the original row would be a column of the same wrong number.
+   */
+  fillSelectionFromAnchor: () => void;
+  /**
+   * Freezes everything above and to the left of the cursor, or unfreezes if something already is.
+   *
+   * Excel's "Freeze Panes", including the part where the same button is both halves.
+   */
+  toggleFreeze: () => void;
   /** Moves the cursor onto a match, switching sheets if it is on another one. */
   goToMatch: (match: Match) => void;
   /** Rewrites one cell. Returns whether it changed, so the caller can count. */
@@ -464,7 +494,14 @@ function structuralOp(
   edit: (sheet: SheetModel) => SheetModel
 ): SheetTab[] {
   const activeName = activeTab(s).name;
-  const edited = s.sheets.map((t) => (t.id === s.activeSheetId ? { ...t, sheet: edit(t.sheet) } : t));
+  // `shiftFreeze` after `edit`, not inside it: the row/column helpers know nothing about panes,
+  // and a split left on its old index would cut the sheet in the wrong place — quietly, since
+  // nothing on screen says which row the split is *supposed* to be.
+  const edited = s.sheets.map((t) =>
+    t.id === s.activeSheetId
+      ? { ...t, sheet: withShiftedValidation(shiftFreeze(edit(t.sheet), axis, opIndex, delta), axis, opIndex, delta) }
+      : t
+  );
   const fixed = shiftOtherSheetsForStructuralOp(edited, activeName, axis, opIndex, delta);
   return edited.map((t, i) => (fixed[i] === t.sheet ? t : { ...t, sheet: fixed[i] }));
 }
@@ -552,6 +589,19 @@ function rewriteHistory(tabId: string, row: number, col: number, raw: string): v
   temporal.setState({ pastStates: pastStates.map(fix), futureStates: futureStates.map(fix) });
 }
 
+/** A dropdown is about a *cell*, so a row inserted above it takes the dropdown down with it. */
+function withShiftedValidation(sheet: SheetModel, axis: Axis, index: number, delta: 1 | -1): SheetModel {
+  const moved = shiftValidation(sheet.validation, axis, index, delta);
+  const names = shiftNames(sheet.names, axis, index, delta);
+  if (moved === sheet.validation && names === sheet.names) return sheet;
+  const next: SheetModel = { ...sheet, validation: moved, names };
+  // An absent key and a key holding `undefined` are the same thing to every reader, and different
+  // things to `JSON.stringify` — which is what autosave runs on.
+  if (!moved) delete next.validation;
+  if (!names) delete next.names;
+  return next;
+}
+
 export const useSheetStore = create<SheetState>()(
   persist(
     temporal(
@@ -613,9 +663,73 @@ export const useSheetStore = create<SheetState>()(
           set((s) => {
             // Covers the formula bar as well as the grid, so there's one place a locked cell
             // can't be written rather than a guard per entry point.
-            if (isTemplateLocked(activeTab(s).sheet.template, row, col)) return {};
+            const { sheet } = activeTab(s);
+            if (isTemplateLocked(sheet.template, row, col)) return {};
+            // Refused rather than warned about afterwards: a warning on a cell that already holds
+            // the wrong thing is a note about a mistake; refusing is the mistake not happening.
+            // Said out loud, because a keystroke that does nothing and says nothing is
+            // indistinguishable from a broken keyboard.
+            const refusal = checkValue(ruleAt(sheet, row, col), raw);
+            if (refusal) {
+              return say(getMessages().validation.refused[refusal](cellRef(row, col)));
+            }
             return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
           }),
+
+        /** Applies a rule to the selection, or clears it when `rule` is undefined. */
+        setValidation: (rule) =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            const next = withValidation(
+              activeTab(s).sheet,
+              { startRow: sel.startRow, startCol: sel.startCol, endRow: sel.endRow, endCol: sel.endCol },
+              rule
+            );
+            if (next === activeTab(s).sheet) return {};
+            return {
+              sheets: withActiveSheet(s, () => next),
+              ...say(
+                rule
+                  ? getMessages().validation.applied(rangeLabel(sel))
+                  : getMessages().validation.cleared(rangeLabel(sel))
+              ),
+            };
+          }),
+
+        defineName: (label, replacing) => {
+          const s = get();
+          const sheet = activeTab(s).sheet;
+          const problem = nameProblem(label, sheet.names, replacing);
+          if (problem) return problem;
+          const sel = activeSelectionOf(s);
+          const ref = refForSelection(sel);
+          const nextNames = replacing && nameKey(replacing) !== nameKey(label)
+            ? withName(withoutName(sheet.names, replacing) ?? undefined, label, ref)
+            : withName(sheet.names, label, ref);
+          set(() => ({
+            sheets: withActiveSheet(s, () => ({ ...sheet, names: nextNames })),
+            ...say(getMessages().names.defined(label.trim(), rangeLabel(sel))),
+          }));
+          return null;
+        },
+
+        deleteName: (label) =>
+          set((s) => {
+            const sheet = activeTab(s).sheet;
+            const names = withoutName(sheet.names, label);
+            if (names === sheet.names) return {};
+            const next: SheetModel = { ...sheet, names };
+            if (!names) delete next.names;
+            // Formulas that used it are left holding the name, which now reads `#NAME?`. Rewriting
+            // them back to addresses would be the friendlier-looking choice and the wrong one: it
+            // silently rewrites work the person did not ask to have rewritten, and `#NAME?` is
+            // both findable and undoable.
+            return {
+              sheets: withActiveSheet(s, () => next),
+              ...say(getMessages().names.deleted(label.trim())),
+            };
+          }),
+
         applyRemoteCell: (tabId, row, col, raw, spoken) => {
           // Paused around the write so the remote edit does not land in this person's undo stack.
           // `temporal` only exists once the store has been created, which is why it is reached for
@@ -748,6 +862,56 @@ export const useSheetStore = create<SheetState>()(
           );
           if (split) applyFill(set, get, split.source, split.target);
         },
+
+        toggleFreeze: () =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            const { sheet } = activeTab(s);
+            const next = toggleFreezeAt(sheet, sel.anchorRow, sel.anchorCol);
+            if (next === sheet) return {};
+            const freeze = next.freeze;
+            return {
+              sheets: withActiveSheet(s, () => next),
+              // The change is a whole band of the screen behaving differently, and none of it is
+              // where the cursor is.
+              ...say(
+                freeze
+                  ? getMessages().live.frozen(freeze.rows, freeze.cols)
+                  : getMessages().live.unfrozen
+              ),
+            };
+          }),
+
+        fillSelectionFromAnchor: () =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            // One cell selected means there is nothing to fill *into*. Doing the work anyway would
+            // push an undo step that changes nothing, and Ctrl+Z would look broken.
+            if (sel.startRow === sel.endRow && sel.startCol === sel.endCol) return {};
+            const { sheet } = activeTab(s);
+            if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+
+            const source = sheet.cells[sel.anchorRow]?.[sel.anchorCol] ?? "";
+            const next = cloneSheet(sheet);
+            let written = 0;
+            for (let r = sel.startRow; r <= sel.endRow; r++) {
+              for (let c = sel.startCol; c <= sel.endCol; c++) {
+                if (isTemplateLocked(next.template, r, c)) continue;
+                // Shifted rather than copied verbatim: a formula that kept pointing at the anchor's
+                // own row would fill a column with the same wrong number, which looks filled.
+                next.cells[r][c] = source.startsWith("=")
+                  ? `=${shiftFormulaRefs(source.slice(1), r - sel.anchorRow, c - sel.anchorCol)}`
+                  : source;
+                written++;
+              }
+            }
+            if (written === 0) return {};
+            return {
+              sheets: withActiveSheet(s, () => next),
+              // Most of what just changed is away from the cursor, which is the rule for saying so.
+              ...say(getMessages().live.filled(written, rangeLabel(sel))),
+            };
+          }),
 
         goToMatch: (match) =>
           set((s) => ({
@@ -1447,7 +1611,7 @@ export const useSheetStore = create<SheetState>()(
           try {
             const tab = activeTab(get());
             const { exportSheetToPdf } = await import("@/lib/pdfExport");
-            await exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name);
+            await exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name, getLocale());
           } finally {
             set({ busy: null });
           }

@@ -7,13 +7,14 @@
 Run one command and get it green before committing:
 
 ```bash
-npm run verify     # lint → check:readme → test → build → check:a11y → check:e2e
+npm run verify     # lint → check:readme → check:screens → check:deps → test → check:mutants
+                   #   → build → check:bundle → check:a11y → check:e2e
 ```
 
-GitHub Actions รันหกด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+GitHub Actions รันสิบด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
 ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
 รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same six gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
+GitHub Actions runs the same ten gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
 are jobs of their own because they need a browser) — running them yourself
 first is still faster than waiting for CI to tell you.
 
@@ -25,22 +26,45 @@ for sideways scroll at 360/390/820/1280/1440. Two widths because one was not eno
 desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
 
 ด่านนี้ยัง **เปิดพาเนลขึ้นมาตรวจด้วย** ไม่ใช่สแกนแค่หน้าตอนโหลด — พาเลตสูตร, AI, ข้อมูลสด, conditional
-formatting, กราฟ, pivot, ค้นหา/แทนที่ และหน้าคีย์ลัด รวม 30 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
+formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์ และหน้าคีย์ลัด รวม 36 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
 `OPENED_STATES` เมื่อนั้น** และสถานะที่เปิดไม่ขึ้นถือว่าด่านตก ไม่ใช่ข้าม
 The gate also **opens panels before scanning them** rather than only scanning the page as it loads — the
 formula palette, AI, live data, conditional formatting, charts, pivots, find/replace and the shortcut
-dialog, 30 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
+dialog, the validation, names and comment popovers, 36 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 8 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 10 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
 เดินด้วยคีย์บอร์ดล้วน, undo, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
 ทั้งกรณีตอบปกติและกรณีโดน rate limit) และ CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 8 flows — type a formula and watch the value
+`npm run check:e2e` drives the real app in a browser through 10 flows — type a formula and watch the value
 move, export `.xlsx` and import it back, keyboard only, undo, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up). Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
+
+`npm run check:deps` ไม่ได้แค่รัน `npm audit` — ทุก advisory ต้อง**ถูกแก้ หรือถูกเขียนไว้พร้อมเหตุผลและวันหมดอายุ**
+ตัวที่ไม่มีใครเขียนถึงทำให้ด่านตก และ**entry ที่เลยวันรีวิวก็ทำให้ตกเหมือนกัน** เพราะความเสี่ยงที่ยอมรับไว้โดยไม่มีวันหมดอายุ
+ไม่ใช่การตัดสินใจ มันคือความเคยชิน · ถ้าต่อ registry ไม่ได้ ด่านจะบอกว่าไม่ได้ตรวจ ไม่ใช่แดงมั่ว
+`npm run check:bundle` มีงบขนาดเขียนไว้ และเช็กด้วยว่าไลบรารี Supabase ยัง**อยู่ chunk ของตัวเองแยกต่างหาก**
+ส่วนคำถามว่ามีใคร*ขอ*โหลด chunk นั้นจริงไหม อยู่ใน `check:e2e` เพราะต้องใช้เบราว์เซอร์ตอบ
+`npm run check:deps` is not just `npm audit`: every advisory must be **fixed, or written down with a reason
+and a review date**. One nobody has written about fails the gate, and **an entry past its date fails too** —
+an accepted risk with no expiry is not a decision, it is a habit. With no registry it says it checked nothing
+rather than going red.
+`npm run check:bundle` carries written size budgets and checks that the Supabase client is still **in a chunk
+of its own**. Whether anything ever *asks* for that chunk is a `check:e2e` flow, because only a browser can
+answer it.
+
+`npm run check:mutants` ทุบเอนจินทีละจุด (32 mutant, seed คงที่) แล้วถามว่าเทสต์แดงไหม — **"1,088 เทสต์"
+บอกว่ามีกี่ข้อ ไม่ได้บอกว่ามันจับบั๊กได้** ตัวที่รอดคือช่องโหว่จริง รอบแรกเจอหก แล้วเขียนเทสต์ใหม่หกข้อจากมัน
+seed ถูกปักไว้เพื่อไม่ให้ด่านแดงเพราะดวง อยากหาช่องใหม่ให้รัน `SEED=13 MUTANTS=60 npm run check:mutants` เอง
+ไม่ได้ลงไลบรารีเพิ่ม เขียนเองเหมือน PRNG ของ property test
+`npm run check:mutants` breaks the engine one edit at a time (32 mutants, one pinned seed) and asks whether
+the suite goes red. **"1,088 tests" says how many exist, not whether they would notice a bug.** A survivor is
+a real gap: the first run left six alive and six tests were written from them. The seed is pinned so a red
+cross means this commit rather than this draw; go looking for new gaps on purpose with
+`SEED=13 MUTANTS=60 npm run check:mutants`. No new dependency — hand-written, like the property tests' PRNG.
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:
 `npm run check:readme` is dependency-free and catches what the eye misses:
@@ -59,6 +83,12 @@ there. What is left is the seams, which is where every bug in this project has a
   ลงแค่สำเนาเดียว การ์ดจึงเขียน 91 ทั้งที่ทุกที่อื่นเขียน 103 และไม่มีด่านไหนจับได้เพราะการ์ดเป็น PNG
   เพิ่มไฟล์เทสต์ความปลอดภัยใหม่ ให้เติมใน `SECURITY_TEST_FILES` ของไฟล์นั้นที่เดียว
 - จำนวน *ไฟล์* เทสต์ที่เขียนไว้ตรงกับของจริง (เคยเขียน 27 ทั้งที่มี 35)
+- ตัวเลขที่เป็น *เรื่องเล่า* ไม่ใช่การเคลม (เช่น "ภาพที่เขียนว่า 519 เทสต์ รอดมาได้หลายวัน") ให้ใส่
+  `<!-- historic -->` ไว้**บรรทัดเดียวกับตัวเลข** ด่านจะข้ามให้ · มาร์กเกอร์ตั้งใจให้ดูเกะกะ เพราะการเอาไป
+  ปิดเลขที่ค้างจริง ๆ ควรเป็นสิ่งที่ต้องตั้งใจทำ
+  A number that is *a story* rather than a claim ("an image reading 519 tests survived for days") takes
+  `<!-- historic -->` **on the same line as the number**. The marker is deliberately ugly: using it to
+  silence a genuinely stale figure should be an obvious thing to be doing on purpose.
 
 ### สิ่งที่สคริปต์เช็กแทนไม่ได้ — ต้องอ่านเอง
 ### What the script can't check — read it yourself
@@ -75,12 +105,21 @@ there. What is left is the seams, which is where every bug in this project has a
   Both READMEs change together, always.
 - **ตัวเลขที่เคลมต้องนับมาจริง** เช่น จำนวนสูตร/ฟังก์ชัน — เคยเขียนผิดมาแล้ว (22/41 ทั้งที่จริงคือ 25/42)
   Counts must come from counting. A wrong one shipped before: 22/41 claimed, 25/42 actual.
-- **ภาพหน้าจอก็เคลมตัวเลขได้ และไม่มีด่านไหนอ่านมันออก** — `check:readme` นับเทสต์จาก *ข้อความ* ภาพ
+- **ภาพหน้าจอก็เคลมตัวเลขได้** — ตอนนี้มี `npm run check:screens` คอยจับแล้ว: ภาพแต่ละไฟล์ประกาศไว้ว่า
+  *พิมพ์ตัวเลขอะไรไว้บ้าง* และ `screenshots.json` เก็บค่าตอนถ่ายครั้งล่าสุด พอตัวเลขในซอร์สขยับแล้วภาพยังไม่ถูกถ่ายใหม่
+  ด่านจะเรียกชื่อไฟล์นั้นออกมา **ไฟล์ใหม่ในโฟลเดอร์ต้องมีรายการใน `SHOWS` เสมอ** — `[]` คือการตัดสินใจ
+  ไม่มีรายการคือการลืม · ถ่ายใหม่แล้วรัน `npm run check:screens -- --bless` · **bless ทั้งที่ยังไม่ถ่ายใหม่
+  คือวิธีเดียวที่จะทำให้ด่านนี้ไร้ค่า**
+  A screenshot makes claims too, and `npm run check:screens` now watches them: each image declares which
+  counted figures it prints, `screenshots.json` records what they were when it was taken, and a count that
+  moves without a retake is named. **A new file in the folder needs an entry in `SHOWS`** — `[]` is a
+  decision, a missing entry is an oversight. Retake, then `npm run check:screens -- --bless`. **Blessing
+  without retaking is the one way to make this gate worthless.**
+- **เดิมทีข้อนี้เขียนว่าไม่มีด่านไหนอ่านภาพออก** — `check:readme` นับเทสต์จาก *ข้อความ* ภาพ
   landing page ที่เขียนว่า "519 เทสต์" จึงผ่านทุกด่านอยู่หลายวันทั้งที่จริงเป็น 577 เปลี่ยน UI หรือตัวเลขที่
   โชว์อยู่ในภาพเมื่อไร ต้องถ่ายใหม่เมื่อนั้น
-  A screenshot makes claims too, and no gate can read it. `check:readme` counts tests in *text*, so a
-  landing-page image reading "519 tests" passed every gate for days while the real figure was 577.
-  Change the UI or a number it shows, and the screenshot has to be retaken.
+  The gate above exists because of it, and it still only watches *figures*. Change the UI itself — a
+  layout, a label, a colour — and no gate can tell; that one is still on you to retake.
 
 ### เรื่องอื่นที่ทำเป็นปกติ / Other habits
 

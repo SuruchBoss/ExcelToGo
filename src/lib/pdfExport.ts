@@ -6,6 +6,7 @@ import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf } from "./gridGeometry";
 import { THAI_FONT_NAME, registerThaiFont } from "./pdfFont";
 import { planThaiMarks } from "./thaiMarks";
+import { pageLabel, pageSetupFor } from "./pageSetup";
 import { ComputedSheet, SheetModel } from "./sheet";
 import { downloadBlob } from "./excelIO";
 
@@ -132,15 +133,29 @@ async function addCharts(doc: jsPDF, sheet: SheetModel, computed: ComputedSheet,
   }
 }
 
-export async function exportSheetToPdf(sheet: SheetModel, computed: ComputedSheet, title = "ExcelToGo") {
+export async function exportSheetToPdf(
+  sheet: SheetModel,
+  computed: ComputedSheet,
+  title = "ExcelToGo",
+  locale: "th" | "en" = "th"
+) {
   const { lastRow, lastCol } = trimBounds(computed.display, sheet.rows, sheet.cols);
-  const head = [["", ...Array.from({ length: lastCol + 1 }, (_, c) => colToLetters(c))]];
-  const body = Array.from({ length: lastRow + 1 }, (_, r) => [
+  const setup = pageSetupFor(sheet, lastCol + 1);
+  const row = (r: number) => [
     String(r + 1),
     ...Array.from({ length: lastCol + 1 }, (_, c) => computed.display[r]?.[c] ?? ""),
-  ]);
+  ];
 
-  const doc = new jsPDF({ orientation: lastCol > 8 ? "landscape" : "portrait" });
+  // The column letters, plus whatever rows the sheet says are its heading. A person who froze two
+  // rows has already answered "which rows are the heading"; asking again in a dialog would be
+  // asking twice, and repeating "Item / Price / Branch" on page seven is the whole point.
+  const head = [
+    ["", ...Array.from({ length: lastCol + 1 }, (_, c) => colToLetters(c))],
+    ...Array.from({ length: setup.headerRows }, (_, r) => row(r)),
+  ];
+  const body = Array.from({ length: lastRow + 1 - setup.headerRows }, (_, i) => row(i + setup.headerRows));
+
+  const doc = new jsPDF({ orientation: setup.orientation });
   // Without this every Thai character in the table comes out as an unrelated Latin glyph, because
   // the standard PDF fonts contain no Thai at all. Falls back silently if the font can't be
   // fetched — a PDF with wrong glyphs beats no PDF.
@@ -156,9 +171,22 @@ export async function exportSheetToPdf(sheet: SheetModel, computed: ComputedShee
     head,
     body,
     startY: 20,
-    styles: { fontSize: 8, cellPadding: 2, font },
+    // Sized from the sheet's width rather than fixed at 8: a twenty-column sheet at 8pt runs off
+    // the page, and a four-column one at 5pt is unreadable for no reason.
+    styles: { fontSize: setup.fontSize, cellPadding: 2, font },
     headStyles: { fillColor: [37, 99, 235], font },
     columnStyles: { 0: { fontStyle: "bold", fillColor: [243, 244, 246], font } },
+    // A twelve-page export used to be twelve loose sheets with nothing on them to say which came
+    // first. Drawn per page rather than after the fact, which is the only moment jsPDF will say
+    // which page it is on.
+    didDrawPage: () => {
+      const page = doc.getCurrentPageInfo().pageNumber;
+      const total = doc.getNumberOfPages();
+      const { width, height } = doc.internal.pageSize;
+      doc.setFontSize(8);
+      if (font) doc.setFont(font);
+      doc.text(pageLabel(page, total, locale), width - 14, height - 8, { align: "right" });
+    },
   });
 
   // autoTable records where it stopped on the document; charts go below that rather than on top.

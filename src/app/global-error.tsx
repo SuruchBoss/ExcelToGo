@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { buildReport, sendReport } from "@/lib/errorReport";
 import { useRescue } from "@/features/crash/useRescue";
 
 /**
@@ -22,6 +24,18 @@ const FONTS = 'system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-seri
 
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   const { files, download } = useRescue();
+
+  useEffect(() => {
+    console.error("ExcelToGo crashed below the root layout:", error);
+    // Same reporting as `error.tsx`, and the same silence by default. This boundary catches the
+    // crashes the other one cannot, which are exactly the ones worth hearing about.
+    sendReport(
+      buildReport(error, {
+        path: typeof window === "undefined" ? "" : window.location.pathname,
+        userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+      })
+    );
+  }, [error]);
 
   return (
     // global-error renders its own document, so the html and body tags are required here.

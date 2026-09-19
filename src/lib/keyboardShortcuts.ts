@@ -71,6 +71,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "clear", combos: [["Delete"], ["Backspace"]], handles: ["Delete", "Backspace"] },
       { id: "fillDown", combos: [["Mod", "D"]], handles: ["d", "D"] },
       { id: "fillRight", combos: [["Mod", "R"]], handles: ["r", "R"] },
+      { id: "fillSelection", combos: [["Mod", "Enter"]], handles: [] },
     ],
   },
   {
@@ -79,6 +80,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "extend", combos: [["Shift", "Arrows"]], handles: [] },
       { id: "extendJump", combos: [["Mod", "Shift", "Arrows"]], handles: [] },
       { id: "selectBlock", combos: [["Mod", "A"]], handles: ["a", "A"] },
+      { id: "wholeColumn", combos: [["Mod", "Space"]], handles: [" "] },
+      { id: "wholeRow", combos: [["Shift", "Space"]], handles: [] },
     ],
   },
   {

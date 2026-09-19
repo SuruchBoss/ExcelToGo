@@ -1,10 +1,14 @@
 import { csvToTable, extractRecords, getByPath, jsonToTable, tableFromRecords } from "@/lib/dataSources/jsonToTable";
 import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "@/lib/dataSources/paginate";
 import { RateLimitError, readRateLimit } from "@/lib/dataSources/rateLimit";
-import { DataSourceConfig, TableData } from "@/lib/dataSources/types";
+import { DataSourceConfig, isDbType, TableData } from "@/lib/dataSources/types";
+import { executeDbSource } from "./executeDbSource";
 import { assertFetchable } from "./urlGuard";
 
-export type SourceInput = Pick<DataSourceConfig, "type" | "url" | "method" | "authHeader" | "jsonPath" | "maxRows">;
+export type SourceInput = Pick<
+  DataSourceConfig,
+  "type" | "url" | "method" | "authHeader" | "jsonPath" | "maxRows" | "connection" | "query"
+>;
 
 /** Per request. A slow page shouldn't be able to hold a refresh open indefinitely. */
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -91,6 +95,11 @@ function parseBody(text: string): { json: unknown } | { csv: string } {
  * data — showing a silently partial table is the one outcome worth avoiding here.
  */
 export async function executeSource(src: SourceInput, origin: string): Promise<TableData> {
+  // Every caller — the data route, the test button, the demo path — comes through here, so the
+  // branch lives here too rather than at each of them. A database source has no URL to resolve and
+  // nothing below this line applies to it.
+  if (isDbType(src.type)) return executeDbSource(src);
+
   // The guard is skipped only for this deployment's own origin, so the seeded demo sources can be
   // reached over a relative path even when that origin is loopback. Deciding this by
   // `startsWith("/")` was a bypass: `//169.254.169.254/`, `/\169.254.169.254/` and `//evil.com/`

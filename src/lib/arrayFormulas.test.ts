@@ -168,4 +168,29 @@ describe("the array functions themselves", () => {
   it("SEQUENCE refuses a size that would take the tab down", () => {
     expect(String(calc("SEQUENCE(1000000)"))).toBe("#NUM!");
   });
+
+  it("SEQUENCE counts across a row before moving down", () => {
+    // Found by `check:mutants`: turning `r * w + c` into `r / w + c` passed the whole suite,
+    // because every test of SEQUENCE asked for a single column, where the width never multiplies.
+    const sheet = sheetOf([["=SEQUENCE(2,3)"]]);
+    const out = shown(sheet, 2, 3);
+    expect(out[0]).toEqual(["1", "2", "3"]);
+    expect(out[1]).toEqual(["4", "5", "6"]);
+  });
+
+  it("walks by the step it was given, not by one", () => {
+    // The third survivor from that run, and an equivalent mutant until a step other than 1 exists:
+    // `(r * w + c) * step` and `(r * w + c) / step` are the same expression when step is 1, which
+    // every test of SEQUENCE had left it as.
+    const sheet = sheetOf([["=SEQUENCE(3,1,10,5)"]]);
+    expect(shown(sheet, 3, 1).map((row) => row[0])).toEqual(["10", "15", "20"]);
+  });
+
+  it("allows exactly the size its guard allows, and refuses one more", () => {
+    // The other survivor from the same run: `>` and `>=` were indistinguishable because nothing
+    // asked for a size at the boundary. 250 × 200 is exactly the 50,000 the guard permits, and
+    // answering at all is the difference; one more cell is #NUM!.
+    expect(String(calc("SEQUENCE(250,200)"))).toBe("1");
+    expect(String(calc("SEQUENCE(250,201)"))).toBe("#NUM!");
+  });
 });

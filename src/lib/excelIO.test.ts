@@ -4,6 +4,9 @@ import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
 import { computeSheet, createEmptySheet, createWorkbookResolver, setCellRaw, SheetModel } from "./sheet";
 import { evaluateConditionalFormats } from "./conditionalFormat";
 import { cellKey } from "./sheetTemplate";
+import { withFreeze } from "./sheetFreeze";
+import { ruleAt, withValidation } from "./dataValidation";
+import { withName } from "./namedRanges";
 
 /** Builds a real .xlsx in memory the way someone would hand-build a form in Excel. */
 async function templateFile(opts: { protect?: boolean } = {}): Promise<File> {
@@ -385,5 +388,164 @@ describe("formulas through an export → import cycle", () => {
     const resolver = createWorkbookResolver(back.map((t) => ({ name: t.name, sheet: t.sheet })));
     expect(computeSheet(back[0].sheet, resolver).values[2][0]).toBe(before[0].computed.values[2][0]);
     expect(computeSheet(back[1].sheet, resolver).values[0][0]).toBe(60); // (10 + 20) * 2
+  });
+});
+
+describe("frozen panes go into the file and come back", () => {
+  const reimport = async (sheet: SheetModel) => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet));
+    const file = new File([await blob.arrayBuffer()], "frozen.xlsx");
+    const [{ sheet: back }] = await importWorkbookFromFile(file);
+    return back;
+  };
+
+  it("round-trips a split", async () => {
+    // Excel counts the split the same way this model does — how many rows and columns are above
+    // and left of the first scrolling cell — so the numbers carry across without arithmetic.
+    // Worth a test rather than a comment.
+    const back = await reimport(withFreeze(createEmptySheet(20, 8), { rows: 2, cols: 1 }));
+    expect(back.freeze).toEqual({ rows: 2, cols: 1 });
+  });
+
+  it("writes a frozen view Excel will recognise", async () => {
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(withFreeze(createEmptySheet(20, 8), { rows: 3, cols: 0 }))));
+    const view = ws.views?.[0] as { state?: string; ySplit?: number; xSplit?: number } | undefined;
+    expect(view?.state).toBe("frozen");
+    expect(view?.ySplit).toBe(3);
+  });
+
+  it("writes nothing for a sheet with no split, and reads none back", async () => {
+    expect((await reimport(createEmptySheet(10, 5))).freeze).toBeUndefined();
+  });
+});
+
+describe("validation rules go into the file and come back", () => {
+  const reimport = async (sheet: SheetModel) => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet));
+    const [{ sheet: back }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "rules.xlsx"));
+    return back;
+  };
+
+  const ruled = () =>
+    withValidation(
+      withValidation(createEmptySheet(20, 8), { startRow: 1, startCol: 1, endRow: 3, endCol: 1 }, {
+        kind: "list",
+        values: ["เหนือ", "กลาง", "ใต้"],
+      }),
+      { startRow: 1, startCol: 2, endRow: 1, endCol: 2 },
+      { kind: "number", min: 0, max: 100 }
+    );
+
+  it("keeps a dropdown and a range through a full cycle", async () => {
+    const back = await reimport(ruled());
+    expect(ruleAt(back, 2, 1)).toEqual({ kind: "list", values: ["เหนือ", "กลาง", "ใต้"] });
+    expect(ruleAt(back, 1, 2)).toEqual({ kind: "number", min: 0, max: 100 });
+    expect(ruleAt(back, 5, 5)).toBeUndefined();
+  });
+
+  it("writes validation Excel itself would recognise", async () => {
+    // The round-trip above only proves this app agrees with itself. This one reads the file the
+    // way any other spreadsheet would.
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(ruled())));
+    expect(ws.getCell("B2").dataValidation).toMatchObject({ type: "list", formulae: ['"เหนือ,กลาง,ใต้"'] });
+    expect(ws.getCell("C2").dataValidation).toMatchObject({ type: "decimal", operator: "between" });
+  });
+
+  it("refuses rather than mangles a list the format cannot hold", async () => {
+    // An option with a comma in it has no inline representation. It is dropped on the way out —
+    // and the cell's *value* still goes, which is the part that would actually be a loss.
+    const sheet = setCellRaw(
+      withValidation(createEmptySheet(10, 5), { startRow: 1, startCol: 1, endRow: 1, endCol: 1 }, {
+        kind: "list",
+        values: ["ก, ข", "ค"],
+      }),
+      1,
+      1,
+      "ค"
+    );
+    const back = await reimport(sheet);
+    expect(ruleAt(back, 1, 1)).toBeUndefined();
+    expect(back.cells[1]?.[1]).toBe("ค");
+  });
+
+  it("adopts the rules on an ordinary file built elsewhere", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("data");
+    ws.getCell("A1").value = "ภาค";
+    ws.getCell("A2").dataValidation = { type: "list", allowBlank: true, formulae: ['"เหนือ,ใต้"'] };
+    const file = new File([await wb.xlsx.writeBuffer()], "outside.xlsx");
+
+    const [{ sheet }] = await importWorkbookFromFile(file);
+    expect(ruleAt(sheet, 1, 0)).toEqual({ kind: "list", values: ["เหนือ", "ใต้"] });
+    // And it is a rule of the person's own, not a template: nothing about the sheet is locked.
+    expect(sheet.template).toBeUndefined();
+  });
+
+  it("leaves a template's own dropdowns to the template", async () => {
+    // A protected form's rules belong to the form. Copying them into `validation` as well would
+    // mean "unlock this template" left the rules behind, still refusing values.
+    const [{ sheet }] = await importWorkbookFromFile(await templateFile());
+    expect(sheet.template?.choices[cellKey(3, 1)]).toEqual(["ด่วน", "ปกติ", "ประหยัด"]);
+    expect(sheet.validation).toBeUndefined();
+  });
+});
+
+describe("named ranges go into the file and come back", () => {
+  const withNames = () => {
+    let sheet = createEmptySheet(20, 5);
+    for (let r = 0; r < 4; r++) sheet = setCellRaw(sheet, r, 1, String((r + 1) * 10));
+    sheet = setCellRaw(sheet, 5, 0, "=SUM(ยอดขาย)");
+    return { ...sheet, names: withName(undefined, "ยอดขาย", "$B$1:$B$4") };
+  };
+
+  it("keeps the name, and the formula that uses it still adds up", async () => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(withNames()));
+    const [{ sheet }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "names.xlsx"));
+    // Qualified on the way out, because a file's defined names are workbook-wide; bare again on
+    // the way back, because here they belong to the sheet that holds them.
+    expect(sheet.names?.["ยอดขาย"]?.ref).toBe("$B$1:$B$4");
+    expect(sheet.cells[5][0]).toBe("=SUM(ยอดขาย)");
+    expect(computeSheet(sheet).values[5][0]).toBe(100);
+  });
+
+  it("writes a defined name Excel itself would read", async () => {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await (await exportWorkbookToXlsxBlob(exportable(withNames()))).arrayBuffer());
+    // ExcelJS quotes a non-ASCII sheet name on the way out; both spellings are legal and both
+    // resolve, so the assertion is on what the name means rather than on its punctuation.
+    const written = wb.definedNames.model.find((n) => n.name === "ยอดขาย");
+    expect(written?.ranges[0]).toMatch(/^'?ใบเสนอราคา'?!\$B\$1:\$B\$4$/);
+  });
+
+  it("adopts the names in a file built elsewhere", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("data");
+    ws.getCell("B1").value = 5;
+    wb.definedNames.model = [
+      { name: "Tax", ranges: ["data!$B$1"] },
+      // Excel stores a print area as a defined name too. It is the file's bookkeeping, and a dot
+      // is not a legal first character for a name here, so it is left where it belongs.
+      { name: "_xlnm.Print_Area", ranges: ["data!$A$1:$C$9"] },
+      // A target on a sheet this workbook does not have resolves to nothing at all.
+      { name: "Elsewhere", ranges: ["ghost!$A$1"] },
+    ];
+    const [{ sheet }] = await importWorkbookFromFile(new File([await wb.xlsx.writeBuffer()], "outside.xlsx"));
+
+    expect(Object.keys(sheet.names ?? {})).toEqual(["TAX"]);
+  });
+
+  it("drops the second of two tabs claiming the same name rather than renaming it", async () => {
+    // The file format's names are workbook-wide, so the collision is real. Renaming would write a
+    // file whose formulas point somewhere nobody asked for.
+    const first = { ...createEmptySheet(10, 3), names: withName(undefined, "ยอด", "หนึ่ง!$A$1") };
+    const second = { ...createEmptySheet(10, 3), names: withName(undefined, "ยอด", "สอง!$C$3") };
+    const blob = await exportWorkbookToXlsxBlob([
+      { name: "หนึ่ง", sheet: first, computed: computeSheet(first) },
+      { name: "สอง", sheet: second, computed: computeSheet(second) },
+    ]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    expect(wb.definedNames.model.map((n) => n.name)).toEqual(["ยอด"]);
+    expect(wb.definedNames.model[0].ranges[0]).toMatch(/หนึ่ง'?!\$A\$1$/);
   });
 });

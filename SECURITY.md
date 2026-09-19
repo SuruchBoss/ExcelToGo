@@ -80,11 +80,59 @@ between the name could in principle be re-resolved to something else. Closing th
 pinning the connection to the checked address, which Node's `fetch` does not expose. The bar is
 raised a very long way; it is not claimed to be airtight.
 
+### 2b. A database source: a different protocol, the same problem
+
+A Postgres or MySQL source hands the server a connection string and one saved statement, and the
+server opens the connection. That is the same request-forgery primitive as a URL with a different
+protocol on the front — `postgres://u:p@169.254.169.254:80/x` is a port scan with a friendly error
+message — so the same resolve-and-check runs before the driver is loaded, over the same blocked
+ranges.
+
+**One rule is deliberately different, and it is a loosening.** A database on a private address is
+the *normal* case: an RDS instance inside a VPC, a Postgres container beside the app. Applying the
+REST rule would make the feature useless in exactly the deployments it exists for. So the private-
+address rule still stands by default and `SOURCES_ALLOWED_DB_HOSTS` is the way past it: an operator
+who names a host there has said, in an environment only they can write, that the server may reach
+it. Nothing a browser sends can add to that list, and a near miss (`evil.db.internal` against an
+allowed `db.internal`) is not a match. A connection string naming a **unix socket** — either as a
+path host or as the `?host=` parameter the Postgres driver prefers over the host in the URL — is
+refused outright: a socket would step around every address check by not using an address.
+
+**The query is guarded twice, and only one of the two is a guarantee.**
+
+- **The guarantee:** every query runs inside a read-only transaction (`begin read only` /
+  `set session transaction read only`), so a write is refused by the database itself whatever the
+  text said. MySQL connections are opened with `multipleStatements: false`, so one string cannot
+  carry a second statement past a check that only read the first.
+- **The early warning:** `src/lib/dataSources/sqlGuard.ts` refuses, at save time, anything that is
+  not a single `SELECT`/`WITH` — a second statement, a write keyword, `SELECT … INTO OUTFILE`,
+  `pg_read_file`, `load_file`, `pg_sleep`. It scans the statement with comments, strings, quoted
+  identifiers and Postgres dollar-quoting blanked out (blanked, not deleted, so nothing can be
+  spliced together), and an unterminated comment or quote is a refusal rather than a guess.
+
+A keyword list can always be walked around; a read-only transaction cannot. Both are here because
+the first produces a clear error while the operator is still looking at the form and the second
+produces a correct outcome at three in the morning, and those are not the same job.
+
+Row counts are capped by the database rather than after the fact — the saved statement is wrapped
+in `select * from (…) limit n` — and a statement timeout bounds the rest, so a saved query cannot
+hold a connection open forever on a refresh loop.
+
+**What this does not close:** the database account is yours to scope. This app cannot stop a query
+reading a table you would rather it did not, and the right answer is a read-only role that can see
+only what the source is meant to publish. The connection is encrypted only if the string asks for
+it (`sslmode=require`, `?ssl=true`); `sslmode=disable` is honoured as written, because a connection
+that merely *looks* encrypted is worse than one that admits it is not.
+
 ### 3. Source credentials are encrypted at rest
 
 An auth header attached to a source is encrypted with AES-256-GCM under `SOURCES_SECRET_KEY` before
 it is written to `data/sources.json`, and decrypted only at the moment it is put on an outgoing
-request. Without that key configured, the app **refuses to store a credential** rather than writing
+request. **A database connection string is a credential in the same sense and is handled the same
+way** — it is ciphertext for the whole of its life and plaintext only for the moment a connection
+is opened. What the browser is sent is a description rather than the string: the kind, the host and
+the database name, never the user and never the password. If the stored string cannot be read for
+any reason the answer is the mask, not a best guess. Without that key configured, the app **refuses to store a credential** rather than writing
 one in the clear. Values written before this existed are still readable and are re-encrypted the
 next time that source is saved.
 

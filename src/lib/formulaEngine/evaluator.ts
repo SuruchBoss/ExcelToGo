@@ -22,6 +22,10 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
       return scalar(ERR_REF);
     case "missing":
       return scalar(null);
+    case "name":
+      // Compilation substitutes every name the sheet defines. One still standing here is one
+      // nothing defines — the same answer Excel gives, and the same one a misspelt function gets.
+      return scalar(ERR_NAME);
     case "range": {
       const rows: FormulaValue[][] = [];
       for (let r = node.startRow; r <= node.endRow; r++) {

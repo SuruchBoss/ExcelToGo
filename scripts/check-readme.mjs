@@ -199,6 +199,11 @@ const QUOTED = {
   },
 };
 
+const indexOfLineEnd = (text, from) => {
+  const at = text.indexOf("\n", from);
+  return at === -1 ? text.length : at;
+};
+
 /** Every place a count is quoted in words, paired with the language its patterns are written in. */
 const quotingTexts = [];
 for (const locale of ["th", "en"]) {
@@ -214,9 +219,14 @@ for (const { file, locale, text } of quotingTexts) {
   for (const [what, spec] of Object.entries(QUOTED)) {
     for (const pattern of spec[locale]) {
       for (const m of text.matchAll(pattern)) {
-        if (Number(m[1]) !== spec.actual) {
-          fail(`${file}: says "${m[0].trim()}", but there are ${spec.actual} ${what}`);
-        }
+        if (Number(m[1]) === spec.actual) continue;
+        // A project that documents its own mistakes has to be able to quote the wrong number —
+        // "a landing image reading 519 tests survived for days" is the story, not a claim. A line
+        // marked `<!-- historic -->` is exempt, and the marker is deliberately ugly so that using
+        // it to silence a *real* stale figure would be an obvious thing to do on purpose.
+        const line = text.slice(text.lastIndexOf("\n", m.index) + 1, indexOfLineEnd(text, m.index));
+        if (line.includes("<!-- historic -->")) continue;
+        fail(`${file}: says "${m[0].trim()}", but there are ${spec.actual} ${what}`);
       }
     }
   }

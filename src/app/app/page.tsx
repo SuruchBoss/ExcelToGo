@@ -25,6 +25,7 @@ import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import { selectShowingSample, useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
+import { useServiceWorker } from "@/features/offline/useServiceWorker";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 import { useT } from "@/i18n";
 import { useEffect } from "react";
@@ -32,6 +33,7 @@ import { useEffect } from "react";
 export default function Home() {
   const t = useT();
   useHydrateSheetStore();
+  useServiceWorker();
   useHydrateLocaleStore();
   useUndoRedoShortcuts();
   useClipboardShortcuts();

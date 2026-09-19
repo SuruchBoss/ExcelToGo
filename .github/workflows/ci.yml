@@ -47,13 +47,38 @@ jobs:
       - name: README is still true
         run: npm run check:readme
 
+      # A screenshot makes claims no other gate can read. This one cannot read them either — it
+      # notices that a figure printed on an image has moved in the source since the image was
+      # taken, which is how "519 tests" and "980 tests" both survived for days.
+      - name: No screenshot has gone stale
+        run: npm run check:screens
+
+      # One Node version: the dependency tree is the same on all three, and asking the registry
+      # three times for the same answer is three chances to fail for a reason unrelated to the
+      # commit. The gate refuses to guess when the registry is unreachable rather than going red.
+      - name: Every advisory is accounted for
+        if: matrix.node == '24'
+        run: npm run check:deps
+
       - name: Tests
         run: npm test
+
+      # Not a fifth Node version's worth of signal: mutation testing breaks the engine on purpose
+      # and asks whether the suite notices, which is the same answer on every runtime. Run on one
+      # version only, and pinned to one seed so a red cross means this commit rather than this
+      # draw. See `scripts/check-mutants.mjs` for how to go looking for new gaps on purpose.
+      - name: Tests that test the tests
+        if: matrix.node == '24'
+        run: npm run check:mutants
 
       # Also the project's full type-check: `next build` compiles every route and both message
       # dictionaries, so a missing translation key fails here.
       - name: Build
         run: npm run build
+
+      - name: The bundle is still within budget
+        if: matrix.node == '24'
+        run: npm run check:bundle
 
   # Its own job rather than a fifth step in the matrix: it needs a browser, and downloading one
   # three times to check the same HTML would triple the cost for no extra signal. One current Node

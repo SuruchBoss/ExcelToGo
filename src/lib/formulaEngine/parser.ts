@@ -168,9 +168,14 @@ class Parser {
         this.expect("RPAREN");
         return { type: "call", name, args };
       }
-      // A bare identifier with no parens (e.g. a stray function name) is
-      // treated as an unrecognized reference rather than a hard parse error.
-      return { type: "string", value: name };
+      // A FUNC token is only produced for a word with a `(` behind it, so this is unreachable
+      // through `tokenize` — kept because the parser takes a token list, and a caller that builds
+      // one by hand should not get a crash.
+      return { type: "name", name };
+    }
+    if (t.type === "NAME") {
+      this.next();
+      return { type: "name", name: t.value };
     }
     if (t.type === "LPAREN") {
       this.next();
