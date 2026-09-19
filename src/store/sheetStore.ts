@@ -42,6 +42,7 @@ import {
   sortRange,
   toTsv,
 } from "@/lib/sheet";
+import { fromStorage, PackedSheet, toStorage } from "@/lib/sheetCodec";
 import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, headerRow } from "@/lib/aiRange";
@@ -408,7 +409,8 @@ type TemporalSlice = Pick<SheetState, "sheets">;
 /** Autosaved to localStorage: the tabs' content plus which one was active, so reloading lands
  *  back on the same tab. Other UI-only state (an open formula panel, which sidebar is open)
  *  resets on reload. */
-type PersistedSlice = Pick<SheetState, "sheets" | "activeSheetId">;
+/** A tab as it comes back off disk: the sheet may be packed, or dense from an older save. */
+type StoredTab = Omit<SheetTab, "sheet"> & { sheet: PackedSheet | SheetModel };
 
 const initialTab = newTab("Sheet1", seedSample());
 
@@ -1433,16 +1435,28 @@ export const useSheetStore = create<SheetState>()(
     {
       name: "exceltogo-sheet-v2",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s): PersistedSlice => ({ sheets: s.sheets, activeSheetId: s.activeSheetId }),
+      // Packed on the way out, dense in memory. The model is a full grid because that is what
+      // makes a lookup an array index; written out verbatim it was 4 MB for a 20,000-row sheet
+      // holding one value, against a ~5 MB quota — a ceiling set by the sheet's dimensions rather
+      // than by anything anyone typed, paid on every keystroke. See `sheetCodec.ts` for the
+      // measurements and the shape.
+      partialize: (s) => ({
+        sheets: s.sheets.map((tab) => ({ ...tab, sheet: toStorage(tab.sheet) })),
+        activeSheetId: s.activeSheetId,
+      }),
       // Rehydration is triggered manually (see useHydrateSheetStore) after the first client
       // render, so the server-rendered HTML and the client's initial render match exactly —
       // reading localStorage during store creation would make them diverge and trigger a
       // React hydration mismatch.
       skipHydration: true,
       merge: (persisted, current) => {
-        const p = persisted as Partial<PersistedSlice> | undefined;
-        const sheets = p?.sheets;
-        if (!sheets || sheets.length === 0) return current;
+        const p = persisted as { sheets?: StoredTab[]; activeSheetId?: string } | undefined;
+        const stored = p?.sheets;
+        if (!stored || stored.length === 0) return current;
+        // `fromStorage` reads both shapes: what `partialize` writes now, and the dense grid that
+        // is sitting in somebody's browser from the version before it. Dropping those would be
+        // losing their work to save bytes.
+        const sheets: SheetTab[] = stored.map((tab) => ({ ...tab, sheet: fromStorage(tab.sheet) }));
         const activeSheetId = sheets.some((t) => t.id === p.activeSheetId) ? p.activeSheetId! : sheets[0].id;
         return { ...current, sheets, activeSheetId };
       },
