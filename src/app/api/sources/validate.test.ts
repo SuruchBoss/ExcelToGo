@@ -48,3 +48,57 @@ describe("parseSourceBody URL rules", () => {
     }
   });
 });
+
+describe("a database source, which names no URL at all", () => {
+  const db = { name: "ยอดขาย", type: "postgres" as const, connection: "postgres://u:p@db.example.com/shop" };
+
+  it("takes a connection string and a read-only query", async () => {
+    const r = await parseSourceBody(body({ ...db, query: "select * from orders" }));
+    expect("value" in r && r.value.connection).toBe("postgres://u:p@db.example.com/shop");
+    expect("value" in r && r.value.query).toBe("select * from orders");
+    // No URL is asked for and none is invented; the REST branch below is never reached.
+    expect("value" in r && r.value.url).toBe("");
+  });
+
+  it("refuses a query that is not a read, before anything is saved", async () => {
+    const r = await parseSourceBody(body({ ...db, query: "delete from orders" }));
+    expect("error" in r && r.error).toBe("query_notASelect");
+    const two = await parseSourceBody(body({ ...db, query: "select 1; drop table orders" }));
+    expect("error" in two && two.error).toBe("query_multipleStatements");
+  });
+
+  it("refuses a connection string that is not one", async () => {
+    const r = await parseSourceBody(body({ ...db, connection: "http://db.example.com/shop", query: "select 1" }));
+    expect("error" in r && r.error).toBe("invalid_scheme");
+    const socket = await parseSourceBody(
+      body({ ...db, connection: "postgres://u:p@db.example.com/shop?host=/var/run", query: "select 1" })
+    );
+    expect("error" in socket && socket.error).toBe("invalid_host");
+  });
+
+  it("refuses a MySQL string saved as a Postgres source", async () => {
+    // Otherwise the driver picked and the protocol spoken disagree, and the error the operator
+    // gets back is about a handshake rather than about the thing they typed.
+    const r = await parseSourceBody(
+      body({ name: "x", type: "mysql", connection: "postgres://u:p@db.example.com/shop", query: "select 1" })
+    );
+    expect("error" in r && r.error).toBe("scheme_type_mismatch");
+  });
+
+  it("lets the stored connection stand when the form sends back the mask", async () => {
+    const r = await parseSourceBody(
+      body({ ...db, connection: "postgres://••••••••@db.example.com/shop", query: "select 1" })
+    );
+    // Not an error: the repo resolves the mask to the stored ciphertext, and checking the shape of
+    // a row of dots would fail every edit that only changed the query.
+    expect("value" in r).toBe(true);
+  });
+
+  it("does not carry a REST source's fields into a database one", async () => {
+    const r = await parseSourceBody(
+      body({ ...db, query: "select 1", jsonPath: "data.items", authHeader: { name: "Authorization", value: "Bearer x" } })
+    );
+    expect("value" in r && r.value.jsonPath).toBeUndefined();
+    expect("value" in r && r.value.authHeader).toBeUndefined();
+  });
+});

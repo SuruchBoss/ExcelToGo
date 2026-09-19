@@ -4,7 +4,8 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
 import { DEFAULT_MAX_ROWS } from "@/lib/dataSources/paginate";
-import { PublicDataSource, TableData } from "@/lib/dataSources/types";
+import { isDbType, PublicDataSource, TableData } from "@/lib/dataSources/types";
+import { sqlProblem } from "@/lib/dataSources/sqlGuard";
 import { SourceDraft, useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
 
@@ -24,6 +25,11 @@ function draftFrom(source?: PublicDataSource): SourceDraft {
     method: source?.method ?? "GET",
     authHeader: source?.authHeader ? { name: source.authHeader.name, value: MASKED } : { name: "", value: "" },
     jsonPath: source?.jsonPath ?? "",
+    // The browser was shown a description of the connection, never the string. Putting the
+    // description back in the field is what makes "keep the stored one" the default when the
+    // operator edits a source to change its query.
+    connection: source?.connection ?? "",
+    query: source?.query ?? "",
     maxRows: source?.maxRows ?? DEFAULT_MAX_ROWS,
     refreshSec: source?.refreshSec ?? 30,
   };
@@ -42,12 +48,22 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
   const [testResult, setTestResult] = useState<{ ok: true; table: TableData } | { ok: false; error: string } | null>(null);
 
   const patch = (p: Partial<SourceDraft>) => setDraft((d) => ({ ...d, ...p }));
+  const isDb = isDbType(draft.type);
+  // Checked here as well as on the server, so the operator is told while they are still looking at
+  // the box rather than after a round trip that saved nothing.
+  const queryProblem = isDb && (draft.query ?? "").trim() !== "" ? sqlProblem(draft.query ?? "") : null;
   const cleaned = (): SourceDraft => ({
     ...draft,
-    authHeader: draft.authHeader?.name?.trim() ? draft.authHeader : undefined,
-    jsonPath: draft.jsonPath?.trim() || undefined,
+    authHeader: isDb || !draft.authHeader?.name?.trim() ? undefined : draft.authHeader,
+    jsonPath: isDb ? undefined : draft.jsonPath?.trim() || undefined,
+    connection: isDb ? draft.connection : undefined,
+    query: isDb ? draft.query : undefined,
   });
-  const canSubmit = draft.name.trim() !== "" && draft.url.trim() !== "";
+  const canSubmit =
+    draft.name.trim() !== "" &&
+    (isDb
+      ? (draft.connection ?? "").trim() !== "" && (draft.query ?? "").trim() !== "" && queryProblem === null
+      : draft.url.trim() !== "");
 
   const runTest = async () => {
     setTesting(true);
@@ -98,21 +114,21 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
 
           <div className="flex flex-col gap-1">
             <span className={labelCls}>{t.data.setup.type}</span>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
               {(
                 [
                   { v: "rest", label: t.data.setup.typeRest },
                   { v: "csv", label: t.data.setup.typeCsv },
-                  { v: "db", label: t.data.setup.typeDb, disabled: true },
-                ] as { v: string; label: string; disabled?: boolean }[]
+                  { v: "postgres", label: t.data.setup.typePostgres },
+                  { v: "mysql", label: t.data.setup.typeMysql },
+                ] as { v: SourceDraft["type"]; label: string }[]
               ).map((opt) => (
                 <button
                   key={opt.v}
-                  disabled={opt.disabled}
-                  onClick={() => patch({ type: opt.v as SourceDraft["type"] })}
+                  onClick={() => patch({ type: opt.v })}
+                  aria-pressed={draft.type === opt.v}
                   className={clsx(
                     "rounded-md border px-2 py-1.5 text-xs font-medium",
-                    opt.disabled && "cursor-not-allowed opacity-40",
                     draft.type === opt.v ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
                   )}
                 >
@@ -122,6 +138,45 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
             </div>
           </div>
 
+          {isDb && (
+            <>
+              <label className="flex flex-col gap-1">
+                <span className={labelCls}>{t.data.setup.connection}</span>
+                <input
+                  value={draft.connection ?? ""}
+                  onChange={(e) => patch({ connection: e.target.value })}
+                  placeholder={t.data.setup.connectionPlaceholder}
+                  spellCheck={false}
+                  autoComplete="off"
+                  className={clsx(inputCls, "font-mono text-xs")}
+                />
+                <span className="text-[11px] text-zinc-500">{t.data.setup.connectionHint}</span>
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className={labelCls}>{t.data.setup.query}</span>
+                <textarea
+                  value={draft.query ?? ""}
+                  onChange={(e) => patch({ query: e.target.value })}
+                  placeholder={t.data.setup.queryPlaceholder}
+                  rows={5}
+                  spellCheck={false}
+                  aria-invalid={queryProblem !== null}
+                  aria-describedby={queryProblem ? "source-query-problem" : undefined}
+                  className={clsx(inputCls, "resize-y font-mono text-xs")}
+                />
+                {queryProblem ? (
+                  <span id="source-query-problem" role="alert" className="text-[11px] text-red-600">
+                    {t.data.setup.queryProblem[queryProblem]}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-zinc-500">{t.data.setup.queryHint}</span>
+                )}
+              </label>
+            </>
+          )}
+
+          {!isDb && (
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <label className="flex flex-col gap-1">
               <span className={labelCls}>{t.data.setup.url}</span>
@@ -135,7 +190,9 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
               </select>
             </label>
           </div>
+          )}
 
+          {!isDb && (
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <p className={labelCls}>{t.data.setup.auth}</p>
             <p className="mb-2 text-[11px] text-zinc-500">{t.data.setup.authHint}</p>
@@ -155,6 +212,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
               />
             </div>
           </div>
+          )}
 
           {draft.type === "rest" && (
             <label className="flex flex-col gap-1">
@@ -164,7 +222,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
             </label>
           )}
 
-          {draft.type === "rest" && (
+          {(draft.type === "rest" || isDb) && (
             <label className="flex flex-col gap-1">
               <span className={labelCls}>{t.data.setup.maxRows}</span>
               <div className="flex items-center gap-2">

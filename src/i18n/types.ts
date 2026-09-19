@@ -116,7 +116,15 @@ export interface Messages {
       type: string;
       typeRest: string;
       typeCsv: string;
-      typeDb: string;
+      typePostgres: string;
+      typeMysql: string;
+      connection: string;
+      connectionPlaceholder: string;
+      connectionHint: string;
+      query: string;
+      queryPlaceholder: string;
+      queryHint: string;
+      queryProblem: Record<string, string>;
       url: string;
       urlPlaceholder: string;
       method: string;

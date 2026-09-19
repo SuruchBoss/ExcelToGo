@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1250%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1305%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1250 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1305 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1250 passing tests could not catch
+### 🧪 What 1305 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1250 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1305 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -253,7 +253,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1250-case Vitest suite |
+| `npm test` | Run the 1305-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -473,7 +473,8 @@ Three guards:
 |---|---|
 | **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
 | **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local and unique-local, and IPv4 embedded in IPv6 in **every spelling** |
-| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear |
+| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear · a database connection string counts as one |
+| **A database query cannot write** | Every query runs in a read-only transaction, so the database itself refuses a write, and `sqlGuard` refuses again at save time · a database on a private address needs its host in `SOURCES_ALLOWED_DB_HOSTS` |
 
 The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
 rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
@@ -554,7 +555,58 @@ Behind the scenes:
   every 5s), `/api/demo/summary` (a KPI-style object), and `/api/demo/orders` (**paginated**, 25 rows a page
   over 120 rows, for exercising the pagination path).
 
-> Database sources (Postgres/MySQL) are the next phase — the option is visible in the form but disabled for now.
+### 🗄 Straight into a database (PostgreSQL / MySQL)
+
+Identical to a REST source in every way that reaches a user. What the technical person fills in is
+different: instead of a URL, a **connection string and one SQL statement**. Everyone else sees the
+resulting table exactly as they see any other source — **they never see the SQL**, which is the
+whole reason this feature was split into two roles in the first place.
+
+```
+postgres://user:pass@db.example.com:5432/shop
+select region, sum(total) as revenue from orders group by region
+```
+
+**The query is guarded twice, and only one of the two is a guarantee.**
+
+- **The guarantee:** every query runs inside a **read-only transaction** (`begin read only` /
+  `set session transaction read only`), so a write is refused by the database itself whatever the
+  text said. MySQL connections open with `multipleStatements: false`, so one string cannot carry a
+  second statement.
+- **The early warning:** `sqlGuard.ts` refuses, at save time, anything that is not a single
+  `SELECT`/`WITH` — a second statement, a write keyword, `SELECT … INTO OUTFILE`, `pg_read_file`,
+  `load_file`, `pg_sleep`. It scans the statement with comments, strings, quoted identifiers and
+  Postgres dollar-quoting **blanked out** rather than removed, so nothing left over can be spliced
+  together, and an unterminated comment or quote is a refusal rather than a guess about where it
+  ended.
+
+A keyword list can always be walked around; a read-only transaction cannot. Both are here because
+the first gives a clear error while somebody is still looking at the form and the second gives a
+correct outcome at three in the morning. Those are not the same job.
+
+**A connection string is a credential**, so it is encrypted at rest like an auth header, and the
+browser never sees the string — only a description of it
+(`postgres://••••••••@db.example.com/shop`), with no user and no password in it.
+
+**One network rule is deliberately looser than the REST side.** A database on a private address is
+the *normal* case — an RDS instance inside a VPC, a container beside the app — and applying the
+REST rule would make the feature useless in exactly the deployments it exists for. So the
+private-address rule still stands by default and `SOURCES_ALLOWED_DB_HOSTS` is the way past it: a
+list only the operator can write, that nothing a browser sends can add to, and where a near miss
+(`evil.db.internal` against an allowed `db.internal`) is not a match. A string naming a **unix
+socket** is refused in both spellings — as a path host, and as the `?host=` parameter the Postgres
+driver prefers over the host in the URL — because a socket steps around every address check by not
+using an address.
+
+**Stated limits:** the database account's permissions are yours to scope. This app cannot stop a
+query reading a table you would rather it did not; the right answer is a read-only role that sees
+only what the source is meant to publish. TLS happens only if the string asks for it
+(`sslmode=require`, `?ssl=true`), and `sslmode=disable` is honoured as written, because a
+connection that merely *looks* encrypted is worse than one that admits it is not. There is no
+table picker yet (the SQL is typed), and **no test connects to a real database** — so the code that
+touches a driver is kept as thin as it can be, and every judgement call lives in pure modules that
+are tested without one.
+
 
 ### 📐 Spreadsheet grid
 
@@ -1165,8 +1217,8 @@ It searches the **raw text, not the displayed result**, and the panel says so ra
 you to find out. That is the decision everything else follows from: what you are looking for in a
 spreadsheet is usually what you typed, and what you mean to replace is always what you typed —
 rewriting a formula's result would mean writing a number over the formula that produced it. So
-`=SUM(B1:B9)` is found by searching `SUM`. The cost, stated in the panel, is that searching `1250`
-does not find a cell showing `1,250` that a formula produced.
+`=SUM(B1:B9)` is found by searching `SUM`. The cost, stated in the panel, is that searching `4500`
+does not find a cell showing `4,500` that a formula produced.
 
 Match case, whole cell, and all sheets. `Enter` and `Shift+Enter` step forwards and back, wrapping,
 and Find Next walks the sheet in reading order rather than nearest-first — pressing it ten times
@@ -1604,7 +1656,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1250 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1305 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1879,6 +1931,10 @@ src/
     dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
     server/rateLimiter.ts    # Per-IP ceiling on /api/ai/formula (in-memory fixed window) (tested)
     server/urlGuard.ts       # SSRF guard: checks resolved addresses and every redirect (tested)
+    server/dbGuard.ts        # Reads a connection string and refuses a private one unless the operator allowed it (tested)
+    server/executeDbSource.ts # Connects, runs the saved statement in a read-only transaction, returns a table (tested)
+    dataSources/sqlGuard.ts  # A saved query must be one SELECT — sees through comments, strings, dollar-quoting (tested)
+    dataSources/dbRows.ts    # Driver rows → table: big integers stay text, dates go ISO, binary never lands in a cell (tested)
     server/sourcesAuth.ts    # The gate on the live-data API — no token means off (tested)
     server/secretBox.ts      # Encrypts a source's credential with AES-256-GCM (tested)
     cloud/config.ts          # Whether a cloud backend is attached at all (off unless set) (tested)
@@ -2292,7 +2348,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 165 security tests
+### 209 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2301,20 +2357,20 @@ nothing but the anon key, which is the thing that used to work.
 | `secretBox.test.ts` | 10 | AES-256-GCM, distinct ciphertexts, tamper detection, refusing to encrypt with no key rather than storing plain text |
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
 | `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
-| `validate.test.ts` | 4 | Which URL shapes are accepted, and which paths must be refused |
+| `validate.test.ts` | 10 | Which URL shapes are accepted and which paths must be refused · and on the database side: a query that is not a read, a string that is not a connection string, a type and a scheme that disagree |
 | `ai/formula/route.test.ts` | 6 | Demo mode must not reach Anthropic **even with an API key configured**, the local fallback still answers (not a 403), a missing question is a 400 |
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
-| `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
-| `dataValidation.test.ts` | 28 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated |
-| `namedRanges.test.ts` | 26 | Named ranges: a name that is also an address, has a space, or is reserved is refused with the reason; the name is substituted throughout the tree; precedents point at the real rectangle; repointing a name really does recompute (the cache is keyed by the name table); and a name does not shift when filled |
-| `store/sheetRules.test.ts` | 11 | Both features at the store: a value outside the rule is not saved and is announced, rules and names follow row edits, deleting a name leaves the formula reading `#NAME?` rather than rewritten, and undo brings the name back |
+| `dataSources/sqlGuard.test.ts` | 17 | A saved query must be one SELECT: a semicolon hidden in a comment, a string or a dollar-quote, `SELECT … INTO OUTFILE`, `pg_read_file`, and a column called `updated_at` that must not be mistaken for one |
+| `server/dbGuard.test.ts` | 12 | Connection strings: both spellings of each kind, a password full of punctuation, unix sockets in both forms, private addresses refused, and an operator allow list that has to match the whole name |
+| `server/executeDbSource.test.ts` | 4 | The order of the refusals: a query that fails the guard is rejected before DNS is even asked |
+| `server/sourceRepo.test.ts` | 5 | What leaves the server: the connection string never does, only a description of it, and an unreadable one answers with dots rather than a guess |
 | `cloud/policies.test.ts` | 19 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
 | `errorReport.test.ts` | 16 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
-Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/liveMessage.test.ts`
+Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -2456,13 +2512,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1250 cases across 75 files, via Vitest
+npm test      # 1305 cases across 80 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1250 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1305 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2556,10 +2612,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1250 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1305 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1250 passing tests could not catch](#-what-1250-passing-tests-could-not-catch), repeatable
+> [What 1305 passing tests could not catch](#-what-1305-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2568,11 +2624,11 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
 | `arrayFormulas.test.ts` | 21 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
-| `sheetCodec.test.ts` | 11 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
+| `sheetCodec.test.ts` | 12 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 81 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `functions.test.ts` | 92 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
@@ -2583,7 +2639,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `excelIO.test.ts` | 32 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
+| `excelIO.test.ts` | 44 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
 | `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
@@ -2594,6 +2650,10 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `cloud/liveRoom.test.ts` | 21 | One room against a fake transport: an echo staying out of undo, an edit held until the editor closes (only the winner kept), a local edit that wins not being overwritten, and leaving actually going quiet |
 | `cloud/sheetDiff.test.ts` | 11 | What changed between two workbooks: one cell, an emptied cell, another tab, an added row → reload, 200+ cells at once → reload · and a count of how many rows were read, so copy-on-write staying true is a test |
 | `cloud/realtimeChannel.test.ts` | 9 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
+| `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
+| `dataValidation.test.ts` | 28 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated |
+| `namedRanges.test.ts` | 26 | Named ranges: a name that is also an address, has a space, or is reserved is refused with the reason; the name is substituted throughout the tree; precedents point at the real rectangle; repointing a name really does recompute (the cache is keyed by the name table); and a name does not shift when filled |
+| `store/sheetRules.test.ts` | 11 | Both features at the store: a value outside the rule is not saved and is announced, rules and names follow row edits, deleting a name leaves the formula reading `#NAME?` rather than rewritten, and undo brings the name back |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
@@ -2828,7 +2888,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       at compile time so the dependency graph stays honest, names follow row edits, and they round-trip
       through `.xlsx`. Still open: a name belongs to its sheet rather than the workbook, and there is no
       name box beside the formula bar to jump to a range.
-- [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
+- [x] **Database sources (Postgres/MySQL)** — done (see [Straight into a database](#-straight-into-a-database-postgresql--mysql)):
+      tech saves a connection string and a query once, users only ever see the table, and the statement runs
+      in a read-only transaction. Still open: a table picker instead of typed SQL, and a test that connects to
+      a real database — today only the pure modules around it are covered.
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 
 **Deliberately out of scope:**

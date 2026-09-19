@@ -67,6 +67,13 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
         </button>
       </div>
 
+      {source.connection && (
+        // Which database this points at, host and name only — the server never sends the rest.
+        // Three sources called "sales" are otherwise indistinguishable in this column.
+        <p className="mt-0.5 truncate font-mono text-[10.5px] text-zinc-500" title={source.connection}>
+          {source.connection}
+        </p>
+      )}
       <p className="mt-0.5 text-[11px] text-zinc-500">
         {size}
         {table && (table.pageCount ?? 1) > 1 && ` · ${t.data.pages(table.pageCount ?? 1)}`}
