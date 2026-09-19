@@ -373,6 +373,39 @@ const FLOWS = [
     },
   },
   {
+    name: "the app opens with the network switched off",
+    async run(page) {
+      // The pitch has always been that the sheet lives in your browser. It was true, and the app
+      // still could not open on a train — the document was local and the program was not. Only a
+      // real browser can prove this one: it needs a service worker to install, take control, and
+      // then serve a navigation from its cache with the network genuinely gone.
+      await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const state = await page.evaluate(async () => {
+        if (!("serviceWorker" in navigator)) return "unsupported";
+        const registration = await navigator.serviceWorker.ready.catch(() => null);
+        return registration ? "ready" : "failed";
+      });
+      note(state === "ready", `the service worker registers and takes control (${state})`);
+
+      const manifest = await page.request.get(ORIGIN + "/manifest.webmanifest");
+      const body = manifest.ok() ? await manifest.json() : {};
+      note(manifest.ok() && body.start_url === "/app", `the manifest is served and starts in the app (${body.start_url})`);
+      note((body.icons ?? []).some((i) => i.purpose === "maskable"), "with a maskable icon, so Android does not crop the mark away");
+
+      // Give the worker a moment to finish putting the shell in its cache.
+      await page.waitForTimeout(1500);
+      await page.context().setOffline(true);
+      try {
+        const offline = await page.goto(ORIGIN + "/app", { waitUntil: "domcontentloaded" });
+        note(Boolean(offline && offline.status() === 200), `the app still loads offline (${offline?.status()})`);
+        const cells = await cell(page, 0, 0).count();
+        note(cells === 1, "and the grid is there, not an error page");
+      } finally {
+        await page.context().setOffline(false);
+      }
+    },
+  },
+  {
     name: "a change away from the cursor is announced",
     async run(page) {
       // This flow exists because of a bug exactly here: the toolbar's "+ row" called `addRow`,

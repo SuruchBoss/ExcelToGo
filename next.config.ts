@@ -65,6 +65,11 @@ const csp = [
   // deployment that configured one; everything else this app fetches is its own routes.
   ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN, REPORT_ORIGIN].filter(Boolean).join(" "),
   // Downloads go through a blob: URL, which counts as a navigation.
+  // The service worker, and the manifest the install prompt reads. Both same-origin, both covered
+  // by `default-src 'self'` in principle — spelled out because a policy that leans on the fallback
+  // is one nobody can check by reading.
+  "worker-src 'self'",
+  "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

@@ -156,6 +156,7 @@ tests say, and nothing whatever about whether that is the right thing.
   - [See what a formula is about](#-see-what-a-formula-is-about)
   - [The fill handle](#️-the-fill-handle)
   - [Find and replace](#-find-and-replace)
+  - [Opens with the network off](#-opens-with-the-network-off)
   - [Works on a phone](#-works-on-a-phone)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Merging cells](#-merging-cells)
@@ -258,7 +259,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
-| `npm run check:e2e` | Drives the real app through 9 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
+| `npm run check:e2e` | Drives the real app through 10 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
@@ -1093,6 +1094,39 @@ It deliberately preempts the browser's own find bar, which searches the DOM — 
 forty rows the grid has decided to render, so on a five-thousand-row sheet it would report "not
 found" for text that is plainly there.
 
+### 📴 Opens with the network off
+
+The pitch has always been that the spreadsheet lives in your browser and is never uploaded. That
+was true, and the app still could not open on a train — the document was local and the *program*
+was not. A fair thing for someone to hold against it.
+
+A service worker now caches the app itself, and a manifest lets it go on a home screen. Install it
+and `/app` opens with no network at all: the grid, the engine, the 64 functions, import and export,
+and whatever was autosaved in `localStorage`.
+
+**What the caching policy is, and why each part of it:**
+
+| | Policy | Because |
+|---|---|---|
+| Navigations (`/app`, `/`) | Network first, cache as fallback | A stale HTML document carries the CSP nonce and the script URLs of a build that may no longer exist. Offline it is served whole — response and headers together — so its nonce still matches its own inline scripts |
+| `/_next/static/*` | Cache first | Content-addressed: a given URL never changes what it holds, so a hit is always correct and a miss is a new build |
+| `/api/*`, the assistant, live data, Supabase | **Never cached** | These are the parts that *need* the network. A cached answer from them is a stale number presented as a current one, which is this project's least acceptable failure |
+
+**What still needs a connection**, since an app that quietly does less offline is worse than one
+that says so: the AI assistant, live data blocks (the cell keeps its last value and says when it
+was fetched), cloud save, and live editing.
+
+The worker is about a hundred lines, hand-written, and in the repository where you can read it —
+[`public/sw.js`](public/sw.js). A generated one would be a few hundred lines nobody here could
+answer questions about, and the caching policy is the only interesting decision in it.
+
+It does not register in development, which is deliberate: a worker caching the app shell is exactly
+what makes a code change appear not to have happened, and that costs an afternoon the first time.
+
+No screenshot: the install prompt is the browser's own chrome and looks different in every one of
+them. The e2e gate covers it instead — it registers the worker, switches the network off, reloads,
+and checks the grid is there rather than an error page.
+
 ### 📱 Works on a phone
 
 Opening this on a phone used to show **not one cell of the spreadsheet** — the 320px side panel
@@ -1617,6 +1651,7 @@ formulaEngine/ (tokenizer → parser → evaluator → functions)
 
 ```
 src/
+  app/manifest.ts            # The web app manifest, so it can go on a home screen
   proxy.ts                   # Mints a CSP nonce per request — the reason script-src has no 'unsafe-inline'
   app/
     page.tsx                 # The landing page at / — features, screenshots, and the button into the app
@@ -2325,7 +2360,7 @@ assistant sent a range including its text header, because the context builder re
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 9 flows in a real browser (needs a build)
+npm run check:e2e   # 10 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -2595,6 +2630,12 @@ What's not done yet, and why — to show this is a known gap, not something forg
       the cells outlined on the grid and the ranges written out beside the formula bar, which is the
       accessible half and turns out to be the more useful one. Still open: nothing shows the other
       direction — which formulas read *this* cell — which is the question you ask before deleting a row.
+- [x] **Works offline** — done (see [opens with the network off](#-opens-with-the-network-off)): a
+      hand-written service worker caches the app itself, a manifest puts it on a home screen, and the
+      e2e gate switches the network off and reloads to prove it. Navigations are network-first so a
+      stale document never outlives its build; `/api/*` is never cached, because a stale number
+      presented as a current one is this project's least acceptable failure. Still open: nothing in
+      the UI says "you are offline" — the parts that need a network simply fail the way they always did.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,
@@ -2605,7 +2646,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       script is not a file and cannot be hashed, so the page never hydrated at all. The price is
       prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 9 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 10 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

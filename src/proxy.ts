@@ -66,6 +66,11 @@ function policy(nonce: string, dev: boolean): string {
     // The exfiltration control, and the original reason this policy exists: the visitor's own
     // Anthropic key lives in sessionStorage, so the places this page may talk to are named.
     ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN, REPORT_ORIGIN].filter(Boolean).join(" "),
+    // The service worker, and the manifest the install prompt reads. Both same-origin, both
+    // covered by `default-src 'self'` in principle — spelled out because a policy that relies on
+    // the fallback is one nobody can check by reading.
+    "worker-src 'self'",
+    "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
