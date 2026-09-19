@@ -30,6 +30,7 @@ export const SECURITY_TEST_FILES = [
   "src/lib/byok.test.ts",
   "src/lib/csvInjection.test.ts",
   "src/lib/cloud/liveMessage.test.ts",
+  "src/lib/cloud/policies.test.ts",
 ];
 
 function walk(dir, onFile) {

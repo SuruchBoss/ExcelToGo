@@ -33,7 +33,8 @@
     "check:a11y": "node scripts/check-a11y.mjs",
     "check:e2e": "node scripts/check-e2e.mjs",
     "build:social": "node scripts/make-social-preview.mjs",
-    "check:ai": "node scripts/check-ai.mjs"
+    "check:ai": "node scripts/check-ai.mjs",
+    "check:rls": "node scripts/check-rls.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

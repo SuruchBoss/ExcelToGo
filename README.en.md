@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1093%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1106%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1093 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1106 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1093 passing tests could not catch
+### 🧪 What 1106 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1093 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1106 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -249,9 +249,10 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1093-case Vitest suite |
+| `npm test` | Run the 1106-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
+| `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
 | `npm run check:deps` | Every advisory is fixed, or written down with a reason and a review date |
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
@@ -1413,7 +1414,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1093 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1106 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1712,6 +1713,7 @@ src/
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
   check-screenshots.mjs      # Figures printed on a screenshot vs. the source (a new image needs an entry)
+  check-rls.mjs              # Two real accounts on a real project: does the database refuse what it should
   check-deps.mjs             # Every advisory accounted for, with a reason and an expiry date
   check-bundle.mjs           # Size budgets, and the cloud client staying in a chunk of its own
   check-mutants.mjs          # Breaks the engine a character at a time and asks if the suite notices
@@ -2071,7 +2073,29 @@ The key box says both halves out loud too: kept in this tab only, never through 
 **use a key you can revoke rather than your main one**, because a key held in a web page can be read
 by anything running in that page.
 
-### 130 security tests
+### Testing the row-level security, in two halves
+
+The migrations ship policies. Until now nothing proved they were still there, let alone that they
+worked — and `alter table … enable row level security` is one line, without which a table answers
+everyone while the policy file below it still reads as though it protects something.
+
+**The half that runs everywhere** is `policies.test.ts`: it reads the migrations as text and checks
+their shape. RLS enabled on both tables. Four verbs spelled out on `workbooks` rather than one
+`for all`, so the list says what an anonymous visitor can do. `with check` on the update policy, and
+the trigger that pins `user_id`, because a member who may edit must not be able to edit the row into
+being theirs. The realtime policies asking the *same* question the workbook asks, rather than
+keeping a second opinion that would drift. No policy that says `using (true)`, none granted to
+`anon`, and every `security definer` helper with its `search_path` pinned. Proved by loosening one:
+turning the channel's `using` into `true` fails three of them.
+
+**The half that needs a database** is `npm run check:rls`, run deliberately against a project you
+own, with two accounts. It creates a workbook as A and then tries, as B, everything that must fail:
+read it, rename it, plant a row owned by A, invite a stranger, and join the live channel. Then A
+shares it and the same script checks the door opened exactly as far as it should — B can read and
+edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
+nothing but the anon key, which is the thing that used to work.
+
+### 143 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2085,6 +2109,7 @@ by anything running in that page.
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
+| `cloud/policies.test.ts` | 13 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
 Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/liveMessage.test.ts`
@@ -2229,13 +2254,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1093 cases across 67 files, via Vitest
+npm test      # 1106 cases across 68 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1093 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1106 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2329,10 +2354,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1093 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1106 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1093 passing tests could not catch](#-what-1093-passing-tests-could-not-catch), repeatable
+> [What 1106 passing tests could not catch](#-what-1106-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
