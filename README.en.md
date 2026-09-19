@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-980%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1058%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 980 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 1058 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 980 passing tests could not catch
+### 🧪 What 1058 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 980 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1058 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -148,6 +148,7 @@ tests say, and nothing whatever about whether that is the right thing.
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
+  - [Editing together](#-editing-together)
   - [The Excel keyboard](#️-the-excel-keyboard)
   - [Formulas that answer with a whole table (array formulas)](#-formulas-that-answer-with-a-whole-table-array-formulas)
   - [Formulas across sheets](#-formulas-across-sheets)
@@ -247,7 +248,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 980-case Vitest suite |
+| `npm test` | Run the 1058-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
@@ -705,8 +706,47 @@ account's workbooks away from another's.
 cloud code is unreachable, and the ~250KB Supabase client **is never downloaded**. That was checked
 by counting the chunks the browser actually requests, not assumed.
 
-**Not supported:** automatic sync (you press save), simultaneous editing, version history, or
-sharing a workbook with someone else.
+**Not supported:** automatic sync (you press save), version history, or sharing a workbook with
+someone else.
+
+### 👥 Editing together
+
+Save a workbook to your Supabase project, press **"Join the live session"** in the cloud panel, and
+everyone who opens that workbook from the same project sees each other type, with a coloured dot
+for where each person's cursor is.
+
+It rides on **Supabase Realtime broadcast** rather than Postgres changes: a keystroke is not worth a
+row. Messages travel between the browsers that are connected right now and are never stored, so your
+database still holds saved workbooks and nothing else.
+
+**What it deliberately does not do — written down, because silence here costs more:**
+
+- **It is not a CRDT.** Two people typing into one cell in the same second leaves one value, and the
+  one who lost **is told**, out loud, rather than finding out later. The rule is "later wins, ties
+  broken by client id", which every participant computes from the same two facts without asking
+  anyone.
+- **Clocks differ**, so the winner may not be whoever actually typed last. The alternative is a
+  server sequence number, which means a server, which this app does not have.
+- **Row and column inserts are not merged.** They move every cell below or right of them, so a cell
+  message crossing one on the wire would land in the wrong place. The client making the change saves
+  to the cloud first and then asks the others to reload — a visible reload beats two screens quietly
+  drifting apart.
+- **The cell you have open is never overwritten mid-word.** An arriving edit waits for the editor to
+  close. Watching your own typing vanish as you do it is what makes people stop trusting a shared
+  document.
+- **Your undo does not erase their work.** This one was nearly missed: undo restores a snapshot of
+  the whole workbook, so a colleague's edit that arrived after that snapshot was taken is not in it.
+  Press Ctrl+Z to take back your own last word and their work goes with it, silently, while the undo
+  looks like it did exactly what it should. Remote values are now written into the stored snapshots
+  too.
+- **Formatting, charts and comments are not synced live** — those still go through save and reopen.
+- **There is no screenshot in this section.** The panel only exists once a real Supabase project is
+  attached, so it cannot be captured from a deployment without a backend, and a mocked-up image
+  would be a claim rather than evidence.
+
+Everything arriving on the channel **is checked before it is used**, not trusted: anyone holding the
+anon key can join. A `row` of `-1` reaches an array index, and a `raw` that is not a string reaches
+the formula engine.
 
 ### 💬 Cell comments
 
@@ -1330,7 +1370,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (980 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1058 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1602,6 +1642,10 @@ src/
     cloud/config.ts          # Whether a cloud backend is attached at all (off unless set) (tested)
     cloud/workbook.ts        # The stored workbook shape, reading it back, and the conflict rule (tested)
     cloud/client.ts          # The Supabase client (dynamically imported), auth and workbook CRUD
+    cloud/liveSession.ts     # Live-editing rules: which message wins, what to do with one, validating it (tested)
+    cloud/liveRoom.ts        # One room's state and the edits held back while a cell is open (tested)
+    cloud/sheetDiff.ts       # What changed between two workbooks, cheap enough to ask every keystroke (tested)
+    cloud/realtimeChannel.ts # The Supabase Realtime pipe (broadcast + presence) — the one part that decides nothing
     conditionalFormat.ts     # Conditional formatting rules: compare/text/rank/colour scale/data bar, the
                               # per-cell styling they produce, and range shifting on edits (tested)
     sheetTemplate.ts         # Templates from a file: which cells are fields, dropdown options, width units (tested)
@@ -1952,7 +1996,7 @@ The key box says both halves out loud too: kept in this tab only, never through 
 **use a key you can revoke rather than your main one**, because a key held in a web page can be read
 by anything running in that page.
 
-### 123 security tests
+### 130 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -1964,8 +2008,11 @@ by anything running in that page.
 | `validate.test.ts` | 4 | Which URL shapes are accepted, and which paths must be refused |
 | `ai/formula/route.test.ts` | 6 | Demo mode must not reach Anthropic **even with an API key configured**, the local fallback still answers (not a 403), a missing question is a 400 |
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
+| `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
+| `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
+| `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
-Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts`
+Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/liveMessage.test.ts`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -2101,13 +2148,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 980 cases across 59 files, via Vitest
+npm test      # 1058 cases across 65 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 980 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1058 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2165,10 +2212,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **980 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1058 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 980 passing tests could not catch](#-what-980-passing-tests-could-not-catch), repeatable
+> [What 1058 passing tests could not catch](#-what-1058-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2198,6 +2245,12 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
 | `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
 | `cloud/cloud.test.ts` | 15 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
+| `cloud/liveSession.test.ts` | 22 | The live-editing rules: own echo, a tab that isn't here, a structural change → reload, the cell being edited → wait, a message that lost → drop · ties broken by client id, and both sides reaching the same answer |
+| `cloud/liveMessage.test.ts` | 7 | Validating what arrives from another browser (also counted among the security tests) |
+| `cloud/liveRoom.test.ts` | 21 | One room against a fake transport: an echo staying out of undo, an edit held until the editor closes (only the winner kept), a local edit that wins not being overwritten, and leaving actually going quiet |
+| `cloud/sheetDiff.test.ts` | 11 | What changed between two workbooks: one cell, an emptied cell, another tab, an added row → reload, 200+ cells at once → reload · and a count of how many rows were read, so copy-on-write staying true is a test |
+| `cloud/realtimeChannel.test.ts` | 5 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
+| `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
 | `gridGeometry.test.ts` | 18 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there, anchor↔pixel round trips |
@@ -2230,8 +2283,13 @@ What's not done yet, and why — to show this is a known gap, not something forg
       across Node 20.19, 22.12 and 24
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
-      rather than a hosted service. Still open: automatic sync, simultaneous editing, version
-      history, and sharing a workbook with someone else
+      rather than a hosted service. Still open: automatic sync, version history, and sharing a
+      workbook with someone else
+- [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
+      each other type, presence shows where each cursor is, the cell you have open is never
+      overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed
+      into twice at once leaves one value and tells the person who lost, and row inserts save and ask
+      the others to reload. Still open: formatting, charts and comments are not synced live
 - [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and following
       the live values, placed on the grid, dragged and resized there, anchored to a cell, and carried
       into both the `.xlsx` and the PDF. **A chart in the `.xlsx` is now a real, editable chart** —
@@ -2375,8 +2433,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
 
 **Deliberately out of scope:**
 
-- **Real-time multi-user collaboration** — would need a backend + WebSocket, which conflicts with the intended
-  design of a personal, browser-only tool with no backend at all.
+- **A hosted collaboration service** — collaboration itself *shipped*, on the user's own backend (see
+  [Editing together](#-editing-together)). Running one central server for everyone is the part that
+  stays out of scope: it would reverse the property the whole app stands on — your file never leaves
+  your browser.
 - **Using an off-the-shelf formula library** — the engine is hand-written on purpose to keep full control over
   its behavior (see [Formula engine](#-formula-engine)), even at the cost of fewer built-in functions than a
   library like HyperFormula would offer.

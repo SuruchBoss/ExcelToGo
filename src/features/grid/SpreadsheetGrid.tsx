@@ -23,6 +23,7 @@ import ColumnFilterPopover from "./ColumnFilterPopover";
 import { useHeaderContextMenu } from "./useHeaderContextMenu";
 import { useColumnFilterPopoverState } from "./useColumnFilterPopoverState";
 import { useT } from "@/i18n";
+import { reportEditing } from "@/store/liveStore";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
@@ -200,7 +201,18 @@ export default function SpreadsheetGrid() {
     return true;
   };
 
-  const [editing, setEditing] = useState<{ row: number; col: number; value: string } | null>(null);
+  const [editing, setEditingState] = useState<{ row: number; col: number; value: string } | null>(null);
+  /**
+   * Opening and closing the editor, with the live session told either way.
+   *
+   * Wrapped here rather than calling `reportEditing` at each of the five places that open or close
+   * an editor. An edit arriving from someone else has to wait while this cell is open, and the
+   * call site that gets forgotten is the one where somebody's typing is overwritten mid-word.
+   */
+  const setEditing = useCallback((next: { row: number; col: number; value: string } | null) => {
+    reportEditing(next?.row ?? 0, next ? next.col : null);
+    setEditingState(next);
+  }, []);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
   const isSelecting = useRef(false);
   /** Whether the cell a touch landed on was already the selected one, sampled before the tap
@@ -276,14 +288,14 @@ export default function SpreadsheetGrid() {
       if (isTemplateLocked(sheet.template, row, col)) return;
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
-    [rawAt, boundCells, sheet.template]
+    [rawAt, boundCells, sheet.template, setEditing]
   );
 
   const commitEdit = useCallback(() => {
     if (!editing) return;
     commitCell(editing.row, editing.col, editing.value);
     setEditing(null);
-  }, [editing, commitCell]);
+  }, [editing, commitCell, setEditing]);
 
   const handleMouseDown = (row: number, col: number, shiftKey: boolean) => {
     if (editing && (editing.row !== row || editing.col !== col)) commitEdit();

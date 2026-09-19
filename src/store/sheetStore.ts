@@ -194,6 +194,15 @@ interface SheetState {
   deleteSheet: (id: string) => void;
 
   setCellRaw: (row: number, col: number, raw: string) => void;
+  /**
+   * Writes one cell on a named tab on behalf of somebody else in the same workbook.
+   *
+   * Separate from `setCellRaw` for three reasons, each of which would be a bug if it were shared:
+   * it writes to the tab the message names rather than the one in front of this person, it leaves
+   * the selection alone, and it stays out of undo — Ctrl+Z should take back what *you* typed, not
+   * quietly reverse a colleague's edit on a sheet you are not looking at.
+   */
+  applyRemoteCell: (tabId: string, row: number, col: number, raw: string, spoken?: string) => void;
   addRow: () => void;
   addColumn: () => void;
   deleteSelectedRow: () => void;
@@ -516,6 +525,33 @@ export function resetAnnouncements() {
   announceSeq = 0;
 }
 
+/**
+ * Writes somebody else's edit into this person's undo history as well as into the document.
+ *
+ * Undo here restores a snapshot of the whole workbook, which is the right thing for one person and
+ * a quiet way to lose work for two: a colleague fills in B7 while you are typing, you press Ctrl+Z
+ * to take back your own last word, and the snapshot you land on is from before B7 existed. Their
+ * work vanishes, nobody is told, and the undo looked like it did exactly what it should.
+ *
+ * So the remote value is applied to every stored snapshot too. Undo then takes back what you did
+ * and leaves what they did, which is what the person pressing it meant. It costs one copy-on-write
+ * row per snapshot — a hundred small allocations at the history limit, per remote keystroke.
+ */
+function rewriteHistory(tabId: string, row: number, col: number, raw: string): void {
+  const temporal = useSheetStore.temporal;
+  const { pastStates, futureStates } = temporal.getState();
+  if (pastStates.length === 0 && futureStates.length === 0) return;
+
+  const fix = (slice: Partial<TemporalSlice>): Partial<TemporalSlice> => {
+    const target = slice.sheets?.find((t) => t.id === tabId);
+    if (!target || row >= target.sheet.rows || col >= target.sheet.cols) return slice;
+    const next = setCellRaw(target.sheet, row, col, raw);
+    if (next === target.sheet) return slice;
+    return { sheets: slice.sheets!.map((t) => (t.id === tabId ? { ...t, sheet: next } : t)) };
+  };
+  temporal.setState({ pastStates: pastStates.map(fix), futureStates: futureStates.map(fix) });
+}
+
 export const useSheetStore = create<SheetState>()(
   persist(
     temporal(
@@ -580,6 +616,29 @@ export const useSheetStore = create<SheetState>()(
             if (isTemplateLocked(activeTab(s).sheet.template, row, col)) return {};
             return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
           }),
+        applyRemoteCell: (tabId, row, col, raw, spoken) => {
+          // Paused around the write so the remote edit does not land in this person's undo stack.
+          // `temporal` only exists once the store has been created, which is why it is reached for
+          // here rather than closed over above.
+          const history = useSheetStore.temporal.getState();
+          history.pause();
+          try {
+            set((s) => {
+              const target = s.sheets.find((t) => t.id === tabId);
+              if (!target || isTemplateLocked(target.sheet.template, row, col)) return {};
+              if (row >= target.sheet.rows || col >= target.sheet.cols) return {};
+              const next = setCellRaw(target.sheet, row, col, raw);
+              if (next === target.sheet) return {};
+              return {
+                sheets: s.sheets.map((t) => (t.id === tabId ? { ...t, sheet: next } : t)),
+                ...(spoken ? say(spoken) : {}),
+              };
+            });
+          } finally {
+            history.resume();
+          }
+          rewriteHistory(tabId, row, col, raw);
+        },
         addRow: () =>
           set((s) =>
             refusedStructuralChange(activeTab(s).sheet)

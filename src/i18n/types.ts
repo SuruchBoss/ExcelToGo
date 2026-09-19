@@ -252,6 +252,24 @@ export interface Messages {
     working: string;
     privacy: string;
   };
+  collab: {
+    /** Live editing with other people in the same saved workbook. */
+    title: string;
+    subtitle: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    someone: string;
+    join: string;
+    leave: string;
+    joining: string;
+    failed: string;
+    needsWorkbook: string;
+    alone: string;
+    hereNow: (n: number) => string;
+    at: (name: string, ref: string) => string;
+    overwritten: (ref: string) => string;
+    limits: string;
+  };
   comments: {
     /** The note attached to one cell: its editor, its marker and its button. */
     title: string;

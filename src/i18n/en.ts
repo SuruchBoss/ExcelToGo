@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 980 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1058 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -228,8 +228,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "980", label: "automated tests" },
-      { value: "123", label: "security tests" },
+      { value: "1058", label: "automated tests" },
+      { value: "130", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -292,6 +292,26 @@ export const en: Messages = {
     unreadable: "This workbook was saved by a newer version of the app and can't be opened here.",
     working: "Working...",
     privacy: "Your data goes from this browser straight to your Supabase project — it does not pass through this app's server.",
+  },
+  collab: {
+    title: "Edit together",
+    subtitle: "Everyone who opens this workbook from the same Supabase project sees each other type.",
+    nameLabel: "What the others see you as",
+    namePlaceholder: "e.g. Somchai",
+    someone: "Someone",
+    join: "Join the live session",
+    leave: "Leave",
+    joining: "Joining...",
+    failed: "Could not join. Try again.",
+    needsWorkbook: "Save to the cloud first — a live session is a session of a saved workbook.",
+    alone: "Nobody else is here yet.",
+    hereNow: (n) => `${n} other ${n === 1 ? "person" : "people"} here`,
+    at: (name, ref) => `${name} is at ${ref}`,
+    overwritten: (ref) => `${ref} was changed by someone else over what you had typed`,
+    limits:
+      "Not a CRDT: two people typing into one cell leaves one value, and the other person is told · " +
+      "inserting or deleting rows saves and asks the others to reload rather than merging · " +
+      "formatting, charts and comments are not synced live.",
   },
   comments: {
     title: "Comment",
