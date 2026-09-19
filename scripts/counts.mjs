@@ -28,6 +28,7 @@ export const SECURITY_TEST_FILES = [
   "src/app/api/sources/validate.test.ts",
   "src/app/api/ai/formula/route.test.ts",
   "src/lib/byok.test.ts",
+  "src/lib/csvInjection.test.ts",
 ];
 
 function walk(dir, onFile) {

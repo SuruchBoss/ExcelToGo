@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-937%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-948%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 937 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 948 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 937 passing tests could not catch
+### 🧪 What 948 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 937 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 948 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -246,7 +246,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 937-case Vitest suite |
+| `npm test` | Run the 948-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 5 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements (needs a build) |
@@ -1139,10 +1139,16 @@ unparseable.
 **The active sheet only**, named after its tab — a CSV holds one table, and both stacking three sheets into
 one file and splitting them into three are surprises.
 
+**CSV injection is neutralised.** A value beginning `=`, `+`, `-`, `@`, a tab or a newline is written with
+a leading apostrophe, which every spreadsheet reads as "the rest is text" — **and numbers are never touched**.
+Prefixing every field that starts with `-` would mangle every negative number in every export, which is how
+this mitigation usually gets reverted a week after it ships. On import the apostrophe this app added comes
+off again, so a file exported from here and read straight back is unchanged.
+
 **Not supported yet:** files that aren't UTF-8 (TIS-620 out of an older system, say) come in as mojibake —
-there's no encoding detection. And values beginning `=`, `+`, `-` or `@` are written through unchanged, with
-no neutralising: taking a file built from an untrusted source and opening it in Excel is a CSV-injection
-risk you have to know about. Quietly editing someone's data is its own bug, so it's stated here instead.
+there's no encoding detection. And a field that genuinely began with an apostrophe and an `=` in someone
+else's file is indistinguishable from one this app escaped, so it loses that apostrophe on the way in. CSV
+has no way to say "text that happens to look like a formula", so something has to give.
 
 ### 🎨 It looks like the file you opened
 
@@ -1288,7 +1294,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (937 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (948 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1859,7 +1865,7 @@ ever reaches the fetcher
 **Confirmed by reverting** — all four cases fail on the old code and pass on the new. The tests were not
 written to agree with whatever the code already did.
 
-### 112 security tests
+### 123 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -1913,8 +1919,11 @@ nothing would warn you if a future change broke them:
 - **The rate-limit counters live in one process's memory.** Two instances count separately and a
   serverless cold start forgets everything — a guard against casual abuse, **not a billing control.**
   A real one needs shared storage, which this project deliberately does not have.
-- **No CSV-injection neutralising.** Values starting `=`, `+`, `-` or `@` are written through unchanged
-  — quietly editing someone's data is its own bug, so it is documented instead (see
+- **CSV injection is neutralised** (this line used to say it wasn't). Measured before it was fixed: a sheet
+  holding `+cmd|'/c calc'!A0` and `@SUM(1+1)*cmd|'/c calc'!A0` exported both of them live, while `=1+1` did
+  not survive because this app's own engine had already evaluated it — **the dangerous prefixes are exactly
+  the three the engine does not treat as a formula**, so "we compute formulas ourselves" was never a
+  protection. It has its own security tests in `csvInjection.test.ts` (see
   [CSV in and out](#-csv-in-and-out)).
 - **There are no user accounts**, so there is no per-user authorisation to test. `SOURCES_ADMIN_TOKEN`
   is an operator switch, not an account.
@@ -2005,13 +2014,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 937 cases across 56 files, via Vitest
+npm test      # 948 cases across 57 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 937 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 948 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2058,16 +2067,17 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **937 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **948 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 937 passing tests could not catch](#-what-937-passing-tests-could-not-catch), repeatable
+> [What 948 passing tests could not catch](#-what-948-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
 |---|---|---|
 | `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
 | `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
+| `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
@@ -2203,7 +2213,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       failing. Still open: it covers the grid and the global handlers, not the keys inside individual panels.
 - [x] **Direct CSV import/export** — done (see ✨ Features): the delimiter is sniffed (`,`, `;`, tab), the BOM
       is stripped on the way in and written on the way out so Excel reads Thai, quoting follows RFC 4180, and
-      the export carries computed values. Still open: non-UTF-8 files, and CSV-injection neutralising.
+      the export carries computed values, **and CSV injection is neutralised** without touching negative
+      numbers or changing this app's own round trip. Still open: non-UTF-8 files.
 - [x] **Merge cells** — done (see ✨ Features): one button for merge and split, overlapping merges are
       absorbed, it asks first only when data would be lost, and the export carries real `<mergeCell>`
       elements. Still open: vertical centring, and freezing beyond the already-sticky headers.

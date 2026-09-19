@@ -82,7 +82,12 @@ export function parseCsv(text: string, delimiter: CsvDelimiter = detectDelimiter
   let sawAny = false;
 
   const endField = () => {
-    row.push(field);
+    // Reading back what `toCsv` wrote: the apostrophe it adds is ours, so it comes off again and a
+    // file exported from here and imported straight back is unchanged. The limit is honest and
+    // worth stating: a field that genuinely began with an apostrophe and an `=` in someone else's file is
+    // indistinguishable from one we escaped, and loses that apostrophe here. CSV has no way to
+    // say "text that happens to look like a formula", so something has to give.
+    row.push(unneutraliseCsvField(field));
     field = "";
     sawAny = true;
   };
@@ -136,6 +141,44 @@ export function parseCsv(text: string, delimiter: CsvDelimiter = detectDelimiter
   return rows.map((r) => (r.length === width ? r : [...r, ...Array(width - r.length).fill("")]));
 }
 
+/**
+ * CSV injection, and why this file is where it gets stopped.
+ *
+ * A CSV field is just text until Excel opens it. Anything starting with `=`, `+`, `-` or `@` is
+ * then read as a *formula*, and Excel's formula language reaches outside the spreadsheet: the
+ * classic payload is `+cmd|'/c calc'!A0`, which asks Excel to start a program over DDE. So a value
+ * this app never chose — a string that arrived from someone's API through a live data source, or a
+ * field in a file a colleague sent — can be written into an export and run on the machine of
+ * whoever opens it next. The person who gets hurt is not the person who typed it.
+ *
+ * Measured before it was fixed, not assumed. Exporting a sheet holding those payloads produced:
+ *
+ *     +cmd|'/c calc'!A0
+ *     @SUM(1+1)*cmd|'/c calc'!A0
+ *
+ * verbatim, both live. (`=1+1` did *not* survive: this app's own engine evaluates a cell starting
+ * with `=` and exports the result. The dangerous ones are exactly the three prefixes the engine
+ * does not treat as a formula, which is why "we compute formulas ourselves" was no protection.)
+ *
+ * The fix is the standard one — a leading apostrophe, which every spreadsheet reads as "the rest
+ * is text" — with the detail that makes it usable: **a number is never touched**. Prefixing every
+ * field that starts with `-` would mangle every negative number in every export, which is how this
+ * mitigation usually gets reverted a week after it ships.
+ */
+const RISKY_FIRST_CHAR = /^[=+\-@\t\r\n]/;
+/** Plain numbers, including the negative ones `RISKY_FIRST_CHAR` would otherwise catch. */
+const PLAIN_NUMBER = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/;
+
+export function neutraliseCsvField(value: string): string {
+  if (value === "" || PLAIN_NUMBER.test(value)) return value;
+  return RISKY_FIRST_CHAR.test(value) ? `'${value}` : value;
+}
+
+/** Undoes exactly what `neutraliseCsvField` adds, so this app's own round trip is lossless. */
+export function unneutraliseCsvField(value: string): string {
+  return value.startsWith("'") && RISKY_FIRST_CHAR.test(value.slice(1)) ? value.slice(1) : value;
+}
+
 /** Quotes a field only when leaving it bare would change what it means. */
 export function quoteCsvField(value: string, delimiter: CsvDelimiter): string {
   const needsQuotes =
@@ -161,7 +204,12 @@ export interface CsvWriteOptions {
  * other consumer of a CSV is a script, and a script wants neither.
  */
 export function toCsv(rows: string[][], { delimiter = ",", bom = true }: CsvWriteOptions = {}): string {
-  const body = rows.map((row) => row.map((f) => quoteCsvField(f, delimiter)).join(delimiter)).join("\r\n");
+  // Neutralising happens here rather than at each call site, and cannot be switched off: an export
+  // path added later would otherwise be unprotected by default, which is the wrong default for
+  // something that runs on someone else's computer.
+  const body = rows
+    .map((row) => row.map((f) => quoteCsvField(neutraliseCsvField(f), delimiter)).join(delimiter))
+    .join("\r\n");
   return (bom ? "﻿" : "") + body;
 }
 
