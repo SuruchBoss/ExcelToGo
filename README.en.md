@@ -9,7 +9,7 @@ Runs in your browser; your data stays on your machine.
 
 > **Type "total sales for the northern branch" and get an Excel formula back**, with a sentence
 > saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes
-> first. Or skip the typing: **pick from 32 ready-made formulas** and drag across the cells instead
+> first. Or skip the typing: **pick from 37 ready-made formulas** and drag across the cells instead
 > of typing addresses. It works out of the box with nothing to configure (a local keyword matcher,
 > free), or paste your own Anthropic API key and the question goes to the real Claude — from your
 > browser straight to Anthropic, never through this app's server.
@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-948%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-969%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 948 automated tests.
+bring-your-own-backend cloud save. Bilingual UI (Thai/English), 969 automated tests.
 
 ---
 
@@ -96,7 +96,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 948 passing tests could not catch
+### 🧪 What 969 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +107,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 948 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 969 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -149,6 +149,7 @@ tests say, and nothing whatever about whether that is the right thing.
   - [Cell comments](#-cell-comments)
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
   - [The Excel keyboard](#️-the-excel-keyboard)
+  - [Formulas that answer with a whole table (array formulas)](#-formulas-that-answer-with-a-whole-table-array-formulas)
   - [Formulas across sheets](#-formulas-across-sheets)
   - [The fill handle](#️-the-fill-handle)
   - [Find and replace](#-find-and-replace)
@@ -246,7 +247,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 948-case Vitest suite |
+| `npm test` | Run the 969-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
@@ -823,6 +824,41 @@ Two more things the gates could not have told me, both found by looking:
   fixed, and **the gate now opens the dialog and checks it too**, so the next one gets caught by CI
   rather than by me remembering to look.
 
+### 🧮 Formulas that answer with a whole table (array formulas)
+
+Most formulas answer with one value. Some answer with a *shape* — `=UNIQUE(B2:B10)` has as many
+answers as there are distinct categories, which nobody knows while typing it. So those answers
+**spill into the cells beside them**. A spilled cell is tinted, because what is in it is not its
+own: it belongs to a formula in another cell, and it disappears the moment that formula does.
+
+<p align="center"><img src="public/screenshots/40-array-spill.png" width="900"></p>
+
+| Formula | What it does |
+|---|---|
+| `SEQUENCE(rows, cols, start, step)` | A counted block of numbers, with no dragging to fill |
+| `TRANSPOSE(range)` | Rows become columns |
+| `UNIQUE(range)` | Each value once, in the order it first appears |
+| `SORT(range, col, asc)` | Sorted **without moving the source rows**, unlike the column-header sort |
+| `FILTER(range, include, if_empty)` | Only the rows whose condition is true |
+
+**Operators work across a range too.** `A1:A9>50` is nine answers, not one, and `SUM(A1:A3*2)`
+multiplies every cell before adding them. Both used to collapse to the first cell silently, which
+is the worst of the three possible behaviours because the answer *looked* right. Two ranges of
+different shapes give `#VALUE!` rather than a guess.
+
+**It refuses rather than half-fitting.** Anything in the way — one cell is enough — or the edge of
+the sheet, and the formula is `#SPILL!` and **nothing at all is written**. Half an array left on the
+sheet would be worse than none, because those values would look like data. Type over a spilled cell
+and the formula becomes `#SPILL!` at once, the way Excel does it.
+
+> **Not supported yet:** a sheet holding array formulas recomputes in full on every edit instead of
+> incrementally (`computeSheet` refuses the incremental path once it sees a spill). An array writes
+> into cells *outside* the set marked dirty, and deleting one has to clear them again; tracking that
+> properly means putting spill regions into the dependency graph, which is more than the feature has
+> earned yet — and a half-erased array left on screen is a worse bug than a slower recompute. In an
+> exported `.xlsx` the formula is written at the anchor, so a version of Excel that knows dynamic
+> arrays spills it again and an older one shows a single value.
+
 ### 🔗 Formulas across sheets
 
 `=Sheet2!A1` used to be `#SYNTAX!`. The app has had tabs, and a pivot that reads its source sheet,
@@ -1262,7 +1298,7 @@ set in the same family as the body text rather than in the system's default mono
 
 ### 🌐 Bilingual (Thai / English)
 
-Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 32 formula
+Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 37 formula
 names/descriptions, alert text, and AI replies (both the keyword heuristic and real Claude) all follow the
 selected language. The choice is remembered per browser. See [Bilingual UI (i18n)](#-bilingual-ui-i18n) for the
 architecture behind it.
@@ -1294,7 +1330,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (948 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (969 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1609,7 +1645,7 @@ flowchart LR
     Raw["Raw formula text<br/>e.g. =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>splits into tokens"]
     Tok --> Par["parser.ts<br/>builds an AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>walks the AST to compute a result"]
-    Eval -->|"calls"| Fn["functions.ts<br/>59 functions"]
+    Eval -->|"calls"| Fn["functions.ts<br/>64 functions"]
     Eval -->|"getCell(row, col)"| Sheet[("other cells' values/formulas<br/>in the sheet")]
     Sheet -.-> Eval
     Eval --> Result["a number/text value,<br/>or a FormulaError"]
@@ -1711,10 +1747,10 @@ thing:
 ### Supported functions
 
 The drag-and-drop palette shows only the **32 most commonly used** formulas, but the engine itself supports
-**59 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
+**64 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
 `=YEAR(...)`, `=PROPER(...)`):
 
-| Category | In the palette (32) | Also available by typing |
+| Category | In the palette (37) | Also available by typing |
 |---|---|---|
 | Math | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` `CEILING` `FLOOR` `SUMPRODUCT` |
 | Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` `RANK` `RANK.EQ` |
@@ -1722,6 +1758,7 @@ The drag-and-drop palette shows only the **32 most commonly used** formulas, but
 | Text | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` `TEXTJOIN` `SUBSTITUTE` `FIND` `SEARCH` `CHAR` `CODE` |
 | Date | `TODAY` `NOW` `DATEDIF` | `DAY` `MONTH` `YEAR` |
 | Lookup | `VLOOKUP` `XLOOKUP` `INDEX` `MATCH` | — |
+| Arrays | `SEQUENCE` `TRANSPOSE` `UNIQUE` `SORT` `FILTER` | — |
 
 > **The last ten came from asking the real model, not from working through the Excel reference.**
 > `TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR` — and their obvious companions `SEARCH`
@@ -2061,13 +2098,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 948 cases across 57 files, via Vitest
+npm test      # 969 cases across 58 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 948 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 969 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2125,10 +2162,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **948 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **969 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 948 passing tests could not catch](#-what-948-passing-tests-could-not-catch), repeatable
+> [What 969 passing tests could not catch](#-what-969-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2136,6 +2173,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
 | `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
+| `arrayFormulas.test.ts` | 21 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
@@ -2204,6 +2242,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **A ceiling on `/api/ai/formula`** — done: 20 calls a minute per address, refused with `429`
       and a `Retry-After`. Still open: the counters are per process, so this guards against casual
       abuse rather than acting as a billing control across instances
+- [x] **Formulas that answer with a whole table** — done (see [array formulas](#-formulas-that-answer-with-a-whole-table-array-formulas)):
+      `SEQUENCE`, `TRANSPOSE`, `UNIQUE`, `SORT` and `FILTER` spilling into the cells beside them, `#SPILL!`
+      when they do not fit with nothing written, and operators applied across a range (`A1:A9>50` is nine
+      answers). Still open: a sheet with arrays on it recomputes in full rather than incrementally, and
+      there is no `XMATCH`, `LET` or `LAMBDA`.
 - [x] **Formulas across sheets** — done (see [formulas across sheets](#-formulas-across-sheets)):
       `=Sheet2!A1`, Thai names unquoted, cross-sheet staleness that follows a chain rather than one
       link, and cycles that span sheets. **This line used to say "`.xlsx` export writes computed

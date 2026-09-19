@@ -41,7 +41,7 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
       return scalar(node.op === "-" ? -n : n);
     }
     case "binop":
-      return scalar(evalBinop(node.op, evaluate(node.left, ctx), evaluate(node.right, ctx)));
+      return broadcast(node.op, evaluate(node.left, ctx), evaluate(node.right, ctx));
     case "call": {
       const fn = FUNCTIONS[node.name];
       if (!fn) return scalar(ERR_NAME);
@@ -61,6 +61,48 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
 
 function toScalarValue(r: EvalResult): FormulaValue {
   return r.kind === "scalar" ? r.value : r.rows[0]?.[0] ?? null;
+}
+
+/**
+ * An operator applied across a range instead of to one value.
+ *
+ * `A1:A9>50` is a column of nine answers, not one, and `A1:A9*2` is nine products. Excel has
+ * worked this way since dynamic arrays; before this function, both collapsed to the first cell
+ * quietly — which is the worst of the three possible behaviours, because the answer looked right.
+ *
+ * The shape rules are Excel's, kept deliberately narrow:
+ *
+ * - range ∘ scalar, and scalar ∘ range, apply elementwise across the range.
+ * - range ∘ range of the same shape pairs them up.
+ * - range ∘ range of different shapes is `#VALUE!`. Excel broadcasts a row against a column into
+ *   a rectangle; that is a bigger idea than this engine needs, and guessing would be worse than
+ *   refusing.
+ *
+ * A one-cell range is treated as the scalar it is, so `SUM(A1:A1)+1` keeps working.
+ */
+function broadcast(op: string, left: EvalResult, right: EvalResult): EvalResult {
+  const shape = (r: EvalResult): { h: number; w: number } | null => {
+    if (r.kind === "scalar") return null;
+    const h = r.rows.length;
+    const w = r.rows.reduce((max, row) => Math.max(max, row.length), 0);
+    return h * w <= 1 ? null : { h, w };
+  };
+  const at = (r: EvalResult, y: number, x: number): EvalResult =>
+    r.kind === "scalar" ? r : scalar(r.rows[y]?.[x] ?? null);
+
+  const ls = shape(left);
+  const rs = shape(right);
+  if (!ls && !rs) return scalar(evalBinop(op, left, right));
+  if (ls && rs && (ls.h !== rs.h || ls.w !== rs.w)) return scalar(ERR_VALUE);
+
+  const { h, w } = (ls ?? rs)!;
+  const rows: FormulaValue[][] = [];
+  for (let y = 0; y < h; y++) {
+    const row: FormulaValue[] = [];
+    for (let x = 0; x < w; x++) row.push(evalBinop(op, at(left, y, x), at(right, y, x)));
+    rows.push(row);
+  }
+  return { kind: "range", rows, startRow: 0, startCol: 0 };
 }
 
 function evalBinop(op: string, leftR: EvalResult, rightR: EvalResult): FormulaValue {

@@ -118,10 +118,10 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 948 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 969 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
-      "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
+      "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
     ctaPrimary: "Open the app",
     ctaSecondary: "View the code on GitHub",
     ctaNote:
@@ -157,7 +157,7 @@ export const en: Messages = {
       {
         scenario: "It's three in the afternoon and your manager wants the northern-branch total today",
         pain: "You know it's SUMIF, you just can't recall what goes where. So you open a tab, search, find an example built on someone else's ranges, and translate it back onto your own file.",
-        solution: "Type \"total sales for the northern branch\" in plain English — or Thai — and get the formula back with an explanation of what it does. Or skip typing: pick from 32 ready-made formulas and fill the fields one at a time.",
+        solution: "Type \"total sales for the northern branch\" in plain English — or Thai — and get the formula back with an explanation of what it does. Or skip typing: pick from 37 ready-made formulas and fill the fields one at a time.",
         gain: "You stop leaving the file to find the answer somewhere else, and you read the formula and its explanation before it goes in, instead of pasting first and finding out later.",
       },
       {
@@ -196,9 +196,9 @@ export const en: Messages = {
       },
       {
         title: "Drag a formula in, don't memorise its syntax",
-        body: "Search 32 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
+        body: "Search 37 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
         alt: "The formula parameter panel",
-        points: ["59 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
+        points: ["64 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
       },
       {
         title: "An imported .xlsx still looks like itself",
@@ -226,9 +226,9 @@ export const en: Messages = {
       ],
     },
     stats: [
-      { value: "32", label: "ready-made formulas" },
-      { value: "59", label: "engine functions" },
-      { value: "948", label: "automated tests" },
+      { value: "37", label: "ready-made formulas" },
+      { value: "64", label: "engine functions" },
+      { value: "969", label: "automated tests" },
       { value: "123", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -576,6 +576,7 @@ export const en: Messages = {
     text: "Text",
     date: "Date",
     lookup: "Lookup",
+    array: "Arrays",
   },
   paramPanel: {
     insertingAt: "Inserting formula at cell",
@@ -655,6 +656,49 @@ export const en: Messages = {
       "I can't tell which formula you want — without a key this assistant only matches keywords, so it won't guess. Pick one from the Formulas panel on the left, or paste an API key in the box above and ask again.",
   },
   formulas: {
+    SEQUENCE: {
+      name: "SEQUENCE - a counted block of numbers",
+      description: "Builds a grid of numbers counting up, spilling into the cells beside it — no dragging to fill.",
+      example: "=SEQUENCE(12,1,1,1)",
+      params: {
+        rows: { label: "How many rows", placeholder: "e.g. 12" },
+        cols: { label: "How many columns (default 1)", placeholder: "e.g. 1" },
+        start: { label: "Start at (default 1)", placeholder: "e.g. 1" },
+        step: { label: "Step by (default 1)", placeholder: "e.g. 1" },
+      },
+    },
+    TRANSPOSE: {
+      name: "TRANSPOSE - swap rows and columns",
+      description: "Flips the range so rows become columns, spilling the result into the cells beside it.",
+      example: "=TRANSPOSE(A1:E1)",
+      params: { range: { label: "Range to flip", placeholder: "e.g. A1:E1" } },
+    },
+    UNIQUE: {
+      name: "UNIQUE - the distinct values",
+      description: "Returns each value once, in the order it first appears, spilling into the cells beside it and following the source.",
+      example: "=UNIQUE(A1:A100)",
+      params: { range: { label: "Range to take the distinct values of", placeholder: "e.g. A1:A100" } },
+    },
+    SORT: {
+      name: "SORT - sorted, without moving the source",
+      description: "Spills a sorted copy into the cells beside it. The original rows stay where they are, unlike the column-header sort.",
+      example: "=SORT(A1:B20,2,FALSE)",
+      params: {
+        range: { label: "Range to sort", placeholder: "e.g. A1:B20" },
+        column: { label: "Sort by which column (default 1)", placeholder: "e.g. 2" },
+        ascending: { label: "Ascending (TRUE) or descending (FALSE)", placeholder: "TRUE" },
+      },
+    },
+    FILTER: {
+      name: "FILTER - the rows that match",
+      description: "Keeps only the rows whose condition is true, such as A1:A20>100, spilling the result and following the source.",
+      example: '=FILTER(A1:B20,B1:B20>100,"none")',
+      params: {
+        range: { label: "Range to filter", placeholder: "e.g. A1:B20" },
+        include: { label: "Condition (as tall as the range)", placeholder: "e.g. B1:B20>100" },
+        ifEmpty: { label: "Show this if nothing matches (optional)", placeholder: "e.g. none" },
+      },
+    },
     SUM: {
       name: "SUM - Add numbers",
       description: "Adds up all the numbers in the selected range",

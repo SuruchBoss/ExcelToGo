@@ -7,7 +7,7 @@ export type Locale = "th" | "en";
 export const LOCALES: Locale[] = ["th", "en"];
 export const DEFAULT_LOCALE: Locale = "th";
 
-export type CategoryKey = "math" | "stats" | "logic" | "text" | "date" | "lookup";
+export type CategoryKey = "math" | "stats" | "logic" | "text" | "date" | "lookup" | "array";
 
 export interface FormulaMessage {
   name: string;

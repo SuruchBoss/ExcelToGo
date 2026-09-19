@@ -187,6 +187,136 @@ function requireRange(arg: EvalResult): FormulaValue[][] {
  */
 type FnImpl = (args: EvalResult[]) => FormulaValue | EvalResult;
 
+/**
+ * The dynamic-array functions: the ones whose answer is a shape, not a number.
+ *
+ * They exist together because they are useless apart. A function that returns a whole grid needs
+ * somewhere to put it, and that is `sheetCompute`'s spill: the cell holding the formula shows the
+ * top-left value and the rest lands in the cells beside it. Until spilling existed, `INDEX(A1:C5,
+ * 0, 2)` was the only range-returning function here and its result was truncated to one cell by
+ * every caller that was not another function.
+ *
+ * `startRow`/`startCol` are 0 on everything built here, the same as INDEX: these arrays are made
+ * up rather than read out of the grid, so they have no origin in it. Nothing reads those fields
+ * off a synthesised range — checked, not assumed.
+ */
+
+/** A rectangle, padded to the widest row, so every consumer can index it without bounds checks. */
+function rectangleOf(arg: EvalResult | undefined): FormulaValue[][] {
+  if (!arg) return [];
+  const rows = requireRange(arg);
+  const width = rows.reduce((w, r) => Math.max(w, r.length), 0);
+  return rows.map((r) => Array.from({ length: width }, (_, c) => r[c] ?? null));
+}
+
+const asRange = (rows: FormulaValue[][]): EvalResult => ({ kind: "range", rows, startRow: 0, startCol: 0 });
+
+/** Excel compares by value across a whole row, and so does this: same key, same row. */
+function rowKey(row: FormulaValue[]): string {
+  return row.map((v) => (v === null ? "\u0000" : `${typeof v}:${String(v)}`)).join("\u0001");
+}
+
+const ARRAY_FUNCTIONS: Record<string, FnImpl> = {
+  /** TRANSPOSE(range) — turns rows into columns. */
+  TRANSPOSE: (args) => {
+    const rows = rectangleOf(args[0]);
+    if (rows.length === 0) return ERR_VALUE;
+    const width = rows[0].length;
+    return asRange(Array.from({ length: width }, (_, c) => rows.map((r) => r[c])));
+  },
+
+  /** SEQUENCE(rows, [cols], [start], [step]) — a counted grid, with no source range at all. */
+  SEQUENCE: (args) => {
+    const height = toNumber(scalarOf(args[0]));
+    if (isError(height)) return height;
+    const width = args[1] ? toNumber(scalarOf(args[1])) : 1;
+    if (isError(width)) return width;
+    const start = args[2] ? toNumber(scalarOf(args[2])) : 1;
+    if (isError(start)) return start;
+    const step = args[3] ? toNumber(scalarOf(args[3])) : 1;
+    if (isError(step)) return step;
+
+    const h = Math.trunc(height);
+    const w = Math.trunc(width);
+    // A guard rather than a preference: a typo like SEQUENCE(1000000) would otherwise build an
+    // array big enough to take the tab down before the spill check ever got to refuse it.
+    if (h < 1 || w < 1 || h * w > 50_000) return ERR_NUM;
+    return asRange(Array.from({ length: h }, (_, r) => Array.from({ length: w }, (_, c) => start + (r * w + c) * step)));
+  },
+
+  /** UNIQUE(range) — the distinct rows, in the order they first appear. */
+  UNIQUE: (args) => {
+    const rows = rectangleOf(args[0]);
+    if (rows.length === 0) return ERR_VALUE;
+    const seen = new Set<string>();
+    const out: FormulaValue[][] = [];
+    for (const row of rows) {
+      const key = rowKey(row);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(row);
+    }
+    return asRange(out);
+  },
+
+  /**
+   * SORT(range, [column], [ascending]) — sorted rows, numbers before text, blanks last.
+   *
+   * The comparison is shared with nothing: `sheetSort.ts` sorts a live sheet by rewriting cells,
+   * which is a different job with different rules (it keeps a header row in place). Making one
+   * serve both would tangle a pure function with a model edit.
+   */
+  SORT: (args) => {
+    const rows = rectangleOf(args[0]);
+    if (rows.length === 0) return ERR_VALUE;
+    const col = args[1] ? toNumber(scalarOf(args[1])) : 1;
+    if (isError(col)) return col;
+    const index = Math.trunc(col) - 1;
+    if (index < 0 || index >= rows[0].length) return ERR_VALUE;
+    const ascending = args[2] ? toBoolean(scalarOf(args[2])) : true;
+    if (isError(ascending)) return ascending;
+
+    const rank = (v: FormulaValue): [number, number | string] => {
+      if (isBlank(v)) return [2, 0];
+      if (typeof v === "number") return [0, v];
+      if (typeof v === "boolean") return [1, v ? 1 : 0];
+      return [1, toDisplayString(v)];
+    };
+
+    const sorted = [...rows].sort((a, b) => {
+      const [ga, va] = rank(a[index]);
+      const [gb, vb] = rank(b[index]);
+      if (ga !== gb) return ga - gb;
+      const cmp = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb), "th");
+      return ascending ? cmp : -cmp;
+    });
+    return asRange(sorted);
+  },
+
+  /**
+   * FILTER(range, include, [if_empty]) — the rows whose matching entry in `include` is true.
+   *
+   * `include` is normally a column of comparisons (`A1:A9>50`), which this engine evaluates to a
+   * range of booleans. A mismatched height is `#VALUE!` rather than a silent truncation: quietly
+   * filtering by the wrong rows is the failure nobody would notice.
+   */
+  FILTER: (args) => {
+    const rows = rectangleOf(args[0]);
+    const include = rectangleOf(args[1]);
+    if (rows.length === 0 || include.length === 0) return ERR_VALUE;
+    if (include.length !== rows.length) return ERR_VALUE;
+
+    const kept = rows.filter((_, i) => {
+      const flag = include[i][0];
+      if (isError(flag)) return false;
+      const b = toBoolean(flag);
+      return !isError(b) && b;
+    });
+    if (kept.length > 0) return asRange(kept);
+    return args[2] ? scalarOf(args[2]) : ERR_NA;
+  },
+};
+
 export const FUNCTIONS: Record<string, FnImpl> = {
   SUM: (args) => {
     const nums = flattenNumbers(args);
@@ -932,3 +1062,7 @@ function scalarOf(arg: EvalResult | undefined): FormulaValue {
   if (arg.kind === "scalar") return arg.value;
   return arg.rows[0]?.[0] ?? null;
 }
+
+// Added after the table is built rather than inline in it, because they are defined above it: the
+// table is one object literal and these need `FnImpl` and the helpers beside them to read as a set.
+Object.assign(FUNCTIONS, ARRAY_FUNCTIONS);
