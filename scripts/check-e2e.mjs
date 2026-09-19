@@ -66,6 +66,17 @@ async function waitForServer(timeoutMs = 90_000) {
 
 const cell = (page, row, col) => page.locator(`td[data-row="${row}"][data-col="${col}"]`);
 
+/** How big the current selection is, counted from what the grid marks as selected. */
+const selectionSize = (page) =>
+  page.evaluate(() => {
+    const picked = [...document.querySelectorAll("td[data-row][data-col]")].filter((td) =>
+      td.getAttribute("aria-selected") === "true"
+    );
+    const rows = new Set(picked.map((td) => td.getAttribute("data-row")));
+    const cols = new Set(picked.map((td) => td.getAttribute("data-col")));
+    return { rows: rows.size, cols: cols.size };
+  });
+
 /** Clicks a cell, types, and commits with Enter — the way the grid is actually used. */
 async function typeInCell(page, row, col, text) {
   await cell(page, row, col).click();
@@ -175,6 +186,32 @@ const FLOWS = [
         return el?.tagName === "TD" ? `${el.getAttribute("data-row")},${el.getAttribute("data-col")}` : el?.tagName;
       });
       note(focused === "3,1", `focus follows the cursor after Enter (activeElement was ${focused})`);
+
+      // The three shortcuts somebody arriving from Excel reaches for without thinking. They are
+      // here rather than in a unit test because each is a key event routed through the grid's
+      // switch, and the switch is where a duplicate `case` once made a whole branch dead code.
+      await cell(page, 1, 1).click();
+      await page.keyboard.press("Control+ ");
+      const column = await selectionSize(page);
+      note(column.rows > 5 && column.cols === 1, `Ctrl+Space takes the whole column (${column.rows}×${column.cols})`);
+
+      await cell(page, 1, 1).click();
+      await page.keyboard.press("Shift+ ");
+      const row = await selectionSize(page);
+      note(row.rows === 1 && row.cols > 3, `Shift+Space takes the whole row (${row.rows}×${row.cols})`);
+
+      // Ctrl+Enter: one cell's content into everything selected, in one step.
+      await typeInCell(page, 6, 0, "dup");
+      const seeded = (await cell(page, 6, 0).innerText()).trim();
+      note(seeded === "dup", `the cell to fill from holds what was typed (A7 showed "${seeded}")`);
+
+      await cell(page, 6, 0).click();
+      await page.keyboard.down("Shift");
+      for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowDown");
+      await page.keyboard.up("Shift");
+      await page.keyboard.press("Control+Enter");
+      const filled = (await cell(page, 9, 0).innerText()).trim();
+      note(filled === "dup", `Ctrl+Enter fills the selection (A10 showed "${filled}")`);
     },
   },
   {

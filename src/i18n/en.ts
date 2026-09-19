@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1088 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1093 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -239,7 +239,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1088", label: "automated tests" },
+      { value: "1093", label: "automated tests" },
       { value: "130", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -577,6 +577,8 @@ export const en: Messages = {
       extend: "Extend the selection one cell",
       extendJump: "Extend the selection to the edge of the data",
       selectBlock: "Select the table you are in · again for the whole sheet",
+      wholeColumn: "Select the whole column",
+      wholeRow: "Select the whole row",
       typeToEdit: "Start typing to replace what is there",
       editInPlace: "Edit without clearing the cell first",
       commit: "Commit and move down",
@@ -586,6 +588,7 @@ export const en: Messages = {
       clear: "Clear the selected cells",
       fillDown: "Fill down from the selection's first row",
       fillRight: "Fill right from the selection's first column",
+      fillSelection: "Fill everything selected from the cell the cursor is on",
       copy: "Copy",
       cut: "Cut",
       paste: "Paste (works from real Excel too)",

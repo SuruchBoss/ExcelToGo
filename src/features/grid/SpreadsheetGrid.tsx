@@ -48,6 +48,7 @@ export default function SpreadsheetGrid() {
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
   const clearSelection = useSheetStore((s) => s.clearSelection);
   const fillWithinSelection = useSheetStore((s) => s.fillWithinSelection);
+  const fillSelectionFromAnchor = useSheetStore((s) => s.fillSelectionFromAnchor);
   const fillFrom = useSheetStore((s) => s.fillFrom);
   const clipboard = useSheetStore((s) => s.clipboard);
   const clearClipboard = useSheetStore((s) => s.clearClipboard);
@@ -390,6 +391,14 @@ export default function SpreadsheetGrid() {
         step(1, 0);
         break;
       case "Enter":
+        // Ctrl+Enter puts the anchor cell into every cell of the selection, in one undo step.
+        // Folded into this case rather than added as a second `case "Enter"` — a duplicate label
+        // is dead code the compiler is happy with, and this project has already shipped one.
+        if (jump) {
+          fillSelectionFromAnchor();
+          e.preventDefault();
+          break;
+        }
         // Enter commits and walks down a column, Shift+Enter back up it — and neither extends a
         // selection, which is why it does not go through `step`.
         setSelection(singleCellSelection(Math.min(Math.max(row + (e.shiftKey ? -1 : 1), 0), sheet.rows - 1), col));
@@ -469,6 +478,24 @@ export default function SpreadsheetGrid() {
           endRow: target.endRow,
           endCol: target.endCol,
         });
+        e.preventDefault();
+        break;
+      }
+      case " ": {
+        // Excel's whole-row and whole-column keys. `Ctrl+Space` takes the columns the selection
+        // touches, `Shift+Space` the rows, and both together the sheet — so a person who knows
+        // Excel finds them where they expect rather than discovering this app does not have them.
+        if (!jump && !e.shiftKey) {
+          startEdit(row, col, e.key);
+          break;
+        }
+        const whole = {
+          startRow: e.shiftKey && !jump ? selection.startRow : 0,
+          endRow: e.shiftKey && !jump ? selection.endRow : sheet.rows - 1,
+          startCol: jump && !e.shiftKey ? selection.startCol : 0,
+          endCol: jump && !e.shiftKey ? selection.endCol : sheet.cols - 1,
+        };
+        setSelection({ ...whole, anchorRow: whole.startRow, anchorCol: whole.startCol });
         e.preventDefault();
         break;
       }

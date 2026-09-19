@@ -63,6 +63,7 @@ import { PivotConfig, PivotSource, buildPivot, hashValues } from "@/lib/pivot";
 import { FormulaDef } from "@/lib/formulaCatalog";
 import { addMerge, rangeHasMerge, removeMerges } from "@/lib/sheetMerges";
 import { isSingleCell, normalizeSelection, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
+import { shiftFormulaRefs } from "@/lib/formulaEngine/shift";
 import { getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
@@ -235,6 +236,15 @@ interface SheetState {
   fillFrom: (row: number, col: number) => void;
   /** Excel's Ctrl+D / Ctrl+R: the selection's first line fills the rest of it. */
   fillWithinSelection: (axis: "down" | "right") => void;
+  /**
+   * Puts what is in the anchor cell into every cell of the selection, in one undoable step.
+   *
+   * Excel's `Ctrl+Enter`. Distinct from `fillWithinSelection`, which takes the selection's first
+   * row or column as the source: here the source is the one cell the cursor is on, and it goes
+   * everywhere. References shift as they would in a drag-fill, because filling a formula that kept
+   * pointing at the original row would be a column of the same wrong number.
+   */
+  fillSelectionFromAnchor: () => void;
   /** Moves the cursor onto a match, switching sheets if it is on another one. */
   goToMatch: (match: Match) => void;
   /** Rewrites one cell. Returns whether it changed, so the caller can count. */
@@ -748,6 +758,37 @@ export const useSheetStore = create<SheetState>()(
           );
           if (split) applyFill(set, get, split.source, split.target);
         },
+
+        fillSelectionFromAnchor: () =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            // One cell selected means there is nothing to fill *into*. Doing the work anyway would
+            // push an undo step that changes nothing, and Ctrl+Z would look broken.
+            if (sel.startRow === sel.endRow && sel.startCol === sel.endCol) return {};
+            const { sheet } = activeTab(s);
+            if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+
+            const source = sheet.cells[sel.anchorRow]?.[sel.anchorCol] ?? "";
+            const next = cloneSheet(sheet);
+            let written = 0;
+            for (let r = sel.startRow; r <= sel.endRow; r++) {
+              for (let c = sel.startCol; c <= sel.endCol; c++) {
+                if (isTemplateLocked(next.template, r, c)) continue;
+                // Shifted rather than copied verbatim: a formula that kept pointing at the anchor's
+                // own row would fill a column with the same wrong number, which looks filled.
+                next.cells[r][c] = source.startsWith("=")
+                  ? `=${shiftFormulaRefs(source.slice(1), r - sel.anchorRow, c - sel.anchorCol)}`
+                  : source;
+                written++;
+              }
+            }
+            if (written === 0) return {};
+            return {
+              sheets: withActiveSheet(s, () => next),
+              // Most of what just changed is away from the cursor, which is the rule for saying so.
+              ...say(getMessages().live.filled(written, rangeLabel(sel))),
+            };
+          }),
 
         goToMatch: (match) =>
           set((s) => ({
