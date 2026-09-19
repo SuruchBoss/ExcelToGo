@@ -190,7 +190,10 @@ export interface Messages {
     featuresTitle: string;
     featuresSubtitle: string;
     /** Paired by index with the screenshots listed in the landing page component. */
-    features: { title: string; body: string; alt: string; points: string[] }[];
+    /** `alt` travels with a screenshot: a feature with no exhibit has neither, which is how the
+     *  one feature that cannot be photographed without a Supabase project stays on the page
+     *  without a mocked-up picture standing in for it. */
+    features: { title: string; body: string; alt?: string; points: string[] }[];
     statsTitle: string;
     stats: { value: string; label: string }[];
     /** The one thing the numbers above cannot say: what the test suite did not catch. */

@@ -144,10 +144,11 @@ export const en: Messages = {
         { label: "Account required before you can start", values: ["No", "Google account", "Microsoft account"], good: true },
         { label: "File uploaded to the provider's servers", values: ["No", "Yes", "Yes"], good: true },
         { label: "Source open to inspection", values: ["Apache-2.0", "Closed", "Closed"], good: true },
-        { label: "Real-time co-editing / macros", values: ["No", "Yes", "Yes"], good: false },
+        { label: "Real-time co-editing", values: ["On your own Supabase", "Built in", "Built in"], good: false },
+        { label: "Macros / VBA", values: ["No", "Yes", "Yes"], good: false },
       ],
       disclaimer:
-        "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. For a sheet a team edits together, Google Sheets is plainly the better tool. What the table shows is what neither of them will do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
+        "This table does not claim the app replaces either of them — both do far more, which is why the last two rows are in the table too. Co-editing does work here, but only once you have pointed it at your own Supabase, and it does not merge everything theirs does — for a sheet a team edits together all day, Google Sheets is plainly the better tool. What the table shows is what neither of them will do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
     },
     problemTitle: "If any of this sounds familiar",
     problemLead:
@@ -212,6 +213,16 @@ export const en: Messages = {
         alt: "A chart drawn from a range on the sheet",
         points: ["Charts are bound to cells and follow edits", "Thai in the PDF reads as Thai, not as noise", "Conditional formatting round-trips through Excel"],
       },
+      {
+        title: "Editing together, on your own backend",
+        body: "Save a workbook to your Supabase project and join the session: everyone who opens that workbook sees each other type, with a coloured dot for where each person's cursor is. No server of this app's sits in the middle — one would reverse the property the whole thing stands on. There is no picture in this section, because the panel only exists once a real Supabase project is attached, and this page promises every image is taken from the running app.",
+        points: [
+          "The cell you have open is never overwritten mid-word",
+          "Your undo does not erase their work",
+          "Not a CRDT — one cell typed into twice at once leaves one value, and the loser is told",
+          "Row inserts are not merged — it saves, then asks the others to reload",
+        ],
+      },
     ],
     statsTitle: "Under the hood",
     // The test count sits directly above this, so the "N passed, yet 43% unusable" pairing is left
@@ -237,11 +248,11 @@ export const en: Messages = {
     limits: [
       {
         title: "A tool in your browser, not a hosted service",
-        body: "No accounts, no server holding your work — your data stays on your machine, which is the same reason it opens and runs without a sign-up. Want it saved across devices? Point it at your own Supabase.",
+        body: "No accounts, no server holding your work — your data stays on your machine, which is the same reason it opens and runs without a sign-up. Want it saved across devices, or edited by several people at once? Point it at your own Supabase — yours, not anyone else's.",
       },
       {
         title: "The everyday work, not everything Excel does",
-        body: "Entering, calculating, formatting, summarising and exporting are all here. Macros/VBA and simultaneous multi-person editing are not, and aren't planned for this version.",
+        body: "Entering, calculating, formatting, summarising and exporting are all here. Simultaneous editing is too, once you point it at your own Supabase — though it is not a CRDT and does not merge row inserts. Macros/VBA are not here, and aren't planned for this version.",
       },
     ],
     limitsMoreText: "The rest of the limits are written out in the README — including the ones a promo page normally leaves out.",

@@ -52,7 +52,8 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 1058 automated tests.
+bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1058 automated tests.
 
 ---
 
