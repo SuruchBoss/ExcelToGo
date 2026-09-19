@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1067%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1077%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1067 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1077 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1067 passing tests could not catch
+### 🧪 What 1077 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1067 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1077 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -249,7 +249,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1067-case Vitest suite |
+| `npm test` | Run the 1077-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
@@ -911,13 +911,30 @@ the sheet, and the formula is `#SPILL!` and **nothing at all is written**. Half 
 sheet would be worse than none, because those values would look like data. Type over a spilled cell
 and the formula becomes `#SPILL!` at once, the way Excel does it.
 
-> **Not supported yet:** a sheet holding array formulas recomputes in full on every edit instead of
-> incrementally (`computeSheet` refuses the incremental path once it sees a spill). An array writes
-> into cells *outside* the set marked dirty, and deleting one has to clear them again; tracking that
-> properly means putting spill regions into the dependency graph, which is more than the feature has
-> earned yet — and a half-erased array left on screen is a worse bug than a slower recompute. In an
-> exported `.xlsx` the formula is written at the anchor, so a version of Excel that knows dynamic
-> arrays spills it again and an older one shows a single value.
+**It no longer costs the whole sheet.** This section used to carry a warning that any sheet holding
+an array recomputed in full on every keystroke, because an array writes into cells *outside* the set
+marked dirty and a deleted one has to clear them again. The bail-out was honest and expensive: one
+`SEQUENCE` in a corner made every edit anywhere a full pass.
+
+Spill regions are now part of the closure, walked in both directions. Typing into a spilled cell
+marks its anchor dirty, because the array's landing ground is no longer clear; an anchor going dirty
+marks every cell it filled, because the array may come back shorter. The map is carried between
+passes and emptied only where an array is about to run again, so a shrinking array leaves nothing
+behind. One keystroke on a sheet that also holds an array, median of nine, same machine:
+
+| formula rows | before | after |
+|---|---|---|
+| 200 | 3.07 ms | 0.85 ms |
+| 1,000 | 8.72 ms | 2.34 ms |
+| 3,000 | 26.42 ms | 2.25 ms |
+
+The last row is the point: the cost stopped following the size of the sheet. Ten tests check that
+the incremental answer is identical to a cold recompute — including a run of seven consecutive
+edits, because each pass builds on the last one's snapshot and an error there compounds instead of
+showing up once.
+
+> In an exported `.xlsx` the formula is written at the anchor, so a version of Excel that knows
+> dynamic arrays spills it again and an older one shows a single value.
 
 ### 🔗 Formulas across sheets
 
@@ -1390,7 +1407,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1067 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1077 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2202,13 +2219,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1067 cases across 65 files, via Vitest
+npm test      # 1077 cases across 66 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1067 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1077 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2266,10 +2283,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1067 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1077 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1067 passing tests could not catch](#-what-1067-passing-tests-could-not-catch), repeatable
+> [What 1077 passing tests could not catch](#-what-1077-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2369,8 +2386,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Formulas that answer with a whole table** — done (see [array formulas](#-formulas-that-answer-with-a-whole-table-array-formulas)):
       `SEQUENCE`, `TRANSPOSE`, `UNIQUE`, `SORT` and `FILTER` spilling into the cells beside them, `#SPILL!`
       when they do not fit with nothing written, and operators applied across a range (`A1:A9>50` is nine
-      answers). Still open: a sheet with arrays on it recomputes in full rather than incrementally, and
-      there is no `XMATCH`, `LET` or `LAMBDA`.
+      answers). **A sheet with arrays on it now recomputes incrementally too** — spill regions went into
+      the dependency graph, and a keystroke on a 3,000-row sheet holding one went from 26.4 ms to 2.3 ms.
+      Still open: no `XMATCH`, `LET` or `LAMBDA`.
 - [x] **Formulas across sheets** — done (see [formulas across sheets](#-formulas-across-sheets)):
       `=Sheet2!A1`, Thai names unquoted, cross-sheet staleness that follows a chain rather than one
       link, and cycles that span sheets. **This line used to say "`.xlsx` export writes computed
