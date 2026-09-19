@@ -65,7 +65,7 @@ import { addMerge, rangeHasMerge, removeMerges } from "@/lib/sheetMerges";
 import { isSingleCell, normalizeSelection, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
 import { shiftFormulaRefs } from "@/lib/formulaEngine/shift";
 import { shiftFreeze, toggleFreezeAt } from "@/lib/sheetFreeze";
-import { getMessages } from "@/i18n";
+import { getLocale, getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
@@ -1519,7 +1519,7 @@ export const useSheetStore = create<SheetState>()(
           try {
             const tab = activeTab(get());
             const { exportSheetToPdf } = await import("@/lib/pdfExport");
-            await exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name);
+            await exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name, getLocale());
           } finally {
             set({ busy: null });
           }

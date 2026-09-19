@@ -23,3 +23,8 @@ export function useT(): Messages {
 export function getMessages(): Messages {
   return MESSAGES[useLocaleStore.getState().locale];
 }
+
+/** The locale itself, for the few places that need the tag rather than the strings. */
+export function getLocale(): Locale {
+  return useLocaleStore.getState().locale;
+}
