@@ -118,10 +118,10 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 948 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1058 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
-      "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 32 ready-made formulas and drag across the cells instead of typing addresses.",
+      "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
     ctaPrimary: "Open the app",
     ctaSecondary: "View the code on GitHub",
     ctaNote:
@@ -144,10 +144,11 @@ export const en: Messages = {
         { label: "Account required before you can start", values: ["No", "Google account", "Microsoft account"], good: true },
         { label: "File uploaded to the provider's servers", values: ["No", "Yes", "Yes"], good: true },
         { label: "Source open to inspection", values: ["Apache-2.0", "Closed", "Closed"], good: true },
-        { label: "Real-time co-editing / macros", values: ["No", "Yes", "Yes"], good: false },
+        { label: "Real-time co-editing", values: ["On your own Supabase", "Built in", "Built in"], good: false },
+        { label: "Macros / VBA", values: ["No", "Yes", "Yes"], good: false },
       ],
       disclaimer:
-        "This table does not claim the app replaces either of them — both do far more, which is why the last row is in the table too. For a sheet a team edits together, Google Sheets is plainly the better tool. What the table shows is what neither of them will do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
+        "This table does not claim the app replaces either of them — both do far more, which is why the last two rows are in the table too. Co-editing does work here, but only once you have pointed it at your own Supabase, and it does not merge everything theirs does — for a sheet a team edits together all day, Google Sheets is plainly the better tool. What the table shows is what neither of them will do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
     },
     problemTitle: "If any of this sounds familiar",
     problemLead:
@@ -157,7 +158,7 @@ export const en: Messages = {
       {
         scenario: "It's three in the afternoon and your manager wants the northern-branch total today",
         pain: "You know it's SUMIF, you just can't recall what goes where. So you open a tab, search, find an example built on someone else's ranges, and translate it back onto your own file.",
-        solution: "Type \"total sales for the northern branch\" in plain English — or Thai — and get the formula back with an explanation of what it does. Or skip typing: pick from 32 ready-made formulas and fill the fields one at a time.",
+        solution: "Type \"total sales for the northern branch\" in plain English — or Thai — and get the formula back with an explanation of what it does. Or skip typing: pick from 37 ready-made formulas and fill the fields one at a time.",
         gain: "You stop leaving the file to find the answer somewhere else, and you read the formula and its explanation before it goes in, instead of pasting first and finding out later.",
       },
       {
@@ -196,9 +197,9 @@ export const en: Messages = {
       },
       {
         title: "Drag a formula in, don't memorise its syntax",
-        body: "Search 32 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
+        body: "Search 37 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
         alt: "The formula parameter panel",
-        points: ["59 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
+        points: ["64 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
       },
       {
         title: "An imported .xlsx still looks like itself",
@@ -211,6 +212,16 @@ export const en: Messages = {
         body: "The exported .xlsx keeps formulas as formulas rather than baked-in values, and charts export as real charts you can keep editing in Excel — which meant hand-writing the OOXML chart part, because ExcelJS can't write one. The PDF embeds a Thai font and stacks Thai tone marks in the right place.",
         alt: "A chart drawn from a range on the sheet",
         points: ["Charts are bound to cells and follow edits", "Thai in the PDF reads as Thai, not as noise", "Conditional formatting round-trips through Excel"],
+      },
+      {
+        title: "Editing together, on your own backend",
+        body: "Save a workbook to your Supabase project and join the session: everyone who opens that workbook sees each other type, with a coloured dot for where each person's cursor is. No server of this app's sits in the middle — one would reverse the property the whole thing stands on. There is no picture in this section, because the panel only exists once a real Supabase project is attached, and this page promises every image is taken from the running app.",
+        points: [
+          "The cell you have open is never overwritten mid-word",
+          "Your undo does not erase their work",
+          "Not a CRDT — one cell typed into twice at once leaves one value, and the loser is told",
+          "Row inserts are not merged — it saves, then asks the others to reload",
+        ],
       },
     ],
     statsTitle: "Under the hood",
@@ -226,10 +237,10 @@ export const en: Messages = {
       ],
     },
     stats: [
-      { value: "32", label: "ready-made formulas" },
-      { value: "59", label: "engine functions" },
-      { value: "948", label: "automated tests" },
-      { value: "123", label: "security tests" },
+      { value: "37", label: "ready-made formulas" },
+      { value: "64", label: "engine functions" },
+      { value: "1058", label: "automated tests" },
+      { value: "130", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -237,11 +248,11 @@ export const en: Messages = {
     limits: [
       {
         title: "A tool in your browser, not a hosted service",
-        body: "No accounts, no server holding your work — your data stays on your machine, which is the same reason it opens and runs without a sign-up. Want it saved across devices? Point it at your own Supabase.",
+        body: "No accounts, no server holding your work — your data stays on your machine, which is the same reason it opens and runs without a sign-up. Want it saved across devices, or edited by several people at once? Point it at your own Supabase — yours, not anyone else's.",
       },
       {
         title: "The everyday work, not everything Excel does",
-        body: "Entering, calculating, formatting, summarising and exporting are all here. Macros/VBA and simultaneous multi-person editing are not, and aren't planned for this version.",
+        body: "Entering, calculating, formatting, summarising and exporting are all here. Simultaneous editing is too, once you point it at your own Supabase — though it is not a CRDT and does not merge row inserts. Macros/VBA are not here, and aren't planned for this version.",
       },
     ],
     limitsMoreText: "The rest of the limits are written out in the README — including the ones a promo page normally leaves out.",
@@ -292,6 +303,26 @@ export const en: Messages = {
     unreadable: "This workbook was saved by a newer version of the app and can't be opened here.",
     working: "Working...",
     privacy: "Your data goes from this browser straight to your Supabase project — it does not pass through this app's server.",
+  },
+  collab: {
+    title: "Edit together",
+    subtitle: "Everyone who opens this workbook from the same Supabase project sees each other type.",
+    nameLabel: "What the others see you as",
+    namePlaceholder: "e.g. Somchai",
+    someone: "Someone",
+    join: "Join the live session",
+    leave: "Leave",
+    joining: "Joining...",
+    failed: "Could not join. Try again.",
+    needsWorkbook: "Save to the cloud first — a live session is a session of a saved workbook.",
+    alone: "Nobody else is here yet.",
+    hereNow: (n) => `${n} other ${n === 1 ? "person" : "people"} here`,
+    at: (name, ref) => `${name} is at ${ref}`,
+    overwritten: (ref) => `${ref} was changed by someone else over what you had typed`,
+    limits:
+      "Not a CRDT: two people typing into one cell leaves one value, and the other person is told · " +
+      "inserting or deleting rows saves and asks the others to reload rather than merging · " +
+      "formatting, charts and comments are not synced live.",
   },
   comments: {
     title: "Comment",
@@ -576,6 +607,7 @@ export const en: Messages = {
     text: "Text",
     date: "Date",
     lookup: "Lookup",
+    array: "Arrays",
   },
   paramPanel: {
     insertingAt: "Inserting formula at cell",
@@ -655,6 +687,49 @@ export const en: Messages = {
       "I can't tell which formula you want — without a key this assistant only matches keywords, so it won't guess. Pick one from the Formulas panel on the left, or paste an API key in the box above and ask again.",
   },
   formulas: {
+    SEQUENCE: {
+      name: "SEQUENCE - a counted block of numbers",
+      description: "Builds a grid of numbers counting up, spilling into the cells beside it — no dragging to fill.",
+      example: "=SEQUENCE(12,1,1,1)",
+      params: {
+        rows: { label: "How many rows", placeholder: "e.g. 12" },
+        cols: { label: "How many columns (default 1)", placeholder: "e.g. 1" },
+        start: { label: "Start at (default 1)", placeholder: "e.g. 1" },
+        step: { label: "Step by (default 1)", placeholder: "e.g. 1" },
+      },
+    },
+    TRANSPOSE: {
+      name: "TRANSPOSE - swap rows and columns",
+      description: "Flips the range so rows become columns, spilling the result into the cells beside it.",
+      example: "=TRANSPOSE(A1:E1)",
+      params: { range: { label: "Range to flip", placeholder: "e.g. A1:E1" } },
+    },
+    UNIQUE: {
+      name: "UNIQUE - the distinct values",
+      description: "Returns each value once, in the order it first appears, spilling into the cells beside it and following the source.",
+      example: "=UNIQUE(A1:A100)",
+      params: { range: { label: "Range to take the distinct values of", placeholder: "e.g. A1:A100" } },
+    },
+    SORT: {
+      name: "SORT - sorted, without moving the source",
+      description: "Spills a sorted copy into the cells beside it. The original rows stay where they are, unlike the column-header sort.",
+      example: "=SORT(A1:B20,2,FALSE)",
+      params: {
+        range: { label: "Range to sort", placeholder: "e.g. A1:B20" },
+        column: { label: "Sort by which column (default 1)", placeholder: "e.g. 2" },
+        ascending: { label: "Ascending (TRUE) or descending (FALSE)", placeholder: "TRUE" },
+      },
+    },
+    FILTER: {
+      name: "FILTER - the rows that match",
+      description: "Keeps only the rows whose condition is true, such as A1:A20>100, spilling the result and following the source.",
+      example: '=FILTER(A1:B20,B1:B20>100,"none")',
+      params: {
+        range: { label: "Range to filter", placeholder: "e.g. A1:B20" },
+        include: { label: "Condition (as tall as the range)", placeholder: "e.g. B1:B20>100" },
+        ifEmpty: { label: "Show this if nothing matches (optional)", placeholder: "e.g. none" },
+      },
+    },
     SUM: {
       name: "SUM - Add numbers",
       description: "Adds up all the numbers in the selected range",

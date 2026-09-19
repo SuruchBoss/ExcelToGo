@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { colToLetters, getComment } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
+import { packCell } from "@/lib/formulaEngine/formulaProgram";
 import { FormulaError } from "@/lib/formulaEngine/types";
 import { normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
 import {
@@ -22,6 +23,7 @@ import ColumnFilterPopover from "./ColumnFilterPopover";
 import { useHeaderContextMenu } from "./useHeaderContextMenu";
 import { useColumnFilterPopoverState } from "./useColumnFilterPopoverState";
 import { useT } from "@/i18n";
+import { reportEditing } from "@/store/liveStore";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
@@ -56,7 +58,7 @@ export default function SpreadsheetGrid() {
   const addLiveBlock = useSheetStore((s) => s.addLiveBlock);
   const removeLiveBlock = useSheetStore((s) => s.removeLiveBlock);
   const openDataPicker = useSheetStore((s) => s.openDataPicker);
-  const { values, display } = useComputedSheet();
+  const { values, display, spill } = useComputedSheet();
   const hiddenRows = useHiddenRows();
   const columnFilters = useActiveFilters();
   const boundCells = useBoundCells();
@@ -199,7 +201,18 @@ export default function SpreadsheetGrid() {
     return true;
   };
 
-  const [editing, setEditing] = useState<{ row: number; col: number; value: string } | null>(null);
+  const [editing, setEditingState] = useState<{ row: number; col: number; value: string } | null>(null);
+  /**
+   * Opening and closing the editor, with the live session told either way.
+   *
+   * Wrapped here rather than calling `reportEditing` at each of the five places that open or close
+   * an editor. An edit arriving from someone else has to wait while this cell is open, and the
+   * call site that gets forgotten is the one where somebody's typing is overwritten mid-word.
+   */
+  const setEditing = useCallback((next: { row: number; col: number; value: string } | null) => {
+    reportEditing(next?.row ?? 0, next ? next.col : null);
+    setEditingState(next);
+  }, []);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
   const isSelecting = useRef(false);
   /** Whether the cell a touch landed on was already the selected one, sampled before the tap
@@ -275,14 +288,14 @@ export default function SpreadsheetGrid() {
       if (isTemplateLocked(sheet.template, row, col)) return;
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
-    [rawAt, boundCells, sheet.template]
+    [rawAt, boundCells, sheet.template, setEditing]
   );
 
   const commitEdit = useCallback(() => {
     if (!editing) return;
     commitCell(editing.row, editing.col, editing.value);
     setEditing(null);
-  }, [editing, commitCell]);
+  }, [editing, commitCell, setEditing]);
 
   const handleMouseDown = (row: number, col: number, shiftKey: boolean) => {
     if (editing && (editing.row !== row || editing.col !== col)) commitEdit();
@@ -619,6 +632,11 @@ export default function SpreadsheetGrid() {
                 const comment = getComment(sheet.comments, r, c);
                 const choices = templateChoices(sheet.template, r, c);
                 const isField = sheet.template !== undefined && !locked;
+                // Borrowed from a formula in another cell: the value is real, the cell is empty.
+                // Typing here breaks the array into #SPILL!, which is Excel's behaviour and needs
+                // no code — the raw text stops being empty and the anchor refuses on the next pass.
+                const spilledFrom = spill.get(packCell(r, c));
+                const isSpilled = spilledFrom !== undefined && spilledFrom !== packCell(r, c);
                 return (
                   <td
                     key={c}
@@ -677,6 +695,10 @@ export default function SpreadsheetGrid() {
                       // A form reads the way a paper one does: the printed parts are flat and
                       // grey, the blanks are white. Amber is kept for warnings alone — dressing
                       // twenty ordinary input cells in it made a form look like twenty alerts.
+                      // Faint on purpose. It has to be visible enough that "why can I not edit
+                      // this" has an answer on screen, and quiet enough that a filled array does
+                      // not look like an error next to ordinary numbers.
+                      isSpilled && "bg-violet-50/60 text-violet-900",
                       locked && "bg-zinc-100 text-zinc-500",
                       isField && "bg-white ring-1 ring-inset ring-emerald-400",
                       isActive(r, c) && "ring-2 ring-inset ring-blue-500",

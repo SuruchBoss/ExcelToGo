@@ -7,7 +7,7 @@ export type Locale = "th" | "en";
 export const LOCALES: Locale[] = ["th", "en"];
 export const DEFAULT_LOCALE: Locale = "th";
 
-export type CategoryKey = "math" | "stats" | "logic" | "text" | "date" | "lookup";
+export type CategoryKey = "math" | "stats" | "logic" | "text" | "date" | "lookup" | "array";
 
 export interface FormulaMessage {
   name: string;
@@ -190,7 +190,10 @@ export interface Messages {
     featuresTitle: string;
     featuresSubtitle: string;
     /** Paired by index with the screenshots listed in the landing page component. */
-    features: { title: string; body: string; alt: string; points: string[] }[];
+    /** `alt` travels with a screenshot: a feature with no exhibit has neither, which is how the
+     *  one feature that cannot be photographed without a Supabase project stays on the page
+     *  without a mocked-up picture standing in for it. */
+    features: { title: string; body: string; alt?: string; points: string[] }[];
     statsTitle: string;
     stats: { value: string; label: string }[];
     /** The one thing the numbers above cannot say: what the test suite did not catch. */
@@ -251,6 +254,24 @@ export interface Messages {
     unreadable: string;
     working: string;
     privacy: string;
+  };
+  collab: {
+    /** Live editing with other people in the same saved workbook. */
+    title: string;
+    subtitle: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    someone: string;
+    join: string;
+    leave: string;
+    joining: string;
+    failed: string;
+    needsWorkbook: string;
+    alone: string;
+    hereNow: (n: number) => string;
+    at: (name: string, ref: string) => string;
+    overwritten: (ref: string) => string;
+    limits: string;
   };
   comments: {
     /** The note attached to one cell: its editor, its marker and its button. */

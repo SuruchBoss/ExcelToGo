@@ -47,9 +47,33 @@ function asText(value: unknown): string {
   return "";
 }
 
+/**
+ * The cells, whichever way storage is holding them.
+ *
+ * Two shapes exist and both have to work: the dense `string[][]` written before `sheetCodec.ts`,
+ * and the packed `{ "r,c": text }` written since. This module deliberately imports neither the
+ * store nor the codec — it has to keep working when those are what broke — so it reads both here,
+ * which is nine lines and the difference between rescuing a sheet and reporting there is nothing
+ * to rescue while it sits right there in storage.
+ */
 function asGrid(value: unknown): string[][] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(Array.isArray).map((row) => (row as unknown[]).map(asText));
+  if (Array.isArray(value)) return value.filter(Array.isArray).map((row) => (row as unknown[]).map(asText));
+  if (!value || typeof value !== "object") return [];
+
+  const rows: string[][] = [];
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    const comma = key.indexOf(",");
+    if (comma < 1) continue;
+    const r = Number(key.slice(0, comma));
+    const c = Number(key.slice(comma + 1));
+    if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0) continue;
+    while (rows.length <= r) rows.push([]);
+    while (rows[r].length <= c) rows[r].push("");
+    rows[r][c] = asText(raw);
+  }
+  // Ragged by construction — a row with a cell in column 9 and nothing else is nine entries long
+  // while its neighbour is one. `toCsv` pads per row, so this stays as it is.
+  return rows;
 }
 
 const UNSAFE_IN_FILENAME = /[<>:"/\\|?*\x00-\x1f]/g;

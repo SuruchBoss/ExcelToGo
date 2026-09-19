@@ -9,7 +9,7 @@ Runs in your browser; your data stays on your machine.
 
 > **Type "total sales for the northern branch" and get an Excel formula back**, with a sentence
 > saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes
-> first. Or skip the typing: **pick from 32 ready-made formulas** and drag across the cells instead
+> first. Or skip the typing: **pick from 37 ready-made formulas** and drag across the cells instead
 > of typing addresses. It works out of the box with nothing to configure (a local keyword matcher,
 > free), or paste your own Anthropic API key and the question goes to the real Claude — from your
 > browser straight to Anthropic, never through this app's server.
@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-948%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1058%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,8 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save. Bilingual UI (Thai/English), 948 automated tests.
+bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1058 automated tests.
 
 ---
 
@@ -96,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 948 passing tests could not catch
+### 🧪 What 1058 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -107,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 948 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1058 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -148,7 +149,9 @@ tests say, and nothing whatever about whether that is the right thing.
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
+  - [Editing together](#-editing-together)
   - [The Excel keyboard](#️-the-excel-keyboard)
+  - [Formulas that answer with a whole table (array formulas)](#-formulas-that-answer-with-a-whole-table-array-formulas)
   - [Formulas across sheets](#-formulas-across-sheets)
   - [The fill handle](#️-the-fill-handle)
   - [Find and replace](#-find-and-replace)
@@ -246,7 +249,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 948-case Vitest suite |
+| `npm test` | Run the 1058-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
@@ -704,8 +707,47 @@ account's workbooks away from another's.
 cloud code is unreachable, and the ~250KB Supabase client **is never downloaded**. That was checked
 by counting the chunks the browser actually requests, not assumed.
 
-**Not supported:** automatic sync (you press save), simultaneous editing, version history, or
-sharing a workbook with someone else.
+**Not supported:** automatic sync (you press save), version history, or sharing a workbook with
+someone else.
+
+### 👥 Editing together
+
+Save a workbook to your Supabase project, press **"Join the live session"** in the cloud panel, and
+everyone who opens that workbook from the same project sees each other type, with a coloured dot
+for where each person's cursor is.
+
+It rides on **Supabase Realtime broadcast** rather than Postgres changes: a keystroke is not worth a
+row. Messages travel between the browsers that are connected right now and are never stored, so your
+database still holds saved workbooks and nothing else.
+
+**What it deliberately does not do — written down, because silence here costs more:**
+
+- **It is not a CRDT.** Two people typing into one cell in the same second leaves one value, and the
+  one who lost **is told**, out loud, rather than finding out later. The rule is "later wins, ties
+  broken by client id", which every participant computes from the same two facts without asking
+  anyone.
+- **Clocks differ**, so the winner may not be whoever actually typed last. The alternative is a
+  server sequence number, which means a server, which this app does not have.
+- **Row and column inserts are not merged.** They move every cell below or right of them, so a cell
+  message crossing one on the wire would land in the wrong place. The client making the change saves
+  to the cloud first and then asks the others to reload — a visible reload beats two screens quietly
+  drifting apart.
+- **The cell you have open is never overwritten mid-word.** An arriving edit waits for the editor to
+  close. Watching your own typing vanish as you do it is what makes people stop trusting a shared
+  document.
+- **Your undo does not erase their work.** This one was nearly missed: undo restores a snapshot of
+  the whole workbook, so a colleague's edit that arrived after that snapshot was taken is not in it.
+  Press Ctrl+Z to take back your own last word and their work goes with it, silently, while the undo
+  looks like it did exactly what it should. Remote values are now written into the stored snapshots
+  too.
+- **Formatting, charts and comments are not synced live** — those still go through save and reopen.
+- **There is no screenshot in this section.** The panel only exists once a real Supabase project is
+  attached, so it cannot be captured from a deployment without a backend, and a mocked-up image
+  would be a claim rather than evidence.
+
+Everything arriving on the channel **is checked before it is used**, not trusted: anyone holding the
+anon key can join. A `row` of `-1` reaches an array index, and a `raw` that is not a string reaches
+the formula engine.
 
 ### 💬 Cell comments
 
@@ -822,6 +864,41 @@ Two more things the gates could not have told me, both found by looking:
   violations inside it — headings at 2.62:1, and a scrolling list no keyboard could reach. Both are
   fixed, and **the gate now opens the dialog and checks it too**, so the next one gets caught by CI
   rather than by me remembering to look.
+
+### 🧮 Formulas that answer with a whole table (array formulas)
+
+Most formulas answer with one value. Some answer with a *shape* — `=UNIQUE(B2:B10)` has as many
+answers as there are distinct categories, which nobody knows while typing it. So those answers
+**spill into the cells beside them**. A spilled cell is tinted, because what is in it is not its
+own: it belongs to a formula in another cell, and it disappears the moment that formula does.
+
+<p align="center"><img src="public/screenshots/40-array-spill.png" width="900"></p>
+
+| Formula | What it does |
+|---|---|
+| `SEQUENCE(rows, cols, start, step)` | A counted block of numbers, with no dragging to fill |
+| `TRANSPOSE(range)` | Rows become columns |
+| `UNIQUE(range)` | Each value once, in the order it first appears |
+| `SORT(range, col, asc)` | Sorted **without moving the source rows**, unlike the column-header sort |
+| `FILTER(range, include, if_empty)` | Only the rows whose condition is true |
+
+**Operators work across a range too.** `A1:A9>50` is nine answers, not one, and `SUM(A1:A3*2)`
+multiplies every cell before adding them. Both used to collapse to the first cell silently, which
+is the worst of the three possible behaviours because the answer *looked* right. Two ranges of
+different shapes give `#VALUE!` rather than a guess.
+
+**It refuses rather than half-fitting.** Anything in the way — one cell is enough — or the edge of
+the sheet, and the formula is `#SPILL!` and **nothing at all is written**. Half an array left on the
+sheet would be worse than none, because those values would look like data. Type over a spilled cell
+and the formula becomes `#SPILL!` at once, the way Excel does it.
+
+> **Not supported yet:** a sheet holding array formulas recomputes in full on every edit instead of
+> incrementally (`computeSheet` refuses the incremental path once it sees a spill). An array writes
+> into cells *outside* the set marked dirty, and deleting one has to clear them again; tracking that
+> properly means putting spill regions into the dependency graph, which is more than the feature has
+> earned yet — and a half-erased array left on screen is a worse bug than a slower recompute. In an
+> exported `.xlsx` the formula is written at the anchor, so a version of Excel that knows dynamic
+> arrays spills it again and an older one shows a single value.
 
 ### 🔗 Formulas across sheets
 
@@ -1262,7 +1339,7 @@ set in the same family as the body text rather than in the system's default mono
 
 ### 🌐 Bilingual (Thai / English)
 
-Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 32 formula
+Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 37 formula
 names/descriptions, alert text, and AI replies (both the keyword heuristic and real Claude) all follow the
 selected language. The choice is remembered per browser. See [Bilingual UI (i18n)](#-bilingual-ui-i18n) for the
 architecture behind it.
@@ -1294,7 +1371,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (948 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1058 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1532,6 +1609,9 @@ src/
     csv.ts                   # CSV read/write: delimiter sniffing, BOM, RFC 4180 quoting
     download.ts              # Handing a Blob to the browser as a file — its own module because the
                               # crash screen needs it and must not pull ExcelJS into that path
+    sheetCodec.ts            # Between the in-memory model (a full grid) and what goes into localStorage
+                              # (only the cells holding something) — the old ceiling came from the
+                              # sheet's size rather than its contents. Reads the old shape too (tested)
     crashRescue.ts           # Rescues the sheet out of localStorage when a render throws and offers it
                               # as one CSV per tab — touches no store, model or engine, since any of
                               # those may be what broke (tested)
@@ -1563,6 +1643,10 @@ src/
     cloud/config.ts          # Whether a cloud backend is attached at all (off unless set) (tested)
     cloud/workbook.ts        # The stored workbook shape, reading it back, and the conflict rule (tested)
     cloud/client.ts          # The Supabase client (dynamically imported), auth and workbook CRUD
+    cloud/liveSession.ts     # Live-editing rules: which message wins, what to do with one, validating it (tested)
+    cloud/liveRoom.ts        # One room's state and the edits held back while a cell is open (tested)
+    cloud/sheetDiff.ts       # What changed between two workbooks, cheap enough to ask every keystroke (tested)
+    cloud/realtimeChannel.ts # The Supabase Realtime pipe (broadcast + presence) — the one part that decides nothing
     conditionalFormat.ts     # Conditional formatting rules: compare/text/rank/colour scale/data bar, the
                               # per-cell styling they produce, and range shifting on edits (tested)
     sheetTemplate.ts         # Templates from a file: which cells are fields, dropdown options, width units (tested)
@@ -1609,7 +1693,7 @@ flowchart LR
     Raw["Raw formula text<br/>e.g. =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>splits into tokens"]
     Tok --> Par["parser.ts<br/>builds an AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>walks the AST to compute a result"]
-    Eval -->|"calls"| Fn["functions.ts<br/>59 functions"]
+    Eval -->|"calls"| Fn["functions.ts<br/>64 functions"]
     Eval -->|"getCell(row, col)"| Sheet[("other cells' values/formulas<br/>in the sheet")]
     Sheet -.-> Eval
     Eval --> Result["a number/text value,<br/>or a FormulaError"]
@@ -1711,10 +1795,10 @@ thing:
 ### Supported functions
 
 The drag-and-drop palette shows only the **32 most commonly used** formulas, but the engine itself supports
-**59 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
+**64 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
 `=YEAR(...)`, `=PROPER(...)`):
 
-| Category | In the palette (32) | Also available by typing |
+| Category | In the palette (37) | Also available by typing |
 |---|---|---|
 | Math | `SUM` `PRODUCT` `ROUND` `ABS` `SUMIF` `SUMIFS` | `ROUNDUP` `ROUNDDOWN` `SQRT` `POWER` `MOD` `INT` `CEILING` `FLOOR` `SUMPRODUCT` |
 | Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` `RANK` `RANK.EQ` |
@@ -1722,6 +1806,7 @@ The drag-and-drop palette shows only the **32 most commonly used** formulas, but
 | Text | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` `TEXTJOIN` `SUBSTITUTE` `FIND` `SEARCH` `CHAR` `CODE` |
 | Date | `TODAY` `NOW` `DATEDIF` | `DAY` `MONTH` `YEAR` |
 | Lookup | `VLOOKUP` `XLOOKUP` `INDEX` `MATCH` | — |
+| Arrays | `SEQUENCE` `TRANSPOSE` `UNIQUE` `SORT` `FILTER` | — |
 
 > **The last ten came from asking the real model, not from working through the Excel reference.**
 > `TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR` — and their obvious companions `SEARCH`
@@ -1912,7 +1997,7 @@ The key box says both halves out loud too: kept in this tab only, never through 
 **use a key you can revoke rather than your main one**, because a key held in a web page can be read
 by anything running in that page.
 
-### 123 security tests
+### 130 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -1924,8 +2009,11 @@ by anything running in that page.
 | `validate.test.ts` | 4 | Which URL shapes are accepted, and which paths must be refused |
 | `ai/formula/route.test.ts` | 6 | Demo mode must not reach Anthropic **even with an API key configured**, the local fallback still answers (not a 403), a missing question is a 400 |
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
+| `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
+| `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
+| `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
-Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts`
+Run them on their own: `npx vitest run src/lib/server/ src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/liveMessage.test.ts`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -2061,13 +2149,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 948 cases across 57 files, via Vitest
+npm test      # 1058 cases across 65 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 948 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1058 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2125,10 +2213,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **948 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1058 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 948 passing tests could not catch](#-what-948-passing-tests-could-not-catch), repeatable
+> [What 1058 passing tests could not catch](#-what-1058-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2136,6 +2224,8 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
 | `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
+| `arrayFormulas.test.ts` | 21 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
+| `sheetCodec.test.ts` | 11 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
@@ -2156,6 +2246,12 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
 | `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
 | `cloud/cloud.test.ts` | 15 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
+| `cloud/liveSession.test.ts` | 22 | The live-editing rules: own echo, a tab that isn't here, a structural change → reload, the cell being edited → wait, a message that lost → drop · ties broken by client id, and both sides reaching the same answer |
+| `cloud/liveMessage.test.ts` | 7 | Validating what arrives from another browser (also counted among the security tests) |
+| `cloud/liveRoom.test.ts` | 21 | One room against a fake transport: an echo staying out of undo, an edit held until the editor closes (only the winner kept), a local edit that wins not being overwritten, and leaving actually going quiet |
+| `cloud/sheetDiff.test.ts` | 11 | What changed between two workbooks: one cell, an emptied cell, another tab, an added row → reload, 200+ cells at once → reload · and a count of how many rows were read, so copy-on-write staying true is a test |
+| `cloud/realtimeChannel.test.ts` | 5 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
+| `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
 | `gridGeometry.test.ts` | 18 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there, anchor↔pixel round trips |
@@ -2188,8 +2284,13 @@ What's not done yet, and why — to show this is a known gap, not something forg
       across Node 20.19, 22.12 and 24
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
-      rather than a hosted service. Still open: automatic sync, simultaneous editing, version
-      history, and sharing a workbook with someone else
+      rather than a hosted service. Still open: automatic sync, version history, and sharing a
+      workbook with someone else
+- [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
+      each other type, presence shows where each cursor is, the cell you have open is never
+      overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed
+      into twice at once leaves one value and tells the person who lost, and row inserts save and ask
+      the others to reload. Still open: formatting, charts and comments are not synced live
 - [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and following
       the live values, placed on the grid, dragged and resized there, anchored to a cell, and carried
       into both the `.xlsx` and the PDF. **A chart in the `.xlsx` is now a real, editable chart** —
@@ -2204,6 +2305,19 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **A ceiling on `/api/ai/formula`** — done: 20 calls a minute per address, refused with `429`
       and a `Retry-After`. Still open: the counters are per process, so this guards against casual
       abuse rather than acting as a billing control across instances
+- [x] **The sheet size ceiling** — done (`sheetCodec.ts`): **measured before it was changed.** A
+      20,000 × 26 sheet holding a single value wrote 4,141 KB to `localStorage` against a ~5 MB quota —
+      a ceiling set by the sheet's *dimensions*, not by anything anyone typed, and that
+      `JSON.stringify` ran on every keystroke. Only the cells holding something are stored now, and the
+      same sheet costs under 5 KB. The in-memory model stays a full grid, because the benchmark says it
+      is already fast there (84ms to compute 20,000 × 26 from cold). Saves in the old shape still load,
+      and the crash rescue reads both. Still open: a sheet's row count is fixed rather than growing when
+      you type past the bottom.
+- [x] **Formulas that answer with a whole table** — done (see [array formulas](#-formulas-that-answer-with-a-whole-table-array-formulas)):
+      `SEQUENCE`, `TRANSPOSE`, `UNIQUE`, `SORT` and `FILTER` spilling into the cells beside them, `#SPILL!`
+      when they do not fit with nothing written, and operators applied across a range (`A1:A9>50` is nine
+      answers). Still open: a sheet with arrays on it recomputes in full rather than incrementally, and
+      there is no `XMATCH`, `LET` or `LAMBDA`.
 - [x] **Formulas across sheets** — done (see [formulas across sheets](#-formulas-across-sheets)):
       `=Sheet2!A1`, Thai names unquoted, cross-sheet staleness that follows a chain rather than one
       link, and cycles that span sheets. **This line used to say "`.xlsx` export writes computed
@@ -2320,8 +2434,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
 
 **Deliberately out of scope:**
 
-- **Real-time multi-user collaboration** — would need a backend + WebSocket, which conflicts with the intended
-  design of a personal, browser-only tool with no backend at all.
+- **A hosted collaboration service** — collaboration itself *shipped*, on the user's own backend (see
+  [Editing together](#-editing-together)). Running one central server for everyone is the part that
+  stays out of scope: it would reverse the property the whole app stands on — your file never leaves
+  your browser.
 - **Using an off-the-shelf formula library** — the engine is hand-written on purpose to keep full control over
   its behavior (see [Formula engine](#-formula-engine)), even at the cost of fewer built-in functions than a
   library like HyperFormula would offer.

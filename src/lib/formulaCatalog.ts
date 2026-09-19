@@ -56,6 +56,44 @@ function opt(key: string, type: ParamType, defaultValue = ""): ParamSpec {
 }
 
 const FORMULA_SPECS: FormulaSpec[] = [
+  // The array formulas. They answer with a shape rather than a value, which is only useful because
+  // `sheetCompute` spills that shape into the cells beside the formula — so they arrived together
+  // and they belong together in the palette, under a category of their own.
+  {
+    id: "SEQUENCE",
+    categoryKey: "array",
+    syntax: "SEQUENCE(rows, cols, start, step)",
+    params: [req("rows", "number"), opt("cols", "number", "1"), opt("start", "number", "1"), opt("step", "number", "1")],
+    build: (v) => `SEQUENCE(${v.rows},${v.cols || 1},${v.start || 1},${v.step || 1})`,
+  },
+  {
+    id: "TRANSPOSE",
+    categoryKey: "array",
+    syntax: "TRANSPOSE(range)",
+    params: [req("range", "range")],
+    build: (v) => `TRANSPOSE(${v.range})`,
+  },
+  {
+    id: "UNIQUE",
+    categoryKey: "array",
+    syntax: "UNIQUE(range)",
+    params: [req("range", "range")],
+    build: (v) => `UNIQUE(${v.range})`,
+  },
+  {
+    id: "SORT",
+    categoryKey: "array",
+    syntax: "SORT(range, column, ascending)",
+    params: [req("range", "range"), opt("column", "number", "1"), opt("ascending", "boolean", "TRUE")],
+    build: (v) => `SORT(${v.range},${v.column || 1},${v.ascending || "TRUE"})`,
+  },
+  {
+    id: "FILTER",
+    categoryKey: "array",
+    syntax: "FILTER(range, include, if_empty)",
+    params: [req("range", "range"), req("include", "range"), opt("ifEmpty", "text")],
+    build: (v) => `FILTER(${v.range},${v.include}${v.ifEmpty ? `,"${v.ifEmpty}"` : ""})`,
+  },
   {
     id: "SUM",
     categoryKey: "math",

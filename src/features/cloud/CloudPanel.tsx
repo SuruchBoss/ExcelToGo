@@ -5,6 +5,7 @@ import { Cloud, CloudUpload, FolderOpen, LogOut, Trash2 } from "lucide-react";
 import { useCloudStore } from "@/store/cloudStore";
 import { useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
+import LivePresence from "./LivePresence";
 
 /**
  * Sign in, save the open workbook, and pick one back up.
@@ -147,6 +148,8 @@ export default function CloudPanel() {
               </button>
             </div>
           </div>
+
+          <LivePresence />
 
           <div className="flex min-h-0 flex-1 flex-col gap-2">
             <button

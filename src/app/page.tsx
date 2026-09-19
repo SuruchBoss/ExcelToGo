@@ -267,13 +267,21 @@ export default function Landing() {
           <div className="mt-2">
             {t.landing.features.map((f, i) => {
               const media = FEATURE_MEDIA[i];
+              // One feature has no exhibit — the live session only exists once someone attaches a
+              // Supabase project, and this page says every image on it was taken from the running
+              // app. So it lays out as one column rather than leaving half the row empty, capped at
+              // the measure the two-column rows already read at.
+              const exhibited = media && f.alt;
               return (
                 <article
                   key={f.title}
-                  className="grid items-start gap-7 border-b border-rule py-10 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:gap-12 lg:py-12"
+                  className={
+                    "grid items-start gap-7 border-b border-rule py-10 md:gap-12 lg:py-12 " +
+                    (exhibited ? "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : "")
+                  }
                 >
                   {/* Alternate which side the exhibit sits on, but only once there are two columns. */}
-                  <div className={`min-w-0 ${i % 2 === 1 ? "md:order-2" : ""}`}>
+                  <div className={`min-w-0 ${exhibited ? (i % 2 === 1 ? "md:order-2" : "") : "md:max-w-[38rem]"}`}>
                     <span className="tabular-nums font-mono text-[11px] text-ash">{num(i)}</span>
                     <h3 className="mt-2.5 text-[1.2rem] font-semibold leading-[1.4] tracking-[-0.01em] text-ink sm:text-[1.35rem]">
                       {f.title}
@@ -289,7 +297,7 @@ export default function Landing() {
                     </ul>
                   </div>
 
-                  {media && (
+                  {media && f.alt && (
                     <figure className="min-w-0 border border-rule bg-white">
                       <Image
                         src={media.src}

@@ -39,6 +39,8 @@ import { formatNumberForDisplay } from "./cellFormat";
 
 const CIRCULAR = new FormulaError("#CIRCULAR!");
 const REF = new FormulaError("#REF!");
+/** Excel's name for "the answer does not fit here", and it is an error rather than a truncation. */
+const SPILL = new FormulaError("#SPILL!");
 
 /**
  * What another sheet looks like to the sheet reading it.
@@ -104,6 +106,18 @@ export function createWorkbookResolver(tabs: WorkbookTab[]): CrossSheetResolver 
 export interface ComputedSheet {
   values: FormulaValue[][];
   display: string[][];
+  /**
+   * Cells filled by a formula that lives somewhere else, mapped to the cell that filled them.
+   *
+   * `=SEQUENCE(3)` in A1 puts 1 in A1 and 2 and 3 in A2 and A3, and those two are not A2's and
+   * A3's own values: they belong to A1, they vanish when A1 does, and typing over them breaks the
+   * whole array. The grid needs to know which is which, and so does anything that asks what a cell
+   * really contains. The anchor maps to itself, so `spill.has(key)` answers "is this cell part of
+   * an array" for every cell in it.
+   *
+   * Empty on a sheet with no array formulas, which is most of them.
+   */
+  spill: Map<number, number>;
 }
 
 interface Snapshot {
@@ -210,7 +224,8 @@ function run(
   programs: Map<number, FormulaProgram>,
   own: (row: number) => void,
   resolver: CrossSheetResolver | undefined,
-  externals: Map<string, ComputedSheet | null>
+  externals: Map<string, ComputedSheet | null>,
+  spill: Map<number, number>
 ): void {
   const { rows, cols } = sheet;
   const computing = new Set<number>();
@@ -243,11 +258,67 @@ function run(
     return grid[r]?.[c] ?? null;
   }
 
+  /**
+   * Puts a range answer into the cells beside the one that produced it.
+   *
+   * Returns what the anchor itself should show: the top-left value when the array fits, `#SPILL!`
+   * when it does not. Excel's rule, and the reason it is a hard error rather than a truncation:
+   * silently showing one ninth of an answer is indistinguishable from the answer being one value.
+   *
+   * "Does not fit" is either edge of the sheet, or **any non-anchor cell in the way holding text of
+   * its own** — including a formula, including a space. What is *not* in the way is a cell this
+   * same array filled on an earlier pass, which is why the spill map is consulted rather than just
+   * the raw text: the second pass would otherwise find its own output blocking it.
+   */
+  function spillInto(r: number, c: number, grid: FormulaValue[][]): FormulaValue {
+    const h = grid.length;
+    const w = grid.reduce((max, row) => Math.max(max, row.length), 0);
+    if (h === 0 || w === 0) return null;
+    if (h === 1 && w === 1) return grid[0][0] ?? null;
+
+    const anchor = packCell(r, c);
+    if (r + h > rows || c + w > cols) return SPILL;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (y === 0 && x === 0) continue;
+        const key = packCell(r + y, c + x);
+        if (spill.get(key) === anchor) continue;
+        if ((sheet.cells[r + y]?.[c + x] ?? "") !== "") return SPILL;
+      }
+    }
+
+    spill.set(anchor, anchor);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (y === 0 && x === 0) continue;
+        const rr = r + y;
+        const cc = c + x;
+        const value = grid[y][x] ?? null;
+        own(rr);
+        values[rr][cc] = value;
+        display[rr][cc] = displayOf(sheet, rr, cc, value);
+        pending[rr * cols + cc] = 0;
+        spill.set(packCell(rr, cc), anchor);
+      }
+    }
+    return grid[0][0] ?? null;
+  }
+
   function getCell(r: number, c: number, sheetName?: string): FormulaValue {
     if (sheetName !== undefined) return foreign(sheetName, r, c);
     if (r < 0 || c < 0 || r >= rows || c >= cols) return null;
     const flat = r * cols + c;
     if (pending[flat] === 0) return values[r][c];
+
+    // An empty cell that an array is known to reach is not empty — it is waiting for the formula
+    // that fills it. Reading it as a blank is how a sum over a spill region comes out too small,
+    // and it depends on nothing but the order the cells happen to be visited in. The map is from
+    // the previous pass, which is what the second pass below exists to provide.
+    const owner = spill.get(packCell(r, c));
+    if (owner !== undefined && owner !== packCell(r, c) && (sheet.cells[r]?.[c] ?? "") === "") {
+      getCell(Math.floor(owner / 16384), owner % 16384);
+      if (pending[flat] === 0) return values[r][c];
+    }
 
     const key = packCell(r, c);
     // Re-entering a cell that is still being computed is a reference cycle. Reported rather than
@@ -264,7 +335,7 @@ function run(
       } else {
         try {
           const evalRes = evaluate(program.ast, { getCell });
-          result = evalRes.kind === "scalar" ? evalRes.value : evalRes.rows[0]?.[0] ?? null;
+          result = evalRes.kind === "scalar" ? evalRes.value : spillInto(r, c, evalRes.rows);
         } catch {
           result = new FormulaError("#ERROR!");
         }
@@ -281,10 +352,24 @@ function run(
     return result;
   }
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (pending[r * cols + c] === 1) getCell(r, c);
+  const sweep = () => {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (pending[r * cols + c] === 1) getCell(r, c);
+      }
     }
+  };
+
+  const before = spill.size;
+  sweep();
+  // A second sweep only when an array appeared during the first, and only then because the first
+  // sweep discovers the spill regions while it is already half-way through using them. With the
+  // map built, the anchor-first rule above makes the order stop mattering. Two passes and no more:
+  // a third would only differ for an array whose own shape depends on where another one landed,
+  // which this engine does not let you write.
+  if (spill.size > before) {
+    pending.fill(1);
+    sweep();
   }
 }
 
@@ -319,9 +404,10 @@ function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined
   const values: FormulaValue[][] = Array.from({ length: rows }, () => new Array<FormulaValue>(cols));
   const display: string[][] = Array.from({ length: rows }, () => new Array<string>(cols));
 
+  const spill = new Map<number, number>();
   const snap: Snapshot = {
     sheet,
-    result: { values, display },
+    result: { values, display, spill },
     programs: new Map(),
     dependents: new Map(),
     rangeReaders: new Map(),
@@ -341,7 +427,7 @@ function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined
   }
 
   const pending = new Uint8Array(rows * cols).fill(1);
-  run(sheet, values, display, pending, snap.programs, () => {}, resolver, snap.externals);
+  run(sheet, values, display, pending, snap.programs, () => {}, resolver, snap.externals, spill);
   return snap;
 }
 
@@ -445,9 +531,14 @@ function incrementalCompute(
     display[r] = display[r].slice();
   };
 
+  // Started empty rather than copied: the dirty cells are about to be recomputed, and an array
+  // that no longer spills has to stop being in the map. Cells outside the dirty set keep their
+  // values, and `computeSheet` refuses the incremental path entirely once a sheet has arrays in
+  // it — see the guard there and the reason for it.
+  const spill = new Map<number, number>();
   const snap: Snapshot = {
     sheet,
-    result: { values, display },
+    result: { values, display, spill },
     programs: new Map(prev.programs),
     // Copied one level down as well: the Sets are about to be edited, and the previous snapshot is
     // still a valid answer for the sheet it belongs to.
@@ -476,7 +567,7 @@ function incrementalCompute(
     const c = key % 16384;
     if (r < rows && c < cols) pending[r * cols + c] = 1;
   }
-  run(sheet, values, display, pending, snap.programs, own, resolver, snap.externals);
+  run(sheet, values, display, pending, snap.programs, own, resolver, snap.externals, spill);
 
   // A number format change moves no value, so it only has to be re-rendered.
   for (const key of diff.restyled) {
@@ -524,6 +615,12 @@ export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): 
     }
     const diff = diffSheets(prev.sheet, sheet);
     if (!diff || (diff.changed.length === 0 && diff.restyled.length === 0)) continue;
+    // A sheet with array formulas on it goes the full route. The incremental pass recomputes a
+    // closure of cells; an array writes into cells *outside* that closure, and deleting one has to
+    // clear them again. Tracking that properly means putting spill regions in the dependency
+    // graph, which is a bigger change than the feature has earned yet — and a stale half-erased
+    // array on screen is a worse bug than a slower recompute.
+    if (prev.result.spill.size > 0) continue;
     const next = incrementalCompute(prev, sheet, diff, resolver);
     if (next) {
       computeStats.incremental++;

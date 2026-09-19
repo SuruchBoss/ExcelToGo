@@ -82,10 +82,11 @@ const OPENED_STATES = [
   panel("conditional formatting panel", 'button[title="จัดรูปแบบตามเงื่อนไข"]'),
   panel("chart panel", 'button[title="กราฟ"]'),
   panel("pivot panel", 'button[title="สรุปข้อมูล (Pivot)"]'),
-  // The cloud panel is deliberately absent unless a Supabase backend is configured, which it is
-  // not here and is not by default — so there is no button to press and nothing to scan. Listing
-  // it would be a check that fails for the wrong reason. It is scanned when someone runs the gate
-  // against their own configured instance.
+  // The cloud panel — and the live-editing panel that sits inside it — is deliberately absent
+  // unless a Supabase backend is configured, which it is not here and is not by default. So there
+  // is no button to press and nothing to scan, and listing either would be a check that fails for
+  // the wrong reason. Both are scanned when someone runs the gate against their own configured
+  // instance.
   {
     name: "find and replace",
     path: "/app",
