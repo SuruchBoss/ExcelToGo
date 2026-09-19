@@ -50,6 +50,14 @@ jobs:
       - name: Tests
         run: npm test
 
+      # Not a fifth Node version's worth of signal: mutation testing breaks the engine on purpose
+      # and asks whether the suite notices, which is the same answer on every runtime. Run on one
+      # version only, and pinned to one seed so a red cross means this commit rather than this
+      # draw. See `scripts/check-mutants.mjs` for how to go looking for new gaps on purpose.
+      - name: Tests that test the tests
+        if: matrix.node == '24'
+        run: npm run check:mutants
+
       # Also the project's full type-check: `next build` compiles every route and both message
       # dictionaries, so a missing translation key fails here.
       - name: Build

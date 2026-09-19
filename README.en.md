@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1077%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1088%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1077 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1088 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1077 passing tests could not catch
+### 🧪 What 1088 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1077 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1088 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -249,12 +249,13 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1077-case Vitest suite |
+| `npm test` | Run the 1088-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
+| `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
-| `npm run verify` | Everything, before a push: lint → check:readme → test → build → check:a11y → check:e2e |
+| `npm run verify` | Everything, before a push: lint → check:readme → test → check:mutants → build → check:a11y → check:e2e |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
@@ -1407,7 +1408,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1077 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1088 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1701,10 +1702,11 @@ src/
   types/
     sheet-ui.ts               # Types for the grid's selection state
 .github/workflows/
-  ci.yml                     # CI: lint → check:readme → test → build on every push/PR, Node 20.19/22.12/24
+  ci.yml                     # CI: lint → check:readme → test → check:mutants → build on every push/PR, Node 20.19/22.12/24
                              #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
+  check-mutants.mjs          # Breaks the engine a character at a time and asks if the suite notices
   check-a11y.mjs             # axe at two widths plus sideways-scroll checks, against a production build
   make-social-preview.mjs    # Renders GitHub's 1280x640 card, counting its figures from source
 public/
@@ -2219,13 +2221,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1077 cases across 66 files, via Vitest
+npm test      # 1088 cases across 66 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1077 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1088 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2253,6 +2255,42 @@ computing once inserted, and a `429` saying how many seconds to wait rather than
 > Writing that flow, the first assertion reported the app sending `A1:A10` instead of `A1:A2`. **The fixture
 > was wrong, not the app**: the sample sheet fills A–E for ten rows, so the range the app chose was right.
 > Moving the numbers to the empty column F made it pass — and made the assertion mean something.
+
+### The tests that break the engine on purpose
+
+A test count says how many assertions exist. It does not say whether any of them would notice a bug,
+and a suite can be both large and asleep. `npm run check:mutants` answers the other question: it
+changes one character of the engine — a `<` to a `<=`, an `&&` to an `||`, a `*` to a `/` — runs the
+suite, and checks it goes red. A change the suite runs green over is a **survivor**, and survivors
+are the honest measure of a suite's reach.
+
+Hand-written rather than Stryker, for the same reason the property tests carry their own PRNG: no
+new dependency, the whole thing readable in one sitting, and the two decisions that matter — where a
+mutation may land, and what counts as killed — made here rather than inherited. Comments, strings
+and regular-expression literals are excluded, because a swapped `<` inside a doc comment changes
+nothing and would count as a survivor: a lie in the direction that flatters the suite.
+
+**The first run left six alive. Six tests were written from them, and each covers a specific way of
+being wrong that nothing else was watching:**
+
+| The change nothing noticed | What was actually missing |
+|---|---|
+| `COUNT`'s `&&` → `\|\|` | Every COUNT test used a range of numbers, where "not blank" and "is a number" agree. Text that is not a number was never counted against |
+| `SEQUENCE`'s `r * w` → `r / w` | Every test asked for a single column, where the width never multiplies |
+| `SEQUENCE`'s `* step` → `/ step` | Equivalent while the step is 1, which is what every test left it as |
+| `COUNTIFS`'s `c < len` → `<=` | It read one cell past each row; `null` coerces to 0, which matches `"<10"`, so the count doubled quietly |
+| `VLOOKUP`'s `key <= n` → `<` | An approximate match skipped an exact hit and returned the row above — a plausible neighbouring value |
+| `"FALSE"` → `true` in `toBoolean` | Nothing asked what the *text* `"FALSE"` means |
+
+The pinned sample now kills 31 of 32. The one survivor is **equivalent**: running SUMPRODUCT's row
+loop one past the end reads a row that is not there, a missing cell contributes zero to a product,
+and zero is then added to the total — the arithmetic cannot tell the difference. No test can kill
+it, and writing one that tried would be asserting an implementation detail instead of a result. The
+floor is 90%, a little under what the sample scores, because the job is to notice the suite getting
+*worse* rather than to demand a number a legitimate refactor could cost.
+
+The seed is pinned so a red cross means this commit rather than this draw. Looking for new gaps is
+something you do on purpose: `SEED=13 MUTANTS=60 npm run check:mutants`.
 
 ### The tests with no formulas written in them
 
@@ -2283,10 +2321,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1077 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1088 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1077 passing tests could not catch](#-what-1077-passing-tests-could-not-catch), repeatable
+> [What 1088 passing tests could not catch](#-what-1088-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2436,6 +2474,12 @@ What's not done yet, and why — to show this is a known gap, not something forg
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
       (`TRUE()` failing to parse, `SUM` counting logical values sitting in cells), both now fixed. Still
       open: no property covers the `.xlsx` round trip, and the cross-sheet resolver is not generated against.
+- [x] **Mutation testing** — done: `npm run check:mutants` breaks the engine one character at a time and
+      checks the suite goes red, hand-written rather than Stryker so nothing new is installed. The first run
+      left six survivors and six tests were written from them, each covering a specific way of being wrong
+      that nothing was watching. The pinned sample now kills 31 of 32; the last one is an equivalent mutant
+      and is documented as such. Still open: it only covers the formula engine, and one whole suite run per
+      mutant means it cannot cover much more without getting slow.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,

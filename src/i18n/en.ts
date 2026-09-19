@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1077 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1088 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -239,7 +239,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1077", label: "automated tests" },
+      { value: "1088", label: "automated tests" },
       { value: "130", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],

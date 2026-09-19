@@ -456,3 +456,67 @@ describe("logical values inside a range", () => {
     expect(calc("AVERAGE(A1:A3)", [[1], [true], [3]])).toBe(2);
   });
 });
+
+/**
+ * Cases `check:mutants` asked for.
+ *
+ * Each of these started as a survivor: a change to the engine that the whole suite ran green over.
+ * A test written because a mutant survived is worth more than one written because a function
+ * existed — it covers a specific way of being wrong that nothing else was watching.
+ */
+describe("gaps the mutation gate found", () => {
+  it("COUNT wants text that is a number, not merely text that is present", () => {
+    // `v.trim() !== "" && !Number.isNaN(Number(v))` turned into `||` and nothing noticed, because
+    // every COUNT test used a range of numbers, where both halves agree.
+    expect(calc("COUNT(A1:A4)", [[1], ["ไม่ใช่ตัวเลข"], [""], ["7"]])).toBe(2);
+  });
+
+  it("COUNTIFS counts the cells that are there, not one past the end of each row", () => {
+    // `c < shape[r].length` → `<=` read a cell past the row; `null` coerces to 0, which matches
+    // "<10", so the count doubled and every existing COUNTIFS test still passed.
+    expect(calc('COUNTIFS(A1:A3,"<10")', [[1], [2], [3]])).toBe(3);
+  });
+
+  it("SEQUENCE refuses a height of zero as well as one that is too large", () => {
+    // The guard is three conditions joined by `||`; turning the first into `&&` let a zero height
+    // through, because the width was fine.
+    expect(String(calc("SEQUENCE(0)"))).toBe("#NUM!");
+    expect(String(calc("SEQUENCE(3,0)"))).toBe("#NUM!");
+  });
+
+  it("VLOOKUP's approximate match takes an exact hit when there is one", () => {
+    // `key <= lookupNum` → `<` still finds *a* row, one above the right one, and returns a
+    // plausible neighbouring value — the kind of wrong answer nobody queries.
+    const table = [[10, "ก"], [20, "ข"], [30, "ค"]];
+    expect(calc("VLOOKUP(30,A1:B3,2,TRUE)", table)).toBe("ค");
+    expect(calc("VLOOKUP(25,A1:B3,2,TRUE)", table)).toBe("ข");
+  });
+
+  it("compares a number against text without giving up on both", () => {
+    // The numeric fast path is guarded by `&&`; with `||` one number was enough to enter it, and
+    // `1 - "ก"` is NaN, which makes every comparison false — including the one that should be true.
+    expect(String(calc('1<"ก"'))).toBe("true");
+    expect(String(calc('"ก"<1'))).toBe("false");
+  });
+
+  it('reads the text "FALSE" as false, which is the whole point of reading it', () => {
+    expect(String(calc('IF("FALSE",1,2)'))).toBe("2");
+    expect(String(calc('IF("TRUE",1,2)'))).toBe("1");
+  });
+
+  it("FIND refuses a start position before the first character", () => {
+    // `start < 1 || start > hay.length + 1` → `&&` let a zero through, and `indexOf(needle, -1)`
+    // quietly behaves like 0 — so a nonsense argument returned a plausible position.
+    expect(String(calc('FIND("b","abc",0)'))).toBe("#VALUE!");
+    expect(calc('FIND("b","abc",1)')).toBe(2);
+  });
+
+  it("ROUNDUP rounds to the digits it was given", () => {
+    // `Math.ceil(n * factor) / factor` is identical to `n / factor / factor` while the digits are
+    // zero — which is how every existing test called it.
+    expect(calc("ROUNDUP(1.234,2)")).toBeCloseTo(1.24, 10);
+    // Away from zero, as Excel does it — which is why the negative branch exists at all.
+    expect(calc("ROUNDUP(-1.234,2)")).toBeCloseTo(-1.24, 10);
+    expect(calc("ROUNDDOWN(1.239,2)")).toBeCloseTo(1.23, 10);
+  });
+});

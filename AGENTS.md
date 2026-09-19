@@ -7,13 +7,13 @@
 Run one command and get it green before committing:
 
 ```bash
-npm run verify     # lint → check:readme → test → build → check:a11y → check:e2e
+npm run verify     # lint → check:readme → test → check:mutants → build → check:a11y → check:e2e
 ```
 
-GitHub Actions รันหกด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+GitHub Actions รันเจ็ดด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
 ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
 รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same six gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
+GitHub Actions runs the same seven gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
 are jobs of their own because they need a browser) — running them yourself
 first is still faster than waiting for CI to tell you.
 
@@ -41,6 +41,16 @@ move, export `.xlsx` and import it back, keyboard only, undo, whether a change a
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up). Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
+
+`npm run check:mutants` ทุบเอนจินทีละจุด (32 mutant, seed คงที่) แล้วถามว่าเทสต์แดงไหม — **"1,088 เทสต์"
+บอกว่ามีกี่ข้อ ไม่ได้บอกว่ามันจับบั๊กได้** ตัวที่รอดคือช่องโหว่จริง รอบแรกเจอหก แล้วเขียนเทสต์ใหม่หกข้อจากมัน
+seed ถูกปักไว้เพื่อไม่ให้ด่านแดงเพราะดวง อยากหาช่องใหม่ให้รัน `SEED=13 MUTANTS=60 npm run check:mutants` เอง
+ไม่ได้ลงไลบรารีเพิ่ม เขียนเองเหมือน PRNG ของ property test
+`npm run check:mutants` breaks the engine one edit at a time (32 mutants, one pinned seed) and asks whether
+the suite goes red. **"1,088 tests" says how many exist, not whether they would notice a bug.** A survivor is
+a real gap: the first run left six alive and six tests were written from them. The seed is pinned so a red
+cross means this commit rather than this draw; go looking for new gaps on purpose with
+`SEED=13 MUTANTS=60 npm run check:mutants`. No new dependency — hand-written, like the property tests' PRNG.
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:
 `npm run check:readme` is dependency-free and catches what the eye misses:
