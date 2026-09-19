@@ -4,10 +4,12 @@ import { create } from "zustand";
 import {
   addMember,
   deleteWorkbook,
+  fetchVersion,
   fetchUpdatedAt,
   fetchWorkbook,
   insertWorkbook,
   listMembers,
+  listVersions,
   listWorkbooks,
   onSessionChange,
   removeMember,
@@ -16,7 +18,13 @@ import {
   updateWorkbook,
 } from "@/lib/cloud/client";
 import { isCloudConfigured } from "@/lib/cloud/config";
-import { CloudWorkbookSummary, readWorkbook, WorkbookMember, wouldOverwriteNewer } from "@/lib/cloud/workbook";
+import {
+  CloudWorkbookSummary,
+  readWorkbook,
+  WorkbookMember,
+  WorkbookVersion,
+  wouldOverwriteNewer,
+} from "@/lib/cloud/workbook";
 import { useSheetStore } from "./sheetStore";
 
 /**
@@ -40,6 +48,7 @@ interface CloudState {
   /** This account's id, so the UI can tell a workbook of ours from one shared with us. */
   userId: string | null;
   members: WorkbookMember[];
+  versions: WorkbookVersion[];
   ready: boolean;
   busy: string | null;
   error: string | null;
@@ -56,6 +65,9 @@ interface CloudState {
   open: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   loadMembers: () => Promise<void>;
+  loadVersions: () => Promise<void>;
+  /** Opens an earlier state into the editor. Saving it back is a normal save, and snapshots the current one. */
+  openVersion: (versionId: string) => Promise<void>;
   invite: (email: string) => Promise<void>;
   revoke: (email: string) => Promise<void>;
   dismiss: () => void;
@@ -69,6 +81,7 @@ export const useCloudStore = create<CloudState>((set, get) => ({
   email: null,
   userId: null,
   members: [],
+  versions: [],
   ready: false,
   busy: null,
   error: null,
@@ -83,7 +96,7 @@ export const useCloudStore = create<CloudState>((set, get) => ({
       unsubscribe = await onSessionChange((session) => {
         set({ email: session?.user.email ?? null, userId: session?.user.id ?? null, ready: true });
         if (session) void get().refresh();
-        else set({ workbooks: [], linked: null, members: [] });
+        else set({ workbooks: [], linked: null, members: [], versions: [] });
       });
     } catch (e) {
       set({ ready: true, error: message(e) });
@@ -106,7 +119,7 @@ export const useCloudStore = create<CloudState>((set, get) => ({
     set({ busy: "signout", error: null });
     try {
       await signOut();
-      set({ email: null, userId: null, workbooks: [], linked: null, members: [] });
+      set({ email: null, userId: null, workbooks: [], linked: null, members: [], versions: [] });
     } catch (e) {
       set({ error: message(e) });
     } finally {
@@ -155,6 +168,8 @@ export const useCloudStore = create<CloudState>((set, get) => ({
       const summary = await updateWorkbook(linked.id, name.trim(), useSheetStore.getState().sheets);
       set({ linked: { id: summary.id, name: summary.name, seenAt: summary.updatedAt }, notice: "saved" });
       await get().refresh();
+      // The save just pushed the previous document into history; the list on screen is now short one.
+      await get().loadVersions();
     } catch (e) {
       set({ error: message(e) });
     } finally {
@@ -236,6 +251,44 @@ export const useCloudStore = create<CloudState>((set, get) => ({
     try {
       await removeMember(linked.id, email);
       await get().loadMembers();
+    } catch (e) {
+      set({ error: message(e) });
+    } finally {
+      set({ busy: null });
+    }
+  },
+
+  loadVersions: async () => {
+    const linked = get().linked;
+    if (!linked) {
+      set({ versions: [] });
+      return;
+    }
+    try {
+      set({ versions: await listVersions(linked.id) });
+    } catch (e) {
+      set({ error: message(e) });
+    }
+  },
+
+  /**
+   * Opens an earlier state into the editor, without saving anything.
+   *
+   * Deliberately not a "restore" button that writes straight back. Looking at a version and
+   * deciding is a different act from replacing today's work with it, and a single button that did
+   * both would be the more dangerous one wearing the safer one's label. Saving afterwards is an
+   * ordinary save, which snapshots what was there first — so even this is undoable.
+   */
+  openVersion: async (versionId) => {
+    set({ busy: "open", error: null, notice: null });
+    try {
+      const sheets = readWorkbook(await fetchVersion(versionId));
+      if (!sheets) {
+        set({ error: "unreadable" });
+        return;
+      }
+      useSheetStore.getState().replaceWorkbook(sheets);
+      set({ notice: "versionOpened" });
     } catch (e) {
       set({ error: message(e) });
     } finally {

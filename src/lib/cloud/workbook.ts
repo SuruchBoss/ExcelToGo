@@ -42,6 +42,40 @@ export function toSummary(row: Pick<CloudWorkbookRow, "id" | "name" | "updated_a
   return { id: row.id, name: row.name, updatedAt: row.updated_at, ownerId: row.user_id };
 }
 
+/**
+ * One earlier state of a workbook, as the listing shows it.
+ *
+ * `data` is left out: a version is a whole copy of the document, and pulling twenty of them down
+ * to draw a list of dates would move megabytes to render kilobytes.
+ */
+export interface WorkbookVersion {
+  id: string;
+  /** The name it had *then*. A version labelled with the current name cannot be told from its neighbours. */
+  name: string;
+  createdAt: string;
+  savedBy: string | null;
+}
+
+/**
+ * How a version is described in the list.
+ *
+ * Relative for anything recent, because "2 hours ago" answers the question people are actually
+ * asking — is this the one from before lunch — and an ISO timestamp does not. Absolute past a
+ * week, where "9 days ago" stops being easier to place than a date.
+ */
+export function describeVersionAge(createdAt: string, now: Date, locale: "th" | "en"): string {
+  const then = Date.parse(createdAt);
+  if (Number.isNaN(then)) return createdAt;
+  const minutes = Math.floor((now.getTime() - then) / 60_000);
+  if (minutes < 1) return locale === "th" ? "เมื่อครู่" : "just now";
+  if (minutes < 60) return locale === "th" ? `${minutes} นาทีที่แล้ว` : `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return locale === "th" ? `${hours} ชั่วโมงที่แล้ว` : `${hours} h ago`;
+  const days = Math.floor(hours / 24);
+  if (days <= 7) return locale === "th" ? `${days} วันที่แล้ว` : `${days} d ago`;
+  return new Date(then).toLocaleDateString(locale === "th" ? "th-TH" : "en-GB");
+}
+
 /** One person a workbook has been shared with. */
 export interface WorkbookMember {
   email: string;

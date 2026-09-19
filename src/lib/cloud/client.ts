@@ -19,11 +19,13 @@ import {
   toSummary,
   WorkbookMember,
   workbookPayload,
+  WorkbookVersion,
 } from "./workbook";
 import { SheetTab } from "@/store/sheetStore";
 
 export const WORKBOOKS_TABLE = "workbooks";
 export const MEMBERS_TABLE = "workbook_members";
+export const VERSIONS_TABLE = "workbook_versions";
 
 let clientPromise: Promise<SupabaseClient> | null = null;
 
@@ -176,6 +178,36 @@ export async function removeMember(workbookId: string, email: string): Promise<v
     .eq("workbook_id", workbookId)
     .eq("email", normaliseEmail(email));
   if (error) throw error;
+}
+
+/**
+ * Earlier states of a workbook, newest first.
+ *
+ * Rows appear here only through a database trigger, so there is nothing to write and no insert
+ * policy to write it with — a client that could add to this table could forge a history.
+ */
+export async function listVersions(workbookId: string): Promise<WorkbookVersion[]> {
+  const supabase = await getCloudClient();
+  const { data, error } = await supabase
+    .from(VERSIONS_TABLE)
+    .select("id,name,created_at,saved_by")
+    .eq("workbook_id", workbookId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    createdAt: row.created_at as string,
+    savedBy: (row.saved_by as string | null) ?? null,
+  }));
+}
+
+/** One version's document, fetched only when somebody asks to look at it. */
+export async function fetchVersion(versionId: string): Promise<CloudWorkbookRow["data"]> {
+  const supabase = await getCloudClient();
+  const { data, error } = await supabase.from(VERSIONS_TABLE).select("data").eq("id", versionId).single();
+  if (error) throw error;
+  return (data as { data: CloudWorkbookRow["data"] }).data;
 }
 
 export async function deleteWorkbook(id: string): Promise<void> {

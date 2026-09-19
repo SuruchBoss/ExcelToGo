@@ -16,7 +16,8 @@ import { describe, expect, it } from "vitest";
 const sql = (file: string) => readFileSync(new URL(`../../../supabase/migrations/${file}`, import.meta.url), "utf8");
 const workbooks = sql("0001_workbooks.sql");
 const sharing = sql("0002_sharing_and_realtime.sql");
-const both = `${workbooks}\n${sharing}`;
+const versions = sql("0003_versions.sql");
+const both = `${workbooks}\n${sharing}\n${versions}`;
 
 /** Policies as written, so a test can ask about one by name rather than grepping for a substring. */
 function policies(text: string) {
@@ -108,6 +109,41 @@ describe("the live channel", () => {
     for (const policy of [...all.values()].filter((p) => p.on === "realtime.messages")) {
       expect(policy.body).toMatch(/to authenticated/i);
     }
+  });
+});
+
+describe("version history", () => {
+  it("has row-level security on, like everything else", () => {
+    expect(versions).toMatch(/alter table public\.workbook_versions enable row level security/i);
+  });
+
+  it("is readable by the workbook's people and nobody else", () => {
+    const policy = [...all.values()].find((p) => p.on === "public.workbook_versions")!;
+    expect(policy.verb).toBe("select");
+    expect(policy.body).toContain("can_access_workbook");
+  });
+
+  it("has no insert, update or delete policy at all", () => {
+    // Rows appear only through the trigger, which runs as its definer. A client that could write
+    // here could forge a history, and a history that can be forged is not a history.
+    const verbs = [...all.values()].filter((p) => p.on === "public.workbook_versions").map((p) => p.verb);
+    expect(verbs).toEqual(["select"]);
+  });
+
+  it("snapshots the document being replaced, not the one replacing it", () => {
+    // `before update` and `old` together: `after`, or `new`, would store the version that is
+    // already on screen and lose the one worth keeping.
+    expect(versions).toMatch(/before update on public\.workbooks/i);
+    expect(versions).toContain("old.data");
+  });
+
+  it("does not make a version out of a rename", () => {
+    expect(versions).toContain("new.data is not distinct from old.data");
+  });
+
+  it("keeps the window bounded, so a personal project is not a backup service", () => {
+    expect(versions).toMatch(/limit 20/i);
+    expect(versions).toMatch(/delete from public\.workbook_versions/i);
   });
 });
 

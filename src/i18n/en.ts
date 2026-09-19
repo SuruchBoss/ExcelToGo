@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1162 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1172 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -239,8 +239,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1162", label: "automated tests" },
-      { value: "159", label: "security tests" },
+      { value: "1172", label: "automated tests" },
+      { value: "165", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -318,6 +318,17 @@ export const en: Messages = {
     ownerOnly: "Only the workbook's owner can invite or remove people.",
     sharedWithYou: "Shared with you",
     needsWorkbook: "Save to the cloud first, then share it.",
+  },
+  versions: {
+    title: "Earlier versions",
+    subtitle: "Every save over a workbook keeps the copy it replaced. Open one to look; nothing is restored until you save.",
+    none: "No earlier versions yet — the first one appears the first time you save over this workbook.",
+    count: (n) => `${n} kept`,
+    open: "Open",
+    confirmOpen: (when) => `Open the version from ${when} in place of what is on screen? Nothing is overwritten until you save.`,
+    opened: "An earlier version is open — nothing has been overwritten. Save if you want to keep it.",
+    needsWorkbook: "Save to the cloud first, and there will be a history to go back through.",
+    limit: "The last 20 versions per workbook · renaming alone does not make one",
   },
   collab: {
     title: "Edit together",

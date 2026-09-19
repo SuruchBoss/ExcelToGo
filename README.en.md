@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1162%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1172%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1162 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1172 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1162 passing tests could not catch
+### 🧪 What 1172 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1162 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1172 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -251,7 +251,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1162-case Vitest suite |
+| `npm test` | Run the 1172-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -723,7 +723,9 @@ Run both migrations against your project once first —
 [`0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) creates the table and the
 **row-level security** policies that keep one account's workbooks away from another's, and
 [`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql) adds sharing
-and authorises the live channel.
+and authorises the live channel, and
+[`0003_versions.sql`](supabase/migrations/0003_versions.sql) keeps the last twenty versions of each
+workbook.
 
 - **The browser talks to your Supabase directly**, never through this app's server, so whoever
   deploys it never sees their users' spreadsheets.
@@ -742,7 +744,17 @@ Supabase project can open and edit the workbook. There is no read-only role, and
 than implying one: a read-only share the app cannot enforce in the grid would be a promise made in
 the database and broken in the browser.
 
-**Not supported:** automatic sync (you press save), or version history.
+**Version history works now** — every save over a workbook keeps the copy it replaced, the last
+twenty per workbook. The panel says *open*, not restore: looking at a version and deciding is a
+different act from replacing today's work with it, and one button doing both would be the more
+dangerous one wearing the safer one's label. Saving afterwards is an ordinary save, which snapshots
+what was there first — so even taking an old version is undoable.
+
+Rows appear there only through a database trigger. There is no insert policy, deliberately: a client
+that could write to that table could forge a history, and a history that can be forged is not one.
+Renaming a workbook does not make a version, or a rename would push a real one out of the window.
+
+**Not supported:** automatic sync (you press save).
 
 ### 👥 Editing together
 
@@ -1520,7 +1532,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1162 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1172 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2206,7 +2218,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 159 security tests
+### 165 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2221,7 +2233,7 @@ nothing but the anon key, which is the thing that used to work.
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
 | `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
-| `cloud/policies.test.ts` | 13 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
+| `cloud/policies.test.ts` | 19 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
 | `errorReport.test.ts` | 16 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
@@ -2367,13 +2379,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1162 cases across 72 files, via Vitest
+npm test      # 1172 cases across 72 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1162 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1172 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2467,10 +2479,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1162 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1172 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1162 passing tests could not catch](#-what-1162-passing-tests-could-not-catch), repeatable
+> [What 1172 passing tests could not catch](#-what-1172-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2499,7 +2511,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
 | `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
-| `cloud/cloud.test.ts` | 20 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
+| `cloud/cloud.test.ts` | 24 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
 | `cloud/liveSession.test.ts` | 22 | The live-editing rules: own echo, a tab that isn't here, a structural change → reload, the cell being edited → wait, a message that lost → drop · ties broken by client id, and both sides reaching the same answer |
 | `cloud/liveMessage.test.ts` | 7 | Validating what arrives from another browser (also counted among the security tests) |
 | `cloud/liveRoom.test.ts` | 21 | One room against a fake transport: an echo staying out of undo, an edit held until the editor closes (only the winner kept), a local edit that wins not being overwritten, and leaving actually going quiet |
@@ -2661,6 +2673,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
       can be put back in order. Still open: no dialog — margins, a chosen scale and a print range are
       the parts one would add, and the defaults are right often enough that it would mostly be a thing
       to click through.
+- [x] **Version history** — done: a database trigger keeps the copy each save replaced, twenty per
+      workbook, readable by whoever can open the workbook and writable by nobody. Still open: no diff
+      between two versions, so "what changed" is still a question you answer by looking.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,

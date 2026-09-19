@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isCloudConfigured } from "./config";
 import {
+  describeVersionAge,
   isInvitableEmail,
   normaliseEmail,
   readWorkbook,
@@ -136,5 +137,33 @@ describe("who can be invited", () => {
     // The trigger lower-cases on the way in; this is the other half, and without it an invitation
     // to Somchai@example.com is never removable by someone who types it back in lower case.
     expect(normaliseEmail("  Somchai@Example.COM ")).toBe("somchai@example.com");
+  });
+});
+
+describe("how an earlier version is described", () => {
+  const now = new Date("2026-03-10T12:00:00.000Z");
+  const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+
+  it("is relative while relative is the easier thing to place", () => {
+    // "2 hours ago" answers the question people are actually asking — is this the one from before
+    // lunch — and an ISO timestamp does not.
+    expect(describeVersionAge(ago(0), now, "en")).toBe("just now");
+    expect(describeVersionAge(ago(5), now, "en")).toBe("5 min ago");
+    expect(describeVersionAge(ago(120), now, "en")).toBe("2 h ago");
+    expect(describeVersionAge(ago(60 * 24 * 3), now, "en")).toBe("3 d ago");
+  });
+
+  it("turns into a date once relative stops helping", () => {
+    // "9 days ago" is no easier to place than a date, and harder to compare between two versions.
+    expect(describeVersionAge(ago(60 * 24 * 9), now, "en")).not.toContain("ago");
+  });
+
+  it("says it in Thai too", () => {
+    expect(describeVersionAge(ago(5), now, "th")).toBe("5 นาทีที่แล้ว");
+    expect(describeVersionAge(ago(0), now, "th")).toBe("เมื่อครู่");
+  });
+
+  it("hands back a timestamp it cannot read rather than showing NaN", () => {
+    expect(describeVersionAge("not a date", now, "en")).toBe("not a date");
   });
 });

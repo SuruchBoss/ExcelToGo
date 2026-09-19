@@ -7,6 +7,7 @@ import { useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import LivePresence from "./LivePresence";
 import ShareWorkbook from "./ShareWorkbook";
+import VersionHistory from "./VersionHistory";
 
 /**
  * Sign in, save the open workbook, and pick one back up.
@@ -65,6 +66,8 @@ export default function CloudPanel() {
                   ? t.cloud.linkSent
                   : notice === "invited"
                     ? t.share.invited
+                    : notice === "versionOpened"
+                      ? t.versions.opened
                     : notice === "opened"
                       ? t.cloud.opened
                       : t.cloud.saved}
@@ -151,6 +154,8 @@ export default function CloudPanel() {
               </button>
             </div>
           </div>
+
+          <VersionHistory />
 
           <ShareWorkbook />
 

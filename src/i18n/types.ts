@@ -271,6 +271,18 @@ export interface Messages {
     sharedWithYou: string;
     needsWorkbook: string;
   };
+  versions: {
+    /** Earlier states of a cloud workbook, kept by the database. */
+    title: string;
+    subtitle: string;
+    none: string;
+    count: (n: number) => string;
+    open: string;
+    confirmOpen: (when: string) => string;
+    opened: string;
+    needsWorkbook: string;
+    limit: string;
+  };
   collab: {
     /** Live editing with other people in the same saved workbook. */
     title: string;
