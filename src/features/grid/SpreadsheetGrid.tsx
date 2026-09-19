@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { colToLetters, getComment } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
-import { packCell } from "@/lib/formulaEngine/formulaProgram";
 import { FormulaError } from "@/lib/formulaEngine/types";
 import { normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
 import {
@@ -33,6 +32,8 @@ import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 // Shared with the chart overlay, which places charts in these same coordinates.
 import { COL_WIDTH, columnLeft, columnWidth, ROW_HEADER_WIDTH, ROW_HEIGHT, rowTop } from "@/lib/gridGeometry";
 import { NO_FREEZE } from "@/lib/sheetFreeze";
+import { NO_PRECEDENTS, precedentsOf } from "@/lib/precedents";
+import { packCell } from "@/lib/formulaEngine/formulaProgram";
 import { rowOffsets, rowWindow, scrollToShowRow } from "@/lib/rowWindow";
 import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gridNavigation";
 import ChartOverlay from "./ChartOverlay";
@@ -331,6 +332,20 @@ export default function SpreadsheetGrid() {
     },
     [rawAt, boundCells, sheet.template, setEditing]
   );
+
+  /**
+   * What the selected formula reads, so it can be drawn on the grid.
+   *
+   * Only for a single selected cell, and not while its editor is open: during editing the text is
+   * changing under every keystroke, and an outline that redraws as you type is a distraction at
+   * exactly the moment the range picker is already doing this job better.
+   */
+  const precedents = useMemo(() => {
+    if (editing || selection.startRow !== selection.endRow || selection.startCol !== selection.endCol) {
+      return NO_PRECEDENTS;
+    }
+    return precedentsOf(sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "");
+  }, [editing, selection, sheet.cells]);
 
   const commitEdit = useCallback(() => {
     if (!editing) return;
@@ -671,6 +686,10 @@ export default function SpreadsheetGrid() {
                     // Faint on purpose. It has to be visible enough that "why can I not edit
                     // this" has an answer on screen, and quiet enough that a filled array does
                     // not look like an error next to ordinary numbers.
+                    // What the selected formula reads. Faint, and an outline rather than a fill:
+                    // it has to be visible without competing with the cell's own formatting, and
+                    // half the point is seeing it *next to* cells that are not in the range.
+                    precedents.cells.has(packCell(r, c)) && "ring-1 ring-inset ring-amber-400 bg-amber-50/50",
                     isSpilled && "bg-violet-50/60 text-violet-900",
                     locked && "bg-zinc-100 text-zinc-500",
                     isField && "bg-white ring-1 ring-inset ring-emerald-400",

@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1140 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1151 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -239,7 +239,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1140", label: "automated tests" },
+      { value: "1151", label: "automated tests" },
       { value: "159", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -489,6 +489,9 @@ export const en: Messages = {
     pickRowField: "Pick at least one column to group by.",
   },
   formulaBar: {
+    reads: "reads",
+    readsElsewhere: "(+ another sheet)",
+    readsTitle: "The ranges this formula reads — the same cells outlined in amber on the grid",
     placeholder: "Type a value or formula, e.g. =SUM(A1:A10)",
   },
   sheetTabs: {

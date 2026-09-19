@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { Paintbrush } from "lucide-react";
 import { selectActiveSelection, selectActiveSheet, useBoundCells, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 import { singleCellSelection } from "@/types/sheet-ui";
 import { useT } from "@/i18n";
+import { precedentsOf } from "@/lib/precedents";
+import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 
 /**
  * Always-visible bar showing the selected cell's address and raw content (a formula or a
@@ -44,8 +46,33 @@ export default function FormulaBar() {
       if (document.activeElement === inputRef.current && e.target !== inputRef.current) commit();
     }
     window.addEventListener("mousedown", handleWindowMouseDown, true);
-    return () => window.removeEventListener("mousedown", handleWindowMouseDown, true);
+  return () => window.removeEventListener("mousedown", handleWindowMouseDown, true);
   });
+
+    /**
+   * The ranges the selected formula reads, written out.
+   *
+   * Ranges as they appear in the formula rather than cell by cell: `=SUM(B2:B50)` reads
+   * forty-nine cells and means one range, and the range is the thing worth checking.
+   */
+  const reads = useMemo(() => {
+    const found = precedentsOf(raw);
+    const parts = found.ranges.map((r) =>
+      r.startRow === r.endRow && r.startCol === r.endCol
+        ? cellRef(r.startRow, r.startCol)
+        : rangeRefString(r.startRow, r.startCol, r.endRow, r.endCol)
+    );
+    const loose = [...found.cells].filter(
+      (key) => !found.ranges.some((r) => {
+        const row = Math.floor(key / 16384);
+        const col = key % 16384;
+        return row >= r.startRow && row <= r.endRow && col >= r.startCol && col <= r.endCol;
+      })
+    );
+    for (const key of loose.slice(0, 6)) parts.push(cellRef(Math.floor(key / 16384), key % 16384));
+    if (parts.length === 0) return "";
+    return `${t.formulaBar.reads} ${parts.join(", ")}${found.elsewhere ? ` ${t.formulaBar.readsElsewhere}` : ""}`;
+  }, [raw, t.formulaBar]);
 
   return (
     <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">
@@ -72,6 +99,20 @@ export default function FormulaBar() {
         title={bound ? t.data.liveCellReadOnly : undefined}
         className={`flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-emerald-500 ${bound ? "bg-emerald-50 text-emerald-800" : ""}`}
       />
+      {reads && (
+        // The same answer as the amber outline on the grid, in words.
+        //
+        // A coloured ring tells a sighted person which cells a formula is about and tells a screen
+        // reader nothing at all. This is the accessible half, and it turns out to be the more
+        // useful one even with a mouse: `C2:C4` and `C2:D4` are easier to tell apart read out than
+        // shaded in.
+        <span
+          className="hidden shrink-0 truncate font-mono text-[11px] text-amber-700 sm:inline"
+          title={t.formulaBar.readsTitle}
+        >
+          {reads}
+        </span>
+      )}
       {/* The formatting row's switch lives here because this bar is always present — putting it
           on the row it hides would take the way back with it. */}
       <button

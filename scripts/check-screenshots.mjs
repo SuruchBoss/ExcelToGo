@@ -72,6 +72,7 @@ const SHOWS = {
   "38-landing-problems.png": ["paletteFormulas"],
   "39-crash-rescue.png": [],
   "40-array-spill.png": [],
+  "41-precedents.png": [],
   "demo.gif": [],
 };
 

@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1140%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1151%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1140 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1151 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1140 passing tests could not catch
+### 🧪 What 1151 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1140 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1151 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -153,6 +153,7 @@ tests say, and nothing whatever about whether that is the right thing.
   - [The Excel keyboard](#️-the-excel-keyboard)
   - [Formulas that answer with a whole table (array formulas)](#-formulas-that-answer-with-a-whole-table-array-formulas)
   - [Formulas across sheets](#-formulas-across-sheets)
+  - [See what a formula is about](#-see-what-a-formula-is-about)
   - [The fill handle](#️-the-fill-handle)
   - [Find and replace](#-find-and-replace)
   - [Works on a phone](#-works-on-a-phone)
@@ -249,7 +250,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1140-case Vitest suite |
+| `npm test` | Run the 1151-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1002,6 +1003,36 @@ Inserting a row in one sheet moves `Sheet2!A5` everywhere and leaves every bare 
 those name the sheet they are written on. A sheet that does not exist is `#REF!`, and comes back to
 life if someone creates one by that name.
 
+### 🔍 See what a formula is about
+
+Select a cell holding a formula and the cells it reads are outlined on the grid, with the ranges
+written out beside the formula bar.
+
+![What a formula reads](public/screenshots/41-precedents.png)
+
+This exists for one specific bug, and it is the most expensive one in this project's history:
+`C2:C4` and `C2:D4` differ by one character, both compute, neither errors, and the wrong total is
+noticed a week later by somebody else. The range picker stops that when a formula is *written*.
+Nothing stopped it when a formula is *read* — you had to hold the addresses in your head and
+compare them against the sheet.
+
+The dependency graph already worked this out; it is how one edit recomputes three cells instead of
+nine thousand. What was missing was showing the person the same answer.
+
+- **The ranges are written out in words as well as shaded.** A coloured ring tells a sighted person
+  which cells a formula is about and tells a screen reader nothing — and `C2:C4` and `C2:D4` turn
+  out to be easier to tell apart read out than shaded in.
+- **A reference to another sheet is dropped rather than drawn here.** The engine flattens
+  `Sheet2!A1` into the same key as a local `A1`, because it only needs to know *that* a formula is
+  stale. Colouring A1 on this sheet for it would be a lie told confidently; the label says another
+  sheet is involved instead.
+- **A range too large to mean anything is refused.** `=SUM(A:A)` reads a million cells, and
+  outlining a million cells is the screen turning one colour. The size is counted *before* the set
+  is built, so a whole-column reference does not allocate a million entries on the way to being
+  declined.
+- **Not shown while the editor is open**, where the text changes on every keystroke and the range
+  picker is already doing this job better.
+
 ### 🖱️ The fill handle
 
 The first thing anyone does to a spreadsheet is drag the corner. This app had the corner grip —
@@ -1436,7 +1467,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1140 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1151 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1678,6 +1709,7 @@ src/
     sheetCodec.ts            # Between the in-memory model (a full grid) and what goes into localStorage
                               # (only the cells holding something) — the old ceiling came from the
                               # sheet's size rather than its contents. Reads the old shape too (tested)
+    precedents.ts            # Which cells a formula reads, for drawing — cross-sheet refs dropped, huge ranges refused (tested)
     sheetFreeze.ts           # Rows and columns that stay put while the rest scrolls, and follow row edits (tested)
     errorReport.ts           # Crash reports for the operator (off unless a URL is set) — keys, tokens, emails and Thai text scrubbed first (tested)
     crashRescue.ts           # Rescues the sheet out of localStorage when a render throws and offers it
@@ -2133,6 +2165,7 @@ nothing but the anon key, which is the thing that used to work.
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
+| `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
 | `cloud/policies.test.ts` | 13 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
 | `errorReport.test.ts` | 16 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
@@ -2279,13 +2312,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1140 cases across 70 files, via Vitest
+npm test      # 1151 cases across 71 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1140 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1151 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2379,10 +2412,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1140 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1151 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1140 passing tests could not catch](#-what-1140-passing-tests-could-not-catch), repeatable
+> [What 1151 passing tests could not catch](#-what-1151-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2558,6 +2591,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       is a fixed list; keys, tokens, emails and Thai text come out of the stack first, and the endpoint's
       origin joins `connect-src` automatically. Still open: nothing reports an error that is *caught* —
       a failed import or a refused fetch is still only a message on screen.
+- [x] **Show what a formula reads** — done (see [see what a formula is about](#-see-what-a-formula-is-about)):
+      the cells outlined on the grid and the ranges written out beside the formula bar, which is the
+      accessible half and turns out to be the more useful one. Still open: nothing shows the other
+      direction — which formulas read *this* cell — which is the question you ask before deleting a row.
 - [x] **A Content-Security-Policy and the rest of the security headers** — done (`next.config.ts`):
       `connect-src` names only `api.anthropic.com` and the Supabase origin when one is configured, so an
       injected script cannot send the visitor's API key anywhere, alongside `frame-ancestors`,

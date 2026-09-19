@@ -404,6 +404,10 @@ export interface Messages {
     pickRowField: string;
   };
   formulaBar: {
+    /** The ranges the selected formula reads, shown beside it and read out. */
+    reads: string;
+    readsElsewhere: string;
+    readsTitle: string;
     placeholder: string;
   };
   sheetTabs: {
