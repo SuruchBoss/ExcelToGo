@@ -207,15 +207,32 @@ export const en: Messages = {
       },
       {
         title: "Point it at your own API or database, and the values land in the cells",
-        body: "Last month's sales live in a system behind the company, and someone still exports them and pastes them in by hand. Here whoever owns the endpoint pastes a URL once; after that you pick a field and press \"put it in the sheet\" — the whole table, or one summary number — seeing the real value before you commit. It refreshes on its own and feeds straight into formulas like any other cell.",
+        body: "Last month's sales live in a system behind the company, and someone still exports them and pastes them in by hand. Here whoever owns it pastes a URL — or a PostgreSQL/MySQL connection string — once; after that you pick a field and press \"put it in the sheet\" — the whole table, or one summary number — seeing the real value before you commit. It refreshes on its own and feeds straight into formulas like any other cell.",
         alt: "The live-data picker",
-        points: ["Nested JSON is flattened into a table for you", "Paginated APIs are followed to the end", "A rate limit is waited out, not retried into", "Three sources are live on this demo, read-only — pointing it at your own means running it yourself"],
+        points: [
+          "A database works the same way: one saved SQL statement, and nobody downstream ever sees SQL",
+          "That statement runs in a read-only transaction, so the database itself refuses a write",
+          "Nested JSON is flattened for you, and paginated APIs are followed to the end",
+          "A rate limit is waited out, not retried into",
+          "Three sources are live on this demo, read-only — pointing it at your own means running it yourself",
+        ],
       },
       {
         title: "Drag a formula in, don't memorise its syntax",
         body: "Search 37 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
         alt: "The formula parameter panel",
         points: ["64 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
+      },
+      {
+        title: "Let the sheet explain itself, instead of waiting to be asked",
+        body: "=SUMIF(Sales,\">1000\") against =SUMIF(B2:B500,\">1000\"): the second sends every reader off to look at what is in column B, every time. Name the range — in Thai if that is what you work in — and the formula reads as what it means. The other half is a rule on what a cell will accept, where typing something outside it is refused rather than saved and flagged: a warning on a cell that already holds the wrong thing is a note about a mistake, and refusing the write is the mistake not happening.",
+        alt: "Naming a range, and limiting what a cell will accept",
+        points: [
+          "Thai names work, and they follow inserted and deleted rows",
+          "Names are substituted at compile time, so the dependency graph stays honest",
+          "A dropdown, a number range or a length cap — and the refusal is announced to screen readers",
+          "Both round-trip through .xlsx as the real Excel features",
+        ],
       },
       {
         title: "An imported .xlsx still looks like itself",

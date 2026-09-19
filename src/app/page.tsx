@@ -40,6 +40,10 @@ const FEATURE_MEDIA = [
   // changing again on its own. `unoptimized` because the optimiser returns a single still frame.
   { src: "/screenshots/34-live-data.gif", width: 820, height: 478, unoptimized: true },
   { src: "/screenshots/02-formula-panel.png", width: 2720, height: 1720 },
+  // The names panel open over a sheet that is already using one: the formula bar reads
+  // `=SUM(ยอดขาย)`, the cells that name stands for are lit as its precedents, and the emerald
+  // rings down column A are the validated cells. One frame carries both halves of the feature.
+  { src: "/screenshots/43-sheet-rules.png", width: 2720, height: 1200 },
   { src: "/screenshots/17-styled-import.png", width: 2720, height: 1720 },
   { src: "/screenshots/20-charts.png", width: 1440, height: 900 },
 ];

@@ -46,8 +46,11 @@ question (Thai or English), and a hand-written formula engine (tokenizer → par
 formula library) supporting cell/range references, relative & structural reference adjustment, circular-reference
 detection and multi-sheet workbooks. Imported .xlsx files keep their look — colour bands, font sizes, borders,
 merged cells — and a protected file is read as a fill-in template that knows which cells are yours. Cells can
-also be bound to a live REST/CSV source that follows paginated APIs, backs off when rate-limited, and says so
-when data came back incomplete. Conditional formatting re-colours cells from their current values — comparisons,
+also be bound to a live REST/CSV source — or straight to PostgreSQL/MySQL, where one saved read-only query
+becomes a table and nobody downstream ever sees SQL — following paginated APIs, backing off when rate-limited,
+and saying so when data came back incomplete. A range can be given a name (in Thai) so `=SUM(ยอดขาย)` reads as
+what it means, and a cell can carry a rule about what may go in it, refused before it is written rather than
+flagged afterwards. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
 (Thai/English), 1305 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
@@ -811,6 +814,11 @@ dropdown ดีกว่าเขียนไปแบบขาดหาย · �
 
 `=SUMIF(ยอดขาย,">1000")` กับ `=SUMIF(B2:B500,">1000")` ต่างกันตรงที่อย่างหลังต้องไปเปิดดูว่าคอลัมน์ B
 คืออะไรทุกครั้ง และคนที่เดาผิดก็ไม่มีทางรู้ แถบสูตรคือที่ที่สเปรดชีตอธิบายตัวเอง และที่อยู่เซลล์ไม่ได้อธิบายอะไรเลย
+
+![ตั้งชื่อช่วงข้อมูลและจำกัดค่าที่กรอกได้](public/screenshots/43-sheet-rules.png)
+
+<sub>ภาพเดียวเห็นทั้งสองอย่าง: แถบสูตรเขียน `=SUM(ยอดขาย)` · ช่องที่ชื่อนั้นหมายถึงถูกไฮไลต์เป็น precedents
+(เอนจินแทนที่ชื่อให้แล้ว) · ขอบเขียวบาง ๆ ในคอลัมน์ A คือช่องที่มีกติกาว่ากรอกอะไรได้บ้าง</sub>
 
 เลือกช่วง กด **ชื่อช่วง** ในแถบรูปแบบ พิมพ์ชื่อ แล้วใช้ในสูตรได้ทันที — **ชื่อภาษาไทยใช้ได้** ซึ่งเป็นเหตุผล
 ทั้งหมดที่ฟีเจอร์นี้มีอยู่ตรงนี้ (ก่อนหน้านี้ตัวอักษรไทยตกไปอยู่ในสาขา "อักขระที่ไม่รู้จัก ข้ามไป" ของ tokenizer

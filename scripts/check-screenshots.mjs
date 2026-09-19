@@ -58,6 +58,8 @@ const SHOWS = {
   "26-insert-row.png": [],
   // The stat strip. All four figures, which is why this is the one that went wrong twice.
   "27-landing-stats.png": ["paletteFormulas", "engineFunctions", "tests", "securityTests"],
+  // Nothing counted is printed on it — the numbers in the sheet are the sheet's own.
+  "43-sheet-rules.png": [],
   "28-pivot-panel.png": [],
   "29-pivot-result.png": [],
   "30-merge-cells.png": [],

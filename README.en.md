@@ -49,8 +49,11 @@ Beyond the assistant, a Next.js web app that turns an Excel-style grid into a fr
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
 and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
 cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, conditional formatting that re-colours cells from their current values, pivot summaries over a
-selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
+workbooks, named ranges (in Thai, substituted at compile time so the dependency graph stays honest), rules on
+what a cell will accept that refuse a value rather than flag it afterwards, conditional formatting that
+re-colours cells from their current values, pivot summaries over a selected range, live data from a REST/CSV
+endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and nobody downstream ever sees SQL —
+and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
 an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1305 automated tests.
@@ -925,6 +928,12 @@ person's — deliberately, since "unlock this template" ought to release the tem
 `=SUMIF(Sales,">1000")` against `=SUMIF(B2:B500,">1000")`: the second makes every reader go and look
 at what is in column B, and gives the ones who guess wrong no way to find out. The formula bar is
 where a spreadsheet explains itself, and an address explains nothing.
+
+![Naming a range, and limiting what a cell will accept](public/screenshots/43-sheet-rules.png)
+
+<sub>One frame, both halves: the formula bar reads `=SUM(ยอดขาย)` · the cells that name stands for are lit as
+its precedents, because the engine has already substituted it · and the thin emerald rings down column A are
+the cells carrying a rule about what may go in them.</sub>
 
 Select a range, hit **Names** in the format bar, type a name, and use it. **Thai names work**, which
 is the whole reason the feature is here: Thai characters used to fall into the tokenizer's
