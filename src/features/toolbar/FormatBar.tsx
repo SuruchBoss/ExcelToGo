@@ -11,7 +11,9 @@ import {
   BarChart3,
   MessageSquareText,
   Palette,
+  ShieldCheck,
   Snowflake,
+  Tag,
   Table2,
   TableCellsMerge,
 } from "lucide-react";
@@ -19,9 +21,12 @@ import { getComment, NumberFormat } from "@/lib/sheet";
 import { isSingleCell } from "@/types/sheet-ui";
 import { mergeWouldDiscard, rangeHasMerge } from "@/lib/sheetMerges";
 import { isFrozen } from "@/lib/sheetFreeze";
+import { ruleAt } from "@/lib/dataValidation";
 import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import CommentPopover from "@/features/grid/CommentPopover";
+import ValidationPopover from "@/features/grid/ValidationPopover";
+import NamesPopover from "@/features/grid/NamesPopover";
 import clsx from "clsx";
 
 export default function FormatBar() {
@@ -38,6 +43,8 @@ export default function FormatBar() {
   const selection = useSheetStore(selectActiveSelection);
   const setCellComment = useSheetStore((s) => s.setCellComment);
   const [commentAt, setCommentAt] = useState<{ x: number; y: number } | null>(null);
+  const [validationAt, setValidationAt] = useState<{ x: number; y: number } | null>(null);
+  const [namesAt, setNamesAt] = useState<{ x: number; y: number } | null>(null);
   const singleCell = isSingleCell(selection);
   // Whether the button currently splits rather than joins.
   const merging = rangeHasMerge(sheet.merges, {
@@ -47,6 +54,7 @@ export default function FormatBar() {
     endCol: selection.endCol,
   });
   const existingComment = getComment(sheet.comments, selection.anchorRow, selection.anchorCol) ?? "";
+  const anchorRule = ruleAt(sheet, selection.anchorRow, selection.anchorCol);
   const chartOpen = useSheetStore((s) => s.sidebarMode === "chart");
   const pivotOpen = useSheetStore((s) => s.sidebarMode === "pivot");
   const toggleMerge = useSheetStore((s) => s.toggleMerge);
@@ -232,6 +240,46 @@ export default function FormatBar() {
           onClose={() => setCommentAt(null)}
         />
       )}
+
+      {/* A rectangle, not a single cell: a dropdown is something you put on a column, and a
+          feature that could only do one cell at a time would be set up one cell at a time. */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          const box = e.currentTarget.getBoundingClientRect();
+          setValidationAt({ x: Math.min(box.left, window.innerWidth - 332), y: box.bottom + 6 });
+        }}
+        title={t.validation.openTitle}
+        className={clsx(
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
+          anchorRule
+            ? "border-emerald-500 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+            : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+        )}
+      >
+        <ShieldCheck size={14} /> <span className="hidden sm:inline">{t.validation.short}</span>
+      </button>
+
+      {validationAt && <ValidationPopover anchor={validationAt} onClose={() => setValidationAt(null)} />}
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          const box = e.currentTarget.getBoundingClientRect();
+          setNamesAt({ x: Math.min(box.left, window.innerWidth - 332), y: box.bottom + 6 });
+        }}
+        title={t.names.openTitle}
+        className={clsx(
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium sm:h-7 sm:min-w-0 sm:justify-start",
+          sheet.names
+            ? "border-sky-500 bg-sky-50 text-sky-800 hover:bg-sky-100"
+            : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+        )}
+      >
+        <Tag size={14} /> <span className="hidden sm:inline">{t.names.short}</span>
+      </button>
+
+      {namesAt && <NamesPopover anchor={namesAt} onClose={() => setNamesAt(null)} />}
 
       <button
         onClick={() => toggleSidebar("chart")}

@@ -1,5 +1,6 @@
 import { AstNode } from "./formulaEngine/ast";
 import { compileFormula, packCell, PrecedentRange } from "./formulaEngine/formulaProgram";
+import { nameScope, type NameTable } from "./namedRanges";
 
 /**
  * Which cells a formula reads, for drawing on the grid.
@@ -74,9 +75,11 @@ function collect(node: AstNode, out: { cells: number[]; ranges: PrecedentRange[]
   }
 }
 
-export function precedentsOf(raw: string, limit = MAX_HIGHLIGHT): Precedents {
+export function precedentsOf(raw: string, limit = MAX_HIGHLIGHT, names?: NameTable): Precedents {
   if (typeof raw !== "string" || !raw.startsWith("=")) return NONE;
-  const program = compileFormula(raw.slice(1));
+  // With the sheet's names in hand, `=SUM(ยอดขาย)` highlights the rectangle the name stands for —
+  // which is the one formula shape where the person cannot read the answer off the formula bar.
+  const program = compileFormula(raw.slice(1), nameScope(names));
   // A formula that does not parse has no precedents worth drawing — and `#SYNTAX!` on screen is
   // already telling the person what they need to know.
   if (!program.ast) return NONE;

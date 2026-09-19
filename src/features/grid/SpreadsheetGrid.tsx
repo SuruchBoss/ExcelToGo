@@ -26,6 +26,7 @@ import { reportEditing } from "@/store/liveStore";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
+import { choicesAt, ruleAt } from "@/lib/dataValidation";
 import { mergeLookup } from "@/lib/sheetMerges";
 import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
@@ -344,8 +345,8 @@ export default function SpreadsheetGrid() {
     if (editing || selection.startRow !== selection.endRow || selection.startCol !== selection.endCol) {
       return NO_PRECEDENTS;
     }
-    return precedentsOf(sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "");
-  }, [editing, selection, sheet.cells]);
+    return precedentsOf(sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "", undefined, sheet.names);
+  }, [editing, selection, sheet.cells, sheet.names]);
 
   const commitEdit = useCallback(() => {
     if (!editing) return;
@@ -618,7 +619,9 @@ export default function SpreadsheetGrid() {
               const merge = merges.anchors.get(`${r},${c}`);
               const locked = isTemplateLocked(sheet.template, r, c);
               const comment = getComment(sheet.comments, r, c);
-              const choices = templateChoices(sheet.template, r, c);
+              // A dropdown from an imported template, or one the person set here — the editor
+              // does not care which, and a cell cannot sensibly have two.
+              const choices = templateChoices(sheet.template, r, c) ?? choicesAt(sheet, r, c);
               const isField = sheet.template !== undefined && !locked;
               // Borrowed from a formula in another cell: the value is real, the cell is empty.
               // Typing here breaks the array into #SPILL!, which is Excel's behaviour and needs
@@ -690,6 +693,10 @@ export default function SpreadsheetGrid() {
                     // it has to be visible without competing with the cell's own formatting, and
                     // half the point is seeing it *next to* cells that are not in the range.
                     precedents.cells.has(packCell(r, c)) && "ring-1 ring-inset ring-amber-400 bg-amber-50/50",
+                    // A cell with a rule on it looks like a form field, which is what it is — and
+                    // reuses the template's own styling rather than inventing a second visual
+                    // language for the same idea.
+                    ruleAt(sheet, r, c) && !locked && "bg-white ring-1 ring-inset ring-emerald-300",
                     isSpilled && "bg-violet-50/60 text-violet-900",
                     locked && "bg-zinc-100 text-zinc-500",
                     isField && "bg-white ring-1 ring-inset ring-emerald-400",

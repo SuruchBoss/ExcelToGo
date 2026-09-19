@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1172%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1250%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1172 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1250 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1172 passing tests could not catch
+### 🧪 What 1250 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1172 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1250 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -148,6 +148,8 @@ tests say, and nothing whatever about whether that is the right thing.
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
+  - [Data validation](#-data-validation)
+  - [Named ranges](#-named-ranges)
   - [Cloud save (bring your own backend)](#️-cloud-save-bring-your-own-backend)
   - [Editing together](#-editing-together)
   - [The Excel keyboard](#️-the-excel-keyboard)
@@ -251,7 +253,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1172-case Vitest suite |
+| `npm test` | Run the 1250-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -835,6 +837,76 @@ text rather than as a plain string.
 Google Sheets; and **a note on an empty cell is lost when the file is read back in** — the file
 itself is correct and Excel shows the note, but ExcelJS attaches notes only to cells present in its
 sheet model, and a cell with no value isn't. The loss is in the reader, not the writer.
+
+### 🛡 Data validation
+
+Select a range, hit **Limit** in the format bar, and say what those cells will accept: one of a
+list, a number in a range, or a length cap. A cell carrying a rule gets a **thin emerald ring**,
+and a list rule turns it into a dropdown while you type.
+
+**Typing something outside the rule is refused rather than saved and flagged.** A warning on a cell
+that *already holds* the wrong thing is a note about a mistake; refusing the write is the mistake
+not happening. The refusal is **announced to screen readers**, because a keystroke that does
+nothing and says nothing is indistinguishable from a broken keyboard.
+
+The reason it exists: a shared sheet always ends up with `เหนือ`, `ภาคเหนือ`, `north` and ` เหนือ`
+in one column, and then a `SUMIF` quietly counts one of them.
+
+**An empty value always passes** — clearing a cell is not entering a wrong one, and a rule that
+refuses deletion turns a typo into something you cannot undo by hand. **A formula always passes**
+too, because there is no result to check yet; refusing it would mean a validated column could hold
+no formulas at all, which costs more than the rule is worth.
+
+Rules **move with inserted and deleted rows**, the way comments do, and go **into and out of
+`.xlsx` as real data validation** (`list`, `decimal`, `textLength`) — a file that arrived from
+Excel with a dropdown on it still refuses the wrong value here.
+
+**Stated limits:** no "date between" and no custom-formula rule yet. **A list whose options contain
+a comma, or one longer than 255 characters, is not written to the file**: Excel's inline form has
+no escape for a comma, and its answer is to point at a range of cells elsewhere in the workbook,
+which would mean this app inventing a hidden sheet inside somebody's file. Dropping the dropdown
+beats writing it truncated. And a **template's** own rules are still a separate thing from the
+person's — deliberately, since "unlock this template" ought to release the template's rules too.
+
+### 🏷 Named ranges
+
+`=SUMIF(Sales,">1000")` against `=SUMIF(B2:B500,">1000")`: the second makes every reader go and look
+at what is in column B, and gives the ones who guess wrong no way to find out. The formula bar is
+where a spreadsheet explains itself, and an address explains nothing.
+
+Select a range, hit **Names** in the format bar, type a name, and use it. **Thai names work**, which
+is the whole reason the feature is here: Thai characters used to fall into the tokenizer's
+"unknown character, skip it" branch one at a time, so `=SUM(ยอดขาย)` was read as `SUM()` and
+answered zero in silence.
+
+A name that cannot be used says why, next to the box: one that is **also a cell address** (`B2`)
+would leave a formula unable to tell them apart; one with **a space or a character the tokenizer
+cannot read** would exist and be unusable; function names and reserved words (`SUM`, `TRUE`, `R`,
+`C`); and duplicates, case-insensitively.
+
+**Names are substituted at compile time, not at evaluation time** — that is what keeps the
+dependency graph honest, since precedents are read off the syntax tree and the tree therefore has
+to hold the real rectangle before anything looks at it. The formula cache is keyed by the name
+table's fingerprint as well as the text, so redefining a name recompiles the formulas that read it
+instead of serving the tree built around the old rectangle. Tests that deliberately break both of
+those are what say it works.
+
+**Names follow inserted and deleted rows**, through the same rewriter the formulas use, and **do
+not shift when filled** — as in Excel. Both fall out of `shiftFormulaRefs` only ever rewriting cell
+and range tokens.
+
+They go **into and out of `.xlsx` as real defined names**, so a workbook that arrived from Excel
+with names on it still computes.
+
+**Stated limits:** **a name belongs to the sheet that defines it, not to the workbook.** Excel has
+both kinds; this has the second. The reason is mechanical rather than principled —
+`computeSheet(sheet)` takes a sheet, and fifteen call sites pass one with no workbook in reach. A
+name whose *target* points at another tab still works, which covers the lookup-table case. On
+export, **two tabs claiming the same name collide and the first one wins**, because a file's
+defined names are workbook-wide and renaming the second would produce a file whose formulas point
+somewhere nobody asked for. And **deleting a name leaves the formulas holding it**, reading
+`#NAME?` rather than being rewritten back to addresses: quietly rewriting work nobody asked to have
+rewritten is worse, and `#NAME?` is both findable and undoable.
 
 ### 🌡 Conditional formatting
 
@@ -1532,7 +1604,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1172 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1250 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1778,6 +1850,8 @@ src/
     pageSetup.ts             # How a sheet lands on paper: orientation, type size, rows repeated per page (tested)
     precedents.ts            # Which cells a formula reads, for drawing — cross-sheet refs dropped, huge ranges refused (tested)
     sheetFreeze.ts           # Rows and columns that stay put while the rest scrolls, and follow row edits (tested)
+    dataValidation.ts        # What a cell will accept, refused before it is written, and the .xlsx mapping (tested)
+    namedRanges.ts           # Names for ranges: what may be one, substituted at compile time, moved by row edits (tested)
     errorReport.ts           # Crash reports for the operator (off unless a URL is set) — keys, tokens, emails and Thai text scrubbed first (tested)
     crashRescue.ts           # Rescues the sheet out of localStorage when a render throws and offers it
                               # as one CSV per tab — touches no store, model or engine, since any of
@@ -2233,6 +2307,9 @@ nothing but the anon key, which is the thing that used to work.
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
 | `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
+| `dataValidation.test.ts` | 28 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated |
+| `namedRanges.test.ts` | 26 | Named ranges: a name that is also an address, has a space, or is reserved is refused with the reason; the name is substituted throughout the tree; precedents point at the real rectangle; repointing a name really does recompute (the cache is keyed by the name table); and a name does not shift when filled |
+| `store/sheetRules.test.ts` | 11 | Both features at the store: a value outside the rule is not saved and is announced, rules and names follow row edits, deleting a name leaves the formula reading `#NAME?` rather than rewritten, and undo brings the name back |
 | `cloud/policies.test.ts` | 19 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
 | `errorReport.test.ts` | 16 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
@@ -2379,13 +2456,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1172 cases across 72 files, via Vitest
+npm test      # 1250 cases across 75 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1172 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1250 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2479,10 +2556,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1172 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1250 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1172 passing tests could not catch](#-what-1172-passing-tests-could-not-catch), repeatable
+> [What 1250 passing tests could not catch](#-what-1250-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2743,6 +2820,14 @@ What's not done yet, and why — to show this is a known gap, not something forg
       whole column or row and `Ctrl+Enter` to fill a selection are all in now** — and the fill shifts
       references the way a drag does, since a formula that kept pointing at the anchor's row would
       fill a column with the same wrong number. Still open: freezing panes beyond the sticky header.
+- [x] **Data validation** — done (see [Data validation](#-data-validation)): a list, a number range or a
+      length cap, refused before it is written and announced, moving with row edits and round-tripping
+      through `.xlsx`. Still open: "date between" and custom formulas, and a list containing a comma
+      cannot be written to the file.
+- [x] **Named ranges** — done (see [Named ranges](#-named-ranges)): Thai names work, substitution happens
+      at compile time so the dependency graph stays honest, names follow row edits, and they round-trip
+      through `.xlsx`. Still open: a name belongs to its sheet rather than the workbook, and there is no
+      name box beside the formula bar to jump to a range.
 - [ ] **Database sources** (Postgres/MySQL) — next phase: tech picks a table / saves a query once, users never see SQL
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 

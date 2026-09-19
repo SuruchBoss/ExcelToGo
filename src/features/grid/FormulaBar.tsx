@@ -56,7 +56,7 @@ export default function FormulaBar() {
    * forty-nine cells and means one range, and the range is the thing worth checking.
    */
   const reads = useMemo(() => {
-    const found = precedentsOf(raw);
+    const found = precedentsOf(raw, undefined, sheet.names);
     const parts = found.ranges.map((r) =>
       r.startRow === r.endRow && r.startCol === r.endCol
         ? cellRef(r.startRow, r.startCol)
@@ -72,7 +72,7 @@ export default function FormulaBar() {
     for (const key of loose.slice(0, 6)) parts.push(cellRef(Math.floor(key / 16384), key % 16384));
     if (parts.length === 0) return "";
     return `${t.formulaBar.reads} ${parts.join(", ")}${found.elsewhere ? ` ${t.formulaBar.readsElsewhere}` : ""}`;
-  }, [raw, t.formulaBar]);
+  }, [raw, sheet.names, t.formulaBar]);
 
   return (
     <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">

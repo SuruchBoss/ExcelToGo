@@ -20,7 +20,15 @@ import {
   pxToPt,
 } from "./cellFormat";
 import { cellKey, excelWidthToPx, parseValidationList, pxToExcelWidth, SheetTemplate } from "./sheetTemplate";
-import { parseRangeRef, parseCellRef, rangeRefString } from "./formulaEngine/address";
+import {
+  type CellValidation,
+  type ExcelValidation,
+  fromExcelValidation,
+  toExcelValidation,
+  validationKey,
+} from "./dataValidation";
+import { nameKey, nameProblem, refToNode, type NameTable } from "./namedRanges";
+import { parseRangeRef, parseCellRef, rangeRefString, sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { MergeRange, parseMergeRef } from "./sheetMerges";
 import { CfRule, CfComparison, CfTest } from "./conditionalFormat";
 
@@ -376,6 +384,21 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
         if (dv?.type === "list" && Array.isArray(dv.formulae)) validations.push({ key: cellKey(r, c), formulae: dv.formulae });
       }
     }
+  } else {
+    // An ordinary file's validation becomes the person's own rules, so a dropdown built in Excel
+    // still refuses the wrong value here. Templates keep their separate path: there the rules
+    // belong to the *form*, and merging the two would make "unlock this template" also mean
+    // "keep enforcing the form's rules", which is the opposite of what it says.
+    const rules: CellValidation = {};
+    const readRange = rangeReader(sheet);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const dv = worksheet.getCell(r + 1, c + 1).dataValidation as ExcelValidation | undefined;
+        const rule = fromExcelValidation(dv, (formulae) => parseValidationList(formulae as string[], readRange));
+        if (rule) rules[validationKey(r, c)] = rule;
+      }
+    }
+    if (Object.keys(rules).length > 0) sheet.validation = rules;
   }
 
   if (Object.keys(comments).length > 0) sheet.comments = comments;
@@ -464,10 +487,13 @@ export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[
   if (workbook.worksheets.length === 0) {
     return [{ name: "Sheet1", sheet: createEmptySheet() }];
   }
-  return workbook.worksheets.map((worksheet) => ({
-    name: worksheet.name || "Sheet1",
-    sheet: importWorksheet(worksheet),
-  }));
+  const named = readDefinedNames(workbook);
+  return workbook.worksheets.map((worksheet) => {
+    const name = worksheet.name || "Sheet1";
+    const sheet = importWorksheet(worksheet);
+    const names = named.get(name.toLowerCase());
+    return { name, sheet: names ? { ...sheet, names } : sheet };
+  });
 }
 
 async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
@@ -540,6 +566,16 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
     // Without protecting the sheet the unlocked flags are inert — Excel would let anyone type
     // anywhere, which is the one thing the template exists to prevent.
     await worksheet.protect("", { selectLockedCells: true, selectUnlockedCells: true });
+  }
+
+  // The person's own rules go back out as real Excel validation, so a sheet built here opens in
+  // Excel with the dropdowns still on it. `toExcelValidation` returns nothing for the shapes the
+  // file format cannot hold; those are dropped rather than approximated.
+  for (const [key, rule] of Object.entries(sheet.validation ?? {})) {
+    const [r, c] = key.split(",").map(Number);
+    if (r >= sheet.rows || c >= sheet.cols) continue;
+    const dv = toExcelValidation(rule);
+    if (dv) worksheet.getCell(r + 1, c + 1).dataValidation = dv as ExcelJS.DataValidation;
   }
 
   for (const [key, text] of Object.entries(sheet.comments ?? {})) {
@@ -622,6 +658,62 @@ async function writeCharts(workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 /** Builds the workbook, optionally embedding charts as pictures on the way. */
+
+/**
+ * Writes the sheets' named ranges as the workbook's defined names.
+ *
+ * The file format has no sheet-scoped names in ExcelJS's model, so what is sheet-scoped here comes
+ * out workbook-scoped there. That is a widening rather than a loss — every name still means the
+ * range it meant — with one honest consequence: two tabs that both define `ยอดขาย` collide, and
+ * the first one wins. Silently renaming the second would produce a file whose formulas point
+ * somewhere the person never asked for, so it is dropped and the limit is written down.
+ *
+ * Each target is qualified and absolute on the way out, which is what Excel requires of a defined
+ * name and what `refForSelection` already produces; a name whose stored target has no sheet on it
+ * (an older workbook, or one hand-edited) is qualified here with the sheet that defines it.
+ */
+function writeDefinedNames(workbook: ExcelJS.Workbook, sheets: ExportableSheet[], sheetNames: string[]): void {
+  const model: { name: string; ranges: string[] }[] = [];
+  const taken = new Set<string>();
+  sheets.forEach(({ sheet }, i) => {
+    for (const entry of Object.values(sheet.names ?? {})) {
+      const key = entry.label.toUpperCase();
+      if (taken.has(key)) continue;
+      const { sheet: prefix, ref } = splitSheetRef(entry.ref);
+      const absolute = ref.replace(/\$?([A-Z]+)\$?(\d+)/g, "$$$1$$$2");
+      model.push({ name: entry.label, ranges: [`${sheetRefPrefix(prefix ?? sheetNames[i])}${absolute}`] });
+      taken.add(key);
+    }
+  });
+  if (model.length > 0) workbook.definedNames.model = model;
+}
+
+/** The names a file arrives with, grouped onto the sheet each one points at. */
+function readDefinedNames(workbook: ExcelJS.Workbook): Map<string, NameTable> {
+  const bySheet = new Map<string, NameTable>();
+  for (const entry of workbook.definedNames.model ?? []) {
+    const target = entry.ranges?.[0];
+    if (!target || !entry.name) continue;
+    const { sheet: prefix, ref: address } = splitSheetRef(target);
+    // A name with no sheet in its target, or one pointing at a sheet the file does not contain,
+    // has nowhere to live here. Excel also writes print areas and filter ranges as defined names
+    // (`_xlnm.Print_Area`), which `nameProblem` rejects on the dot — they are the file's own
+    // bookkeeping, not somebody's label.
+    if (!prefix || nameProblem(entry.name, undefined)) continue;
+    if (!refToNode(target)) continue;
+    const table = bySheet.get(prefix.toLowerCase()) ?? {};
+    // Rebuilt rather than stored as it arrived: ExcelJS quotes every non-ASCII sheet name on the
+    // way out, so a name written here as `ใบเสนอราคา!$B$1` comes back as `'ใบเสนอราคา'!$B$1`.
+    // Both resolve; only one of them is what the person would see in the panel twice running.
+    // Stored bare. The prefix has already done its job — it is what said which sheet this name
+    // belongs to — and a target left qualified would be a cross-sheet reference to the evaluator,
+    // needing a workbook resolver that half of `computeSheet`'s callers do not pass.
+    table[nameKey(entry.name)] = { label: entry.name, ref: address };
+    bySheet.set(prefix.toLowerCase(), table);
+  }
+  return bySheet;
+}
+
 async function buildWorkbook(sheets: ExportableSheet[], picturesForCharts: boolean) {
   const workbook = new ExcelJS.Workbook();
   const usedNames = new Set<string>();
@@ -633,6 +725,7 @@ async function buildWorkbook(sheets: ExportableSheet[], picturesForCharts: boole
     await writeSheetToWorksheet(worksheet, sheet, computed);
     if (picturesForCharts) await writeCharts(workbook, worksheet, sheet, computed);
   }
+  writeDefinedNames(workbook, sheets, names);
   return { buffer: await workbook.xlsx.writeBuffer(), names };
 }
 

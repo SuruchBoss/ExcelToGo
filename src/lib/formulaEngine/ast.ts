@@ -13,4 +13,7 @@ export type AstNode =
   | { type: "range"; startRow: number; startCol: number; endRow: number; endCol: number; sheet?: string }
   | { type: "unary"; op: "-" | "+"; expr: AstNode }
   | { type: "binop"; op: string; left: AstNode; right: AstNode }
-  | { type: "call"; name: string; args: AstNode[] };
+  | { type: "call"; name: string; args: AstNode[] }
+  /** A name somebody gave a range. Resolved at compile time against the sheet's name table; one
+   *  that survives to evaluation is a name nothing defines, which is `#NAME?`. */
+  | { type: "name"; name: string };

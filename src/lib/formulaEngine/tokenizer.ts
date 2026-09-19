@@ -5,6 +5,7 @@ export type TokenType =
   | "RANGE"
   | "CELL"
   | "FUNC"
+  | "NAME"
   | "REFERR"
   | "OP"
   | "LPAREN"
@@ -32,7 +33,17 @@ const SHEET_QUALIFIED_RE =
 const RANGE_RE = /^\$?[A-Za-z]{1,3}\$?\d+:\$?[A-Za-z]{1,3}\$?\d+/;
 const CELL_RE = /^\$?[A-Za-z]{1,3}\$?\d+/;
 const NUMBER_RE = /^\d+(\.\d+)?/;
-const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_.]*/;
+/**
+ * A word: a function name, `TRUE`/`FALSE`, or a range somebody has given a name.
+ *
+ * Thai letters are in the first character class because this app's users name things in Thai —
+ * `ยอดขาย`, not `sales`. Before named ranges those characters fell through to the "unknown
+ * character, skip it" branch at the bottom of the loop, one at a time, which meant `=SUM(ยอดขาย)`
+ * tokenized as `SUM()` and quietly returned zero. \u0E00-\u0E7F is the whole Thai block; the
+ * digits in it (๐-๙) are only reachable after the first character, which is the same rule the
+ * Latin half follows.
+ */
+const IDENT_RE = /^[A-Za-z_\u0E00-\u0E7F][A-Za-z0-9_.\u0E00-\u0E7F]*/;
 const MULTI_OP_RE = /^(<>|<=|>=)/;
 
 export function tokenize(input: string): Token[] {
@@ -107,8 +118,14 @@ export function tokenize(input: string): Token[] {
       const upper = word.toUpperCase();
       if (upper === "TRUE" || upper === "FALSE") {
         tokens.push({ type: "BOOL", value: upper });
-      } else {
+      } else if (/^\s*\(/.test(s.slice(word.length))) {
+        // The parenthesis is what makes it a call. Deciding here rather than in the parser is what
+        // lets a name keep the case it was typed in: a FUNC token is upper-cased because `sum` and
+        // `SUM` are the same function, while `ยอดขาย_Q1` is somebody's label and comes back out of
+        // a fill or a row insert spelled the way they wrote it.
         tokens.push({ type: "FUNC", value: upper });
+      } else {
+        tokens.push({ type: "NAME", value: word });
       }
       s = s.slice(word.length);
       continue;

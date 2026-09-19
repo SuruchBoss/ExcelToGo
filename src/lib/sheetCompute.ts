@@ -1,5 +1,6 @@
 import type { SheetModel } from "./sheet";
 import { evaluate } from "./formulaEngine/evaluator";
+import { nameScope } from "./namedRanges";
 import {
   compileFormula,
   FormulaProgram,
@@ -332,7 +333,7 @@ function run(
     const raw = sheet.cells[r]?.[c] ?? "";
     let result: FormulaValue;
     if (isFormula(raw)) {
-      const program = programs.get(key) ?? compileFormula(raw.slice(1));
+      const program = programs.get(key) ?? compileFormula(raw.slice(1), nameScope(sheet.names));
       if (!program.ast) {
         result = program.error!;
       } else {
@@ -408,6 +409,7 @@ function unlink(snap: Snapshot, key: number): void {
 
 function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined): Snapshot {
   const { rows, cols } = sheet;
+  const names = nameScope(sheet.names);
   const values: FormulaValue[][] = Array.from({ length: rows }, () => new Array<FormulaValue>(cols));
   const display: string[][] = Array.from({ length: rows }, () => new Array<string>(cols));
 
@@ -429,7 +431,7 @@ function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined
     if (!row) continue;
     for (let c = 0; c < cols; c++) {
       const raw = row[c] ?? "";
-      if (isFormula(raw)) link(snap, packCell(r, c), compileFormula(raw.slice(1)));
+      if (isFormula(raw)) link(snap, packCell(r, c), compileFormula(raw.slice(1), names));
     }
   }
 
@@ -448,6 +450,11 @@ interface Diff {
 /** Null when the sheets are too different to be worth an incremental pass. */
 function diffSheets(prev: SheetModel, next: SheetModel): Diff | null {
   if (prev.rows !== next.rows || prev.cols !== next.cols) return null;
+  // Redefining a name changes what formulas mean without changing a single cell's text, so the
+  // cell-by-cell diff below would find nothing to do and every formula reading that name would
+  // keep its old answer. There is no partial version of this — any formula on the sheet might use
+  // it — so the whole sheet is recomputed.
+  if (prev.names !== next.names) return null;
 
   const changed: number[] = [];
   const restyled: number[] = [];
@@ -602,12 +609,13 @@ function incrementalCompute(
   for (const [precedent, readers] of prev.dependents) snap.dependents.set(precedent, new Set(readers));
 
   // Now the graph can be brought up to date, because the closure above is already taken.
+  const names = nameScope(sheet.names);
   for (const key of diff.changed) {
     const r = Math.floor(key / 16384);
     const c = key % 16384;
     unlink(snap, key);
     const raw = sheet.cells[r]?.[c] ?? "";
-    if (isFormula(raw)) link(snap, key, compileFormula(raw.slice(1)));
+    if (isFormula(raw)) link(snap, key, compileFormula(raw.slice(1), names));
   }
 
   const pending = new Uint8Array(rows * cols);

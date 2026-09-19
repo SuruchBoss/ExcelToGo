@@ -94,6 +94,14 @@ describe("lookup and conditional-aggregate functions", () => {
     expect(calc('AVERAGEIF(B2:B4,"เครื่องดื่ม",C2:C4)', grid)).toBe(35);
   });
 
+  it("AVERAGEIF averages only the cells it matched, not one phantom per row", () => {
+    // Written from a surviving mutant: widening the inner loop by one column left every row
+    // matching an extra empty cell, which a `<` criterion happily counts as zero. The average
+    // then drifts by exactly one zero per row — small, plausible, and silent.
+    expect(calc('AVERAGEIF(C2:C4,"<40")', grid)).toBeCloseTo(27.5);
+    expect(calc('AVERAGEIF(A2:C2,"<100")', grid)).toBe(45);
+  });
+
   it("SUMIF supports comparison-operator criteria", () => {
     expect(calc('SUMIF(C2:C4,">25")', grid)).toBe(75);
   });
@@ -176,6 +184,13 @@ describe("INDEX", () => {
   it("is #REF! outside the range, instead of an empty cell", () => {
     expect(isError(calc("INDEX(A1:D6,99,1)", sales))).toBe(true);
     expect(isError(calc("INDEX(A1:D6,1,9)", sales))).toBe(true);
+  });
+
+  it("still reaches the last row and the last column, which is where off-by-one lives", () => {
+    // Written from a surviving mutant: `rowNum > height` loosened to `>=` makes exactly the
+    // final row of every INDEX read `#REF!`, and nothing else in the suite asked for it.
+    expect(calc("INDEX(A1:D6,6,4)", sales)).toBe(calc("D6", sales));
+    expect(calc("INDEX(A1:D6,6,1)", sales)).toBe(calc("A6", sales));
   });
 
   it("row 0 hands back the whole column, so another function can consume it", () => {
@@ -340,6 +355,16 @@ describe("XLOOKUP", () => {
 
   it("is #N/A with no fallback given", () => {
     expect(isError(calc('XLOOKUP("ไม่มี",A2:A4,C2:C4)', stock))).toBe(true);
+  });
+
+  it("searches forwards unless the search mode is negative", () => {
+    // Written from a surviving mutant: `searchArg < 0` loosened to `<= 0` turns an explicit `0`
+    // into a backwards search, so a lookup with two matches answers with the wrong one. Only the
+    // value zero tells the two apart, which is exactly why no other test noticed.
+    const twice = [["คีย์", "ผล"], ["ก", "แรก"], ["ข", "กลาง"], ["ก", "ท้าย"]];
+    expect(calc('XLOOKUP("ก",A2:A4,B2:B4,,0,0)', twice)).toBe("แรก");
+    expect(calc('XLOOKUP("ก",A2:A4,B2:B4,,0,1)', twice)).toBe("แรก");
+    expect(calc('XLOOKUP("ก",A2:A4,B2:B4,,0,-1)', twice)).toBe("ท้าย");
   });
 
   it("matches exactly by default, unlike VLOOKUP", () => {

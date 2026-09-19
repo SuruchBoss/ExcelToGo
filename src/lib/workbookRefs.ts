@@ -10,6 +10,7 @@
  * moment a rewrite needs to know what the other tabs are called, it belongs somewhere that knows a
  * workbook exists.
  */
+import { shiftNames } from "./namedRanges";
 import { sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { tokenize } from "./formulaEngine/tokenizer";
 import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
@@ -57,9 +58,16 @@ export function shiftOtherSheetsForStructuralOp(
 ): SheetModel[] {
   return tabs.map(({ name, sheet }) => {
     if (name.toLowerCase() === opSheetName.toLowerCase()) return sheet;
-    return mapFormulas(sheet, (body) =>
-      adjustFormulaForStructuralOp(body, axis, opIndex, delta, { opSheet: opSheetName, formulaSheet: name })
-    );
+    const scope = { opSheet: opSheetName, formulaSheet: name };
+    const shifted = mapFormulas(sheet, (body) => adjustFormulaForStructuralOp(body, axis, opIndex, delta, scope));
+    // A name on this tab can point at the edited one — `ยอดขาย → ข้อมูล!B2:B500` is the whole
+    // reason a name may carry a sheet prefix — so the table moves for the same reason the
+    // formulas do, and by the same rewriter.
+    const names = shiftNames(sheet.names, axis, opIndex, delta, scope);
+    if (names === sheet.names) return shifted;
+    const next: SheetModel = { ...shifted, names };
+    if (!names) delete next.names;
+    return next;
   });
 }
 

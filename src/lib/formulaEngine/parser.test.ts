@@ -86,8 +86,13 @@ describe("parseFormula", () => {
     expect(parseFormula("#REF!")).toEqual({ type: "referror" });
   });
 
-  it("treats a bare function name with no parens as a plain string", () => {
-    expect(parseFormula("FOO")).toEqual({ type: "string", value: "FOO" });
+  it("treats a bare word with no parens as a name, spelled the way it was typed", () => {
+    // It used to become the string "FOO", which meant `=IF(A1=FOO,1,2)` compared A1 against the
+    // text "FOO" instead of saying it did not know what FOO was. Now it is a name node: the
+    // compiler resolves it against the sheet's name table, and an unresolved one is `#NAME?`,
+    // which is both Excel's answer and the true one.
+    expect(parseFormula("ยอดขาย")).toEqual({ type: "name", name: "ยอดขาย" });
+    expect(parseFormula("Sales_Q1")).toEqual({ type: "name", name: "Sales_Q1" });
   });
 
   it("throws FormulaSyntaxError on a token with no valid primary expression", () => {

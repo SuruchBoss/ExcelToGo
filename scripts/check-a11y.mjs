@@ -88,6 +88,48 @@ const OPENED_STATES = [
   // the wrong reason. Both are scanned when someone runs the gate against their own configured
   // instance.
   {
+    // Not an <aside> panel, so it cannot use `panel()`: it is a popover pinned to the button that
+    // opened it, living inside the format bar — which is itself collapsed on a narrow screen.
+    // Both of those are reasons it is easy to leave unscanned, which is the reason it is here.
+    name: "validation popover",
+    path: "/app",
+    async open(page) {
+      const bar = page.locator('button[title="จำกัดสิ่งที่กรอกได้ในช่องที่เลือก"]');
+      if (!(await bar.first().isVisible().catch(() => false))) {
+        await page.locator('button[title="แสดงแถบรูปแบบ"]').first().click();
+      }
+      await bar.first().click();
+      await page.locator('[role="dialog"]').first().waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    name: "names popover",
+    path: "/app",
+    async open(page) {
+      const bar = page.locator('button[title="ตั้งชื่อให้ช่วงที่เลือก"]');
+      if (!(await bar.first().isVisible().catch(() => false))) {
+        await page.locator('button[title="แสดงแถบรูปแบบ"]').first().click();
+      }
+      await bar.first().click();
+      await page.locator('[role="dialog"]').first().waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    name: "cell comment popover",
+    path: "/app",
+    async open(page) {
+      // The comment box needs one cell selected, which is the app's own starting state; clicking
+      // one first is what a person does and what keeps this from depending on that default.
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      const button = page.locator('button[title="คอมเมนต์ในเซลล์"]');
+      if (!(await button.first().isVisible().catch(() => false))) {
+        await page.locator('button[title="แสดงแถบรูปแบบ"]').first().click();
+      }
+      await button.first().click();
+      await page.locator("textarea").first().waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
     name: "find and replace",
     path: "/app",
     async open(page) {

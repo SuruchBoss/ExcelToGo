@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createEmptySheet, setCellRaw, SheetModel } from "./sheet";
 import { fromStorage, isPacked, packSheet, toStorage, unpackSheet } from "./sheetCodec";
 import { rescueSheets } from "./crashRescue";
+import { ruleAt, withValidation } from "./dataValidation";
 
 /** The size of what would actually be written, which is the number the ceiling is made of. */
 const storedKb = (sheet: SheetModel) =>
@@ -124,5 +125,18 @@ describe("storage that is not what it should be", () => {
     const back = unpackSheet({ rows: 0, cols: 0, cells: {} });
     expect(back.rows).toBeGreaterThan(0);
     expect(back.cols).toBeGreaterThan(0);
+  });
+});
+
+describe("rules on what can be typed survive a save", () => {
+  it("comes back the same object after a pack and unpack", () => {
+    // `rest` carries it without naming it, which is exactly why this test exists: nothing in the
+    // codec mentions validation, so nothing in the codec would fail if it stopped travelling.
+    const sheet = withValidation(createEmptySheet(10, 5), { startRow: 0, startCol: 0, endRow: 2, endCol: 0 }, {
+      kind: "list",
+      values: ["ก", "ข"],
+    });
+    const back = unpackSheet(JSON.parse(JSON.stringify(packSheet(sheet))));
+    expect(ruleAt(back, 2, 0)).toEqual({ kind: "list", values: ["ก", "ข"] });
   });
 });

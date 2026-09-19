@@ -65,6 +65,8 @@ import { addMerge, rangeHasMerge, removeMerges } from "@/lib/sheetMerges";
 import { isSingleCell, normalizeSelection, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
 import { shiftFormulaRefs } from "@/lib/formulaEngine/shift";
 import { shiftFreeze, toggleFreezeAt } from "@/lib/sheetFreeze";
+import { checkValue, ruleAt, shiftValidation, ValidationRule, withValidation } from "@/lib/dataValidation";
+import { nameKey, nameProblem, refForSelection, shiftNames, withName, withoutName, type NameProblem } from "@/lib/namedRanges";
 import { getLocale, getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
@@ -196,6 +198,17 @@ interface SheetState {
   deleteSheet: (id: string) => void;
 
   setCellRaw: (row: number, col: number, raw: string) => void;
+  /** Sets or clears what may go in the selected cells. See dataValidation.ts. */
+  setValidation: (rule: ValidationRule | undefined) => void;
+  /**
+   * Names the current selection, or renames an existing name's target to it.
+   *
+   * Answers with what was wrong rather than throwing or silently doing nothing: the panel needs to
+   * put the reason next to the box, and "the name you typed is already taken" is the one piece of
+   * information a refusal has to carry.
+   */
+  defineName: (label: string, replacing?: string) => NameProblem | null;
+  deleteName: (label: string) => void;
   /**
    * Writes one cell on a named tab on behalf of somebody else in the same workbook.
    *
@@ -485,7 +498,9 @@ function structuralOp(
   // and a split left on its old index would cut the sheet in the wrong place — quietly, since
   // nothing on screen says which row the split is *supposed* to be.
   const edited = s.sheets.map((t) =>
-    t.id === s.activeSheetId ? { ...t, sheet: shiftFreeze(edit(t.sheet), axis, opIndex, delta) } : t
+    t.id === s.activeSheetId
+      ? { ...t, sheet: withShiftedValidation(shiftFreeze(edit(t.sheet), axis, opIndex, delta), axis, opIndex, delta) }
+      : t
   );
   const fixed = shiftOtherSheetsForStructuralOp(edited, activeName, axis, opIndex, delta);
   return edited.map((t, i) => (fixed[i] === t.sheet ? t : { ...t, sheet: fixed[i] }));
@@ -574,6 +589,19 @@ function rewriteHistory(tabId: string, row: number, col: number, raw: string): v
   temporal.setState({ pastStates: pastStates.map(fix), futureStates: futureStates.map(fix) });
 }
 
+/** A dropdown is about a *cell*, so a row inserted above it takes the dropdown down with it. */
+function withShiftedValidation(sheet: SheetModel, axis: Axis, index: number, delta: 1 | -1): SheetModel {
+  const moved = shiftValidation(sheet.validation, axis, index, delta);
+  const names = shiftNames(sheet.names, axis, index, delta);
+  if (moved === sheet.validation && names === sheet.names) return sheet;
+  const next: SheetModel = { ...sheet, validation: moved, names };
+  // An absent key and a key holding `undefined` are the same thing to every reader, and different
+  // things to `JSON.stringify` — which is what autosave runs on.
+  if (!moved) delete next.validation;
+  if (!names) delete next.names;
+  return next;
+}
+
 export const useSheetStore = create<SheetState>()(
   persist(
     temporal(
@@ -635,9 +663,73 @@ export const useSheetStore = create<SheetState>()(
           set((s) => {
             // Covers the formula bar as well as the grid, so there's one place a locked cell
             // can't be written rather than a guard per entry point.
-            if (isTemplateLocked(activeTab(s).sheet.template, row, col)) return {};
+            const { sheet } = activeTab(s);
+            if (isTemplateLocked(sheet.template, row, col)) return {};
+            // Refused rather than warned about afterwards: a warning on a cell that already holds
+            // the wrong thing is a note about a mistake; refusing is the mistake not happening.
+            // Said out loud, because a keystroke that does nothing and says nothing is
+            // indistinguishable from a broken keyboard.
+            const refusal = checkValue(ruleAt(sheet, row, col), raw);
+            if (refusal) {
+              return say(getMessages().validation.refused[refusal](cellRef(row, col)));
+            }
             return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
           }),
+
+        /** Applies a rule to the selection, or clears it when `rule` is undefined. */
+        setValidation: (rule) =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            const next = withValidation(
+              activeTab(s).sheet,
+              { startRow: sel.startRow, startCol: sel.startCol, endRow: sel.endRow, endCol: sel.endCol },
+              rule
+            );
+            if (next === activeTab(s).sheet) return {};
+            return {
+              sheets: withActiveSheet(s, () => next),
+              ...say(
+                rule
+                  ? getMessages().validation.applied(rangeLabel(sel))
+                  : getMessages().validation.cleared(rangeLabel(sel))
+              ),
+            };
+          }),
+
+        defineName: (label, replacing) => {
+          const s = get();
+          const sheet = activeTab(s).sheet;
+          const problem = nameProblem(label, sheet.names, replacing);
+          if (problem) return problem;
+          const sel = activeSelectionOf(s);
+          const ref = refForSelection(sel);
+          const nextNames = replacing && nameKey(replacing) !== nameKey(label)
+            ? withName(withoutName(sheet.names, replacing) ?? undefined, label, ref)
+            : withName(sheet.names, label, ref);
+          set(() => ({
+            sheets: withActiveSheet(s, () => ({ ...sheet, names: nextNames })),
+            ...say(getMessages().names.defined(label.trim(), rangeLabel(sel))),
+          }));
+          return null;
+        },
+
+        deleteName: (label) =>
+          set((s) => {
+            const sheet = activeTab(s).sheet;
+            const names = withoutName(sheet.names, label);
+            if (names === sheet.names) return {};
+            const next: SheetModel = { ...sheet, names };
+            if (!names) delete next.names;
+            // Formulas that used it are left holding the name, which now reads `#NAME?`. Rewriting
+            // them back to addresses would be the friendlier-looking choice and the wrong one: it
+            // silently rewrites work the person did not ask to have rewritten, and `#NAME?` is
+            // both findable and undoable.
+            return {
+              sheets: withActiveSheet(s, () => next),
+              ...say(getMessages().names.deleted(label.trim())),
+            };
+          }),
+
         applyRemoteCell: (tabId, row, col, raw, spoken) => {
           // Paused around the write so the remote edit does not land in this person's undo stack.
           // `temporal` only exists once the store has been created, which is why it is reached for
