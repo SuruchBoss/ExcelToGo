@@ -17,8 +17,17 @@ import { ClientId, LiveMessage, Participant, parseLiveMessage } from "./liveSess
 
 const EVENT = "live";
 
-/** One channel per workbook row. The id is already a uuid, so it needs nothing added to it. */
-export const channelName = (workbookId: string) => `workbook:${workbookId}`;
+/**
+ * One channel per workbook row. The id is already a uuid, so it needs nothing added to it.
+ *
+ * The shape is not cosmetic: `0002_sharing_and_realtime.sql` splits this string on `:` to find out
+ * which workbook a subscriber is asking for, and refuses them if it is not theirs. Change the
+ * format here and the policy silently stops matching — which fails open on the read side, since a
+ * topic the policy cannot parse is a topic nobody may join, and fails *confusingly* everywhere
+ * else. `realtimeChannel.test.ts` reads the SQL and pins the two together.
+ */
+export const CHANNEL_PREFIX = "workbook:";
+export const channelName = (workbookId: string) => `${CHANNEL_PREFIX}${workbookId}`;
 
 /**
  * Presence state as Supabase hands it back: a map of key → the states tracked under that key.
@@ -54,9 +63,16 @@ export async function openRealtimeChannel({
   onStatus,
 }: RealtimeChannelOptions): Promise<LiveChannel> {
   const supabase = await getCloudClient();
+  // A private topic, which is the whole difference between "hard to guess" and "authorised". A
+  // public topic is joinable by anyone holding the anon key — and the anon key is in the
+  // JavaScript, for everyone. Marked private, Realtime asks the database whether this signed-in
+  // person may read this workbook before it lets them hear a single keystroke.
   const channel: RealtimeChannel = supabase.channel(channelName(workbookId), {
-    config: { presence: { key: self } },
+    config: { private: true, presence: { key: self } },
   });
+  // Realtime needs the access token to evaluate those policies. Without this call the subscription
+  // is refused, which is the correct direction to fail in, but only if it is not forgotten.
+  await supabase.realtime.setAuth();
 
   let messageHandler: (m: LiveMessage) => void = () => {};
   let presenceHandler: (p: Participant[]) => void = () => {};

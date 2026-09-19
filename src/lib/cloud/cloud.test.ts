@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { isCloudConfigured } from "./config";
-import { readWorkbook, toSummary, WORKBOOK_FORMAT, workbookPayload, wouldOverwriteNewer } from "./workbook";
+import {
+  isInvitableEmail,
+  normaliseEmail,
+  readWorkbook,
+  toSummary,
+  WORKBOOK_FORMAT,
+  workbookPayload,
+  wouldOverwriteNewer,
+} from "./workbook";
 import { createEmptySheet } from "@/lib/sheet";
 import { SheetTab } from "@/store/sheetStore";
 
@@ -91,11 +99,42 @@ describe("noticing another device got there first", () => {
 });
 
 describe("the listing shape", () => {
-  it("renames the column to what the UI reads", () => {
-    expect(toSummary({ id: "a", name: "งาน", updated_at: "2026-01-01T00:00:00.000Z" })).toEqual({
+  it("renames the columns to what the UI reads", () => {
+    expect(toSummary({ id: "a", name: "งาน", updated_at: "2026-01-01T00:00:00.000Z", user_id: "u1" })).toEqual({
       id: "a",
       name: "งาน",
       updatedAt: "2026-01-01T00:00:00.000Z",
+      ownerId: "u1",
     });
+  });
+
+  it("carries the owner, because the listing now holds other people's workbooks too", () => {
+    // Only an owner can invite, remove or delete. Without this field the UI would offer buttons
+    // the database refuses, which reads as a broken app rather than as a rule.
+    expect(toSummary({ id: "a", name: "x", updated_at: "", user_id: "u2" }).ownerId).toBe("u2");
+  });
+});
+
+describe("who can be invited", () => {
+  it("accepts an ordinary address", () => {
+    for (const email of ["somchai@example.com", "a@b.co", "first.last+tag@sub.domain.co.th"]) {
+      expect(isInvitableEmail(email)).toBe(true);
+    }
+  });
+
+  it("refuses what could not possibly match a sign-in", () => {
+    for (const junk of ["", "  ", "somchai", "@example.com", "somchai@", "a@b@c", "has space@x.com"]) {
+      expect(isInvitableEmail(junk)).toBe(false);
+    }
+  });
+
+  it("refuses one longer than the column allows, rather than letting the database say no", () => {
+    expect(isInvitableEmail(`${"a".repeat(310)}@example.com`)).toBe(false);
+  });
+
+  it("matches however the invitation was capitalised", () => {
+    // The trigger lower-cases on the way in; this is the other half, and without it an invitation
+    // to Somchai@example.com is never removable by someone who types it back in lower case.
+    expect(normaliseEmail("  Somchai@Example.COM ")).toBe("somchai@example.com");
   });
 });

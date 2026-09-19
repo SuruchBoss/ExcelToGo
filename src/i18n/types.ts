@@ -255,6 +255,22 @@ export interface Messages {
     working: string;
     privacy: string;
   };
+  share: {
+    /** Inviting other accounts to one saved workbook. */
+    title: string;
+    subtitle: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    invite: string;
+    invited: string;
+    sharedWith: (n: number) => string;
+    nobody: string;
+    remove: string;
+    confirmRemove: (email: string) => string;
+    ownerOnly: string;
+    sharedWithYou: string;
+    needsWorkbook: string;
+  };
   collab: {
     /** Live editing with other people in the same saved workbook. */
     title: string;

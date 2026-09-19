@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1058%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1067%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1058 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1067 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1058 passing tests could not catch
+### 🧪 What 1067 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1058 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1067 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -249,7 +249,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1058-case Vitest suite |
+| `npm test` | Run the 1067-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) |
 | `npm run check:e2e` | Drives the real app through 8 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
@@ -691,9 +691,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 ![Cloud save](public/screenshots/23-cloud-save.png)
 
-Run [`supabase/migrations/0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) against your
-project once first — it creates the table and the **row-level security** policies that keep one
-account's workbooks away from another's.
+Run both migrations against your project once first —
+[`0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) creates the table and the
+**row-level security** policies that keep one account's workbooks away from another's, and
+[`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql) adds sharing
+and authorises the live channel.
 
 - **The browser talks to your Supabase directly**, never through this app's server, so whoever
   deploys it never sees their users' spreadsheets.
@@ -707,14 +709,18 @@ account's workbooks away from another's.
 cloud code is unreachable, and the ~250KB Supabase client **is never downloaded**. That was checked
 by counting the chunks the browser actually requests, not assumed.
 
-**Not supported:** automatic sync (you press save), version history, or sharing a workbook with
-someone else.
+**Sharing works now** — the owner adds an email, and whoever signs in with that address on the same
+Supabase project can open and edit the workbook. There is no read-only role, and saying so is better
+than implying one: a read-only share the app cannot enforce in the grid would be a promise made in
+the database and broken in the browser.
+
+**Not supported:** automatic sync (you press save), or version history.
 
 ### 👥 Editing together
 
-Save a workbook to your Supabase project, press **"Join the live session"** in the cloud panel, and
-everyone who opens that workbook from the same project sees each other type, with a coloured dot
-for where each person's cursor is.
+Save a workbook to your Supabase project, share it with someone, press **"Join the live session"**
+in the cloud panel, and everyone who can open that workbook sees the others type, with a coloured
+dot for where each person's cursor is.
 
 It rides on **Supabase Realtime broadcast** rather than Postgres changes: a keystroke is not worth a
 row. Messages travel between the browsers that are connected right now and are never stored, so your
@@ -745,9 +751,22 @@ database still holds saved workbooks and nothing else.
   attached, so it cannot be captured from a deployment without a backend, and a mocked-up image
   would be a claim rather than evidence.
 
-Everything arriving on the channel **is checked before it is used**, not trusted: anyone holding the
-anon key can join. A `row` of `-1` reaches an array index, and a `raw` that is not a string reaches
-the formula engine.
+**The channel is authorised, not merely obscure.** This was got wrong first. A Supabase Realtime
+topic is public unless the client marks it private and the database says who may join, and the first
+version of this feature did not: row-level security protected the *saved* workbook while every
+keystroke travelled on a topic anyone holding the anon key could subscribe to — and the anon key is
+in the JavaScript, for everyone. The workbook id is a uuid, so it was hard to exploit, which is
+exactly the kind of thing that stays wrong for years. The topic is now private and
+[`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql) decides who may
+listen and who may speak, from the same membership that decides who may open the workbook at all.
+
+The topic's name is what the policy reads to find the workbook, so a test reads the SQL and pins the
+two together — neither language can see the other, and a drift would look like "live editing stopped
+working" rather than like a format change.
+
+Everything arriving on the channel **is still checked before it is used**, because authorisation
+says who may speak, not that what they said is well formed. A `row` of `-1` reaches an array index,
+and a `raw` that is not a string reaches the formula engine.
 
 ### 💬 Cell comments
 
@@ -1371,7 +1390,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1058 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1067 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1839,8 +1858,11 @@ real errors along with the miss:
 
 The nearest-match modes compare rather than assume the column is sorted, which is the case
 `VLOOKUP`'s approximate match gets silently wrong. Both arrays must be a single row or column of the
-same length: Excel would spill a whole row out of a two-dimensional return array, and this engine
-has no spilling, so that is refused rather than answered with the first cell.
+same length: Excel would spill a whole row out of a two-dimensional return array, and `XLOOKUP` here
+does not, so that is refused rather than answered with the first cell.
+(This line used to read "this engine has no spilling", which was true when it was written and stayed
+there after [array formulas](#-formulas-that-answer-with-a-whole-table-array-formulas) shipped —
+spilling exists now; `XLOOKUP` simply has not been wired to it.)
 
 **An argument can be left out mid-formula** — `XLOOKUP(a,b,c,,-1)` skips `if_not_found` to reach the
 match mode, the way Excel writes it. Before this the parser rejected the empty slot, which made
@@ -2149,13 +2171,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1058 cases across 65 files, via Vitest
+npm test      # 1067 cases across 65 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1058 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1067 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2213,10 +2235,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1058 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1067 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1058 passing tests could not catch](#-what-1058-passing-tests-could-not-catch), repeatable
+> [What 1067 passing tests could not catch](#-what-1067-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2245,12 +2267,12 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
 | `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
-| `cloud/cloud.test.ts` | 15 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
+| `cloud/cloud.test.ts` | 20 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
 | `cloud/liveSession.test.ts` | 22 | The live-editing rules: own echo, a tab that isn't here, a structural change → reload, the cell being edited → wait, a message that lost → drop · ties broken by client id, and both sides reaching the same answer |
 | `cloud/liveMessage.test.ts` | 7 | Validating what arrives from another browser (also counted among the security tests) |
 | `cloud/liveRoom.test.ts` | 21 | One room against a fake transport: an echo staying out of undo, an edit held until the editor closes (only the winner kept), a local edit that wins not being overwritten, and leaving actually going quiet |
 | `cloud/sheetDiff.test.ts` | 11 | What changed between two workbooks: one cell, an emptied cell, another tab, an added row → reload, 200+ cells at once → reload · and a count of how many rows were read, so copy-on-write staying true is a test |
-| `cloud/realtimeChannel.test.ts` | 5 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
+| `cloud/realtimeChannel.test.ts` | 9 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
@@ -2284,8 +2306,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       across Node 20.19, 22.12 and 24
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
-      rather than a hosted service. Still open: automatic sync, version history, and sharing a
-      workbook with someone else
+      rather than a hosted service. Sharing a workbook with another account shipped with the live
+      session that needed it. Still open: automatic sync and version history
 - [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
       each other type, presence shows where each cursor is, the cell you have open is never
       overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed

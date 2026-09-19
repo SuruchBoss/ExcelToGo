@@ -2,18 +2,21 @@
 
 import { create } from "zustand";
 import {
+  addMember,
   deleteWorkbook,
   fetchUpdatedAt,
   fetchWorkbook,
   insertWorkbook,
+  listMembers,
   listWorkbooks,
   onSessionChange,
+  removeMember,
   sendSignInLink,
   signOut,
   updateWorkbook,
 } from "@/lib/cloud/client";
 import { isCloudConfigured } from "@/lib/cloud/config";
-import { CloudWorkbookSummary, readWorkbook, wouldOverwriteNewer } from "@/lib/cloud/workbook";
+import { CloudWorkbookSummary, readWorkbook, WorkbookMember, wouldOverwriteNewer } from "@/lib/cloud/workbook";
 import { useSheetStore } from "./sheetStore";
 
 /**
@@ -34,6 +37,9 @@ interface LinkedWorkbook {
 
 interface CloudState {
   email: string | null;
+  /** This account's id, so the UI can tell a workbook of ours from one shared with us. */
+  userId: string | null;
+  members: WorkbookMember[];
   ready: boolean;
   busy: string | null;
   error: string | null;
@@ -49,6 +55,9 @@ interface CloudState {
   saveOver: (name: string) => Promise<void>;
   open: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  loadMembers: () => Promise<void>;
+  invite: (email: string) => Promise<void>;
+  revoke: (email: string) => Promise<void>;
   dismiss: () => void;
 }
 
@@ -58,6 +67,8 @@ let unsubscribe: (() => void) | null = null;
 
 export const useCloudStore = create<CloudState>((set, get) => ({
   email: null,
+  userId: null,
+  members: [],
   ready: false,
   busy: null,
   error: null,
@@ -70,9 +81,9 @@ export const useCloudStore = create<CloudState>((set, get) => ({
     if (!isCloudConfigured() || unsubscribe) return;
     try {
       unsubscribe = await onSessionChange((session) => {
-        set({ email: session?.user.email ?? null, ready: true });
+        set({ email: session?.user.email ?? null, userId: session?.user.id ?? null, ready: true });
         if (session) void get().refresh();
-        else set({ workbooks: [], linked: null });
+        else set({ workbooks: [], linked: null, members: [] });
       });
     } catch (e) {
       set({ ready: true, error: message(e) });
@@ -95,7 +106,7 @@ export const useCloudStore = create<CloudState>((set, get) => ({
     set({ busy: "signout", error: null });
     try {
       await signOut();
-      set({ email: null, workbooks: [], linked: null });
+      set({ email: null, userId: null, workbooks: [], linked: null, members: [] });
     } catch (e) {
       set({ error: message(e) });
     } finally {
@@ -177,6 +188,54 @@ export const useCloudStore = create<CloudState>((set, get) => ({
       // that is no longer there.
       if (get().linked?.id === id) set({ linked: null });
       await get().refresh();
+    } catch (e) {
+      set({ error: message(e) });
+    } finally {
+      set({ busy: null });
+    }
+  },
+
+  /**
+   * Who the open workbook is shared with.
+   *
+   * Empty rather than an error when nothing is linked: the panel asks for this whenever it opens,
+   * and "no workbook" is a state, not a failure.
+   */
+  loadMembers: async () => {
+    const linked = get().linked;
+    if (!linked) {
+      set({ members: [] });
+      return;
+    }
+    try {
+      set({ members: await listMembers(linked.id) });
+    } catch (e) {
+      set({ error: message(e) });
+    }
+  },
+
+  invite: async (email) => {
+    const linked = get().linked;
+    if (!linked) return;
+    set({ busy: "invite", error: null, notice: null });
+    try {
+      await addMember(linked.id, email);
+      set({ notice: "invited" });
+      await get().loadMembers();
+    } catch (e) {
+      set({ error: message(e) });
+    } finally {
+      set({ busy: null });
+    }
+  },
+
+  revoke: async (email) => {
+    const linked = get().linked;
+    if (!linked) return;
+    set({ busy: "invite", error: null });
+    try {
+      await removeMember(linked.id, email);
+      await get().loadMembers();
     } catch (e) {
       set({ error: message(e) });
     } finally {

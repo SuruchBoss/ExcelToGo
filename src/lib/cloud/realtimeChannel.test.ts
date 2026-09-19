@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { channelName, readPresence } from "./realtimeChannel";
+import { readFileSync } from "node:fs";
+import { CHANNEL_PREFIX, channelName, readPresence } from "./realtimeChannel";
 
 /**
  * Only the pure part of the adapter is tested here, and that is the point: everything else in that
@@ -32,5 +33,38 @@ describe("which channel a workbook uses", () => {
   it("is derived from the row id, which is already unique", () => {
     expect(channelName("9f3c")).toBe("workbook:9f3c");
     expect(channelName("a")).not.toBe(channelName("b"));
+  });
+});
+
+describe("the topic name and the policy that reads it", () => {
+  // `channelName()` builds a string; a policy in `0002_sharing_and_realtime.sql` takes that same
+  // string apart to decide who may join. Nothing in TypeScript can see the SQL, and nothing in the
+  // SQL can see the TypeScript, so the only thing holding them together is this test. A drift here
+  // fails closed — a topic the policy cannot parse is one nobody may subscribe to — which means it
+  // would look like "live editing stopped working" rather than like a format change.
+  const sql = readFileSync(new URL("../../../supabase/migrations/0002_sharing_and_realtime.sql", import.meta.url), "utf8");
+
+  it("uses the prefix the policy checks for", () => {
+    expect(CHANNEL_PREFIX).toBe("workbook:");
+    expect(sql).toContain(`<> '${CHANNEL_PREFIX}'`);
+  });
+
+  it("counts the prefix's characters the same on both sides", () => {
+    // `left(topic, 9)` and a nine-character prefix. Off by one and every topic is refused.
+    expect(sql).toContain(`left(topic, ${CHANNEL_PREFIX.length}) <>`);
+  });
+
+  it("splits on the separator the name actually contains", () => {
+    const [prefix, id] = channelName("9f3c").split(":");
+    expect(`${prefix}:`).toBe(CHANNEL_PREFIX);
+    expect(id).toBe("9f3c");
+    expect(sql).toContain("split_part(topic, ':', 2)");
+  });
+
+  it("opens the topic as private, or the policy is never consulted at all", () => {
+    // The one failure mode with no symptom: a public topic works perfectly and authorises nobody.
+    const source = readFileSync(new URL("./realtimeChannel.ts", import.meta.url), "utf8");
+    expect(source).toContain("private: true");
+    expect(source).toContain("setAuth()");
   });
 });

@@ -12,10 +12,18 @@
  */
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { CLOUD_ANON_KEY, CLOUD_URL, isCloudConfigured } from "./config";
-import { CloudWorkbookRow, CloudWorkbookSummary, toSummary, workbookPayload } from "./workbook";
+import {
+  CloudWorkbookRow,
+  CloudWorkbookSummary,
+  normaliseEmail,
+  toSummary,
+  WorkbookMember,
+  workbookPayload,
+} from "./workbook";
 import { SheetTab } from "@/store/sheetStore";
 
 export const WORKBOOKS_TABLE = "workbooks";
+export const MEMBERS_TABLE = "workbook_members";
 
 let clientPromise: Promise<SupabaseClient> | null = null;
 
@@ -75,7 +83,7 @@ export async function listWorkbooks(): Promise<CloudWorkbookSummary[]> {
   // filter here would read as if it were the thing enforcing that.
   const { data, error } = await supabase
     .from(WORKBOOKS_TABLE)
-    .select("id,name,updated_at")
+    .select("id,name,updated_at,user_id")
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(toSummary);
@@ -83,7 +91,7 @@ export async function listWorkbooks(): Promise<CloudWorkbookSummary[]> {
 
 export async function fetchWorkbook(id: string): Promise<CloudWorkbookRow> {
   const supabase = await getCloudClient();
-  const { data, error } = await supabase.from(WORKBOOKS_TABLE).select("id,name,updated_at,data").eq("id", id).single();
+  const { data, error } = await supabase.from(WORKBOOKS_TABLE).select("id,name,updated_at,user_id,data").eq("id", id).single();
   if (error) throw error;
   return data as CloudWorkbookRow;
 }
@@ -106,7 +114,7 @@ export async function insertWorkbook(name: string, sheets: SheetTab[]): Promise<
   const { data, error } = await supabase
     .from(WORKBOOKS_TABLE)
     .insert({ name, user_id: userId, data: workbookPayload(sheets) })
-    .select("id,name,updated_at")
+    .select("id,name,updated_at,user_id")
     .single();
   if (error) throw error;
   return toSummary(data);
@@ -118,10 +126,56 @@ export async function updateWorkbook(id: string, name: string, sheets: SheetTab[
     .from(WORKBOOKS_TABLE)
     .update({ name, data: workbookPayload(sheets), updated_at: new Date().toISOString() })
     .eq("id", id)
-    .select("id,name,updated_at")
+    .select("id,name,updated_at,user_id")
     .single();
   if (error) throw error;
   return toSummary(data);
+}
+
+/**
+ * Who a workbook is shared with.
+ *
+ * No `workbook_id` filter for the same reason `listWorkbooks` has no `user_id` filter: row-level
+ * security already limits this to workbooks the caller can reach, and a filter here would read as
+ * if it were the thing enforcing that. The `eq` below is narrowing, not guarding.
+ */
+export async function listMembers(workbookId: string): Promise<WorkbookMember[]> {
+  const supabase = await getCloudClient();
+  const { data, error } = await supabase
+    .from(MEMBERS_TABLE)
+    .select("email,created_at")
+    .eq("workbook_id", workbookId)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ email: row.email as string, invitedAt: row.created_at as string }));
+}
+
+/**
+ * Invites an email address to a workbook.
+ *
+ * The row is written whether or not anybody holds that address — there is no user directory to
+ * check it against, and an invitation that waits for its person is the behaviour you want anyway.
+ * Only the owner may do this, which the policy enforces rather than this function.
+ */
+export async function addMember(workbookId: string, email: string): Promise<void> {
+  const supabase = await getCloudClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) throw new Error("not signed in");
+  const { error } = await supabase
+    .from(MEMBERS_TABLE)
+    .insert({ workbook_id: workbookId, email: normaliseEmail(email), invited_by: userId });
+  if (error) throw error;
+}
+
+export async function removeMember(workbookId: string, email: string): Promise<void> {
+  const supabase = await getCloudClient();
+  const { error } = await supabase
+    .from(MEMBERS_TABLE)
+    .delete()
+    .eq("workbook_id", workbookId)
+    .eq("email", normaliseEmail(email));
+  if (error) throw error;
 }
 
 export async function deleteWorkbook(id: string): Promise<void> {

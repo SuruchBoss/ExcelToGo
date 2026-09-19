@@ -6,6 +6,7 @@ import { useCloudStore } from "@/store/cloudStore";
 import { useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import LivePresence from "./LivePresence";
+import ShareWorkbook from "./ShareWorkbook";
 
 /**
  * Sign in, save the open workbook, and pick one back up.
@@ -15,7 +16,7 @@ import LivePresence from "./LivePresence";
  */
 export default function CloudPanel() {
   const t = useT();
-  const { email, busy, error, notice, workbooks, linked } = useCloudStore();
+  const { email, userId, busy, error, notice, workbooks, linked } = useCloudStore();
   const { start, signIn, leave, refresh, save, saveOver, open, remove, dismiss } = useCloudStore();
   const activeName = useSheetStore((s) => s.sheets[0]?.name ?? "ExcelToGo");
   const [address, setAddress] = useState("");
@@ -62,9 +63,11 @@ export default function CloudPanel() {
                 ? error
                 : notice === "linkSent"
                   ? t.cloud.linkSent
-                  : notice === "opened"
-                    ? t.cloud.opened
-                    : t.cloud.saved}
+                  : notice === "invited"
+                    ? t.share.invited
+                    : notice === "opened"
+                      ? t.cloud.opened
+                      : t.cloud.saved}
         </button>
       )}
 
@@ -149,6 +152,8 @@ export default function CloudPanel() {
             </div>
           </div>
 
+          <ShareWorkbook />
+
           <LivePresence />
 
           <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -173,6 +178,9 @@ export default function CloudPanel() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium text-zinc-700">{w.name}</p>
                     <p className="truncate text-[11px] text-zinc-500">
+                      {/* The listing holds workbooks other people shared, and the difference
+                          matters: only an owner can share or delete one. */}
+                      {w.ownerId !== userId && <span className="text-emerald-700">{t.share.sharedWithYou} · </span>}
                       {t.cloud.updatedAt(new Date(w.updatedAt).toLocaleString())}
                     </p>
                   </div>
@@ -184,18 +192,20 @@ export default function CloudPanel() {
                   >
                     <FolderOpen size={13} />
                   </button>
-                  <button
-                    onClick={() => {
-                      // Deleting someone's only copy is worth one question, and the browser's own
-                      // dialog is the one place a click can't be mis-aimed past.
-                      if (window.confirm(t.cloud.confirmRemove(w.name))) void remove(w.id);
-                    }}
-                    disabled={working}
-                    title={t.cloud.removeWorkbook}
-                    className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {w.ownerId === userId && (
+                    <button
+                      onClick={() => {
+                        // Deleting someone's only copy is worth one question, and the browser's own
+                        // dialog is the one place a click can't be mis-aimed past.
+                        if (window.confirm(t.cloud.confirmRemove(w.name))) void remove(w.id);
+                      }}
+                      disabled={working}
+                      title={t.cloud.removeWorkbook}
+                      className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               ))
             )}

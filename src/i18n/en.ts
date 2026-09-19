@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1058 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1067 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -239,7 +239,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1058", label: "automated tests" },
+      { value: "1067", label: "automated tests" },
       { value: "130", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -303,6 +303,21 @@ export const en: Messages = {
     unreadable: "This workbook was saved by a newer version of the app and can't be opened here.",
     working: "Working...",
     privacy: "Your data goes from this browser straight to your Supabase project — it does not pass through this app's server.",
+  },
+  share: {
+    title: "Share with someone",
+    subtitle: "Add the email of whoever should be able to open and edit this workbook. They sign in with that email on the same Supabase project.",
+    emailLabel: "Email to invite",
+    emailPlaceholder: "somchai@example.com",
+    invite: "Invite",
+    invited: "Invited — it opens for them as soon as they sign in with that address.",
+    sharedWith: (n) => `Shared with ${n} ${n === 1 ? "person" : "people"}`,
+    nobody: "Not shared with anyone yet.",
+    remove: "Remove",
+    confirmRemove: (email) => `Remove ${email} from this workbook?`,
+    ownerOnly: "Only the workbook's owner can invite or remove people.",
+    sharedWithYou: "Shared with you",
+    needsWorkbook: "Save to the cloud first, then share it.",
   },
   collab: {
     title: "Edit together",
