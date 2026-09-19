@@ -425,6 +425,9 @@ export interface Messages {
    * and saying it twice is worse than not saying it.
    */
   live: {
+    /** Freezing is a band of the screen changing behaviour, none of it where the cursor is. */
+    frozen: (rows: number, cols: number) => string;
+    unfrozen: string;
     sorted: (column: string, ascending: boolean) => string;
     filtered: (column: string, visible: number, total: number) => string;
     filterCleared: (column: string) => string;
@@ -485,6 +488,12 @@ export interface Messages {
     anyKey: string;
     groups: Record<string, string>;
     items: Record<string, string>;
+  };
+  freeze: {
+    /** The pane split: rows and columns that stay put while the rest scrolls. */
+    freeze: string;
+    unfreeze: string;
+    title: string;
   };
   grid: {
     filterColumnTitle: string;

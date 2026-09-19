@@ -11,12 +11,14 @@ import {
   BarChart3,
   MessageSquareText,
   Palette,
+  Snowflake,
   Table2,
   TableCellsMerge,
 } from "lucide-react";
 import { getComment, NumberFormat } from "@/lib/sheet";
 import { isSingleCell } from "@/types/sheet-ui";
 import { mergeWouldDiscard, rangeHasMerge } from "@/lib/sheetMerges";
+import { isFrozen } from "@/lib/sheetFreeze";
 import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import CommentPopover from "@/features/grid/CommentPopover";
@@ -48,6 +50,8 @@ export default function FormatBar() {
   const chartOpen = useSheetStore((s) => s.sidebarMode === "chart");
   const pivotOpen = useSheetStore((s) => s.sidebarMode === "pivot");
   const toggleMerge = useSheetStore((s) => s.toggleMerge);
+  const toggleFreeze = useSheetStore((s) => s.toggleFreeze);
+  const frozen = isFrozen(sheet.freeze);
   // Three stacked bars ate a fifth of a 768px laptop screen before a single grid row appeared.
   // Formatting is the least-used of the three, so the whole row folds away — hiding only its
   // contents saved 14px and not one extra row, which is decoration rather than a fix.
@@ -143,6 +147,22 @@ export default function FormatBar() {
       >
         <TableCellsMerge size={14} />{" "}
         <span className="hidden sm:inline">{merging ? t.merge.split : t.merge.join}</span>
+      </button>
+
+      <button
+        onClick={toggleFreeze}
+        // Disabled at A1 because there is nothing above or to the left of it to freeze, and a
+        // button that looks live and does nothing is worse than one that says it cannot.
+        disabled={!frozen && selection.anchorRow === 0 && selection.anchorCol === 0}
+        aria-label={frozen ? t.freeze.unfreeze : t.freeze.freeze}
+        title={frozen ? t.freeze.unfreeze : t.freeze.title}
+        className={clsx(
+          "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400 sm:h-7 sm:min-w-0 sm:justify-start",
+          frozen ? "border-blue-400 bg-blue-50 text-blue-800" : "border-zinc-300 text-zinc-700"
+        )}
+      >
+        <Snowflake size={14} />{" "}
+        <span className="hidden sm:inline">{frozen ? t.freeze.unfreeze : t.freeze.freeze}</span>
       </button>
 
       <div className="mx-1 h-5 w-px bg-zinc-200" />

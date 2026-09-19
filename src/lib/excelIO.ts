@@ -3,6 +3,7 @@ import { chartDataFrom } from "./charts";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
 import { colToLetters } from "./formulaEngine/address";
+import { clampFreeze, isFrozen } from "./sheetFreeze";
 import { PendingChart, injectCharts } from "./xlsxCharts";
 import { seriesRefsFrom } from "./xlsxChartXml";
 import ExcelJS from "exceljs";
@@ -397,6 +398,18 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
   }
   if (anyHeight) sheet.rowHeights = heights;
 
+  // A file that arrives frozen opens frozen. `views` may hold several; the frozen one is the only
+  // kind this app can show, and a split of zero on both axes is the same as none.
+  // Narrowed by hand: ExcelJS types `views` as a union, and only the frozen member carries the
+  // split, so the discriminant does not reach the fields through `find`.
+  const frozenView = worksheet.views?.find((v) => v.state === "frozen") as
+    | { xSplit?: number; ySplit?: number }
+    | undefined;
+  if (frozenView) {
+    const freeze = { rows: Number(frozenView.ySplit ?? 0), cols: Number(frozenView.xSplit ?? 0) };
+    if (isFrozen(freeze)) sheet.freeze = clampFreeze(sheet, freeze);
+  }
+
   // A form's title band is usually one cell merged across several columns; without this the
   // title lands in column A and the band breaks up behind it.
   const merges = (worksheet.model?.merges ?? [])
@@ -547,6 +560,23 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
     const pt = pxToPt(px);
     if (pt !== undefined) worksheet.getRow(i + 1).height = pt;
   });
+
+  // Frozen panes are a *view*, which is why they live on `views` rather than on the cells. Excel
+  // counts the split as "how many are above/left of the first scrolling cell", which is exactly
+  // what this model stores, so the numbers carry across without arithmetic.
+  if (isFrozen(sheet.freeze)) {
+    worksheet.views = [
+      {
+        state: "frozen",
+        xSplit: sheet.freeze.cols,
+        ySplit: sheet.freeze.rows,
+        // Where the scrolling half starts. Left out and Excel opens the file scrolled to A1 with
+        // the panes frozen anyway, which is right but looks like the split was ignored.
+        topLeftCell: `${colToLetters(sheet.freeze.cols)}${sheet.freeze.rows + 1}`,
+        activeCell: "A1",
+      },
+    ];
+  }
 }
 
 export interface ExportableSheet {

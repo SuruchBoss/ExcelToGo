@@ -4,6 +4,7 @@ import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
 import { computeSheet, createEmptySheet, createWorkbookResolver, setCellRaw, SheetModel } from "./sheet";
 import { evaluateConditionalFormats } from "./conditionalFormat";
 import { cellKey } from "./sheetTemplate";
+import { withFreeze } from "./sheetFreeze";
 
 /** Builds a real .xlsx in memory the way someone would hand-build a form in Excel. */
 async function templateFile(opts: { protect?: boolean } = {}): Promise<File> {
@@ -385,5 +386,33 @@ describe("formulas through an export → import cycle", () => {
     const resolver = createWorkbookResolver(back.map((t) => ({ name: t.name, sheet: t.sheet })));
     expect(computeSheet(back[0].sheet, resolver).values[2][0]).toBe(before[0].computed.values[2][0]);
     expect(computeSheet(back[1].sheet, resolver).values[0][0]).toBe(60); // (10 + 20) * 2
+  });
+});
+
+describe("frozen panes go into the file and come back", () => {
+  const reimport = async (sheet: SheetModel) => {
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet));
+    const file = new File([await blob.arrayBuffer()], "frozen.xlsx");
+    const [{ sheet: back }] = await importWorkbookFromFile(file);
+    return back;
+  };
+
+  it("round-trips a split", async () => {
+    // Excel counts the split the same way this model does — how many rows and columns are above
+    // and left of the first scrolling cell — so the numbers carry across without arithmetic.
+    // Worth a test rather than a comment.
+    const back = await reimport(withFreeze(createEmptySheet(20, 8), { rows: 2, cols: 1 }));
+    expect(back.freeze).toEqual({ rows: 2, cols: 1 });
+  });
+
+  it("writes a frozen view Excel will recognise", async () => {
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(withFreeze(createEmptySheet(20, 8), { rows: 3, cols: 0 }))));
+    const view = ws.views?.[0] as { state?: string; ySplit?: number; xSplit?: number } | undefined;
+    expect(view?.state).toBe("frozen");
+    expect(view?.ySplit).toBe(3);
+  });
+
+  it("writes nothing for a sheet with no split, and reads none back", async () => {
+    expect((await reimport(createEmptySheet(10, 5))).freeze).toBeUndefined();
   });
 });

@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1122%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1140%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -53,7 +53,7 @@ workbooks, conditional formatting that re-colours cells from their current value
 selected range, and full-fidelity Excel/PDF export — where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1122 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1140 automated tests.
 
 ---
 
@@ -97,7 +97,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1122 passing tests could not catch
+### 🧪 What 1140 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -108,7 +108,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1122 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1140 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -249,7 +249,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1122-case Vitest suite |
+| `npm test` | Run the 1140-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -868,6 +868,7 @@ mock-up.
 | `PageUp` / `PageDown` | A screen at a time, **measured in pixels rather than a row count**, because an imported file's rows are not all the same height |
 | `Ctrl+A` | The table you are standing in; press again for the whole sheet, the way Excel does |
 | `Ctrl+Space` / `Shift+Space` | The whole column / the whole row the selection touches; both together, the sheet |
+| **Freeze panes** (format bar) | Everything above and left of the cursor stays put while the rest scrolls. The split lives on the sheet, so it survives a reload, goes into undo, follows a row inserted above it, and travels in the `.xlsx` both ways |
 | `Ctrl+Enter` | Put the cell the cursor is on into everything selected, in one undo step — references shift as they would in a drag-fill, because a formula that kept pointing at the anchor's row would fill a column with the same wrong number |
 | `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | Right/left · down/up |
 | `F2` · `Delete` · `Escape` | Edit in place · clear the selection · cancel |
@@ -1435,7 +1436,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1122 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1140 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1677,6 +1678,7 @@ src/
     sheetCodec.ts            # Between the in-memory model (a full grid) and what goes into localStorage
                               # (only the cells holding something) — the old ceiling came from the
                               # sheet's size rather than its contents. Reads the old shape too (tested)
+    sheetFreeze.ts           # Rows and columns that stay put while the rest scrolls, and follow row edits (tested)
     errorReport.ts           # Crash reports for the operator (off unless a URL is set) — keys, tokens, emails and Thai text scrubbed first (tested)
     crashRescue.ts           # Rescues the sheet out of localStorage when a render throws and offers it
                               # as one CSV per tab — touches no store, model or engine, since any of
@@ -2277,13 +2279,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1122 cases across 69 files, via Vitest
+npm test      # 1140 cases across 70 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1122 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1140 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2377,10 +2379,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1122 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1140 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1122 passing tests could not catch](#-what-1122-passing-tests-could-not-catch), repeatable
+> [What 1140 passing tests could not catch](#-what-1140-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2496,7 +2498,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       to clear, and Excel's right-drag menu of fill options.
 - [x] **Find and replace** — done (see [find and replace](#-find-and-replace)). Still open: searching
       the displayed value as well as the raw text, and regular expressions.
-- [ ] **Freezing panes** beyond the already-sticky header row/column
+- [x] **Freezing panes** beyond the already-sticky header row/column — done (see [the Excel keyboard](#️-the-excel-keyboard)):
+      the split lives on the sheet, so it survives a reload, goes into undo, follows a row inserted above
+      it, and carries into `.xlsx` both ways. Still open: no split at an arbitrary scroll position, only
+      at the cursor, which is the shape Excel's own button has.
 - [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
 - [x] **Cell comments** — done (see ✨ Features): a note per cell with an amber corner, following

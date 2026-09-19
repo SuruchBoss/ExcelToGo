@@ -1,3 +1,4 @@
+import type { FreezePanes } from "./sheetFreeze";
 import { CellComments, shiftComments } from "./cellComments";
 import { PivotSource } from "./pivot";
 import { cellRef, colToLetters } from "./formulaEngine/address";
@@ -35,6 +36,9 @@ export interface SheetModel {
   comments?: CellComments;
   /** Set on a sheet that *is* a pivot: where it was built from, so it can be rebuilt. See pivot.ts. */
   pivot?: PivotSource;
+  /** Rows and columns that stay put while the rest scrolls. Absent means nothing is frozen. See
+   *  sheetFreeze.ts. */
+  freeze?: FreezePanes;
 }
 
 export function createEmptySheet(rows = DEFAULT_ROWS, cols = DEFAULT_COLS): SheetModel {

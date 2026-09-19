@@ -118,7 +118,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1122 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1140 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -239,7 +239,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1122", label: "automated tests" },
+      { value: "1140", label: "automated tests" },
       { value: "159", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -505,6 +505,13 @@ export const en: Messages = {
     ok: "OK",
   },
   live: {
+    frozen: (rows, cols) =>
+      rows > 0 && cols > 0
+        ? `Froze the first ${rows} row${rows === 1 ? "" : "s"} and ${cols} column${cols === 1 ? "" : "s"}`
+        : rows > 0
+          ? `Froze the first ${rows} row${rows === 1 ? "" : "s"}`
+          : `Froze the first ${cols} column${cols === 1 ? "" : "s"}`,
+    unfrozen: "Rows and columns are no longer frozen",
     sorted: (column, ascending) => `Sorted column ${column} ${ascending ? "ascending" : "descending"}`,
     filtered: (column, visible, total) => `Filtered column ${column}: ${visible} of ${total} rows shown`,
     filterCleared: (column) => `Cleared the filter on column ${column}`,
@@ -599,6 +606,11 @@ export const en: Messages = {
       find: "Find and replace",
       help: "Open or close this page",
     },
+  },
+  freeze: {
+    freeze: "Freeze panes",
+    unfreeze: "Unfreeze",
+    title: "Keep every row above and every column left of the cursor in place while the rest scrolls",
   },
   grid: {
     filterColumnTitle: "Filter this column",

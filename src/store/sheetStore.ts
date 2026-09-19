@@ -64,6 +64,7 @@ import { FormulaDef } from "@/lib/formulaCatalog";
 import { addMerge, rangeHasMerge, removeMerges } from "@/lib/sheetMerges";
 import { isSingleCell, normalizeSelection, singleCellSelection, SelectionRect } from "@/types/sheet-ui";
 import { shiftFormulaRefs } from "@/lib/formulaEngine/shift";
+import { shiftFreeze, toggleFreezeAt } from "@/lib/sheetFreeze";
 import { getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
@@ -245,6 +246,12 @@ interface SheetState {
    * pointing at the original row would be a column of the same wrong number.
    */
   fillSelectionFromAnchor: () => void;
+  /**
+   * Freezes everything above and to the left of the cursor, or unfreezes if something already is.
+   *
+   * Excel's "Freeze Panes", including the part where the same button is both halves.
+   */
+  toggleFreeze: () => void;
   /** Moves the cursor onto a match, switching sheets if it is on another one. */
   goToMatch: (match: Match) => void;
   /** Rewrites one cell. Returns whether it changed, so the caller can count. */
@@ -474,7 +481,12 @@ function structuralOp(
   edit: (sheet: SheetModel) => SheetModel
 ): SheetTab[] {
   const activeName = activeTab(s).name;
-  const edited = s.sheets.map((t) => (t.id === s.activeSheetId ? { ...t, sheet: edit(t.sheet) } : t));
+  // `shiftFreeze` after `edit`, not inside it: the row/column helpers know nothing about panes,
+  // and a split left on its old index would cut the sheet in the wrong place — quietly, since
+  // nothing on screen says which row the split is *supposed* to be.
+  const edited = s.sheets.map((t) =>
+    t.id === s.activeSheetId ? { ...t, sheet: shiftFreeze(edit(t.sheet), axis, opIndex, delta) } : t
+  );
   const fixed = shiftOtherSheetsForStructuralOp(edited, activeName, axis, opIndex, delta);
   return edited.map((t, i) => (fixed[i] === t.sheet ? t : { ...t, sheet: fixed[i] }));
 }
@@ -758,6 +770,25 @@ export const useSheetStore = create<SheetState>()(
           );
           if (split) applyFill(set, get, split.source, split.target);
         },
+
+        toggleFreeze: () =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            const { sheet } = activeTab(s);
+            const next = toggleFreezeAt(sheet, sel.anchorRow, sel.anchorCol);
+            if (next === sheet) return {};
+            const freeze = next.freeze;
+            return {
+              sheets: withActiveSheet(s, () => next),
+              // The change is a whole band of the screen behaving differently, and none of it is
+              // where the cursor is.
+              ...say(
+                freeze
+                  ? getMessages().live.frozen(freeze.rows, freeze.cols)
+                  : getMessages().live.unfrozen
+              ),
+            };
+          }),
 
         fillSelectionFromAnchor: () =>
           set((s) => {

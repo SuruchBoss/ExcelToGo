@@ -26,7 +26,7 @@ export default function OgImage() {
   const stats = [
     ["64", "engine functions"],
     ["37", "palette formulas"],
-    ["1122", "automated tests"],
+    ["1140", "automated tests"],
     ["159", "of them security"],
     ["0", "formula libraries"],
   ];
@@ -52,7 +52,7 @@ export default function OgImage() {
 
         <div
           style={{
-            fontSize: 69,
+            fontSize: 70,
             fontWeight: 700,
             lineHeight: 1.12,
             letterSpacing: -2,

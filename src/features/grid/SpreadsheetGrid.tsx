@@ -31,7 +31,8 @@ import { mergeLookup } from "@/lib/sheetMerges";
 import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 // Shared with the chart overlay, which places charts in these same coordinates.
-import { COL_WIDTH, columnLeft, columnWidth, ROW_HEADER_WIDTH, ROW_HEIGHT } from "@/lib/gridGeometry";
+import { COL_WIDTH, columnLeft, columnWidth, ROW_HEADER_WIDTH, ROW_HEIGHT, rowTop } from "@/lib/gridGeometry";
+import { NO_FREEZE } from "@/lib/sheetFreeze";
 import { rowOffsets, rowWindow, scrollToShowRow } from "@/lib/rowWindow";
 import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gridNavigation";
 import ChartOverlay from "./ChartOverlay";
@@ -127,11 +128,50 @@ export default function SpreadsheetGrid() {
   );
 
 
+  /**
+   * The rows that stay put, and the ones that scroll.
+   *
+   * A frozen row has to be in the DOM at row four thousand, which is precisely what the windowing
+   * exists to avoid — so the frozen block is rendered outside the window, always, and the window
+   * skips it. The spacer standing in for everything scrolled past then has to be short by however
+   * much of it is already on screen above, or the sheet gains a frozen block's worth of height it
+   * does not have.
+   */
+  const freeze = sheet.freeze ?? NO_FREEZE;
+  const frozenRows = useMemo(() => {
+    const out: number[] = [];
+    for (let r = 0; r < Math.min(freeze.rows, sheet.rows); r++) if (!hiddenRows.has(r)) out.push(r);
+    return out;
+  }, [freeze.rows, sheet.rows, hiddenRows]);
+
   const visibleRows = useMemo(() => {
     const out: number[] = [];
-    for (let r = window_.start; r <= window_.end; r++) if (!hiddenRows.has(r)) out.push(r);
+    for (let r = Math.max(window_.start, freeze.rows); r <= window_.end; r++) {
+      if (!hiddenRows.has(r)) out.push(r);
+    }
     return out;
-  }, [window_.start, window_.end, hiddenRows]);
+  }, [window_.start, window_.end, hiddenRows, freeze.rows]);
+
+  const padAfterFrozen = Math.max(
+    0,
+    window_.topPad - (rowTop(sheet, Math.min(freeze.rows, window_.start), hiddenRows) - ROW_HEIGHT)
+  );
+
+  /** Where a frozen cell parks. `rowTop` and `columnLeft` already count the grid's own headers. */
+  const frozenTop = (r: number) => (r < freeze.rows ? rowTop(sheet, r, hiddenRows) : undefined);
+  const frozenLeft = (c: number) => (c < freeze.cols ? columnLeft(sheet, c) : undefined);
+  /**
+   * Stacking, from the back: an ordinary cell, a frozen column, a frozen row, both at once. All of
+   * them below the column headers (z-20) and the corner (z-30), which sit over everything.
+   */
+  const frozenZ = (r: number, c: number) => {
+    const row = r < freeze.rows;
+    const col = c < freeze.cols;
+    if (row && col) return 18;
+    if (row) return 15;
+    if (col) return 12;
+    return undefined;
+  };
 
   // Follow the cursor.
   //
@@ -521,6 +561,271 @@ export default function SpreadsheetGrid() {
     }
   };
 
+  /**
+   * One row of the grid.
+   *
+   * Lifted out of the map it used to be written inside because there are now two maps: the
+   * frozen rows, which are always rendered, and the windowed ones. Two copies of two hundred
+   * lines of JSX would have drifted the first time anyone touched one of them.
+   */
+  const renderRow = (r: number) => (
+          <tr key={r} aria-rowindex={r + 2}>
+            <th
+              scope="row"
+              aria-colindex={1}
+              onClick={() => selectWholeRow(r)}
+              onContextMenu={(e) => openHeaderMenu(e, "row", r)}
+              className={clsx(
+                "sticky left-0 cursor-pointer border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
+                r >= selection.startRow && r <= selection.endRow ? "bg-blue-100 text-blue-800" : "bg-zinc-100"
+              )}
+              style={{
+                width: ROW_HEADER_WIDTH,
+                minWidth: ROW_HEADER_WIDTH,
+                height: ROW_HEIGHT,
+                top: frozenTop(r),
+                // Above the frozen cells it sits beside, below the column headers it slides under.
+                zIndex: r < freeze.rows ? 19 : 10,
+              }}
+            >
+              {r + 1}
+            </th>
+            {Array.from({ length: sheet.cols }, (_, c) => {
+              const value = values[r]?.[c];
+              const isErr = value instanceof FormulaError;
+              const editingHere = editing?.row === r && editing?.col === c;
+              const format = sheet.formats[r]?.[c];
+              const cf = cfVisuals[r]?.[c];
+              const block = blockAt(r, c);
+              // A cell swallowed by a merge isn't rendered at all — its space belongs to the
+              // merge's top-left cell, which carries the span.
+              if (merges.covered.has(`${r},${c}`)) return null;
+              const merge = merges.anchors.get(`${r},${c}`);
+              const locked = isTemplateLocked(sheet.template, r, c);
+              const comment = getComment(sheet.comments, r, c);
+              const choices = templateChoices(sheet.template, r, c);
+              const isField = sheet.template !== undefined && !locked;
+              // Borrowed from a formula in another cell: the value is real, the cell is empty.
+              // Typing here breaks the array into #SPILL!, which is Excel's behaviour and needs
+              // no code — the raw text stops being empty and the anchor refuses on the next pass.
+              const spilledFrom = spill.get(packCell(r, c));
+              const isSpilled = spilledFrom !== undefined && spilledFrom !== packCell(r, c);
+              return (
+                <td
+                  key={c}
+                  role="gridcell"
+                  aria-selected={isInSelection(r, c)}
+                  aria-colindex={c + 2}
+                  aria-readonly={locked || undefined}
+                  // One tab stop for the whole grid, not one per cell — the roving tabindex the
+                  // grid pattern calls for. Every cell was tabbable before, which on the sample
+                  // sheet alone meant walking three hundred Tab presses to reach the sheet tabs.
+                  tabIndex={isActive(r, c) ? 0 : -1}
+                  data-row={r}
+                  data-col={c}
+                  rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
+                  colSpan={merge ? merge.endCol - merge.startCol + 1 : undefined}
+                  onMouseDown={(e) => handleMouseDown(r, c, e.shiftKey)}
+                  onMouseEnter={() => handleMouseEnter(r, c)}
+                  onDoubleClick={() => startEdit(r, c)}
+                  // Touch has no keyboard to start typing into and no comfortable double-tap, so
+                  // a second tap on the cell already selected opens the editor — the pattern
+                  // every mobile spreadsheet uses. Sampled on pointerdown because mousedown has
+                  // already moved the selection by the time pointerup runs, which would make the
+                  // very first tap open the editor.
+                  onPointerDown={(e) => {
+                    if (e.pointerType === "touch") tappedAlreadySelected.current = isActive(r, c);
+                  }}
+                  onPointerUp={(e) => {
+                    if (e.pointerType !== "touch" || !tappedAlreadySelected.current) return;
+                    if (!editingHere && !locked) startEdit(r, c);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverCell({ row: r, col: c });
+                  }}
+                  onDragLeave={() => setDragOverCell(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverCell(null);
+                    if (onLiveDrop(r, c, e)) return;
+                    const formulaId = e.dataTransfer.getData("text/formula-id");
+                    if (formulaId) {
+                      setSelection(singleCellSelection(r, c));
+                      onFormulaDrop(r, c, formulaId);
+                    }
+                  }}
+                  className={clsx(
+                    "relative border-b border-r border-zinc-200 px-2 text-sm outline-none",
+                    // A live block reads as one object: tinted fill, a green outline on its edges,
+                    // and its header row set apart from the values below it.
+                    block && "bg-emerald-50/70",
+                    block && block.kind === "table" && r === block.anchorRow && "font-semibold text-emerald-800",
+                    block && r === block.anchorRow && "border-t-2 border-t-emerald-200",
+                    block && c === block.anchorCol && "border-l-2 border-l-emerald-200",
+                    block && c === block.anchorCol + block.cols - 1 && "border-r-2 border-r-emerald-200",
+                    block && r === block.anchorRow + block.rows - 1 && "border-b-2 border-b-emerald-200",
+                    // A form reads the way a paper one does: the printed parts are flat and
+                    // grey, the blanks are white. Amber is kept for warnings alone — dressing
+                    // twenty ordinary input cells in it made a form look like twenty alerts.
+                    // Faint on purpose. It has to be visible enough that "why can I not edit
+                    // this" has an answer on screen, and quiet enough that a filled array does
+                    // not look like an error next to ordinary numbers.
+                    isSpilled && "bg-violet-50/60 text-violet-900",
+                    locked && "bg-zinc-100 text-zinc-500",
+                    isField && "bg-white ring-1 ring-inset ring-emerald-400",
+                    isActive(r, c) && "ring-2 ring-inset ring-blue-500",
+                    !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
+                    dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
+                    isInClipboard(r, c) && (clipboard?.cut ? "outline-dashed outline-2 outline-orange-400 -outline-offset-2" : "outline-dashed outline-2 outline-blue-400 -outline-offset-2"),
+                    isErr && "text-red-600"
+                  )}
+                  style={(() => {
+                    const h = sheet.rowHeights?.[r] ?? ROW_HEIGHT;
+                    // Where the file drew a border, it replaces the grid's own faint line —
+                    // a 1px default would otherwise hide the heavy rule under a table heading.
+                    const b = format?.borders;
+                    const edge = (color: string | undefined) =>
+                      color ? { style: "solid" as const, width: 2, color } : undefined;
+                    const borders = {
+                      borderTopStyle: edge(b?.top)?.style,
+                      borderTopWidth: edge(b?.top)?.width,
+                      borderTopColor: b?.top,
+                      borderRightStyle: edge(b?.right)?.style,
+                      borderRightWidth: edge(b?.right)?.width,
+                      borderRightColor: b?.right,
+                      borderBottomStyle: edge(b?.bottom)?.style,
+                      borderBottomWidth: edge(b?.bottom)?.width,
+                      borderBottomColor: b?.bottom,
+                      borderLeftStyle: edge(b?.left)?.style,
+                      borderLeftWidth: edge(b?.left)?.width,
+                      borderLeftColor: b?.left,
+                    };
+                    // A rule's fill replaces the painted-on one: the value is the more current
+                    // answer, and showing the stale colour underneath would just muddy it.
+                    const background = cf?.fill ?? format?.fill;
+                    // A data bar is drawn as a hard-edged gradient rather than a child element,
+                    // so it sits behind the text without disturbing the cell's layout.
+                    const bar = cf?.bar
+                      ? {
+                          backgroundImage: `linear-gradient(to right, ${cf.bar.color} ${cf.bar.fraction * 100}%, transparent ${cf.bar.fraction * 100}%)`,
+                        }
+                      : undefined;
+                    // Frozen cells park where the grid's geometry says they should, and carry an
+                    // opaque background: a transparent one lets the rows sliding underneath show
+                    // through, which reads as the sheet having gone wrong rather than as a pane.
+                    const z = frozenZ(r, c);
+                    const pinned = z
+                      ? {
+                          position: "sticky" as const,
+                          top: frozenTop(r),
+                          left: frozenLeft(c),
+                          zIndex: z,
+                        }
+                      : undefined;
+                    const opaque = z && !background && !cf?.bar ? { backgroundColor: "#ffffff" } : undefined;
+                    // A merged cell's box comes from the columns and rows it spans, so pinning
+                    // it to a single column's width would squash it back to one cell.
+                    if (merge) return { height: h, backgroundColor: background, ...bar, ...borders, ...opaque, ...pinned };
+                    const w = sheet.colWidths?.[c] ?? COL_WIDTH;
+                    return {
+                      width: w,
+                      minWidth: w,
+                      maxWidth: w,
+                      height: h,
+                      backgroundColor: background,
+                      ...bar,
+                      ...borders,
+                      ...opaque,
+                      ...pinned,
+                    };
+                  })()}
+                  title={
+                    block
+                      ? t.data.liveCellTitle(sourceNameOf(block.sourceId))
+                      : locked
+                        ? t.template.lockedCell
+                        : cellRef(r, c)
+                  }
+                >
+                  {editingHere && choices ? (
+                    <select
+                      autoFocus
+                      className="absolute inset-0 z-40 h-full w-full border-2 border-emerald-500 bg-white px-1 text-sm outline-none"
+                      value={editing.value}
+                      onChange={(e) => {
+                        commitCell(r, c, e.target.value);
+                        setEditing(null);
+                      }}
+                      onBlur={() => setEditing(null)}
+                    >
+                      <option value="">{t.template.choosePlaceholder}</option>
+                      {choices.map((choice) => (
+                        <option key={choice} value={choice}>
+                          {choice}
+                        </option>
+                      ))}
+                    </select>
+                  ) : editingHere ? (
+                    <input
+                      ref={inputRef}
+                      className="absolute inset-0 z-40 h-full w-full border-2 border-blue-500 bg-white px-2 text-sm outline-none"
+                      value={editing.value}
+                      onChange={(e) => setEditing({ row: r, col: c, value: e.target.value })}
+                      onBlur={commitEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          commitEdit();
+                          setSelection(singleCellSelection(Math.min(r + 1, sheet.rows - 1), c));
+                        } else if (e.key === "Escape") {
+                          setEditing(null);
+                        } else if (e.key === "Tab") {
+                          e.preventDefault();
+                          commitEdit();
+                          setSelection(singleCellSelection(r, Math.min(c + 1, sheet.cols - 1)));
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="flex h-full overflow-hidden"
+                      style={{
+                        alignItems: format?.valign === "top" ? "flex-start" : format?.valign === "bottom" ? "flex-end" : "center",
+                        justifyContent:
+                          format?.align === "center" ? "center" : format?.align === "right" ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <span
+                        className="overflow-hidden text-ellipsis whitespace-nowrap"
+                        style={{
+                          fontWeight: format?.bold || cf?.bold ? 700 : undefined,
+                          fontStyle: format?.italic ? "italic" : undefined,
+                          textDecoration: format?.underline ? "underline" : undefined,
+                          fontSize: format?.fontSize ? `${format.fontSize / DEFAULT_FONT_SIZE}em` : undefined,
+                          lineHeight: 1.25,
+                          color: isErr ? undefined : cf?.color ?? format?.color,
+                          textAlign: format?.align,
+                        }}
+                      >
+                        {display[r]?.[c]}
+                      </span>
+                    </div>
+                  )}
+                  {/* The corner Excel uses, so a note is visible without hovering every cell to
+                      find one. `title` carries the text for a mouse; touch reads it by selecting
+                      the cell and opening the editor. */}
+                  {comment && (
+                    <span
+                      title={comment}
+                      aria-label={comment}
+                      className="pointer-events-auto absolute right-0 top-0 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-amber-500"
+                    />
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+  );
   const isInSelection = (row: number, col: number) =>
     row >= selection.startRow && row <= selection.endRow && col >= selection.startCol && col <= selection.endCol;
   const isActive = (row: number, col: number) => row === selection.anchorRow && col === selection.anchorCol;
@@ -584,12 +889,22 @@ export default function SpreadsheetGrid() {
                 onClick={() => selectWholeColumn(c)}
                 onContextMenu={(e) => openHeaderMenu(e, "col", c)}
                 className={clsx(
-                  "sticky top-0 z-20 cursor-pointer border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
+                  "sticky top-0 cursor-pointer border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
                   c >= selection.startCol && c <= selection.endCol ? "bg-blue-100 text-blue-800" : "bg-zinc-100"
                 )}
                 style={(() => {
                   const w = sheet.colWidths?.[c] ?? COL_WIDTH;
-                  return { width: w, minWidth: w, height: ROW_HEIGHT };
+                  // A frozen column's *letter* has to be pinned too. The first version froze the
+                  // cells and left the header row to scroll, so column B stayed on screen with
+                  // column F's letter above it — which is worse than not freezing at all.
+                  return {
+                    width: w,
+                    minWidth: w,
+                    height: ROW_HEIGHT,
+                    left: frozenLeft(c),
+                    // Above the other headers it slides under, below the corner over both.
+                    zIndex: c < freeze.cols ? 25 : 20,
+                  };
                 })()}
               >
                 <div className="group flex items-center justify-center gap-1">
@@ -622,241 +937,14 @@ export default function SpreadsheetGrid() {
           </tr>
         </thead>
         <tbody>
-          {/* One row standing in for everything scrolled past, so the scrollbar still measures the
-              whole sheet. `aria-hidden` because it is a shim, not a row anyone can be in. */}
-          {window_.topPad > 0 && (
+          {frozenRows.map(renderRow)}
+          {/* One row standing in for everything scrolled past that is not already frozen above. */}
+          {padAfterFrozen > 0 && (
             <tr aria-hidden>
-              <td colSpan={sheet.cols + 1} style={{ height: window_.topPad, padding: 0, border: 0 }} />
+              <td colSpan={sheet.cols + 1} style={{ height: padAfterFrozen, padding: 0, border: 0 }} />
             </tr>
           )}
-          {visibleRows.map((r) => (
-            <tr key={r} aria-rowindex={r + 2}>
-              <th
-                scope="row"
-                aria-colindex={1}
-                onClick={() => selectWholeRow(r)}
-                onContextMenu={(e) => openHeaderMenu(e, "row", r)}
-                className={clsx(
-                  "sticky left-0 z-10 cursor-pointer border-b border-r border-zinc-200 text-xs font-semibold text-zinc-600",
-                  r >= selection.startRow && r <= selection.endRow ? "bg-blue-100 text-blue-800" : "bg-zinc-100"
-                )}
-                style={{ width: ROW_HEADER_WIDTH, minWidth: ROW_HEADER_WIDTH, height: ROW_HEIGHT }}
-              >
-                {r + 1}
-              </th>
-              {Array.from({ length: sheet.cols }, (_, c) => {
-                const value = values[r]?.[c];
-                const isErr = value instanceof FormulaError;
-                const editingHere = editing?.row === r && editing?.col === c;
-                const format = sheet.formats[r]?.[c];
-                const cf = cfVisuals[r]?.[c];
-                const block = blockAt(r, c);
-                // A cell swallowed by a merge isn't rendered at all — its space belongs to the
-                // merge's top-left cell, which carries the span.
-                if (merges.covered.has(`${r},${c}`)) return null;
-                const merge = merges.anchors.get(`${r},${c}`);
-                const locked = isTemplateLocked(sheet.template, r, c);
-                const comment = getComment(sheet.comments, r, c);
-                const choices = templateChoices(sheet.template, r, c);
-                const isField = sheet.template !== undefined && !locked;
-                // Borrowed from a formula in another cell: the value is real, the cell is empty.
-                // Typing here breaks the array into #SPILL!, which is Excel's behaviour and needs
-                // no code — the raw text stops being empty and the anchor refuses on the next pass.
-                const spilledFrom = spill.get(packCell(r, c));
-                const isSpilled = spilledFrom !== undefined && spilledFrom !== packCell(r, c);
-                return (
-                  <td
-                    key={c}
-                    role="gridcell"
-                    aria-selected={isInSelection(r, c)}
-                    aria-colindex={c + 2}
-                    aria-readonly={locked || undefined}
-                    // One tab stop for the whole grid, not one per cell — the roving tabindex the
-                    // grid pattern calls for. Every cell was tabbable before, which on the sample
-                    // sheet alone meant walking three hundred Tab presses to reach the sheet tabs.
-                    tabIndex={isActive(r, c) ? 0 : -1}
-                    data-row={r}
-                    data-col={c}
-                    rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
-                    colSpan={merge ? merge.endCol - merge.startCol + 1 : undefined}
-                    onMouseDown={(e) => handleMouseDown(r, c, e.shiftKey)}
-                    onMouseEnter={() => handleMouseEnter(r, c)}
-                    onDoubleClick={() => startEdit(r, c)}
-                    // Touch has no keyboard to start typing into and no comfortable double-tap, so
-                    // a second tap on the cell already selected opens the editor — the pattern
-                    // every mobile spreadsheet uses. Sampled on pointerdown because mousedown has
-                    // already moved the selection by the time pointerup runs, which would make the
-                    // very first tap open the editor.
-                    onPointerDown={(e) => {
-                      if (e.pointerType === "touch") tappedAlreadySelected.current = isActive(r, c);
-                    }}
-                    onPointerUp={(e) => {
-                      if (e.pointerType !== "touch" || !tappedAlreadySelected.current) return;
-                      if (!editingHere && !locked) startEdit(r, c);
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDragOverCell({ row: r, col: c });
-                    }}
-                    onDragLeave={() => setDragOverCell(null)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setDragOverCell(null);
-                      if (onLiveDrop(r, c, e)) return;
-                      const formulaId = e.dataTransfer.getData("text/formula-id");
-                      if (formulaId) {
-                        setSelection(singleCellSelection(r, c));
-                        onFormulaDrop(r, c, formulaId);
-                      }
-                    }}
-                    className={clsx(
-                      "relative border-b border-r border-zinc-200 px-2 text-sm outline-none",
-                      // A live block reads as one object: tinted fill, a green outline on its edges,
-                      // and its header row set apart from the values below it.
-                      block && "bg-emerald-50/70",
-                      block && block.kind === "table" && r === block.anchorRow && "font-semibold text-emerald-800",
-                      block && r === block.anchorRow && "border-t-2 border-t-emerald-200",
-                      block && c === block.anchorCol && "border-l-2 border-l-emerald-200",
-                      block && c === block.anchorCol + block.cols - 1 && "border-r-2 border-r-emerald-200",
-                      block && r === block.anchorRow + block.rows - 1 && "border-b-2 border-b-emerald-200",
-                      // A form reads the way a paper one does: the printed parts are flat and
-                      // grey, the blanks are white. Amber is kept for warnings alone — dressing
-                      // twenty ordinary input cells in it made a form look like twenty alerts.
-                      // Faint on purpose. It has to be visible enough that "why can I not edit
-                      // this" has an answer on screen, and quiet enough that a filled array does
-                      // not look like an error next to ordinary numbers.
-                      isSpilled && "bg-violet-50/60 text-violet-900",
-                      locked && "bg-zinc-100 text-zinc-500",
-                      isField && "bg-white ring-1 ring-inset ring-emerald-400",
-                      isActive(r, c) && "ring-2 ring-inset ring-blue-500",
-                      !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
-                      dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
-                      isInClipboard(r, c) && (clipboard?.cut ? "outline-dashed outline-2 outline-orange-400 -outline-offset-2" : "outline-dashed outline-2 outline-blue-400 -outline-offset-2"),
-                      isErr && "text-red-600"
-                    )}
-                    style={(() => {
-                      const h = sheet.rowHeights?.[r] ?? ROW_HEIGHT;
-                      // Where the file drew a border, it replaces the grid's own faint line —
-                      // a 1px default would otherwise hide the heavy rule under a table heading.
-                      const b = format?.borders;
-                      const edge = (color: string | undefined) =>
-                        color ? { style: "solid" as const, width: 2, color } : undefined;
-                      const borders = {
-                        borderTopStyle: edge(b?.top)?.style,
-                        borderTopWidth: edge(b?.top)?.width,
-                        borderTopColor: b?.top,
-                        borderRightStyle: edge(b?.right)?.style,
-                        borderRightWidth: edge(b?.right)?.width,
-                        borderRightColor: b?.right,
-                        borderBottomStyle: edge(b?.bottom)?.style,
-                        borderBottomWidth: edge(b?.bottom)?.width,
-                        borderBottomColor: b?.bottom,
-                        borderLeftStyle: edge(b?.left)?.style,
-                        borderLeftWidth: edge(b?.left)?.width,
-                        borderLeftColor: b?.left,
-                      };
-                      // A rule's fill replaces the painted-on one: the value is the more current
-                      // answer, and showing the stale colour underneath would just muddy it.
-                      const background = cf?.fill ?? format?.fill;
-                      // A data bar is drawn as a hard-edged gradient rather than a child element,
-                      // so it sits behind the text without disturbing the cell's layout.
-                      const bar = cf?.bar
-                        ? {
-                            backgroundImage: `linear-gradient(to right, ${cf.bar.color} ${cf.bar.fraction * 100}%, transparent ${cf.bar.fraction * 100}%)`,
-                          }
-                        : undefined;
-                      // A merged cell's box comes from the columns and rows it spans, so pinning
-                      // it to a single column's width would squash it back to one cell.
-                      if (merge) return { height: h, backgroundColor: background, ...bar, ...borders };
-                      const w = sheet.colWidths?.[c] ?? COL_WIDTH;
-                      return { width: w, minWidth: w, maxWidth: w, height: h, backgroundColor: background, ...bar, ...borders };
-                    })()}
-                    title={
-                      block
-                        ? t.data.liveCellTitle(sourceNameOf(block.sourceId))
-                        : locked
-                          ? t.template.lockedCell
-                          : cellRef(r, c)
-                    }
-                  >
-                    {editingHere && choices ? (
-                      <select
-                        autoFocus
-                        className="absolute inset-0 z-40 h-full w-full border-2 border-emerald-500 bg-white px-1 text-sm outline-none"
-                        value={editing.value}
-                        onChange={(e) => {
-                          commitCell(r, c, e.target.value);
-                          setEditing(null);
-                        }}
-                        onBlur={() => setEditing(null)}
-                      >
-                        <option value="">{t.template.choosePlaceholder}</option>
-                        {choices.map((choice) => (
-                          <option key={choice} value={choice}>
-                            {choice}
-                          </option>
-                        ))}
-                      </select>
-                    ) : editingHere ? (
-                      <input
-                        ref={inputRef}
-                        className="absolute inset-0 z-40 h-full w-full border-2 border-blue-500 bg-white px-2 text-sm outline-none"
-                        value={editing.value}
-                        onChange={(e) => setEditing({ row: r, col: c, value: e.target.value })}
-                        onBlur={commitEdit}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            commitEdit();
-                            setSelection(singleCellSelection(Math.min(r + 1, sheet.rows - 1), c));
-                          } else if (e.key === "Escape") {
-                            setEditing(null);
-                          } else if (e.key === "Tab") {
-                            e.preventDefault();
-                            commitEdit();
-                            setSelection(singleCellSelection(r, Math.min(c + 1, sheet.cols - 1)));
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="flex h-full overflow-hidden"
-                        style={{
-                          alignItems: format?.valign === "top" ? "flex-start" : format?.valign === "bottom" ? "flex-end" : "center",
-                          justifyContent:
-                            format?.align === "center" ? "center" : format?.align === "right" ? "flex-end" : "flex-start",
-                        }}
-                      >
-                        <span
-                          className="overflow-hidden text-ellipsis whitespace-nowrap"
-                          style={{
-                            fontWeight: format?.bold || cf?.bold ? 700 : undefined,
-                            fontStyle: format?.italic ? "italic" : undefined,
-                            textDecoration: format?.underline ? "underline" : undefined,
-                            fontSize: format?.fontSize ? `${format.fontSize / DEFAULT_FONT_SIZE}em` : undefined,
-                            lineHeight: 1.25,
-                            color: isErr ? undefined : cf?.color ?? format?.color,
-                            textAlign: format?.align,
-                          }}
-                        >
-                          {display[r]?.[c]}
-                        </span>
-                      </div>
-                    )}
-                    {/* The corner Excel uses, so a note is visible without hovering every cell to
-                        find one. `title` carries the text for a mouse; touch reads it by selecting
-                        the cell and opening the editor. */}
-                    {comment && (
-                      <span
-                        title={comment}
-                        aria-label={comment}
-                        className="pointer-events-auto absolute right-0 top-0 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-amber-500"
-                      />
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+          {visibleRows.map(renderRow)}
           {window_.bottomPad > 0 && (
             <tr aria-hidden>
               <td colSpan={sheet.cols + 1} style={{ height: window_.bottomPad, padding: 0, border: 0 }} />
