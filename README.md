@@ -32,7 +32,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1334%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1336%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ and saying so when data came back incomplete. A range can be given a name (in Th
 what it means, and a cell can carry a rule about what may go in it, refused before it is written rather than
 flagged afterwards. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 1334 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 1336 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -97,7 +97,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 
 ---
 
-### 🧪 สิ่งที่เทสต์ 1334 เคสจับไม่ได้
+### 🧪 สิ่งที่เทสต์ 1336 เคสจับไม่ได้
 
 เทสต์ของผู้ช่วย AI ใช้ **mock ทั้งหมด** — มันตอบตามที่ผมคิดว่ามันจะตอบ พอเอา API key จริงมายิงคำถามธรรมดา
 14 ข้อ **6 คำตอบใช้ฟังก์ชันที่เอนจินนี้ไม่มี** (`TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR`)
@@ -107,7 +107,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 มันจึงตอบคำถาม *"ต่อชื่อทั้งหมดเป็นบรรทัดเดียว"* ด้วย `=SUM(A2:A20)` ซึ่งได้ `0` โดยไม่มีอะไรบอกว่าผิด
 **เปลี่ยน error ที่มองเห็น เป็นตัวเลขผิดที่มองไม่เห็น**
 
-**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1334 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
+**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1336 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
 ที่สองความกว้าง — ผมลองไล่คลิก build สาธารณะแบบคนที่เพิ่งเข้ามาครั้งแรกอยู่ชั่วโมงหนึ่ง แล้วเจอสามอย่าง
 ที่ไม่มีด่านไหนมองเห็น:
 
@@ -245,7 +245,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 1334 เคสด้วย Vitest |
+| `npm test` | รัน unit test 1336 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:screens` | ตัวเลขที่พิมพ์อยู่บนภาพหน้าจอยังตรงกับซอร์สไหม |
 | `npm run check:rls` | ยิงจริงสองบัญชีบน Supabase ของคุณ ว่าฐานข้อมูลปฏิเสธตามที่ policy เขียนไว้ไหม (ต้องตั้ง env) |
@@ -696,7 +696,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 [`0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) สร้างตารางและ **row-level security** ที่กันไม่ให้
 บัญชีหนึ่งเห็นงานของอีกบัญชี ส่วน [`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql)
 เพิ่มการแชร์ และ**ออกสิทธิ์ให้ช่องแก้สด** ส่วน [`0003_versions.sql`](supabase/migrations/0003_versions.sql)
-เก็บเวอร์ชันย้อนหลัง 20 ครั้งล่าสุดของแต่ละไฟล์
+เก็บเวอร์ชันย้อนหลัง 20 ครั้งล่าสุดของแต่ละไฟล์ และ
+[`0005_pin_search_paths.sql`](supabase/migrations/0005_pin_search_paths.sql) ปักหมุด `search_path` ให้ฟังก์ชัน
+สี่ตัวที่ตกหล่นไป (เจอจาก database linter ของ Supabase เอง หลังเอาไฟล์พวกนี้ไปรันกับโปรเจกต์จริง — เทสต์เดิม
+ถามแต่ฟังก์ชัน `security definer` ตอนนี้ถามทุกตัว)
 
 - **เบราว์เซอร์คุยกับ Supabase ของคุณโดยตรง** ไม่ผ่านเซิร์ฟเวอร์ของแอปนี้ คนที่เอาไป deploy จึงไม่เคยเห็นข้อมูลผู้ใช้
 - **ล็อกอินด้วยลิงก์ทางอีเมล** ไม่มีรหัสผ่านให้ต้องเก็บหรือตรวจ
@@ -1539,7 +1542,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1334 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1336 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -2183,7 +2186,7 @@ policy ของ realtime ถามคำถาม*เดียวกัน*ก�
 B อ่านและแก้ได้ แต่ยังยึดเป็นเจ้าของหรือลบไม่ได้ ปิดท้ายด้วยการลองเข้าห้องโดยถือแค่ anon key
 ซึ่งเป็นสิ่งที่เมื่อก่อน**ทำได้**
 
-### 238 เทสต์ด้านความปลอดภัย
+### 240 เทสต์ด้านความปลอดภัย
 
 | ไฟล์ | เทสต์ | ครอบอะไร |
 |---|---|---|
@@ -2296,13 +2299,13 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 1334 เคส ใน 82 ไฟล์ ด้วย Vitest
+npm test      # 1336 เคส ใน 82 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง
 
-**แต่ 1334 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
+**แต่ 1336 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
 ทุกตัวแทบทั้งหมด — ปุ่ม "+ แถว" บนแถบเครื่องมือเรียก `addRow` ที่ไม่ประกาศอะไรเลย ขณะที่ `insertRowAtSelection`
 ข้าง ๆ ประกาศถูกต้อง (ทั้งคู่เทสต์ผ่าน) · ผู้ช่วย AI ส่งช่วงที่รวมหัวคอลัมน์ไปด้วย เพราะตัวประกอบ context อ่าน
 `sheet.cells` ที่เป็นสูตรดิบแทนค่าที่คำนวณแล้ว (ทั้งคู่เทสต์ผ่าน) · ปุ่มใหม่หนึ่งปุ่มดันปุ่มสลับภาษาตกขอบจอไป 42px
@@ -2382,9 +2385,9 @@ seed ถูกปักไว้ ด่านที่แดงจึงแด�
 ในตารางแล้วสองข้อในflow ที่สามตกทันที (ครั้งแรกที่ลองปิดยังเขียวอยู่ เพราะ `case` ที่แทรกเข้าไปไปอยู่หลัง
 `case "ArrowRight"` เดิม กลายเป็นโค้ดตาย — การพิสูจน์ต้องเช็กด้วยว่าของที่ตั้งใจทำให้พังนั้นพังจริง)
 
-> **1334 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
+> **1336 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
 > มันจึงตอบตามที่คนเขียนเทสต์คิดว่ามันจะตอบ จำนวนเทสต์บอกได้แค่ว่าเราถามอะไรไปบ้าง ไม่ได้บอกว่าเราถาม
-> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1334 เคสจับไม่ได้](#-สิ่งที่เทสต์-1334-เคสจับไม่ได้)
+> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1336 เคสจับไม่ได้](#-สิ่งที่เทสต์-1336-เคสจับไม่ได้)
 > และรันซ้ำเองได้ด้วย `npm run check:ai`
 
 | ไฟล์ | เคส | ทดสอบอะไร |

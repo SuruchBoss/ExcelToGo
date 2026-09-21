@@ -185,6 +185,17 @@ any kind** — deliberately, so the key the server holds cannot read a row back;
 `policies.test.ts` lists it by name so the "RLS on with nothing written" check still applies
 everywhere else.
 
+**One finding from applying all of this to a real project**, recorded because the test that should
+have caught it did not: Supabase's database linter reported four functions with a mutable
+`search_path`. All four are in `0001`–`0002`, none is `security definer` — three triggers and one
+`immutable` helper — which is exactly why `policies.test.ts` passed over them; it only asked about
+definers. `0005_pin_search_paths.sql` pins them, and the test now asks it of **every** function in
+the migrations rather than only the ones where it is most dangerous. Two warnings remain and are
+understood: `bump_usage` being callable by `anon` is the whole design of the counter, and
+`can_access_workbook` / `owns_workbook` are called *from inside the policies*, so the roles those
+policies apply to must hold `execute` on them — revoking it would not harden the database, it
+would turn row-level security off for everyone it protects.
+
 **What it cannot tell you**, said here so nobody reads more into a number than is in it: how many
 *people* (two visits from one person and one each from two are the same number), whether anyone
 came back, where they came from, or anything at all about a single visit.
