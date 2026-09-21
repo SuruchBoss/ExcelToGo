@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { countUsage } from "@/lib/usage";
 import { Sparkles, Loader2, KeyRound, ExternalLink } from "lucide-react";
 import clsx from "clsx";
 import { useAIContext, useSheetStore } from "@/store/sheetStore";
@@ -52,6 +53,10 @@ export default function AIAssistantPanel() {
 
   const ask = async (q: string) => {
     if (!q.trim() || loading) return;
+    // Before the branch, so it counts the same whether the answer comes from this app's server or
+    // straight from the visitor's own key — "somebody asked" is the fact, and where it went is
+    // already their choice.
+    countUsage("ai_asked");
     setLoading(true);
     setError(null);
     setSuggestion(null);

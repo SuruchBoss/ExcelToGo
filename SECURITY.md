@@ -146,6 +146,49 @@ ciphertext fails loudly instead of quietly becoming somebody's `Authorization` h
 The data file is per-deployment, not per-user: anyone holding the operator token sees and edits the
 same set of sources. That is the intended shape of the feature, not an oversight.
 
+## Counting that the app was used, without learning who used it
+
+`/api/usage` answers one question — has anyone actually used this — and it is at odds with the
+sentence the landing page leads with, so the shape is the argument rather than a footnote to it.
+
+**Off unless a deployment switches it on.** `NEXT_PUBLIC_USAGE=1`, and nothing else. A clone of
+this repo sends nothing, ever, and there is no default endpoint to forget to unset. The flag is
+checked again in the route, so a post to a deployment that said no is refused rather than quietly
+recorded — and a `check:e2e` flow drives the acts that are wired to count on an ordinary build and
+asserts that **zero** requests reach `/api/usage`, because "this bundle sends nothing" is a claim
+about the build and not about a function.
+
+**The event name is the whole payload, and it comes from a fixed list of six.** This is the
+load-bearing part, not a tidiness preference. The policy already allows the page to talk to its own
+origin, so a free-text field here would be a ready-made way for a bug — or an injected script — to
+post a cell's contents somewhere and have it look like telemetry. A closed union cannot carry a
+spreadsheet. The same list is checked in the browser, again in the route, and a third time in SQL;
+only the third is one an attacker cannot skip by not using the browser.
+
+**At most once per event per page load**, held in memory and never written down, so there is no id
+to persist and nothing to correlate across visits. It also changes what is measured, on purpose:
+*did this happen at all*, not *how many times* — a per-keystroke counter is a behavioural trace
+wearing a number's clothes.
+
+**No time of day, no IP, no user agent, no referrer, no cookie, no session.** A request carries the
+first four whether anyone wants them or not; what matters is that none are read, and the route's
+tests send all four and assert that what reaches storage is the event name alone. The day is
+stamped by `current_date` in the database, because a date that arrives over the network is a field
+somebody eventually makes more precise, and an exact time plus a rare event is an identifier.
+
+**Do Not Track and Global Privacy Control are honoured.** An app whose whole argument is "we do not
+take your data" does not get to ignore the browser saying the same thing.
+
+What is stored is `(day, event) → count`. The table has row-level security on and **no policy of
+any kind** — deliberately, so the key the server holds cannot read a row back; it may call
+`bump_usage` and nothing else. That is the one table in this project in that shape, and
+`policies.test.ts` lists it by name so the "RLS on with nothing written" check still applies
+everywhere else.
+
+**What it cannot tell you**, said here so nobody reads more into a number than is in it: how many
+*people* (two visits from one person and one each from two are the same number), whether anyone
+came back, where they came from, or anything at all about a single visit.
+
 ## Cloud save is optional, and it is your database
 
 `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are unset by default, and while they

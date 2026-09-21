@@ -373,6 +373,32 @@ const FLOWS = [
     },
   },
   {
+    name: "a build that was not told to count sends nothing",
+    async run(page) {
+      // The usage counter is off unless `NEXT_PUBLIC_USAGE=1`, and that flag is baked in at build
+      // time — which is exactly the kind of claim a unit test cannot make, because it is about
+      // what this bundle does rather than what the function would do if called. So: drive the
+      // acts that are wired to count, and watch the wire.
+      const posts = [];
+      page.on("request", (r) => {
+        if (r.url().includes("/api/usage")) posts.push(`${r.method()} ${r.url()}`);
+      });
+
+      await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await typeInCell(page, 0, 0, "1");
+      await typeInCell(page, 1, 0, "=A1*2");
+      await page.waitForTimeout(400);
+
+      note(posts.length === 0, `nothing is posted to /api/usage (${posts.length})`, posts.join(" "));
+
+      // And the endpoint itself refuses on this build, so a stranger cannot switch it on by
+      // finding it. 204 either way, by design — what is asserted is that nothing is recorded, and
+      // the route's own tests cover that half.
+      const res = await page.request.post(ORIGIN + "/api/usage", { data: { event: "app_opened" } });
+      note(res.status() === 204, `the endpoint answers without saying which events exist (${res.status()})`);
+    },
+  },
+  {
     name: "the app opens with the network switched off",
     async run(page) {
       // The pitch has always been that the sheet lives in your browser. It was true, and the app

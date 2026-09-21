@@ -17,7 +17,17 @@ const sql = (file: string) => readFileSync(new URL(`../../../supabase/migrations
 const workbooks = sql("0001_workbooks.sql");
 const sharing = sql("0002_sharing_and_realtime.sql");
 const versions = sql("0003_versions.sql");
-const both = `${workbooks}\n${sharing}\n${versions}`;
+const usage = sql("0004_usage.sql");
+const both = `${workbooks}\n${sharing}\n${versions}\n${usage}`;
+
+/**
+ * The one table that has row-level security on and no policy, on purpose.
+ *
+ * Written down here, by name, rather than left out of the corpus: "enabled with nothing written"
+ * is exactly the shape that is usually a bug, so the rule below still applies to every other
+ * table and this is the single documented exception rather than a hole in the check.
+ */
+const RLS_WITHOUT_POLICY = ["public.usage_counts"];
 
 /** Policies as written, so a test can ask about one by name rather than grepping for a substring. */
 function policies(text: string) {
@@ -41,9 +51,16 @@ describe("row-level security is actually switched on", () => {
 
   it("never enables it without also writing a policy for that table", () => {
     const enabled = [...both.matchAll(/alter table ([\w.]+) enable row level security/gi)].map((m) => m[1]);
-    for (const table of enabled) {
+    for (const table of enabled.filter((t) => !RLS_WITHOUT_POLICY.includes(t))) {
       expect([...all.values()].some((p) => p.on === table)).toBe(true);
     }
+  });
+
+  it("is on for the usage counter too, which has no policy by design", () => {
+    // No policy of any kind, so the key the server holds cannot read a row back — it may call
+    // `bump_usage` and nothing else. The exception is listed above rather than silently skipped.
+    expect(usage).toMatch(/alter table public\.usage_counts enable row level security/i);
+    expect([...all.values()].some((p) => p.on === "public.usage_counts")).toBe(false);
   });
 });
 
@@ -171,5 +188,47 @@ describe("shapes that would quietly allow everything", () => {
     for (const [name, policy] of all) {
       expect(`${name}: ${policy.body}`).not.toMatch(/to\s+(anon|public)\b/i);
     }
+  });
+});
+
+describe("the usage counter, which must not become a place to put a spreadsheet", () => {
+  it("names the events it accepts instead of taking any text", () => {
+    // The third place this list is checked, and the only one an attacker cannot skip by not using
+    // the browser. A free-text event column would make this table reachable storage for anyone
+    // who can reach the deployment's own origin.
+    for (const event of ["app_opened", "formula_entered", "file_imported", "file_exported", "ai_asked", "live_data_inserted"]) {
+      expect(usage).toContain(`'${event}'`);
+    }
+    expect(usage).toMatch(/p_event not in \(/i);
+  });
+
+  it("stamps the day itself rather than believing the caller", () => {
+    // A date that arrives over the network is a field somebody eventually makes more precise, and
+    // an exact time plus a rare event is an identifier.
+    expect(usage).toMatch(/day\s+date not null default current_date/i);
+    expect(usage).toMatch(/values \(current_date, p_event, 1\)/i);
+    // One argument, and it is the event.
+    expect(usage).toMatch(/function public\.bump_usage\(p_event text\)/i);
+  });
+
+  it("stores a count and nothing that could be a person", () => {
+    const columns = /create table if not exists public\.usage_counts \(([\s\S]*?)\);/i.exec(usage)![1];
+    for (const forbidden of ["ip", "user_agent", "session", "uuid", "auth.uid", "timestamptz", "referrer"]) {
+      expect(columns.toLowerCase()).not.toContain(forbidden);
+    }
+  });
+
+  it("runs as its definer with the search path pinned, like every other one here", () => {
+    expect(usage).toMatch(/security definer/i);
+    expect(usage).toMatch(/set search_path = public, pg_temp/i);
+  });
+
+  it("takes the default grant away before giving the one it means", () => {
+    // Postgres grants execute on a new function to `public` by default, and a default is not a
+    // decision — without the revoke, "granted to anon" would be true for reasons nobody chose.
+    const revokeAt = usage.search(/revoke all on function public\.bump_usage/i);
+    const grantAt = usage.search(/grant execute on function public\.bump_usage/i);
+    expect(revokeAt).toBeGreaterThan(-1);
+    expect(grantAt).toBeGreaterThan(revokeAt);
   });
 });

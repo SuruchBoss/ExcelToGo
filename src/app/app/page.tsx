@@ -28,6 +28,7 @@ import { selectShowingSample, useClipboardShortcuts, useHydrateSheetStore, useSh
 import { useServiceWorker } from "@/features/offline/useServiceWorker";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 import { useT } from "@/i18n";
+import { countUsage } from "@/lib/usage";
 import { useEffect } from "react";
 
 export default function Home() {
@@ -47,6 +48,9 @@ export default function Home() {
     if (window.matchMedia("(max-width: 1023px)").matches) {
       useSheetStore.getState().setSidebarMode("none");
     }
+    // The only count that is a page load rather than an act. Does nothing at all unless this
+    // deployment set NEXT_PUBLIC_USAGE=1 — see lib/usage.ts for the whole of what it may send.
+    countUsage("app_opened");
   }, []);
 
   const find = useFindDialog();
