@@ -18,7 +18,8 @@ const workbooks = sql("0001_workbooks.sql");
 const sharing = sql("0002_sharing_and_realtime.sql");
 const versions = sql("0003_versions.sql");
 const usage = sql("0004_usage.sql");
-const both = `${workbooks}\n${sharing}\n${versions}\n${usage}`;
+const pinned = sql("0005_pin_search_paths.sql");
+const both = `${workbooks}\n${sharing}\n${versions}\n${usage}\n${pinned}`;
 
 /**
  * The one table that has row-level security on and no policy, on purpose.
@@ -165,15 +166,46 @@ describe("version history", () => {
 });
 
 describe("the helper functions the policies lean on", () => {
+  /**
+   * Every function these files define, as its header — name, attributes, and everything up to the
+   * body. The last definition of a name wins, because `0005` replaces four of them.
+   */
+  const declared = (() => {
+    const found = new Map<string, string>();
+    for (const m of both.matchAll(/create or replace function public\.(\w+)\(([\s\S]*?)\$\$/g)) {
+      found.set(m[1], m[2]);
+    }
+    return found;
+  })();
+
   it("run as their definer, with the search path pinned", () => {
-    // `security definer` is needed here to break the recursion between the two tables' policies.
-    // A definer function that resolves names through the caller's search_path is how privilege
+    // `security definer` is needed to break the recursion between the two tables' policies. A
+    // definer function that resolves names through the caller's search_path is how privilege
     // escalation happens, so the two always appear together.
-    const definers = [...sharing.matchAll(/create or replace function ([\s\S]*?)\$\$/g)]
-      .map((m) => m[1])
-      .filter((body) => /security definer/i.test(body));
+    const definers = [...declared.values()].filter((body) => /security definer/i.test(body));
     expect(definers.length).toBeGreaterThan(0);
     for (const body of definers) expect(body).toMatch(/set search_path = public, pg_temp/i);
+  });
+
+  it("pin it on every other function too, not only the definers", () => {
+    // Widened after Supabase's own linter found four that this test had passed over: three
+    // triggers and an `immutable` helper, none of them `security definer`, all of them running
+    // with whatever search_path the statement that fired them happened to have. The narrower
+    // check was true and not the whole truth, which is the worst kind of green.
+    expect(declared.size).toBeGreaterThanOrEqual(8);
+    for (const [name, body] of declared) {
+      expect(`${name}: ${body.replace(/\s+/g, " ")}`).toMatch(/set search_path = public, pg_temp/i);
+    }
+  });
+
+  it("really does redefine the four that were missing it, rather than adding new ones", () => {
+    // `create or replace` on the same name and signature: the attribute changes, the body, the
+    // triggers and the policies do not. A file that created differently-named copies would leave
+    // the originals in place and still pass the check above.
+    for (const name of ["touch_updated_at", "normalise_member_email", "freeze_workbook_owner", "workbook_id_from_topic"]) {
+      expect(pinned).toContain(`create or replace function public.${name}(`);
+      expect(`${workbooks}\n${sharing}`).toContain(`create or replace function public.${name}(`);
+    }
   });
 });
 
