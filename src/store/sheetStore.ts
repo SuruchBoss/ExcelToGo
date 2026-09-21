@@ -67,6 +67,7 @@ import { shiftFormulaRefs } from "@/lib/formulaEngine/shift";
 import { shiftFreeze, toggleFreezeAt } from "@/lib/sheetFreeze";
 import { checkValue, ruleAt, shiftValidation, ValidationRule, withValidation } from "@/lib/dataValidation";
 import { nameKey, nameProblem, refForSelection, shiftNames, withName, withoutName, type NameProblem } from "@/lib/namedRanges";
+import { countUsage } from "@/lib/usage";
 import { getLocale, getMessages } from "@/i18n";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
@@ -673,6 +674,9 @@ export const useSheetStore = create<SheetState>()(
             if (refusal) {
               return say(getMessages().validation.refused[refusal](cellRef(row, col)));
             }
+            // Once per page load, whatever the formula was — the count is "somebody used the
+            // engine", and what they typed is none of its business.
+            if (raw.startsWith("=") && raw.length > 1) countUsage("formula_entered");
             return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
           }),
 
@@ -1385,7 +1389,10 @@ export const useSheetStore = create<SheetState>()(
         toggleSidebar: (mode) =>
           set((s) => ({ sidebarMode: s.sidebarMode === mode && !s.pending ? "none" : mode, pending: null })),
 
-        addLiveBlock: (input, table) =>
+        addLiveBlock: (input, table) => {
+          // Dropping a live block is the act; the refresh that follows it every few seconds is
+          // not, and counting those would measure the poller rather than the person.
+          countUsage("live_data_inserted");
           set((s) => ({
             sheets: s.sheets.map((tab) => {
               if (tab.id !== s.activeSheetId) return tab;
@@ -1398,7 +1405,8 @@ export const useSheetStore = create<SheetState>()(
               }
               return { ...tab, sheet, liveBlocks: [...(tab.liveBlocks ?? []), block] };
             }),
-          })),
+          }));
+        },
 
         replaceLiveBlock: (blockId, input, table) =>
           set((s) => ({
@@ -1534,6 +1542,7 @@ export const useSheetStore = create<SheetState>()(
           }),
 
         importFromFile: async (file) => {
+          countUsage("file_imported");
           set({ busy: getMessages().store.busyImporting });
           try {
             // A .csv is plain text, so it never reaches ExcelJS — which would reject it anyway.
@@ -1592,6 +1601,7 @@ export const useSheetStore = create<SheetState>()(
         },
 
         exportXlsx: async () => {
+          countUsage("file_exported");
           set({ busy: getMessages().store.busyExportingXlsx });
           try {
             const sheets = get().sheets.map((t) => ({ name: t.name, sheet: t.sheet, computed: computeSheet(t.sheet) }));
@@ -1607,6 +1617,7 @@ export const useSheetStore = create<SheetState>()(
         // export: a sheet with several charts takes long enough that a dead-looking button would
         // get pressed twice.
         exportPdf: async () => {
+          countUsage("file_exported");
           set({ busy: getMessages().store.busyExportingPdf });
           try {
             const tab = activeTab(get());
@@ -1625,6 +1636,7 @@ export const useSheetStore = create<SheetState>()(
          * becomes the filename so which one it was is not a guess.
          */
         exportCsv: async () => {
+          countUsage("file_exported");
           set({ busy: getMessages().store.busyExportingCsv });
           try {
             const tab = activeTab(get());
