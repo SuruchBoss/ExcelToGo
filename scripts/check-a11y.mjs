@@ -34,9 +34,58 @@ const PORT = Number(process.env.A11Y_PORT || 3123);
 const ORIGIN = `http://localhost:${PORT}`;
 const PAGES = ["/", "/app"];
 /** The phone width the labels vanish at, and a desktop width where they don't. */
-const AXE_WIDTHS = [390, 1280];
+const ALL_AXE_WIDTHS = [390, 1280];
 /** Narrowest phone still worth supporting, two tablet-ish sizes, two desktops. */
-const OVERFLOW_WIDTHS = [360, 390, 820, 1280, 1440];
+const ALL_OVERFLOW_WIDTHS = [360, 390, 820, 1280, 1440];
+
+/**
+ * Optionally, half the work — because this gate is the longest thing in CI.
+ *
+ * Every other job finishes while this one is still scanning, so the whole run waits on it and on
+ * nothing else. Almost all of that is the opened states: each one is a fresh page, a click and a
+ * full axe pass, once per axe width. Splitting by axe width halves the critical path, and because
+ * the two halves run as separate jobs a red cross also says which width broke without opening the
+ * log — the same reason `e2e` is not a step in this job.
+ *
+ * `A11Y_WIDTH` picks a half. Unset — which is what `npm run verify` does — runs everything, so a
+ * person running the gate by hand gets the whole gate rather than a quiet fraction of it.
+ */
+const SHARDS = {
+  390: [360, 390, 820],
+  1280: [1280, 1440],
+};
+
+const requested = process.env.A11Y_WIDTH?.trim();
+if (requested && !(requested in SHARDS)) {
+  // Loudly: a typo here would otherwise be a gate that passes by scanning nothing.
+  console.error(`check:a11y — A11Y_WIDTH=${requested} is not a shard. Use one of ${Object.keys(SHARDS).join(", ")}.`);
+  process.exit(1);
+}
+
+/**
+ * The shards together must still be the whole gate.
+ *
+ * Checked rather than trusted: the failure mode of a split gate is somebody adding a width to one
+ * list and not to the other, which loses coverage silently and looks exactly like a pass.
+ */
+{
+  const covered = Object.values(SHARDS).flat();
+  const missing = ALL_OVERFLOW_WIDTHS.filter((w) => !covered.includes(w));
+  const extra = covered.filter((w) => !ALL_OVERFLOW_WIDTHS.includes(w));
+  const unsharded = ALL_AXE_WIDTHS.filter((w) => !(w in SHARDS));
+  if (missing.length || extra.length || unsharded.length) {
+    console.error(
+      `check:a11y — the shards do not add up to the gate:` +
+        (missing.length ? ` overflow widths in no shard: ${missing.join(", ")}.` : "") +
+        (extra.length ? ` shard widths that are not overflow widths: ${extra.join(", ")}.` : "") +
+        (unsharded.length ? ` axe widths with no shard: ${unsharded.join(", ")}.` : "")
+    );
+    process.exit(1);
+  }
+}
+
+const AXE_WIDTHS = requested ? [Number(requested)] : ALL_AXE_WIDTHS;
+const OVERFLOW_WIDTHS = requested ? SHARDS[requested] : ALL_OVERFLOW_WIDTHS;
 /**
  * States that only exist once someone opens them.
  *
@@ -243,4 +292,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 const total = PAGES.length * (AXE_WIDTHS.length + OVERFLOW_WIDTHS.length) + OPENED_STATES.length * AXE_WIDTHS.length;
-console.log(`\ncheck:a11y — ${total} checks passed`);
+// Says which half it was, so "36 checks passed" and "22 checks passed" are not confusable.
+const scope = requested ? ` at ${requested}px` : "";
+console.log(`\ncheck:a11y — ${total} checks passed${scope}`);

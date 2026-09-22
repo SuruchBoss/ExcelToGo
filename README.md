@@ -252,10 +252,11 @@ npm run dev
 | `npm run check:deps` | ทุก advisory ต้องถูกแก้หรือถูกเขียนไว้พร้อมเหตุผลและวันหมดอายุ |
 | `npm run check:bundle` | งบขนาด bundle + ไลบรารีคลาวด์ต้องอยู่ chunk แยก (ต้อง build ก่อน) |
 | `npm run check:mutants` | ทุบเอนจินทีละจุดแล้วดูว่าเทสต์จับได้ไหม — 31/32 (ไม่ต้อง build) |
-| `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) |
+| `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) · `A11Y_WIDTH=390` รันครึ่งเดียว ซึ่งเป็นวิธีที่ CI ใช้ |
 | `npm run check:e2e` | ขับแอปจริงในเบราว์เซอร์ 10 flow: พิมพ์สูตร, ส่งออก-นำเข้า `.xlsx`, คีย์บอร์ดล้วน, undo, เสียงประกาศ, ผู้ช่วย AI, CSP (ต้อง build ก่อน) |
 | `npm run check:ai` | ถาม Claude จริงด้วย key ของคุณ แล้วเช็กว่าสูตรที่ได้เอนจินนี้รันได้จริงไหม — ไม่อยู่ใน `verify` เพราะต้องใช้ key และมีค่าใช้จ่าย |
-| `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e |
+| `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 นาที) |
+| `npm run verify:quick` | ด่านเดียวกันแบบตัด `check:mutants`, `check:a11y`, `check:e2e`, `check:deps` ออก — **37 วินาที** สำหรับลูประหว่างเขียน ไม่ใช่ตัวแทนของ `verify` ตอน push |
 | `npm run build:social` | สร้าง `public/social-preview.png` (1280×640) ใหม่ โดยนับตัวเลขบนการ์ดจากซอร์ส |
 
 ### ขั้นที่ 2 — ตั้งค่าผู้ช่วย AI ให้ใช้ Claude จริง (ไม่บังคับ)
