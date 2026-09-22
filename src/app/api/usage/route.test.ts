@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
-import { recordUsage, usageLogLine } from "@/lib/server/usageSink";
+import { failureReason, recordUsage, usageFailureLine, usageLogLine } from "@/lib/server/usageSink";
 
 /**
  * The endpoint a stranger with `curl` reaches, rather than the one the browser politely uses.
@@ -122,10 +122,15 @@ describe("where a counted event goes", () => {
     expect(lines).toEqual(["exceltogo.usage formula_entered"]);
   });
 
-  it("stays quiet when the sink is down, rather than turning an export into a 500", async () => {
+  it("never turns a dead sink into a 500 on the page", async () => {
     const dead = vi.fn(() => Promise.reject(new Error("no route to host")));
     await expect(
-      recordUsage("file_imported", { url: "https://p.supabase.co", key: "k", fetch: dead as unknown as typeof fetch })
+      recordUsage("file_imported", {
+        url: "https://p.supabase.co",
+        key: "k",
+        fetch: dead as unknown as typeof fetch,
+        warn: () => {},
+      })
     ).resolves.toBeUndefined();
   });
 
@@ -133,5 +138,118 @@ describe("where a counted event goes", () => {
     const lines: string[] = [];
     await recordUsage("anything" as never, { url: "", key: "", log: (l) => lines.push(l) });
     expect(lines).toEqual([]);
+  });
+});
+
+/**
+ * The half that was missing, and the reason a broken deployment took ten rounds to explain.
+ *
+ * Every case below used to produce the same nothing: no line, no error, 204 to the browser and an
+ * empty table. The endpoint still answers 204 in all of them — that part was right — but the server
+ * now says which one happened, in one line, on a channel a host can filter by level.
+ */
+describe("when the write does not land", () => {
+  // 204 may not carry a body; `new Response("{}", { status: 204 })` throws, which is its own
+  // little lesson about writing a "success" fixture without running it.
+  const answering = (status: number) =>
+    vi.fn(() => Promise.resolve(new Response(status === 204 ? null : "{}", { status })));
+
+  // Not named `fetch`: a parameter by that name shadows the global, and `typeof fetch` below then
+  // means `unknown` rather than the thing being stubbed.
+  const record = (event: Parameters<typeof recordUsage>[0], send: unknown, warned: string[]) =>
+    recordUsage(event, {
+      url: "https://p.supabase.co",
+      key: "k",
+      fetch: send as typeof fetch,
+      warn: (line) => warned.push(line),
+    });
+
+  it("says so when the key the host applied is not one the project accepts", async () => {
+    const warned: string[] = [];
+    await record("app_opened", answering(401), warned);
+    expect(warned).toEqual([usageFailureLine("app_opened", "http_401")]);
+  });
+
+  it("tells a missing migration apart from a rejected key", async () => {
+    const warned: string[] = [];
+    await record("app_opened", answering(404), warned);
+    // The two are one character apart in the line and a week apart in what you do about them.
+    expect(warned).toEqual([usageFailureLine("app_opened", "http_404")]);
+  });
+
+  it("stays quiet when the write actually lands", async () => {
+    const warned: string[] = [];
+    await record("app_opened", answering(204), warned);
+    expect(warned).toEqual([]);
+  });
+
+  it("names the reason a throw gives, by its code", async () => {
+    const warned: string[] = [];
+    const refused = Object.assign(new TypeError("fetch failed"), {
+      cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }),
+    });
+    await record("ai_asked", vi.fn(() => Promise.reject(refused)), warned);
+    expect(warned).toEqual([usageFailureLine("ai_asked", "ECONNREFUSED")]);
+  });
+
+  it("falls back to the error's name when there is no code to give", async () => {
+    const warned: string[] = [];
+    await record("ai_asked", vi.fn(() => Promise.reject(new TypeError("fetch failed"))), warned);
+    expect(warned).toEqual([usageFailureLine("ai_asked", "TypeError")]);
+  });
+
+  it("carries the event, so a drain can still recover the count from the failure", async () => {
+    const warned: string[] = [];
+    await record("file_exported", answering(500), warned);
+    expect(warned[0]).toContain("file_exported");
+  });
+
+  it("puts nothing in the line that an error was free to choose", () => {
+    // The one function in this codebase that holds an API key is the one whose errors get printed,
+    // so a reason is a token or it is `unknown`. `Error` coming back from a thrown `Error` whose
+    // *code* was a connection string is the whole point: the token survives, the string does not.
+    const secret = "sb_secret_abc";
+    const leaky: unknown[] = [
+      Object.assign(new Error("x"), { code: `postgres://user:hunter2@db.internal:5432/app` }),
+      Object.assign(new Error("x"), { code: `has spaces and a key ${secret}` }),
+      Object.assign(new Error("x"), { code: "A".repeat(33) }),
+      Object.assign(new Error("x"), { code: 42 }),
+      Object.assign(new Error("x"), { name: `Error: apikey=${secret}` }),
+      Object.assign(new TypeError("fetch failed"), { cause: { code: `apikey ${secret}` } }),
+      new Error(`https://project.supabase.co/rest/v1/rpc/bump_usage?apikey=${secret}`),
+      "https://project.supabase.co/rest/v1/rpc/bump_usage",
+      { message: secret },
+      null,
+      undefined,
+    ];
+    for (const error of leaky) {
+      const reason = failureReason(error);
+      expect(reason).toMatch(/^[A-Za-z0-9_]{1,32}$/);
+      expect(reason).not.toContain(secret);
+      expect(usageFailureLine("app_opened", reason)).not.toContain(secret);
+    }
+  });
+
+  it("carries the complaint all the way out of the endpoint, not just out of the sink", async () => {
+    // Through the route, with the environment the deployment actually had: the sink reads its URL
+    // and key once at import, so this is the only way to test the wiring rather than the function.
+    vi.resetModules();
+    process.env.NEXT_PUBLIC_USAGE = "1";
+    process.env.USAGE_SUPABASE_URL = "https://p.supabase.co";
+    process.env.USAGE_SUPABASE_KEY = "a-key-the-host-never-applied";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", answering(401));
+
+    const route = await import("./route");
+    const res = await route.POST(
+      new Request("https://app.test/api/usage", { method: "POST", body: JSON.stringify({ event: "app_opened" }) })
+    );
+
+    // The browser is still told nothing — that part was never the bug.
+    expect(res.status).toBe(204);
+    // The server is no longer telling *itself* nothing, which was.
+    expect(warn).toHaveBeenCalledWith(usageFailureLine("app_opened", "http_401"));
+    vi.unstubAllGlobals();
+    vi.resetModules();
   });
 });
