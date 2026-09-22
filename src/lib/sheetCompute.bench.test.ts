@@ -102,7 +102,8 @@ describe("recalculation cost", () => {
     clearFormulaCache();
     const rows = 3000;
     const sheet = buildRunningTotals(rows);
-    computeSheet(sheet);
+    // Timed, because it is the yardstick the two edits below are measured against.
+    const cold = medianMs(1, () => computeSheet(sheet));
 
     // Near the bottom: the totals above it are settled, so only a handful re-add.
     const late = medianMs(5, () => computeSheet(setCellRaw(sheet, rows - 2, 1, String(Math.random()))));
@@ -111,10 +112,30 @@ describe("recalculation cost", () => {
     // That is O(n²) arithmetic the graph correctly identifies as necessary — not a cache miss.
     const top = medianMs(3, () => computeSheet(setCellRaw(sheet, 0, 1, String(Math.random()))));
 
-    console.log(`  running totals, ${rows} rows → edit near the end ${late.toFixed(2)} ms · edit at row 1 ${top.toFixed(0)} ms`);
-    expect(late).toBeLessThan(100);
-    // Loose on purpose: this one is meant to be recorded, not defended.
-    expect(top).toBeLessThan(5000);
+    console.log(
+      `  running totals, ${rows} rows → full pass ${cold.toFixed(0)} ms · edit near the end ${late.toFixed(2)} ms · edit at row 1 ${top.toFixed(0)} ms`
+    );
+
+    /**
+     * Both bounds are ratios against the full pass measured a few lines up, and that is the fix
+     * to a bug rather than a style preference.
+     *
+     * This test used to assert `top < 5000` — an absolute number, on a value that measured 1,412ms
+     * here, so 3.5x of headroom on a runner that shares its CPU with whatever else GitHub put on
+     * it. The comment above it said "(the 5s test timeout was in reach)", which was true when it
+     * was written and stayed true afterwards. A sibling file made exactly that bet and lost it
+     * three CI runs in a row.
+     *
+     * A ratio cannot lose that bet: a slow machine slows the yardstick and the measurement
+     * together, so what is asserted is the shape of the engine rather than the mood of the runner.
+     * The absolute milliseconds are still printed, because recording them is what this file is
+     * for — the numbers in the READMEs come from that line. Recorded, not defended.
+     */
+    // An edit near the end re-adds a handful of rows; a full pass does three thousand.
+    expect(late).toBeLessThan(cold / 10);
+    // An edit at row 1 genuinely fans out to everything, so it costs about what a full pass costs.
+    // What this catches is it costing very much *more* — the graph losing its way and re-walking.
+    expect(top).toBeLessThan(cold * 3);
   }, 60000);
 
   it("parses a formula once however many rows repeat it", () => {

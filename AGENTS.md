@@ -7,15 +7,27 @@
 Run one command and get it green before committing:
 
 ```bash
-npm run verify     # lint → check:readme → check:screens → check:deps → test → check:mutants
-                   #   → build → check:bundle → check:a11y → check:e2e
+npm run verify       # lint → check:readme → check:screens → check:deps → test → check:mutants
+                     #   → build → check:bundle → check:a11y → check:e2e          (~5 นาที)
+npm run verify:quick # ด่านเดียวกัน ตัดสี่ด่านที่ช้าออก — 37 วินาที                   (ระหว่างเขียน)
 ```
 
+`verify:quick` มีไว้สำหรับลูประหว่างแก้โค้ด ไม่ใช่ตัวแทนของ `verify` ตอน push — มันตัด `check:mutants`,
+`check:a11y`, `check:e2e` และ `check:deps` ออก ซึ่งสี่ด่านนั้นกิน **90% ของเวลา** และเป็นสี่ด่านที่จับบั๊กที่เหลือ
+ทั้งหมดของโปรเจกต์นี้ · ก่อน push ยังต้องเขียวจาก `npm run verify` เต็ม ไม่มีข้อยกเว้น
+`verify:quick` is for the edit loop, not a stand-in for `verify` before a push: it drops
+`check:mutants`, `check:a11y`, `check:e2e` and `check:deps`, which are **90% of the time** and also
+the four gates that have caught every remaining bug in this project. The full one still has to be
+green before pushing.
+
 GitHub Actions รันสิบด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
-ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์) —
-รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
+ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์ และ **a11y ยังแยกอีกเป็นสอง job ตามความกว้าง**
+เพราะมันเคยเป็น job ที่ยาวที่สุด ทั้ง run จึงรอมันอยู่ job เดียว — `A11Y_WIDTH=390` หรือ `1280` เลือกครึ่งเดียว
+ถ้าไม่ตั้งจะรันทั้งหมด ซึ่งเป็นสิ่งที่คนรันมือควรได้) — รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
 GitHub Actions runs the same ten gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
-are jobs of their own because they need a browser) — running them yourself
+are jobs of their own because they need a browser, and **a11y is two jobs split by width** because it was the
+longest one and so the only thing the run waited on — `A11Y_WIDTH=390` or `1280` picks a half, unset runs
+everything, which is what someone running it by hand should get) — running them yourself
 first is still faster than waiting for CI to tell you.
 
 `npm run check:a11y` รัน axe บนทั้งสองหน้า ที่ **390px และ 1280px** (WCAG 2.0/2.1/2.2 A+AA) แล้วเช็ก
@@ -55,6 +67,17 @@ rather than going red.
 `npm run check:bundle` carries written size budgets and checks that the Supabase client is still **in a chunk
 of its own**. Whether anything ever *asks* for that chunk is a `check:e2e` flow, because only a browser can
 answer it.
+
+**เทสต์ที่วัดเวลาให้เขียนเป็นอัตราส่วน ไม่ใช่มิลลิวินาที** — `expect(top).toBeLessThan(5000)` ทำ CI แดงสามรอบติด
+คนละเวอร์ชัน Node ทุกรอบ เพราะค่าจริง 1,412ms บนเครื่องพัฒนาไปชนเพดานบน runner ที่แชร์ CPU · เขียนเทียบกับ
+ค่าที่วัดในโปรเซสเดียวกันแทน (`toBeLessThan(cold * 3)`, `toBeLessThan(cold / 10)`) แล้วเครื่องช้าจะถ่วงทั้งสองฝั่ง
+พร้อมกัน สิ่งที่ assert จึงเป็นรูปร่างของเอนจิน ไม่ใช่อารมณ์ของ runner · ส่วนตัวเลขมิลลิวินาทียัง `console.log` ไว้
+เพราะเลขใน README มาจากบรรทัดนั้น — **บันทึกไว้ ไม่ได้เอาไว้ป้องกัน**
+A test that measures time asserts a **ratio**, never milliseconds. `expect(top).toBeLessThan(5000)` turned CI red
+three runs running, on a different Node version each time, because 1,412ms on a dev box meets that ceiling on a
+runner that shares its CPU. Compare against something measured in the same process instead — a slow machine
+slows both halves together, so what is asserted is the shape of the engine rather than the mood of the runner.
+The milliseconds stay in a `console.log`, because the README's numbers come from there: recorded, not defended.
 
 `npm run check:mutants` ทุบเอนจินทีละจุด (32 mutant, seed คงที่) แล้วถามว่าเทสต์แดงไหม — **"1,088 เทสต์"
 บอกว่ามีกี่ข้อ ไม่ได้บอกว่ามันจับบั๊กได้** ตัวที่รอดคือช่องโหว่จริง รอบแรกเจอหก แล้วเขียนเทสต์ใหม่หกข้อจากมัน

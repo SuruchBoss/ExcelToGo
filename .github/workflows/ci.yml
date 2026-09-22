@@ -83,8 +83,20 @@ jobs:
   # Its own job rather than a fifth step in the matrix: it needs a browser, and downloading one
   # three times to check the same HTML would triple the cost for no extra signal. One current Node
   # is enough — this gate is about the rendered page, not about the runtime.
+  #
+  # Split by width because this was the longest job in the run and therefore the only one the
+  # whole run waited on: every other job finished while it was still scanning. The two halves take
+  # about 70 seconds each against 140 for the pair, so the critical path halves, and the widths are
+  # a real seam rather than an arbitrary cut — the bug this gate was built for was eight buttons
+  # with no accessible name below 640px, invisible at desktop width. A red cross now names the
+  # width before anyone opens the log. The shards' own script checks they still add up to the
+  # whole gate, because a split gate that quietly scans less looks exactly like a passing one.
   accessibility:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        width: ["390", "1280"]
     steps:
       - uses: actions/checkout@v7
 
@@ -118,8 +130,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: axe on both pages, at a phone width and a desktop one
+      - name: axe on both pages at ${{ matrix.width }}px
         run: npm run check:a11y
+        env:
+          A11Y_WIDTH: ${{ matrix.width }}
 
   # Separate from the accessibility job even though both build the app and download a browser.
   # The cost is two parallel jobs instead of one; what it buys is a red cross that names which
