@@ -53,7 +53,17 @@ export function scrub(text: string): string {
     // A JWT, which is the shape a Supabase anon or access token arrives in.
     .replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, "[token removed]")
     // Anything that looks like an email address.
-    .replace(/[^\s"']+@[^\s"']+\.[A-Za-z]{2,}/g, "[email removed]")
+    //
+    // Both sides exclude `@` and carry a length bound, and neither is decoration. Written the
+    // obvious way — `[^\s"']+@[^\s"']+\.[A-Za-z]{2,}` — the two runs can each swallow an `@`, so on
+    // a long string with no `@` in it at all the engine retries every split of every start
+    // position: 50,000 characters of one letter took 2.8 seconds here and timed out three CI runs
+    // in a row, on a different Node version each time, because it sat either side of a 5s limit.
+    // That input is not hypothetical — this function reads an error message, and an error message
+    // in this app can carry a whole cell. A crash reporter that hangs the crash screen has taken
+    // the one thing the crash screen was for. The bounds are RFC 5321's, which is the other reason
+    // they are the right numbers rather than merely small ones.
+    .replace(/[^\s"'@]{1,64}@[^\s"'@]{1,255}\.[A-Za-z]{2,24}/g, "[email removed]")
     // A run of Thai. See the note above: in a stack from this app it is the user's content.
     .replace(/[฀-๿][฀-๿\s]*/g, "[text removed]");
 }

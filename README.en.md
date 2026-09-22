@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1344%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1348%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1344 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1348 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1344 passing tests could not catch
+### 🧪 What 1348 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1344 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1348 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -257,7 +257,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1344-case Vitest suite |
+| `npm test` | Run the 1348-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -670,6 +670,18 @@ scope: an Anthropic key the visitor pasted, a Supabase token, an email address �
 Thai, which in a stack from this app is a cell, a sheet name or a file name rather than anything
 about the code. An ordinary English stack comes through untouched, which is checked too: a redactor
 that eats the trace reports nothing useful.
+
+**The redactor was itself the hole.** The email pattern was written the obvious way —
+`[^\s"']+@[^\s"']+\.[A-Za-z]{2,}` — and both runs can swallow an `@`, so on a long string with no
+`@` in it the engine retries every split of every start position: 50,000 characters of one letter
+took 2.8 seconds. That is a ReDoS, and the input is not hypothetical, because this function reads
+an error message and an error message here can carry a whole cell. **A crash reporter that hangs
+the crash screen has taken the one thing the crash screen was for.** Both sides now exclude `@` and
+carry RFC 5321's bounds (64 and 255); the same input takes 19ms. It was not found by reading the
+code — CI went red three runs running, on a different Node version each time, because the test sat
+either side of a 5s limit. The two tests added for it measure the *growth rate* rather than the
+clock (ten times the input must not cost a hundred times the time), because a stopwatch on a busy
+runner is not evidence but a ratio is.
 
 The report endpoint's origin joins `connect-src` automatically. A collector that is configured but
 not in the policy would be blocked silently, which is worse than having none — the operator would
@@ -1735,7 +1747,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1344 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1348 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2429,7 +2441,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 248 security tests
+### 252 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2450,7 +2462,7 @@ nothing but the anon key, which is the thing that used to work.
 | `usage.test.ts` | 12 | A counter that must not become an exfiltration channel: off by default, DNT/GPC honoured, once per page load, no retry on failure, and a payload whose only key is `event` |
 | `api/usage/route.test.ts` | 11 | The side `curl` reaches: a name off the list is not recorded, every extra field is dropped, a megabyte body is cut, 204 either way so a prober learns nothing, and an IP, user agent, referrer and cookie all sent and none reaching storage |
 | `cloud/policies.test.ts` | 19 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
-| `errorReport.test.ts` | 16 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
+| `errorReport.test.ts` | 20 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
 Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
@@ -2595,13 +2607,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1344 cases across 82 files, via Vitest
+npm test      # 1348 cases across 82 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1344 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1348 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2695,10 +2707,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1344 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1348 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1344 passing tests could not catch](#-what-1344-passing-tests-could-not-catch), repeatable
+> [What 1348 passing tests could not catch](#-what-1348-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
