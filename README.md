@@ -284,6 +284,15 @@ ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 - **[Vercel](https://vercel.com)** (แนะนำ ง่ายสุด): เชื่อม repo นี้เข้ากับ Vercel แล้วกด Deploy ได้เลย
   ถ้าต้องการ AI จริงให้เพิ่ม Environment Variable ชื่อ `ANTHROPIC_API_KEY` ในหน้า Project Settings
   (ถ้าเป็น demo สาธารณะ ตั้ง `NEXT_PUBLIC_DEMO_MODE=1` ด้วย แล้ว key จะไม่ถูกใช้ — ดูกล่องด้านล่าง)
+
+  **function ถูกปักไว้ที่ `sin1` (สิงคโปร์) ใน [`vercel.json`](vercel.json)** เพราะค่าเริ่มต้นของ Vercel คือ `iad1`
+  (วอชิงตัน) ขณะที่ทั้งผู้ใช้และฐานข้อมูล Supabase อยู่เอเชียตะวันออกเฉียงใต้ ทุก request จึงบินข้ามแปซิฟิกไปกลับ
+  ก่อนเริ่มทำงานจริง — หน้า `/` และ `/app` เป็น dynamic ทั้งคู่ จึงโดนทุกครั้งที่เปิด · ข้อแลกเปลี่ยนที่รู้อยู่แล้ว:
+  `/api/ai/formula` คุยกับ API ของ Anthropic ซึ่งอยู่สหรัฐฯ จึงย้ายระยะทางจากขา ผู้ใช้→function ไปอยู่ขา
+  function→Anthropic แทน ออกมาพอ ๆ กัน และเวลาที่โมเดลคิดกินมากกว่าเวลาเดินทางอยู่ดี · plan Hobby เลือกได้
+  ภูมิภาคเดียว ถ้าจะ deploy ไปใช้กับผู้ใช้ภูมิภาคอื่นให้เปลี่ยนค่านี้ · **อย่าใช้ `export const preferredRegion`**
+  ในไฟล์ route แทน — ใน Next.js เวอร์ชันนี้มัน deprecated แล้ว และบน Vercel รับได้แค่ `'auto'`/`'global'`/`'home'`
+  ใส่ `'sin1'` ไปคือ build พัง
 - Self-host ด้วย Docker/Node server ทั่วไป: `npm run build` แล้วรันด้วย `npm run start`
 
 > [!IMPORTANT]

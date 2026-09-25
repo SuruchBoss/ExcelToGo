@@ -297,6 +297,15 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 - **[Vercel](https://vercel.com)** (recommended, easiest): connect this repo to Vercel and deploy. For real
   AI, add an `ANTHROPIC_API_KEY` environment variable under Project Settings → Environment Variables.
   (On a public demo, also set `NEXT_PUBLIC_DEMO_MODE=1` and the key goes unused — see the note below.)
+
+  **Functions are pinned to `sin1` (Singapore) in [`vercel.json`](vercel.json).** Vercel's default is `iad1`
+  (Washington), while both the users and the Supabase database are in Southeast Asia, so every request
+  crossed the Pacific and back before doing any work — and `/` and `/app` are both dynamic, so that was every
+  page load. The known trade-off: `/api/ai/formula` talks to Anthropic's API in the US, so the long leg moves
+  from user→function to function→Anthropic; it comes out about even, and the model's thinking time dwarfs
+  the trip either way. The Hobby plan allows one region; change it if you deploy for users elsewhere.
+  **Do not reach for `export const preferredRegion` in a route file instead** — in this Next.js version it is
+  deprecated, and on Vercel it accepts only `'auto'`, `'global'` or `'home'`, so `'sin1'` fails the build.
 - Self-host with Docker/any Node server: `npm run build` then `npm run start`.
 
 > [!IMPORTANT]
