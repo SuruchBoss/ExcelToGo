@@ -952,8 +952,10 @@ person's — deliberately, since "unlock this template" ought to release the tem
 **Known bugs, not fixed yet:** a dropdown pointing at a range on *another sheet* (`=Ref!$A$2:$A$50`) is read
 from the same range on the sheet being opened, so it gets the wrong options with no warning. A **template's**
 dropdowns are written back without checking the 255-character limit, so a long list produces a file that
-breaks the spec. And a hidden or protected sheet comes back out as an ordinary one. All three have to be
-fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
+breaks the spec. A hidden or protected sheet comes back out as an ordinary one. A template keeps only its
+`list` rules — `whole`/`decimal`/`textLength`/`date` on a protected sheet are dropped — and empty input rows
+past the first 20 are cut off. And **a workbook too big for the `localStorage` quota cannot be saved, with no
+warning**: export stops working too, and a reload loses the work. All of it has to be fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
 
 ### 🏷 Named ranges
 

@@ -4,7 +4,8 @@
 
 - **Status:** joined the PaynEat ecosystem (2026-09-26), **and nothing has been built yet.** Everything below
   is a plan, not a feature that exists.
-- **On the ERP side:** [ADR-0011](https://github.com/SuruchBoss/PaynEat-ERP/blob/main/docs/adr/0011-ecosystem-and-sherwhyve.md)
+- **On the ERP side:** [ADR-0016](https://github.com/SuruchBoss/PaynEat-ERP/blob/main/docs/adr/0016-exceltogo-spreadsheet-companion.md)
+  (records this agreement), [ADR-0011](https://github.com/SuruchBoss/PaynEat-ERP/blob/main/docs/adr/0011-ecosystem-and-sherwhyve.md)
   (what each system owns), [ADR-0013](https://github.com/SuruchBoss/PaynEat-ERP/blob/main/docs/adr/0013-extension-by-integration.md)
   (extension through the API only), [`TELEMETRY.md`](https://github.com/SuruchBoss/PaynEat-ERP/blob/main/docs/TELEMETRY.md) v1.2
 
@@ -29,25 +30,47 @@
 
 ## Import template: how far along it is
 
-**Works today:** a sheet-protected file opens as a template (unlocked cells are the fields), dropdowns
-written as an inline list (`"kg,g,pcs"`), and `list` / `decimal` / `textLength` rules round-trip through `.xlsx`.
+Tested against the ERP's draft-0 templates ([`docs/integrations/exceltogo/`](https://github.com/SuruchBoss/PaynEat-ERP/tree/main/docs/integrations/exceltogo),
+commit `a184ce9`), in Node and in the real app (production build, Chromium), on 2026-09-26.
+
+**Works today:** a sheet-protected file opens as a template (unlocked cells are the fields), the data sheets
+go back out still protected, and dropdowns written as an inline list (`"plant,warehouse,branch"`) survive
+the round trip.
 
 **Missing, and needed before a template goes to a chain:**
 
 1. **Bug: a dropdown that points at a range on another sheet gets the wrong options.** A rule such as
-   `=Ref!$A$2:$A$50` is read from the same range *on the sheet being opened* instead of on `Ref`
-   (`src/lib/excelIO.ts`, `rangeReader`), with no warning.
-2. **Bug: a template's dropdowns are written back without checking Excel's 255-character limit.** The
-   person's own rules already have that guard; the template's do not, so a long list of item codes
-   produces a file that breaks the spec.
-3. **The range reference itself has to survive the round trip.** Even with 1 fixed, the options are
-   captured as a list at import and written back as an inline list, so a list of thousands of codes can
-   never fit in 255 characters. `Ref!$A$2:$A$5000` has to be kept end to end — along with **the reference
-   sheet's hidden and protected state**, which is currently lost on export.
-4. **Size.** Measured: the grid renders only the visible rows (a 5,000-row CSV keeps 41 rows in the DOM),
-   and a 3,000-row sheet holding 9,000 formulas recomputes after an edit in milliseconds. **Not measured:**
-   dropdowns of thousands of options across thousands of rows. That gets measured against the ERP's sample
-   template before any figure is promised.
+   `Ref!$B$2:$B$5` is read from the same range *on the sheet being opened* instead of on `Ref`
+   (`src/lib/excelIO.ts`, `rangeReader`), with no warning. In the ERP's template **every** cross-sheet
+   dropdown is wrong — the unit column offers item codes, for one.
+2. **Bug: a template's dropdowns are written back without checking Excel's 255-character limit.** The large
+   template exports a 9,001-character list formula, which breaks the spec.
+3. **The range reference itself has to survive the round trip.** Options are captured as a list **copied
+   into every cell** at import. `Ref!$C$2:$C$3001` has to be kept end to end — along with **the reference
+   sheet's hidden and protected state**, which is currently lost on export (`Ref` comes back visible and
+   unprotected).
+4. **Bug: empty input rows are cut off.** A sheet's size comes from the rows holding values (at least 20),
+   not from unlocked cells or cells carrying a rule. The ERP's template has input rows down to row 200
+   (`Items`, `OpeningBalance`) and 50 (`Locations`); ExcelToGo opens 20.
+5. **A template sheet keeps only its `list` rules.** `whole`, `decimal`, `textLength` and `date` on a
+   protected sheet are all dropped, on import and on export. Even on an ordinary sheet the support is
+   partial: no minimum for `textLength`, `whole` read as any number, `greaterThan` read as "at least", and
+   no `date` at all.
+6. **Bug: when saving to `localStorage` fails, the app breaks silently.** See the numbers below.
+
+**Measured** (development machine; for comparison, not a promise):
+
+| | Regular template | Large template (3,000 codes × 3,000 rows) |
+|---|---|---|
+| Open in the app until the tabs show | 0.4 s | 2.4 s |
+| Size to store in `localStorage` | 17K characters | **about 45 million characters**, against a ~5 MB quota |
+| Save | works | **fails** — an uncaught `QuotaExceededError` |
+| Export `.xlsx` | 0.1 s | **fails** — the button does nothing (Node exports in 0.9 s, but the file breaks the spec per item 2) |
+| Reload the page | work is still there | **all work is lost** |
+
+The size comes from item 3: 3,000 options copied into each of 6,000 cells. Kept as a reference, it falls to
+the size of the actual data. Item 6 needs its own fix all the same, because other large sheets can hit the
+quota too, and the person has to be told rather than lose their work without a word.
 
 ## Live data: what the ERP needs to know
 
