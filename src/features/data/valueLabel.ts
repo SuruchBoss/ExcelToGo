@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { Messages } from "@/i18n/types";
 import { CellValue, TableData } from "@/lib/dataSources/types";
 import { LiveAggregate } from "@/lib/liveBlocks";

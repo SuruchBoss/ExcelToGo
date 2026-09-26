@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { beforeEach, describe, expect, it } from "vitest";
 import { createEmptySheet, setCellRaw } from "./sheet";
 import { computeSheet, computeStats, createWorkbookResolver, resetComputeCache } from "./sheetCompute";

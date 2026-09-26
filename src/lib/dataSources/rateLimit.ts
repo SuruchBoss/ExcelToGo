@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Reading "you're calling me too often" out of an HTTP response, and deciding how long to wait.
  *

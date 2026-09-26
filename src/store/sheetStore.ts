@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { useEffect, useMemo } from "react";
 import { create, useStore } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";

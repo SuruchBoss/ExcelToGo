@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Asks the running app's assistant a set of ordinary questions with a real Anthropic key, and
  * checks the answers against what this app's formula engine can actually evaluate.

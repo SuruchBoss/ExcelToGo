@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { NumberFormat } from "@/lib/cellFormat";
 import { CfComparison, CfTest } from "@/lib/conditionalFormat";
 import { ChartKind } from "@/lib/charts";

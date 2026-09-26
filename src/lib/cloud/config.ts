@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Whether this deployment has a cloud backend attached — and it is off unless someone attaches one.
  *

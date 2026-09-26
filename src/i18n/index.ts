@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { useLocaleStore } from "@/store/localeStore";
 import { MESSAGES } from "./messages";
 import { Locale, Messages } from "./types";

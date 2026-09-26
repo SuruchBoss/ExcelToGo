@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { tableFromDbRows } from "@/lib/dataSources/dbRows";
 import { DEFAULT_MAX_ROWS } from "@/lib/dataSources/paginate";
 import { sqlProblem, withRowLimit } from "@/lib/dataSources/sqlGuard";

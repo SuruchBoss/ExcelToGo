@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { parseFormula } from "./parser";
 import { evaluate, EvalContext } from "./evaluator";
 import { FormulaValue } from "./types";

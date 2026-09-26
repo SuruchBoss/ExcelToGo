@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { IBM_Plex_Sans_Thai, IBM_Plex_Mono } from "next/font/google";

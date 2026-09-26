@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Builds the OOXML a spreadsheet needs to show a *real* chart — one Excel keeps redrawing — rather
  * than a picture of one.

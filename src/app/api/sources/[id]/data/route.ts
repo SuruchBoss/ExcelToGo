@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { executeSource } from "@/lib/server/executeSource";
 import { getSource, withSecret } from "@/lib/server/sourceRepo";
 import { authFailureResponse, checkSourcesAuth } from "@/lib/server/sourcesAuth";

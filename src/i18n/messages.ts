@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { th } from "./th";
 import { en } from "./en";
 import { Locale, Messages } from "./types";

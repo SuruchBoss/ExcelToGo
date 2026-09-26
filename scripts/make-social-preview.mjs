@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Renders `public/social-preview.png` — the 1280×640 image GitHub shows when the repo is pasted
  * into LinkedIn, Slack or a résumé.

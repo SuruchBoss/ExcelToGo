@@ -10,6 +10,7 @@ Run one command and get it green before committing:
 npm run verify       # lint → check:readme → check:screens → check:deps → test → check:mutants
                      #   → build → check:bundle → check:a11y → check:e2e          (~5 นาที)
 npm run verify:quick # ด่านเดียวกัน ตัดสี่ด่านที่ช้าออก — 37 วินาที                   (ระหว่างเขียน)
+node scripts/license-headers.mjs  # หัวไฟล์ลิขสิทธิ์/SPDX ครบไหม · every source file has its header
 ```
 
 `verify:quick` มีไว้สำหรับลูประหว่างแก้โค้ด ไม่ใช่ตัวแทนของ `verify` ตอน push — มันตัด `check:mutants`,
@@ -152,6 +153,11 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
 - ยืนยันฟีเจอร์ที่เห็นด้วยตาด้วย Playwright แล้ว **ลบสคริปต์ชั่วคราวก่อน commit** — `package.json`/lockfile
   ต้องไม่มี diff **แต่ playwright กับ `@axe-core/playwright` เป็น devDependency จริงแล้ว** (ด่าน `check:a11y`)
   จึงห้าม `npm uninstall` สองตัวนี้ ส่วนเครื่องมือชั่วคราวอย่างอื่น (pdfjs-dist, openpyxl ฯลฯ) ยังต้องถอนเหมือนเดิม
+- **ไฟล์ซอร์สใหม่ทุกไฟล์ต้องขึ้นต้นด้วยหัวลิขสิทธิ์** (`// Copyright 2026 Suruch Chakrapeesirisuk` +
+  `// SPDX-License-Identifier: Apache-2.0`) — `node scripts/license-headers.mjs --fix` เติมให้ และ job
+  "License headers" ใน CI จะแดงถ้าขาด · migration ใน `supabase/migrations/` ได้รับยกเว้น
+  Every new source file starts with that copyright and SPDX header; `node scripts/license-headers.mjs --fix`
+  adds it, and CI's "License headers" job fails without it. Applied migrations in `supabase/migrations/` are exempt.
 - พัฒนาบนบรานช์ `claude/excel-sheet-ui-builder-8ooz26` และ merge เข้า `main` เฉพาะตอนที่สั่งเท่านั้น
 
 <!-- BEGIN:nextjs-agent-rules -->

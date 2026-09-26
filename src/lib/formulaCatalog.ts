@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { CategoryKey, Messages } from "@/i18n/types";
 
 export type ParamType = "range" | "cell" | "number" | "text" | "boolean";

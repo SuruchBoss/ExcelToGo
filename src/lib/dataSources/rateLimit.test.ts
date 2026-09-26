@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { describe, expect, it } from "vitest";
 import { backoffSec, DEFAULT_RETRY_AFTER_SEC, MAX_BACKOFF_SEC, parseResetHeader, parseRetryAfter, readRateLimit } from "./rateLimit";
 
