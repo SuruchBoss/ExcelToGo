@@ -450,6 +450,48 @@ const FLOWS = [
       note(Boolean(said), `adding a row says something out loud ("${said}")`);
     },
   },
+  {
+    name: "a save the browser refuses is said out loud, and export still works",
+    async run(page) {
+      // This flow exists because of a bug exactly here: PaynEat ERP's large import template needed
+      // ~45M characters of storage, every save threw QuotaExceededError, the throw escaped from the
+      // Export action too, and a reload then lost the work with no warning at all. A unit test can
+      // fake the storage; only a browser can show the throw reaching a click handler.
+      await page.evaluate(() => {
+        const original = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, value) {
+          if (key === "exceltogo-sheet-v2" && window.__refuseSave !== false) {
+            throw new DOMException("Setting the value exceeded the quota.", "QuotaExceededError");
+          }
+          return original.call(this, key, value);
+        };
+      });
+      const errors = [];
+      page.on("pageerror", (err) => errors.push(err.message));
+
+      await typeInCell(page, 0, 0, "too big to keep");
+      // Filtered by what it says: Next.js keeps a `role="alert"` route announcer on every page.
+      const alert = page.getByRole("alert").filter({ has: page.getByRole("button", { name: label.exportExcel }) });
+      const shown = await alert.waitFor({ timeout: 5000 }).then(() => true, () => false);
+      note(shown, "the refused save shows an alert");
+      const text = shown ? (await alert.innerText()).trim() : "";
+      note(/ส่งออก Excel|Export Excel/.test(text), `the alert says what to do about it ("${text.slice(0, 60)}…")`);
+
+      const [download] = await Promise.all([
+        page.waitForEvent("download", { timeout: 15_000 }),
+        alert.getByRole("button", { name: label.exportExcel }).click(),
+      ]);
+      const saved = await download.path();
+      const bytes = saved ? await readFile(saved) : Buffer.alloc(0);
+      note(bytes.length > 0 && bytes[0] === 0x50, `export from the alert still downloads a real file (${bytes.length} bytes)`);
+      note(errors.length === 0, `no uncaught page errors while saves were refused${errors.length ? ` — ${errors[0]}` : ""}`);
+
+      await page.evaluate(() => (window.__refuseSave = false));
+      await typeInCell(page, 0, 1, "fits again");
+      const gone = await alert.waitFor({ state: "detached", timeout: 5000 }).then(() => true, () => false);
+      note(gone, "the alert goes away once a save lands again");
+    },
+  },
 ];
 
 const tmp = await mkdtemp(join(tmpdir(), "exceltogo-e2e-"));

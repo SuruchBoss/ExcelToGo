@@ -38,21 +38,21 @@ for sideways scroll at 360/390/820/1280/1440. Two widths because one was not eno
 desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
 
 ด่านนี้ยัง **เปิดพาเนลขึ้นมาตรวจด้วย** ไม่ใช่สแกนแค่หน้าตอนโหลด — พาเลตสูตร, AI, ข้อมูลสด, conditional
-formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์ และหน้าคีย์ลัด รวม 36 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
+formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์, หน้าคีย์ลัด และแถบเตือนตอนบันทึกไม่ลง รวม 38 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
 `OPENED_STATES` เมื่อนั้น** และสถานะที่เปิดไม่ขึ้นถือว่าด่านตก ไม่ใช่ข้าม
 The gate also **opens panels before scanning them** rather than only scanning the page as it loads — the
 formula palette, AI, live data, conditional formatting, charts, pivots, find/replace and the shortcut
-dialog, the validation, names and comment popovers, 36 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
+dialog, the validation, names and comment popovers, and the alert shown when a save is refused, 38 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 10 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 12 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
 เดินด้วยคีย์บอร์ดล้วน, undo, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
-ทั้งกรณีตอบปกติและกรณีโดน rate limit) และ CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) เกณฑ์เลือก flow มีข้อเดียว:
+ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) และบันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้ เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 10 flows — type a formula and watch the value
+`npm run check:e2e` drives the real app in a browser through 12 flows — type a formula and watch the value
 move, export `.xlsx` and import it back, keyboard only, undo, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
-(served, blocking exfiltration, and not tripping the app up). Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
+(served, blocking exfiltration, and not tripping the app up), and a refused save that is announced while export still works. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
 
 `npm run check:deps` ไม่ได้แค่รัน `npm audit` — ทุก advisory ต้อง**ถูกแก้ หรือถูกเขียนไว้พร้อมเหตุผลและวันหมดอายุ**

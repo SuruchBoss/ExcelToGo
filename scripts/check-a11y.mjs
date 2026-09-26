@@ -152,6 +152,28 @@ const OPENED_STATES = [
     },
   },
   {
+    // Only ever shown when the browser refuses a save — a workbook past the storage quota — so it
+    // is exactly the kind of state a scan of the page as it loads never sees. Any state change
+    // saves, so selecting a cell is enough to raise it once saves are refused.
+    name: "save refused alert",
+    path: "/app",
+    async open(page) {
+      await page.evaluate(() => {
+        const original = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, value) {
+          if (key === "exceltogo-sheet-v2") throw new DOMException("quota", "QuotaExceededError");
+          return original.call(this, key, value);
+        };
+      });
+      await page.locator('td[data-row="1"][data-col="1"]').click();
+      // Filtered: Next.js keeps a `role="alert"` route announcer of its own on every page.
+      await page
+        .getByRole("alert")
+        .filter({ has: page.getByRole("button", { name: /^(ส่งออก Excel|Export Excel)$/ }) })
+        .waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
     name: "names popover",
     path: "/app",
     async open(page) {
