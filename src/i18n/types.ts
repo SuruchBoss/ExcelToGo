@@ -441,6 +441,13 @@ export interface Messages {
     text: string;
     dismiss: string;
   };
+  saveFailed: {
+    /** Shown while autosave cannot reach the browser's storage because the workbook is bigger
+     *  than the quota. The work is intact in this tab; it is the reload that would lose it. */
+    full: string;
+    /** The same, when storage refused for another reason (private mode, a policy). */
+    blocked: string;
+  };
   formatBar: {
     /** Collapses the formatting row to give the grid back its vertical space. */
     hide: string;

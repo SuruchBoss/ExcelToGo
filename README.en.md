@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1348%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1360%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1348 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1360 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1348 passing tests could not catch
+### 🧪 What 1360 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1348 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1360 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -257,7 +257,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1348-case Vitest suite |
+| `npm test` | Run the 1360-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -265,7 +265,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 10 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
+| `npm run check:e2e` | Drives the real app through 12 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -342,6 +342,7 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 | Importing an Excel file errors out | Corrupted file, password-protected, or a very old `.xls` | Open it in Excel and "Save As" `.xlsx` first, then import that |
 | AI assistant only gives basic suggestions that don't match the question | `ANTHROPIC_API_KEY` isn't set yet (using the keyword heuristic instead) | Set the API key per [Step 2](#step-2--connect-the-ai-assistant-to-real-claude-optional) |
 | A cell shows `#CIRCULAR!` after inserting a formula | The formula indirectly references itself (e.g. A1 references B1, B1 references A1) | Rewrite the formula so it doesn't loop back on itself |
+| A red bar says the workbook is too big for this browser | The workbook is past the `localStorage` quota (~5 MB), or the browser has saving switched off. Everything is still there in this tab, but a close or refresh will lose it | Press **"Export Excel"** in that bar. It goes away by itself once a save lands again |
 | Data disappears after a refresh or on another device | Data autosaves to that browser/device's `localStorage` only — it doesn't sync across devices | Click **"Export Excel"** to get a file you can keep, then re-import it elsewhere |
 | Ctrl+Z does nothing | Focus is still inside a text field (editing a cell, or the AI question box) | Press Enter/Escape to leave the field first, or use the ↶ toolbar button instead |
 
@@ -636,7 +637,8 @@ are tested without one.
 
 - Every edit (typing a value, inserting a formula, formatting, importing a file) autosaves to `localStorage`
   immediately — closing the tab or refreshing keeps your data (tied to that browser/device only, no cross-device
-  sync).
+  sync). **A workbook too big for the browser's quota (~5 MB) no longer vanishes in silence:** a red bar appears
+  the moment a save does not land, with an export button in it, and editing and exporting carry on as normal.
 - **Ctrl+Z** / **Ctrl+Y** (or Ctrl+Shift+Z) undo/redo content edits only — moving the selection or switching
   sheet tabs doesn't count as history.
 
@@ -954,8 +956,7 @@ from the same range on the sheet being opened, so it gets the wrong options with
 dropdowns are written back without checking the 255-character limit, so a long list produces a file that
 breaks the spec. A hidden or protected sheet comes back out as an ordinary one. A template keeps only its
 `list` rules — `whole`/`decimal`/`textLength`/`date` on a protected sheet are dropped — and empty input rows
-past the first 20 are cut off. And **a workbook too big for the `localStorage` quota cannot be saved, with no
-warning**: export stops working too, and a reload loses the work. All of it has to be fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
+past the first 20 are cut off. All of it has to be fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
 
 ### 🏷 Named ranges
 
@@ -1765,7 +1766,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1348 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1360 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2006,6 +2007,9 @@ src/
     download.ts              # Handing a Blob to the browser as a file — its own module because the
                               # crash screen needs it and must not pull ExcelJS into that path
     sheetCodec.ts            # Between the in-memory model (a full grid) and what goes into localStorage
+    saveHealth.ts            # Wraps localStorage so autosave never throws: a save that does not fit (quota,
+                              # disabled storage) becomes a status the alert reads, not an exception escaping
+                              # from an action — so export keeps working (tested)
                               # (only the cells holding something) — the old ceiling came from the
                               # sheet's size rather than its contents. Reads the old shape too (tested)
     pageSetup.ts             # How a sheet lands on paper: orientation, type size, rows repeated per page (tested)
@@ -2625,20 +2629,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1348 cases across 82 files, via Vitest
+npm test      # 1360 cases across 84 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1348 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1360 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 10 flows in a real browser (needs a build)
+npm run check:e2e   # 12 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -2725,10 +2729,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1348 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1360 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1348 passing tests could not catch](#-what-1348-passing-tests-could-not-catch), repeatable
+> [What 1360 passing tests could not catch](#-what-1360-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2738,6 +2742,8 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
 | `arrayFormulas.test.ts` | 21 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
 | `sheetCodec.test.ts` | 12 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
+| `saveHealth.test.ts` | 9 | A save the browser refuses becomes a status rather than an exception, "full" told apart from "disabled" in every spelling browsers use, the last good save left in place, recovery the moment a save lands, and listeners told when the status changes rather than on every keystroke |
+| `saveFailed.test.ts` | 3 | The real store over a full storage: edits still land in memory, **export still produces a file** (the bug PaynEat ERP's large template hit was a silent Export button), and the status clearing once a save lands again |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
@@ -2936,7 +2942,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       script is not a file and cannot be hashed, so the page never hydrated at all. The price is
       prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 10 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 12 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

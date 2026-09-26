@@ -15,6 +15,7 @@ import ChartPanel from "@/features/grid/ChartPanel";
 import PivotPanel from "@/features/grid/PivotPanel";
 import CloudPanel from "@/features/cloud/CloudPanel";
 import StorageNotice from "@/features/grid/StorageNotice";
+import SaveFailedNotice from "@/features/grid/SaveFailedNotice";
 import SampleNotice from "@/features/grid/SampleNotice";
 import PivotNotice from "@/features/grid/PivotNotice";
 import DataPicker from "@/features/data/DataPicker";
@@ -70,6 +71,7 @@ export default function Home() {
       <FormatBar />
       <FormulaBar />
       <TemplateBar />
+      <SaveFailedNotice />
       {showingSample ? <SampleNotice /> : <StorageNotice />}
       <PivotNotice />
       <div className="flex min-h-0 flex-1 gap-3 p-2 sm:p-3">

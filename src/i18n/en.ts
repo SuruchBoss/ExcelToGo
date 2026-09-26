@@ -134,7 +134,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1348 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1360 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -272,7 +272,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1348", label: "automated tests" },
+      { value: "1360", label: "automated tests" },
       { value: "252", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -540,6 +540,10 @@ export const en: Messages = {
   storageNotice: {
     text: "Your work is saved in this browser only — never uploaded. Clearing your browser data or moving to another device loses it, so use \"Export Excel\" to keep a copy.",
     dismiss: "Dismiss",
+  },
+  saveFailed: {
+    full: "This workbook is too big for this browser to keep — changes from now on live only in this tab and are lost when it is closed or reloaded. Use \"Export Excel\" to keep your work.",
+    blocked: "This browser is refusing to save — changes live only in this tab and are lost when it is closed or reloaded. Use \"Export Excel\" to keep your work.",
   },
   formatBar: {
     hide: "Hide the formatting bar",

@@ -58,7 +58,9 @@ the round trip.
    protected sheet are all dropped, on import and on export. Even on an ordinary sheet the support is
    partial: no minimum for `textLength`, `whole` read as any number, `greaterThan` read as "at least", and
    no `date` at all. The ERP's `date` rules now use an Excel date serial (`43831`), so `DATE(...)` need not be supported.
-6. **Bug: when saving to `localStorage` fails, the app breaks silently.** See the numbers below.
+6. ~~**Bug: when saving to `localStorage` fails, the app breaks silently.**~~ **Fixed** ([#5](https://github.com/SuruchBoss/ExcelToGo/issues/5)):
+   a red bar appears the moment a save does not land, with an export button, and export works (1.6 s on the large
+   template). Keeping the large template across a reload still waits on item 3.
 
 **Measured** (development machine; for comparison, not a promise):
 
@@ -67,7 +69,7 @@ the round trip.
 | Open in the app until the tabs show | 0.4 s | 2.4 s |
 | Size to store in `localStorage` | 17K characters | **about 45 million characters**, against a ~5 MB quota |
 | Save | works | **fails** — an uncaught `QuotaExceededError` |
-| Export `.xlsx` | 0.1 s | **fails** — the button does nothing (Node exports in 0.9 s, but the file breaks the spec per item 2) |
+| Export `.xlsx` | 0.1 s | ~~fails~~ 1.6 s since #5 — but the file still breaks the spec per item 2 |
 | Reload the page | work is still there | **all work is lost** |
 
 The size comes from item 3: 3,000 options copied into each of 6,000 cells. Kept as a reference, it falls to
