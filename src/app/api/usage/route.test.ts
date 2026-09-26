@@ -253,3 +253,59 @@ describe("when the write does not land", () => {
     vi.resetModules();
   });
 });
+
+/**
+ * The production failure this was written from: a key pasted with a line break in the middle.
+ *
+ * `fetch` refuses a header like that before a byte leaves the function, so the log said `TypeError`
+ * and nothing else — true, and no help, because a dozen causes share that name. Working out which
+ * one took reproducing each paste mistake against the real code by hand. These pin the answer to a
+ * word that names the fix.
+ */
+describe("a key that was damaged on the way into the host's settings", () => {
+  const FAKE = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.ZmFrZS1zaWduYXR1cmU";
+
+  const attempt = async (key: string) => {
+    const warned: string[] = [];
+    const send = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+    await recordUsage("app_opened", {
+      url: "https://p.supabase.co",
+      key,
+      fetch: send as unknown as typeof fetch,
+      warn: (line) => warned.push(line),
+    });
+    return { warned, sent: send.mock.calls.length > 0 };
+  };
+
+  it("names each paste mistake bad_key, and sends nothing", async () => {
+    const damaged = {
+      "a line break in the middle": `${FAKE.slice(0, 30)}\n${FAKE.slice(30)}`,
+      "copied while displayed truncated": `${FAKE.slice(0, 30)}…`,
+      "an invisible zero-width space": `${FAKE}​`,
+      "a space in the middle": `${FAKE.slice(0, 30)} ${FAKE.slice(30)}`,
+      "a tab": `${FAKE}\tx`,
+      "a Thai character from the keyboard layout": `${FAKE}ก`,
+    };
+    for (const [how, key] of Object.entries(damaged)) {
+      const { warned, sent } = await attempt(key);
+      expect(warned, how).toEqual([usageFailureLine("app_opened", "bad_key")]);
+      expect(sent, how).toBe(false);
+    }
+  });
+
+  it("does not refuse a well-formed key of either shape the provider issues", async () => {
+    // The rule is what HTTP refuses plus whitespace, not a guess at the key format — so a format
+    // change on the provider's side cannot turn a working deployment into a confident `bad_key`.
+    for (const key of [FAKE, "sb_publishable_AbCdEf0123456789-_xyz"]) {
+      const { warned, sent } = await attempt(key);
+      expect(warned, key).toEqual([]);
+      expect(sent, key).toBe(true);
+    }
+  });
+
+  it("never puts the key in the line, however it was damaged", async () => {
+    const { warned } = await attempt(`${FAKE.slice(0, 30)}\n${FAKE.slice(30)}`);
+    expect(warned.join(" ")).not.toContain(FAKE.slice(0, 20));
+    expect(warned.join(" ")).not.toContain(FAKE.slice(30));
+  });
+});

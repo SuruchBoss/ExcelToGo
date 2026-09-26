@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1348%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1351%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1348 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1351 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1348 passing tests could not catch
+### 🧪 What 1351 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1348 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1351 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -257,7 +257,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1348-case Vitest suite |
+| `npm test` | Run the 1351-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1664,13 +1664,23 @@ had not applied, and a 404 from a project that had never run the migration were 
 things producing three identical non-events: no log line, no error, a 204 to the browser, and an
 empty table. Working out which one it was took ten rounds of reading deploy logs for a fact the
 function had known all along and thrown away. A failure now costs one `console.warn`, shaped
-`exceltogo.usage.failed <event> <reason>`, where the reason is `http_401` or an error's code
+`exceltogo.usage.failed <event> <reason>`, where the reason is `http_401`, `bad_key` or an error's code
 (`ECONNREFUSED`) and **never an error's message** — a `fetch` failure puts the host it could not
 reach in its own, and this is the one function in the codebase holding an API key, so the reason is
 forced through `[A-Za-z0-9_]{1,32}` and anything else is reported as `unknown`. (The test for it
 hands the error a connection string as its `code` and asserts the line does not contain it.) The
 endpoint still answers 204 either way: a counter that can break the thing it counts is worse than
 no counter.
+
+**`bad_key` came from production, not from reflection.** With the fix above deployed, the Vercel log
+did speak — and said `TypeError` and "no outgoing requests", which is true and no help, because a
+dozen causes share that name. Reproducing each paste mistake against the real code narrowed it to
+one family: **a key holding a character HTTP will not put in a header** — a line break from the
+paste, a `…` from copying while it was displayed truncated, an invisible character. The key is now
+checked first for printable ASCII without whitespace, and anything else is reported as `bad_key`.
+The rule is *what HTTP itself refuses* plus whitespace, not a guess at the provider's key format:
+guess the format, and a format change on their side turns a working deployment into a confident,
+wrong `bad_key`.
 
 **What it cannot tell you**, written down so nobody reads more into a number than is in it: how many
 *people* (two visits from one person and one each from two are the same number), whether anyone came
@@ -1757,7 +1767,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1348 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1351 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2451,7 +2461,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 252 security tests
+### 255 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2617,13 +2627,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1348 cases across 82 files, via Vitest
+npm test      # 1351 cases across 82 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1348 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1351 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2717,10 +2727,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1348 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1351 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1348 passing tests could not catch](#-what-1348-passing-tests-could-not-catch), repeatable
+> [What 1351 passing tests could not catch](#-what-1351-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
