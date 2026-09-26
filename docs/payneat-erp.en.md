@@ -39,10 +39,11 @@ the round trip.
 
 **Missing, and needed before a template goes to a chain:**
 
-1. **Bug: a dropdown that points at a range on another sheet gets the wrong options.** A rule such as
-   `Ref!$B$2:$B$5` is read from the same range *on the sheet being opened* instead of on `Ref`
-   (`src/lib/excelIO.ts`, `rangeReader`), with no warning. In the ERP's template **every** cross-sheet
-   dropdown is wrong — the unit column offers item codes, for one.
+1. ~~**Bug: a dropdown that points at a range on another sheet gets the wrong options.**~~ **Fixed** ([#6](https://github.com/SuruchBoss/ExcelToGo/issues/6)):
+   a rule such as `Ref!$B$2:$B$5` now reads `Ref` itself (hidden or not), quoted sheet names included, and a
+   rule naming a sheet the file lacks gets no dropdown instead of a guess. Draft 0 is in the repository as a
+   fixture (`src/lib/fixtures/`), with a test that the unit, location-code and item-code dropdowns come from
+   `Ref`. The options are still captured as a list at import; keeping the reference is item 3.
 2. **Bug: a template's dropdowns are written back without checking Excel's 255-character limit.** The large
    template exports a 9,001-character list formula, which breaks the spec.
 3. **The range reference itself has to survive the round trip.** Options are captured as a list **copied
