@@ -372,8 +372,16 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
           <SectionHead n="02" title={t.landing.statsTitle} inverted />
           <dl className="mt-10 grid grid-cols-2 gap-y-9 sm:grid-cols-5 sm:gap-y-0">
-            {t.landing.stats.map((s, i) => (
-              <div key={s.label} className={`px-1 sm:px-6 ${i > 0 ? "sm:border-l sm:border-white/15" : ""} ${i === 0 ? "sm:pl-0" : ""}`}>
+            {t.landing.stats.map((s, i, all) => (
+              // Two columns on a phone and five figures leave the last one alone on its row, half
+              // the band empty beside it. Let it take the whole row instead: it is the "0", the
+              // figure the rest of the band is built on, so it is the one worth a line to itself.
+              <div
+                key={s.label}
+                className={`px-1 sm:px-6 ${i > 0 ? "sm:border-l sm:border-white/15" : ""} ${i === 0 ? "sm:pl-0" : ""} ${
+                  i === all.length - 1 && all.length % 2 === 1 ? "col-span-2 border-t border-white/15 pt-9 sm:col-span-1 sm:border-t-0 sm:pt-0" : ""
+                }`}
+              >
                 <dd className="tabular-nums font-mono text-[2.6rem] font-medium leading-none text-white sm:text-[3rem]">{s.value}</dd>
                 <dt className="mt-3.5 text-[12.5px] leading-relaxed text-white/55">{s.label}</dt>
               </div>
