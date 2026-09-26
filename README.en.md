@@ -133,16 +133,128 @@ tests say, and nothing whatever about whether that is the right thing.
 
 → [The whole story, and the fix](#-ask-ai-for-a-formula) · repeatable with `npm run check:ai`
 
+## 💼 Problems it solves
+
+A summary for whoever decides whether to use it — told from **the problems a team already pays for**,
+not from a feature list. Each one is solved by several features working together, and every feature
+name links to its details below. It is the same content as the first section of the
+[landing page](https://excel-to-go.vercel.app), which is laid out like a ledger: the cost in red ink,
+the outcome under a double rule like a total.
+
+<p align="center"><img src="public/screenshots/38-landing-problems.png" width="900" alt="The problems section on the landing page: an index of six problems, and the first one with its proof"></p>
+<p align="center"><sub><b>On the landing page</b> — an index of six, then each one told as who has it → cost → solved by → outcome</sub></p>
+
+### 01 · One person writes all the formulas
+
+**Every report ends up waiting on the one person in the team who can write formulas**
+
+- **Who has it:** Finance · sales admin · HR — teams who live in Excel but don't write formulas for a living
+- **What it costs now:** Urgent reports queue behind one person, who becomes the whole department's bottleneck — and the day they change jobs, what the files knew leaves with them, because nobody else can read their formulas
+
+**Solved by**
+
+1. **[Ask the AI in plain Thai or English](#-ask-ai-for-a-formula)** — Type “total sales for the North branch only” and get a formula with an explanation before you decide to use it. Needs [your own API key](#-bring-your-own-api-key-byok) — without one, the app guesses from keywords and only manages basic formulas
+2. **[37 ready-made formulas](#-drag-and-drop-formulas)** — Rather not type? Pick from the list, fill it in field by field, and press the crosshair to drag-select the range on the real sheet instead of typing cell addresses
+3. **[Name ranges, in Thai if you like](#-named-ranges)** — `=SUM(ยอดขาย)` instead of `=SUM(B2:B500)` — whoever inherits the file can read the formula without chasing the person who wrote it
+
+> **Outcome:** People in the team build their own reports the same day, and the file still makes sense after its author has moved on
+
+### 02 · Numbers that are quietly wrong
+
+**The total looked reasonable, went to management — and was wrong**
+
+- **Who has it:** Anyone whose numbers someone else will make a decision on
+- **What it costs now:** A formula whose range overruns by one column shows no error. Bad input surfaces at month-end close, and fixing it afterwards always costs more than stopping it at entry
+
+**Solved by**
+
+1. **[Restrict what can be entered](#-data-validation)** — A cell becomes a dropdown or accepts only numbers in a range. Anything outside the rule is **not saved** — refused, not stored and flagged later
+2. **[See which cells a formula reads](#-see-what-a-formula-is-about)** — Click the total and the cells it reads light up on the sheet — a range one column too wide is visible at a glance
+3. **[Pick ranges by dragging](#️-the-fill-handle)** — Drag on the sheet instead of typing addresses, and drag the corner to fill a whole column — references shift correctly, and `$A$1` stays put
+4. **[Conditional formatting](#-conditional-formatting)** — Values out of the ordinary colour themselves, so nobody has to read every row
+
+> **Outcome:** Bad data is stopped at the moment it is typed, not found at month-end close
+
+### 03 · Re-pasting exports every month
+
+**Every month someone exports figures from the back-office system and pastes them into the same file**
+
+- **Who has it:** Teams whose data already lives in a sales system, an accounting system or a database, but whose reports are still made in Excel
+- **What it costs now:** Export → paste → reformat, every month, and the numbers in the file are out of date the second the export finishes
+
+**Solved by**
+
+1. **[Connect an API or a database directly](#-straight-into-a-database-postgresql--mysql)** — Someone technical adds a URL or a PostgreSQL / MySQL connection once. Queries run read-only, and the database itself refuses writes
+2. **[Press “Insert into sheet”](#-live-data-from-an-api--csv-prototype)** — Users pick a cell and choose the whole table or one summary figure. Values refresh on a schedule and feed formulas like any other cell
+3. **[Pivots and charts that follow the data](#-pivot-summarise-a-range)** — A summary tied to its source refreshes with one press, and [charts](#-charts-from-the-sheet) move the moment the numbers do
+
+> **Outcome:** One monthly chore is gone, and the number in the file is the number right now
+
+### 04 · Existing files break on the way in
+
+**You'd switch tools, but your Excel files open broken, and Thai PDFs come out with floating vowels**
+
+- **Who has it:** Teams with templates they've used for years, who send files on to customers or agencies that use Excel
+- **What it costs now:** Templates have to be rebuilt, exported files turn into dead numbers the recipient can't work with, and a Thai PDF with misplaced tone marks can't go to a customer
+
+**Solved by**
+
+1. **[Open .xlsx files as they were](#-it-looks-like-the-file-you-opened)** — Fills, borders, font sizes, row heights and merged cells all come across
+2. **[Templates from locked files](#-templates-from-an-excel-file)** — A protected workbook is read as a template that knows which cells are for input and which must not be touched, dropdowns included
+3. **[Exports you can keep working on](#-export)** — Formulas stay formulas, charts are real Excel charts, and [CSV exports](#-csv-in-and-out) neutralise formulas smuggled in with the data (CSV injection)
+4. **[Thai PDFs that read correctly](#-export)** — The Thai font is embedded, and tone marks stacked over upper vowels land in the right place
+
+> **Outcome:** No existing file left behind, and whatever you send out opens in Excel ready to keep working on
+
+### 05 · Customer data can't be uploaded
+
+**Payroll or a customer list can't be uploaded to someone else's service**
+
+- **Who has it:** Work involving personal data, where IT or legal have to be able to say where the data goes
+- **What it costs now:** Every more convenient tool wants a login and an upload, so the request ends at “not approved” — or worse, someone uses it anyway and nobody knows
+
+**Solved by**
+
+1. **[Runs entirely in the browser](#-security--what-was-actually-tested)** — No account, no upload, the file never leaves the machine, and the page's security policy (CSP) closes the route for data to be sent anywhere else — an e2e flow fires at it for real
+2. **[AI on your own key](#-bring-your-own-api-key-byok)** — Questions go from the browser straight to Anthropic on your key, never through this site's server — only the question, the selected range and the column headers, never the file
+3. **[Usage counted without identifying anyone](#-a-usage-count-that-provably-cannot-identify-anyone)** — It can tell how many times the app was opened today, nothing more: no IP, no cookie, and Do Not Track is honoured · error reports (if switched on) strip Thai text and keys before they leave
+4. **[Cloud on your own backend](#️-cloud-save-bring-your-own-backend)** — Want to save online or edit together? Connect your own Supabase project — and its row-level access rules are under test
+
+> **Outcome:** Start using it without waiting for anyone's approval, and answer “where does the data go?” with code anyone can read, not with a policy page
+
+### 06 · Work lost halfway through
+
+**An afternoon of typing, gone — the connection dropped, the tab froze, or someone saved over it**
+
+- **Who has it:** Everyone — especially people working away from the office, or several people editing one file
+- **What it costs now:** Hours of work gone in one click, and `final_v3_fixed.xlsx` passed around until nobody knows which copy is current
+
+**Solved by**
+
+1. **[Autosave, and undo](#-autosave--undoredo)** — Every edit is kept in the browser as you make it, and Ctrl+Z steps back one change at a time
+2. **[A save that fails says so](#-autosave--undoredo)** — If the browser refuses a save — storage full, for instance — the app shows an alert straight away and export still works, instead of saying nothing until the tab closes
+3. **[Crashes still let the work out](#-the-app-can-break-and-you-still-get-your-file-out)** — If the app crashes, the screen that appears offers the work as a file before anything else, and the app [opens even with no connection](#-opens-with-the-network-off)
+4. **[Edit together, with version history](#-editing-together)** — Several people edit one file live, your undo never erases theirs, and earlier versions can be restored (on your own Supabase project)
+
+> **Outcome:** Nothing you've typed disappears quietly, and there is one copy of the file that everyone works on
+
+<p align="center"><img src="public/screenshots/42-save-failed.png" width="820" alt="The browser refuses a save: the app raises a red alert at once, with an Export Excel button"></p>
+<p align="center"><sub><b>A refused save</b> — the alert appears the moment the browser says no, with export right in it</sub></p>
+
+---
+
 ## 📋 Table of Contents
 
 - [Try it in 60 seconds](#️-try-it-in-60-seconds)
 - [Screenshots](#-screenshots)
+- [Problems it solves](#-problems-it-solves)
 - [Why this project](#-why-this-project)
 - [Getting started](#-getting-started)
 - [Features](#-features)
   - [Ask AI for a formula](#-ask-ai-for-a-formula)
   - [Bring your own API key (BYOK)](#-bring-your-own-api-key-byok)
   - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
+  - [Straight into a database (PostgreSQL / MySQL)](#-straight-into-a-database-postgresql--mysql)
   - [Spreadsheet grid](#-spreadsheet-grid)
   - [Autosave + Undo/Redo](#-autosave--undoredo)
   - [The app can break and you still get your file out](#-the-app-can-break-and-you-still-get-your-file-out)
@@ -1711,19 +1823,24 @@ honest: if the engine regresses, the front page visibly breaks.
 <p align="center"><img src="public/screenshots/25-landing.png" width="820"></p>
 
 **The old pitch said nothing.** "Open Excel and keep working in the browser" is what Google Sheets and Office on
-the web already do, for free, for millions of people. The page now answers that objection directly, right under
-the hero, instead of hoping a visitor reads far enough to find the difference themselves. Every row is a
+the web already do, for free, for millions of people. The page now answers that objection directly, straight after
+the problems — the moment a reader has recognised their own and thinks "but Sheets does that" — instead of hoping
+they read far enough to find the difference themselves. Every row is a
 checkable fact — and **the row this app loses is in the table too**, because a comparison the author wins
 outright is one nobody believes.
 
 <p align="center"><img src="public/screenshots/32-landing-compare.png" width="900"></p>
 
-**The first section stopped being a feature list.** It used to read "formula syntax you can't recall",
-"mistyped cell addresses", "data stuck in another system" — capabilities dressed up as problems, and
-nobody reads one of those and thinks *that is me*. It is now four situations told as situations, each
-with the same three lines under it: **what goes wrong** (what actually happens) · **what happens here**
-(what the app does instead) · **what you get for moving** (the only line a visitor came for). That last
-line is set darker than the other two, because after one pass a reader skips straight to it.
+**The first section stopped being a feature list — twice.** It used to read "formula syntax you can't
+recall", "mistyped cell addresses" — capabilities dressed up as problems, which nobody reads and thinks
+*that is me* — so it became situations told as situations. But problems and features still lived in
+separate sections: the problems had no pictures, and the features never said what they were for. Now
+they are one: **[six problems a team already pays for](#-problems-it-solves)**, each written as a ledger
+entry — who has it · **what it costs now, in red ink** (the only place the page uses that colour for
+words) · the features that solve it as lines a, b, c, because one problem is usually solved by several
+working together · and **the outcome under a double rule**, the way an account closes its total. Beside
+each, a proof from the running app stays on screen while the entry is read, and opens full size. An
+index of all six sits on top, so the person who runs payroll reaches their problem in one press.
 
 <p align="center"><img src="public/screenshots/38-landing-problems.png" width="900"></p>
 
@@ -3021,6 +3138,12 @@ What's not done yet, and why — to show this is a known gap, not something forg
       tech saves a connection string and a query once, users only ever see the table, and the statement runs
       in a read-only transaction. Still open: a table picker instead of typed SQL, and a test that connects to
       a real database — today only the pure modules around it are covered.
+- [ ] **A smarter fallback when there is no API key** — it answers `=SUM(A1:A10)` to nearly any question containing
+  "total", and ignores the selected range too. Found while shooting the landing page's problems section, which is
+  why problem 01 there says a key of your own is needed rather than promising a SUMIF from plain Thai
+- [ ] **Retake `04-ai-assistant.png` with a real key** — its toolbar predates freeze panes, validation and named
+  ranges, but retaking it without a key would mean faking the assistant's answer, which a picture used to sell the
+  app should not do, so the old one stays for now
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 - [ ] **Working with PaynEat ERP** — agreed, not built (see [docs/payneat-erp.en.md](docs/payneat-erp.en.md)):
       the import template waits on cross-sheet dropdowns read from the right sheet, range references kept

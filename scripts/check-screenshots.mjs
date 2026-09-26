@@ -78,6 +78,8 @@ const SHOWS = {
   "39-crash-rescue.png": [],
   "40-array-spill.png": [],
   "41-precedents.png": [],
+  // The alert a refused save raises. The sheet's numbers are the sample's own, not counted figures.
+  "42-save-failed.png": [],
   "demo.gif": [],
 };
 

@@ -33,23 +33,26 @@ const REPO_URL = "https://github.com/SuruchBoss/ExcelToGo";
 const AUTHOR_URL = "https://github.com/SuruchBoss";
 const LINKEDIN_URL = "https://www.linkedin.com/in/suruchboss";
 
-/** Paired by index with `t.landing.features`. Kept out of the message dictionaries because a file
- *  path and its pixel size are the same in every language — only the alt text needs translating. */
-/** Paired by index with `landing.features` in the message files — reorder one, reorder both. */
-// Paired with `t.landing.features` by index, so the two lists move together or not at all.
-const FEATURE_MEDIA = [
-  { src: "/screenshots/04-ai-assistant.png", width: 2720, height: 1720 },
-  // Animated, so it shows the one thing a still cannot: the number arriving in the cell, and then
-  // changing again on its own. `unoptimized` because the optimiser returns a single still frame.
-  { src: "/screenshots/34-live-data.gif", width: 820, height: 478, unoptimized: true },
-  { src: "/screenshots/02-formula-panel.png", width: 2720, height: 1720 },
+/**
+ * The exhibit and the anchor for each problem in `t.landing.pains`, paired by index — reorder one,
+ * reorder both. Kept out of the message dictionaries because a file path, its pixel size and a
+ * URL fragment are the same in every language; only the alt text needs translating. The anchors
+ * are English slugs so that a link someone pastes into a chat reaches the same problem whichever
+ * language the reader has chosen.
+ */
+const PAIN_EXHIBITS = [
+  { id: "formulas", src: "/screenshots/04-ai-assistant.png", width: 2720, height: 1720 },
   // The names panel open over a sheet that is already using one: the formula bar reads
   // `=SUM(ยอดขาย)`, the cells that name stands for are lit as its precedents, and the emerald
-  // rings down column A are the validated cells. One frame carries both halves of the feature.
-  { src: "/screenshots/43-sheet-rules.png", width: 2720, height: 1200 },
-  { src: "/screenshots/17-styled-import.png", width: 2720, height: 1720 },
-  { src: "/screenshots/20-charts.png", width: 1440, height: 900 },
-];
+  // rings down column A are the validated cells. One frame carries three of the four fixes.
+  { id: "silent-errors", src: "/screenshots/43-sheet-rules.png", width: 2720, height: 1200 },
+  // Animated, so it shows the one thing a still cannot: the number arriving in the cell, and then
+  // changing again on its own. `unoptimized` because the optimiser returns a single still frame.
+  { id: "monthly-export", src: "/screenshots/34-live-data.gif", width: 820, height: 478, unoptimized: true },
+  { id: "existing-files", src: "/screenshots/17-styled-import.png", width: 2720, height: 1720 },
+  { id: "privacy", src: "/screenshots/33-byok.png", width: 735, height: 628 },
+  { id: "lost-work", src: "/screenshots/42-save-failed.png", width: 2720, height: 1720 },
+] as const;
 
 const num = (i: number) => String(i + 1).padStart(2, "0");
 
@@ -65,12 +68,25 @@ function Mark() {
 }
 
 /** A numbered heading sitting on a heavy rule — the page's one repeated structural device. */
-function SectionHead({ n, title, lead, inverted }: { n: string; title: string; lead?: string; inverted?: boolean }) {
+function SectionHead({
+  n,
+  title,
+  lead,
+  inverted,
+  id,
+}: {
+  n: string;
+  title: string;
+  lead?: string;
+  inverted?: boolean;
+  id?: string;
+}) {
   return (
     <div className={`border-b pb-4 ${inverted ? "border-white/25" : "border-ink"}`}>
       <div className="flex items-baseline gap-3 sm:gap-5">
         <span className={`tabular-nums font-mono text-[11px] font-medium ${inverted ? "text-[#5ad0a3]" : "text-ledger"}`}>{n}</span>
         <h2
+          id={id}
           className={`text-[1.5rem] font-semibold leading-[1.3] tracking-[-0.015em] sm:text-[2rem] ${
             inverted ? "text-white" : "text-ink"
           }`}
@@ -159,12 +175,141 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── 01 · The problems a team already pays for → what solves them → what they get ───────
+          The business case, told the way a ledger would: each problem is an entry with its cost
+          in red ink, the features that answer it are the lines under it, and the outcome sits
+          under a double rule, which is how an account writes its total. One problem is usually
+          solved by several features working together — that chain is the story, so it is shown
+          as one, rather than as the same features scattered across a list further down. */}
+      <section className="border-b border-rule bg-white" aria-labelledby="pains-title">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
+          <SectionHead n="01" id="pains-title" title={t.landing.painTitle} lead={t.landing.painLead} />
+
+          {/* The index: a reader who manages payroll should reach their problem in one press,
+              not by reading five others first. Hairlines between cells come from the gap showing
+              the rule colour through, so the grid reads as ruled paper at every width. */}
+          <nav aria-label={t.landing.painIndexLabel} className="mt-8">
+            <ol className="grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
+              {t.landing.pains.map((p, i) => (
+                <li key={PAIN_EXHIBITS[i].id} className="bg-white">
+                  <a
+                    href={`#${PAIN_EXHIBITS[i].id}`}
+                    className="flex min-h-11 items-baseline gap-3 px-3 py-3.5 text-[14px] leading-snug text-ink transition-colors hover:bg-band/60 hover:text-ledger-ink"
+                  >
+                    <span aria-hidden className="tabular-nums shrink-0 font-mono text-[11px] text-ref">
+                      {num(i)}
+                    </span>
+                    <span className="min-w-0 flex-1">{p.short}</span>
+                    <span aria-hidden className="shrink-0 font-mono text-[12px] text-ash">
+                      ↓
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+
+          <div className="mt-4">
+            {t.landing.pains.map((p, i) => {
+              const exhibit = PAIN_EXHIBITS[i];
+              const titleId = `${exhibit.id}-title`;
+              return (
+                <article
+                  key={exhibit.id}
+                  id={exhibit.id}
+                  aria-labelledby={titleId}
+                  className="grid scroll-mt-20 items-start gap-8 border-b border-rule py-12 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:gap-12 lg:py-14"
+                >
+                  {/* Alternate which side the exhibit sits on, but only once there are two columns. */}
+                  <div className={`min-w-0 ${i % 2 === 1 ? "md:order-2" : ""}`}>
+                    <p className="flex items-center gap-2.5 font-mono text-[11.5px] font-medium text-ref">
+                      <span className="h-[7px] w-[7px] shrink-0 bg-ref" aria-hidden />
+                      {t.landing.painLabels.problem} {num(i)}
+                    </p>
+                    <h3
+                      id={titleId}
+                      className="mt-3 text-[1.3rem] font-semibold leading-[1.42] tracking-[-0.01em] text-ink sm:text-[1.5rem]"
+                    >
+                      {p.title}
+                    </h3>
+
+                    {/* Who has it, and what it costs them today. The cost is in red ink — the one
+                        place on the page that colour is used for words — because it is the debit
+                        the rest of the entry is there to clear. */}
+                    <dl className="mt-5 space-y-3 border-l-2 border-ref/35 pl-4">
+                      <div>
+                        <dt className="text-[12px] font-semibold text-ash">{t.landing.painLabels.who}</dt>
+                        <dd className="mt-0.5 text-[14px] leading-relaxed text-ink/80">{p.who}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[12px] font-semibold text-ref">{t.landing.painLabels.cost}</dt>
+                        <dd className="mt-0.5 text-[14.5px] leading-relaxed text-ink">{p.cost}</dd>
+                      </div>
+                    </dl>
+
+                    <h4 className="mt-8 font-mono text-[11.5px] font-medium text-ledger">{t.landing.painLabels.solvedBy}</h4>
+                    {/* Lettered, not numbered: they are lines of one entry, not entries of their own. */}
+                    <ol className="mt-2 border-t border-rule">
+                      {p.solvedBy.map((f, j) => (
+                        <li key={f.name} className="grid grid-cols-[1.4rem_minmax(0,1fr)] gap-x-2 border-b border-rule py-3.5">
+                          <span aria-hidden className="pt-[3px] font-mono text-[11px] text-ledger">
+                            {String.fromCharCode(97 + j)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[14.5px] font-semibold leading-snug text-ink">{f.name}</p>
+                            <p className="mt-1 text-[13.5px] leading-relaxed text-ash">{f.does}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+
+                    {/* The total line. A double rule over the result is how a ledger closes a column;
+                        here it closes the entry, and it is the line a skimming reader lands on. */}
+                    <div className="mt-6 border-t-[3px] border-double border-ink pt-4">
+                      <p className="font-mono text-[11.5px] font-medium text-ledger">{t.landing.painLabels.outcome}</p>
+                      <p className="mt-1.5 text-[16px] font-semibold leading-[1.6] text-ink sm:text-[17px]">{p.outcome}</p>
+                    </div>
+                  </div>
+
+                  {/* Sticky on wide screens, so the proof stays beside the entry while it is read. A
+                      whole-app screenshot at column width is too small to read the part that proves
+                      anything, so the exhibit opens at full size — the link's name is the image's alt. */}
+                  <figure className="min-w-0 border border-rule bg-white md:sticky md:top-24">
+                    <a
+                      href={exhibit.src}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger"
+                    >
+                      <Image
+                        src={exhibit.src}
+                        width={exhibit.width}
+                        height={exhibit.height}
+                        unoptimized={"unoptimized" in exhibit && exhibit.unoptimized}
+                        alt={p.alt}
+                        sizes="(max-width: 768px) 100vw, 620px"
+                        className="h-auto w-full"
+                      />
+                    </a>
+                    {/* Styled as the formula bar, so an exhibit reads as part of the same instrument. */}
+                    <figcaption className="border-t border-rule bg-paper px-3 py-2 font-mono text-[11px] leading-relaxed text-ash">
+                      {p.alt}
+                    </figcaption>
+                  </figure>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* ── Where this differs ───────────────────────────────────────────────────────────────
-          Unnumbered on purpose: it belongs to the pitch, not to the numbered tour below it.
-          The first thing a visitor thinks is "Sheets already does this", and they are right, so
-          the page answers it here instead of hoping they read far enough to find out. Every row
-          is a checkable fact, and the row the app loses is in the table too — a comparison that
-          only the author wins is one nobody believes. */}
+          Unnumbered on purpose: it answers an objection rather than making a point of its own.
+          It sits straight after the problems because that is when the objection arrives — a
+          reader who has just recognised their problem thinks "Sheets already does this", and
+          they are partly right, so the page answers it here instead of hoping they read on. Every
+          row is a checkable fact, and the row the app loses is in the table too — a comparison
+          that only the author wins is one nobody believes. */}
       <section className="border-b border-rule bg-white">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-8 sm:py-14">
           {/* A scrollable table has to be reachable by keyboard, or someone who cannot use a
@@ -222,116 +367,10 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── 01 · Scenario → pain → what happens here → what you get ─────────────────────────── */}
-      <section className="border-b border-rule bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="01" title={t.landing.problemTitle} lead={t.landing.problemLead} />
-          {/* An <ol>, because the scenarios are numbered on screen. The printed numbers only
-              repeat the list's own ordering, so they are decorative. */}
-          <ol className="mt-1">
-            {t.landing.problems.map((p, i) => (
-              <li
-                key={p.scenario}
-                className={`flex gap-3 border-b border-rule px-2 py-7 sm:gap-4 sm:px-3 ${i % 2 === 1 ? "bg-band/40" : ""}`}
-              >
-                <span aria-hidden className="tabular-nums shrink-0 pt-[0.2rem] font-mono text-[11px] text-ash">
-                  {num(i)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-[15.5px] font-semibold leading-snug text-ink sm:text-[1.05rem]">{p.scenario}</h3>
-                  {/* The same three labels on every scenario, on purpose: once a reader has seen
-                      them, they can skim straight to the only line they came for — the last one. */}
-                  <dl className="mt-3.5 space-y-2.5">
-                    {(
-                      [
-                        [t.landing.problemLabels.pain, p.pain, false],
-                        [t.landing.problemLabels.solution, p.solution, false],
-                        [t.landing.problemLabels.gain, p.gain, true],
-                      ] as const
-                    ).map(([label, body, isGain]) => (
-                      <div key={label} className="grid gap-x-5 gap-y-0.5 sm:grid-cols-[minmax(0,9rem)_1fr]">
-                        <dt className={`text-[12.5px] font-semibold leading-relaxed ${isGain ? "text-ledger" : "text-ash"}`}>
-                          {label}
-                        </dt>
-                        <dd className={`text-[14.5px] leading-relaxed ${isGain ? "font-medium text-ink" : "text-ash"}`}>
-                          {body}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* ── 02 · What it does ────────────────────────────────────────────────────────────────── */}
-      <section className="border-b border-rule">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="02" title={t.landing.featuresTitle} lead={t.landing.featuresSubtitle} />
-
-          <div className="mt-2">
-            {t.landing.features.map((f, i) => {
-              const media = FEATURE_MEDIA[i];
-              // One feature has no exhibit — the live session only exists once someone attaches a
-              // Supabase project, and this page says every image on it was taken from the running
-              // app. So it lays out as one column rather than leaving half the row empty, capped at
-              // the measure the two-column rows already read at.
-              const exhibited = media && f.alt;
-              return (
-                <article
-                  key={f.title}
-                  className={
-                    "grid items-start gap-7 border-b border-rule py-10 md:gap-12 lg:py-12 " +
-                    (exhibited ? "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : "")
-                  }
-                >
-                  {/* Alternate which side the exhibit sits on, but only once there are two columns. */}
-                  <div className={`min-w-0 ${exhibited ? (i % 2 === 1 ? "md:order-2" : "") : "md:max-w-[38rem]"}`}>
-                    <span className="tabular-nums font-mono text-[11px] text-ash">{num(i)}</span>
-                    <h3 className="mt-2.5 text-[1.2rem] font-semibold leading-[1.4] tracking-[-0.01em] text-ink sm:text-[1.35rem]">
-                      {f.title}
-                    </h3>
-                    <p className="mt-3 text-[14.5px] leading-[1.75] text-ash">{f.body}</p>
-                    <ul className="mt-5 border-t border-rule">
-                      {f.points.map((point) => (
-                        <li key={point} className="flex items-start gap-3 border-b border-rule py-2.5 text-[13.5px] leading-relaxed text-ink">
-                          <span className="mt-[7px] h-[4px] w-[4px] shrink-0 bg-ledger" aria-hidden />
-                          {point}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {media && f.alt && (
-                    <figure className="min-w-0 border border-rule bg-white">
-                      <Image
-                        src={media.src}
-                        width={media.width}
-                        height={media.height}
-                        unoptimized={"unoptimized" in media && media.unoptimized}
-                        alt={f.alt}
-                        sizes="(max-width: 768px) 100vw, 620px"
-                        className="h-auto w-full"
-                      />
-                      {/* Styled as the formula bar, so an exhibit reads as part of the same instrument. */}
-                      <figcaption className="border-t border-rule bg-paper px-3 py-2 font-mono text-[11px] text-ash">
-                        {f.alt}
-                      </figcaption>
-                    </figure>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── 03 · Under the hood — the page's one inverted band ───────────────────────────────── */}
+      {/* ── 02 · Under the hood — the page's one inverted band ───────────────────────────────── */}
       <section className="bg-ink">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="03" title={t.landing.statsTitle} inverted />
+          <SectionHead n="02" title={t.landing.statsTitle} inverted />
           <dl className="mt-10 grid grid-cols-2 gap-y-9 sm:grid-cols-5 sm:gap-y-0">
             {t.landing.stats.map((s, i) => (
               <div key={s.label} className={`px-1 sm:px-6 ${i > 0 ? "sm:border-l sm:border-white/15" : ""} ${i === 0 ? "sm:pl-0" : ""}`}>
@@ -360,10 +399,10 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── 04 · What it can't do ────────────────────────────────────────────────────────────── */}
+      {/* ── 03 · What it can't do ────────────────────────────────────────────────────────────── */}
       <section className="border-b border-rule bg-white">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="04" title={t.landing.limitsTitle} lead={t.landing.limitsLead} />
+          <SectionHead n="03" title={t.landing.limitsTitle} lead={t.landing.limitsLead} />
           <dl className="mt-1">
             {t.landing.limits.map((l, i) => (
               <div
