@@ -169,95 +169,159 @@ export const en: Messages = {
       disclaimer:
         "This table does not claim the app replaces either of them — both do far more, which is why the last two rows are in the table too. Co-editing does work here, but only once you have pointed it at your own Supabase, and it does not merge everything theirs does — for a sheet a team edits together all day, Google Sheets is plainly the better tool. What the table shows is what neither of them will do for you. Note: pressing the AI assistant sends your question, the selected range and the column headers — the file itself still does not leave, and not pressing it sends nothing at all.",
     },
-    problemTitle: "If any of this sounds familiar",
-    problemLead:
-      "Every situation below is one that actually prompted a piece of this app — not a feature list rewritten to look like a problem. If none of them is your week, this probably is not built for you.",
-    problemLabels: { pain: "What goes wrong", solution: "What happens here", gain: "What you get for moving" },
-    problems: [
+    painTitle: "The problems your team already pays for, and how this solves them",
+    painLead:
+      "Not a feature list — the work that eats hours, adds risk or sits waiting in any office that lives in Excel. Each one is solved by several features working together, and every picture is taken from the running app. If none of these is your problem, this app may not be for you.",
+    painIndexLabel: "Jump to your problem",
+    painLabels: { problem: "Problem", who: "Who has it", cost: "What it costs now", solvedBy: "Solved by", outcome: "Outcome" },
+    pains: [
       {
-        scenario: "It's three in the afternoon and your manager wants the northern-branch total today",
-        pain: "You know it's SUMIF, you just can't recall what goes where. So you open a tab, search, find an example built on someone else's ranges, and translate it back onto your own file.",
-        solution: "Type \"total sales for the northern branch\" in plain English — or Thai — and get the formula back with an explanation of what it does. Or skip typing: pick from 37 ready-made formulas and fill the fields one at a time.",
-        gain: "You stop leaving the file to find the answer somewhere else, and you read the formula and its explanation before it goes in, instead of pasting first and finding out later.",
-      },
-      {
-        scenario: "The total is in. It looks about right. It isn't.",
-        pain: "C2:C4 and C2:D4 differ by one character, both compute happily, and neither shows an error. You find out when someone asks why this number doesn't match the other report.",
-        solution: "Press the target button and drag the range off the real grid — what you get is the cells you pointed at, not the address you typed. Drag the bottom-right corner to fill a formula down the column: references move with it, and $A$1 stays put, as it should.",
-        gain: "It removes the most expensive class of spreadsheet bug there is — the number that is quietly wrong because nothing in the file says otherwise.",
-      },
-      {
-        scenario: "Start of the month again: export the figures from the back office and paste them into the same file",
-        pain: "The data already exists in a system. Getting it to the person who needs it still costs an export, a paste and a re-format every single time — and the file you send is stale the second it leaves.",
-        solution: "Whoever owns the endpoint pastes a URL once. After that you pick a field and press \"put it in the sheet\" — the whole table, or a single summary number. It refreshes on its own and feeds into formulas like any other cell.",
-        gain: "One monthly chore nobody wanted disappears, and the number in the file is the number now, not the number at the moment somebody clicked export.",
-      },
-      {
-        scenario: "A payroll file, or a customer list, that you are not allowed to upload anywhere",
-        pain: "Every online tool that would be more convenient wants you to sign in first, and then the file lives on their servers. For some work that ends the conversation before it starts.",
-        solution: "All of this runs in the browser. No account, no upload, the file never leaves the machine — except when you press the AI assistant, which sends the question, the range and the column headers, never the file, and sends nothing at all if you don't press it. The whole source is there to read.",
-        gain: "You can start using it without waiting for anyone's approval, and answer \"so where does the data go?\" by pointing at code rather than at a policy page.",
-      },
-    ],
-    featuresTitle: "What it does",
-    featuresSubtitle: "Every screenshot below is from the running app, not a mockup",
-    features: [
-      {
-        title: "Ask the AI in your own words",
-        body: "Type what you want in Thai or English. The question goes out with the range you selected, and comes back as a formula with an explanation — one button puts it in the cell.",
-        alt: "The AI assistant suggesting a formula",
-        points: ["Answers in the language you asked in", "Works without an API key (keyword fallback)", "You see the formula before it goes in"],
-      },
-      {
-        title: "Point it at your own API or database, and the values land in the cells",
-        body: "Last month's sales live in a system behind the company, and someone still exports them and pastes them in by hand. Here whoever owns it pastes a URL — or a PostgreSQL/MySQL connection string — once; after that you pick a field and press \"put it in the sheet\" — the whole table, or one summary number — seeing the real value before you commit. It refreshes on its own and feeds straight into formulas like any other cell.",
-        alt: "The live-data picker",
-        points: [
-          "A database works the same way: one saved SQL statement, and nobody downstream ever sees SQL",
-          "That statement runs in a read-only transaction, so the database itself refuses a write",
-          "Nested JSON is flattened for you, and paginated APIs are followed to the end",
-          "A rate limit is waited out, not retried into",
-          "Three sources are live on this demo, read-only — pointing it at your own means running it yourself",
+        short: "One person writes all the formulas",
+        title: "Every report ends up waiting on the one person in the team who can write formulas",
+        who: "Finance · sales admin · HR — teams who live in Excel but don't write formulas for a living",
+        cost: "Urgent reports queue behind one person, who becomes the whole department's bottleneck — and the day they change jobs, what the files knew leaves with them, because nobody else can read their formulas",
+        solvedBy: [
+          {
+            name: "Ask the AI in plain Thai or English",
+            does: "Type “total sales for the North branch only” and get a formula with an explanation before you decide to use it. Needs your own API key — without one, the app guesses from keywords and only manages basic formulas",
+          },
+          {
+            name: "37 ready-made formulas",
+            does: "Rather not type? Pick from the list, fill it in field by field, and press the crosshair to drag-select the range on the real sheet instead of typing cell addresses",
+          },
+          {
+            name: "Name ranges, in Thai if you like",
+            does: "=SUM(ยอดขาย) instead of =SUM(B2:B500) — whoever inherits the file can read the formula without chasing the person who wrote it",
+          },
         ],
+        outcome: "People in the team build their own reports the same day, and the file still makes sense after its author has moved on",
+        alt: "Asked in Thai, answered with a SUMIF formula and an explanation, before it goes into the cell",
       },
       {
-        title: "Drag a formula in, don't memorise its syntax",
-        body: "Search 37 ready-made formulas, then drag or click one to open a parameter panel. Press the target button to pick a range off the sheet instead of typing an address. Behind it is a formula engine written from scratch — tokenizer, parser and evaluator — with no third-party formula library.",
-        alt: "The formula parameter panel",
-        points: ["64 functions, ranges and multiple sheets", "References follow inserted and deleted rows", "Circular references are detected, not hung on"],
-      },
-      {
-        title: "Let the sheet explain itself, instead of waiting to be asked",
-        body: "=SUMIF(Sales,\">1000\") against =SUMIF(B2:B500,\">1000\"): the second sends every reader off to look at what is in column B, every time. Name the range — in Thai if that is what you work in — and the formula reads as what it means. The other half is a rule on what a cell will accept, where typing something outside it is refused rather than saved and flagged: a warning on a cell that already holds the wrong thing is a note about a mistake, and refusing the write is the mistake not happening.",
-        alt: "Naming a range, and limiting what a cell will accept",
-        points: [
-          "Thai names work, and they follow inserted and deleted rows",
-          "Names are substituted at compile time, so the dependency graph stays honest",
-          "A dropdown, a number range or a length cap — and the refusal is announced to screen readers",
-          "Both round-trip through .xlsx as the real Excel features",
+        short: "Numbers that are quietly wrong",
+        title: "The total looked reasonable, went to management — and was wrong",
+        who: "Anyone whose numbers someone else will make a decision on",
+        cost: "A formula whose range overruns by one column shows no error. Bad input surfaces at month-end close, and fixing it afterwards always costs more than stopping it at entry",
+        solvedBy: [
+          {
+            name: "Restrict what can be entered",
+            does: "A cell becomes a dropdown or accepts only numbers in a range. Anything outside the rule is not saved — refused, not stored and flagged later",
+          },
+          {
+            name: "See which cells a formula reads",
+            does: "Click the total and the cells it reads light up on the sheet — a range one column too wide is visible at a glance",
+          },
+          {
+            name: "Pick ranges by dragging",
+            does: "Drag on the sheet instead of typing addresses, and drag the corner to fill a whole column — references shift correctly, and $A$1 stays put",
+          },
+          {
+            name: "Conditional formatting",
+            does: "Values out of the ordinary colour themselves, so nobody has to read every row",
+          },
         ],
+        outcome: "Bad data is stopped at the moment it is typed, not found at month-end close",
+        alt: "A formula referring to a range by its Thai name, the cells it reads lit up, and validated cells ringed in green",
       },
       {
-        title: "An imported .xlsx still looks like itself",
-        body: "Colour bands, font sizes, borders, row heights and merged cells all survive — not just the computed numbers. A protected file is read as a fill-in template that knows which cells are yours and which are off limits.",
-        alt: "An imported Excel file keeping its original look",
-        points: ["Cell locking and dropdowns read from the file", "The template's structure can't be edited around", "Exports back out as a template"],
-      },
-      {
-        title: "What you export is still a working file",
-        body: "The exported .xlsx keeps formulas as formulas rather than baked-in values, and charts export as real charts you can keep editing in Excel — which meant hand-writing the OOXML chart part, because ExcelJS can't write one. The PDF embeds a Thai font and stacks Thai tone marks in the right place.",
-        alt: "A chart drawn from a range on the sheet",
-        points: ["Charts are bound to cells and follow edits", "Thai in the PDF reads as Thai, not as noise", "Conditional formatting round-trips through Excel"],
-      },
-      {
-        title: "Editing together, on your own backend",
-        body: "Save a workbook to your Supabase project and join the session: everyone who opens that workbook sees each other type, with a coloured dot for where each person's cursor is. No server of this app's sits in the middle — one would reverse the property the whole thing stands on. There is no picture in this section, because the panel only exists once a real Supabase project is attached, and this page promises every image is taken from the running app.",
-        points: [
-          "The cell you have open is never overwritten mid-word",
-          "Your undo does not erase their work",
-          "Not a CRDT — one cell typed into twice at once leaves one value, and the loser is told",
-          "Row inserts are not merged — it saves, then asks the others to reload",
+        short: "Re-pasting exports every month",
+        title: "Every month someone exports figures from the back-office system and pastes them into the same file",
+        who: "Teams whose data already lives in a sales system, an accounting system or a database, but whose reports are still made in Excel",
+        cost: "Export → paste → reformat, every month, and the numbers in the file are out of date the second the export finishes",
+        solvedBy: [
+          {
+            name: "Connect an API or a database directly",
+            does: "Someone technical adds a URL or a PostgreSQL / MySQL connection once. Queries run read-only, and the database itself refuses writes",
+          },
+          {
+            name: "Press “Insert into sheet”",
+            does: "Users pick a cell and choose the whole table or one summary figure. Values refresh on a schedule and feed formulas like any other cell",
+          },
+          {
+            name: "Pivots and charts that follow the data",
+            does: "A summary tied to its source refreshes with one press, and charts move the moment the numbers do",
+          },
         ],
+        outcome: "One monthly chore is gone, and the number in the file is the number right now",
+        alt: "Data picked from an API, flowing into cells and refreshing on its own schedule",
+      },
+      {
+        short: "Existing files break on the way in",
+        title: "You'd switch tools, but your Excel files open broken, and Thai PDFs come out with floating vowels",
+        who: "Teams with templates they've used for years, who send files on to customers or agencies that use Excel",
+        cost: "Templates have to be rebuilt, exported files turn into dead numbers the recipient can't work with, and a Thai PDF with misplaced tone marks can't go to a customer",
+        solvedBy: [
+          {
+            name: "Open .xlsx files as they were",
+            does: "Fills, borders, font sizes, row heights and merged cells all come across",
+          },
+          {
+            name: "Templates from locked files",
+            does: "A protected workbook is read as a template that knows which cells are for input and which must not be touched, dropdowns included",
+          },
+          {
+            name: "Exports you can keep working on",
+            does: "Formulas stay formulas, charts are real Excel charts, and CSV exports neutralise formulas smuggled in with the data (CSV injection)",
+          },
+          {
+            name: "Thai PDFs that read correctly",
+            does: "The Thai font is embedded, and tone marks stacked over upper vowels land in the right place",
+          },
+        ],
+        outcome: "No existing file left behind, and whatever you send out opens in Excel ready to keep working on",
+        alt: "An imported Excel file keeping its fills, borders and merged cells",
+      },
+      {
+        short: "Customer data can't be uploaded",
+        title: "Payroll or a customer list can't be uploaded to someone else's service",
+        who: "Work involving personal data, where IT or legal have to be able to say where the data goes",
+        cost: "Every more convenient tool wants a login and an upload, so the request ends at “not approved” — or worse, someone uses it anyway and nobody knows",
+        solvedBy: [
+          {
+            name: "Runs entirely in the browser",
+            does: "No account, no upload, the file never leaves the machine, and the page's security policy (CSP) closes the route for data to be sent anywhere else",
+          },
+          {
+            name: "AI on your own key",
+            does: "Questions go from the browser straight to Anthropic on your key, never through this site's server — only the question, the selected range and the column headers, never the file",
+          },
+          {
+            name: "Usage counted without identifying anyone",
+            does: "It can tell how many times the app was opened today, nothing more: no IP, no cookie, and Do Not Track is honoured · error reports (if switched on) strip Thai text and keys before they leave",
+          },
+          {
+            name: "Cloud on your own backend",
+            does: "Want to save online or edit together? Connect your own Supabase project — and its row-level access rules are under test",
+          },
+        ],
+        outcome: "Start using it without waiting for anyone's approval, and answer “where does the data go?” with code anyone can read, not with a policy page",
+        alt: "Your own API key — kept in this tab only, with requests sent straight to Anthropic",
+      },
+      {
+        short: "Work lost halfway through",
+        title: "An afternoon of typing, gone — the connection dropped, the tab froze, or someone saved over it",
+        who: "Everyone — especially people working away from the office, or several people editing one file",
+        cost: "Hours of work gone in one click, and final_v3_fixed.xlsx passed around until nobody knows which copy is current",
+        solvedBy: [
+          {
+            name: "Autosave, and undo",
+            does: "Every edit is kept in the browser as you make it, and Ctrl+Z steps back one change at a time",
+          },
+          {
+            name: "A save that fails says so",
+            does: "If the browser refuses a save — storage full, for instance — the app shows an alert straight away and export still works, instead of saying nothing until the tab closes",
+          },
+          {
+            name: "Crashes still let the work out",
+            does: "If the app crashes, the screen that appears offers the work as a file before anything else, and the app opens even with no connection",
+          },
+          {
+            name: "Edit together, with version history",
+            does: "Several people edit one file live, your undo never erases theirs, and earlier versions can be restored (on your own Supabase project)",
+          },
+        ],
+        outcome: "Nothing you've typed disappears quietly, and there is one copy of the file that everyone works on",
+        alt: "The browser refuses a save: the app raises an alert at once, and export still works",
       },
     ],
     statsTitle: "Under the hood",

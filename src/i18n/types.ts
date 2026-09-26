@@ -184,27 +184,37 @@ export interface Messages {
       rows: { label: string; values: [string, string, string]; good: boolean }[];
       disclaimer: string;
     };
-    problemTitle: string;
-    problemLead: string;
-    /** The three labels down the left of every scenario. */
-    problemLabels: { pain: string; solution: string; gain: string };
     /**
-     * Told as a situation rather than a category.
+     * The business case, told as the problems a team already pays for rather than as a list of
+     * features.
      *
-     * "Can't remember formulas" is a feature list wearing a problem's clothes — nobody reads it and
-     * thinks *that is me*. A scenario a reader recognises does the work the feature list cannot:
-     * `pain` is what actually goes wrong, `solution` is what this app does instead, and `gain` is
-     * the only line that answers the question a visitor is really asking, which is what they get
-     * for moving.
+     * A feature list asks the reader to work out what each item is for. A problem they recognise —
+     * in their own words, with what it is costing them — does that work for them, and then every
+     * feature under it arrives already explained. One problem is usually solved by several
+     * features together, which is the point: `solvedBy` is a short chain, read top to bottom, and
+     * `outcome` is the line under the double rule, the way a ledger writes its total.
+     *
+     * Paired by index with the exhibits and anchors in the landing page component. Every figure in
+     * this copy must be one `scripts/counts.mjs` can count, or no figure at all.
      */
-    problems: { scenario: string; pain: string; solution: string; gain: string }[];
-    featuresTitle: string;
-    featuresSubtitle: string;
-    /** Paired by index with the screenshots listed in the landing page component. */
-    /** `alt` travels with a screenshot: a feature with no exhibit has neither, which is how the
-     *  one feature that cannot be photographed without a Supabase project stays on the page
-     *  without a mocked-up picture standing in for it. */
-    features: { title: string; body: string; alt?: string; points: string[] }[];
+    painTitle: string;
+    painLead: string;
+    /** The label for the index of problems at the top of the section, read by screen readers. */
+    painIndexLabel: string;
+    painLabels: { problem: string; who: string; cost: string; solvedBy: string; outcome: string };
+    pains: {
+      /** Short enough for the index: the problem in four or five words. */
+      short: string;
+      /** The problem in the customer's words, not ours. */
+      title: string;
+      who: string;
+      /** What it costs today — in time, risk or money — without an invented statistic. */
+      cost: string;
+      solvedBy: { name: string; does: string }[];
+      outcome: string;
+      /** Alt text and caption for the exhibit: what the screenshot proves, not what it depicts. */
+      alt: string;
+    }[];
     statsTitle: string;
     stats: { value: string; label: string }[];
     /** The one thing the numbers above cannot say: what the test suite did not catch. */
