@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Every keyboard shortcut the app has, in one list, so there is somewhere to show them.
  *

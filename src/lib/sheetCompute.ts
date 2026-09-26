@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import type { SheetModel } from "./sheet";
 import { evaluate } from "./formulaEngine/evaluator";
 import { nameScope } from "./namedRanges";

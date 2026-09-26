@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { colToLetters, rangeRefString } from "./formulaEngine/address";

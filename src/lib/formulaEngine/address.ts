@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 // Spreadsheet A1-style address helpers. Rows/columns are 0-indexed internally;
 // "A1" refers to row 0, col 0.
 

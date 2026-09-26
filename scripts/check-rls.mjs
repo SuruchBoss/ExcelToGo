@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * The other half of the row-level-security tests: does Postgres actually refuse?
  *

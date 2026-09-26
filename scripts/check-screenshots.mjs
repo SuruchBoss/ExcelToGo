@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * A screenshot makes claims, and no other gate can read one.
  *

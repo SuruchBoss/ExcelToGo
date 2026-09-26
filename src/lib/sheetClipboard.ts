@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 import { CellFormat } from "./cellFormat";
 import { addColumn, addRow, cloneSheet, SheetModel } from "./sheet";

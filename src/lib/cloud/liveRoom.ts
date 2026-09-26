@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * One workbook, several people, and the bookkeeping that keeps them from talking over each other.
  *

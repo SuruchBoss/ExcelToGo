@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 export type AstNode =
   | { type: "number"; value: number }
   | { type: "string"; value: string }

@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 "use client";
 
 import { FileLock2, Unlock } from "lucide-react";

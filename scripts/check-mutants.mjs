@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Mutation testing for the formula engine, with nothing installed to do it.
  *

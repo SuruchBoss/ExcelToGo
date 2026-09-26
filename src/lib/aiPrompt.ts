@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * The prompt and the reply parsing, in one place because two callers now need them: the server
  * route (`/api/ai/formula`, used when the operator has configured a key) and the browser, when a

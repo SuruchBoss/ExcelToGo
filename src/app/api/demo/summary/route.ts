@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 export const runtime = "nodejs";
 
 // A single-object payload (no array) — the "today's KPIs" shape, so the panel can show that a

@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * "Bring your own key": the visitor pastes an Anthropic API key and the browser talks to Anthropic
  * directly, so the assistant gives real answers on a deployment whose operator pays for nothing.

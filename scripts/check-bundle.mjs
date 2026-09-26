@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * What this app actually asks a browser to download, with a budget attached.
  *

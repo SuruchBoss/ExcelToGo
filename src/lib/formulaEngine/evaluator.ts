@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { AstNode } from "./ast";
 import { EvalResult, FormulaValue, isError, scalar, ERR_DIV0, ERR_NAME, ERR_REF, ERR_VALUE } from "./types";
 import { toNumber, toDisplayString } from "./coerce";

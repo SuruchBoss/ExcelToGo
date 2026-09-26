@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { describe, expect, it } from "vitest";
 import { getFormulaCatalog } from "./formulaCatalog";
 import { th } from "@/i18n/th";

@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { FormulaError, FormulaValue, isError, ERR_VALUE } from "./types";
 
 export function toNumber(v: FormulaValue): number | FormulaError {

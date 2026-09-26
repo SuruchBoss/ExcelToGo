@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";

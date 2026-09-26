@@ -3054,6 +3054,11 @@ If this project is useful to you, or you'd like to talk about work, do get in to
 
 Released under the [Apache License 2.0](LICENSE) — free to use, modify and use commercially.
 
+Copyright © 2026 Suruch Chakrapeesirisuk. Every source file starts with its copyright line and an
+`SPDX-License-Identifier: Apache-2.0` header (CI checks it on every push), and every commit in a pull
+request from outside is signed off under the Developer Certificate of Origin (`git commit -s`) — see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 What the licence asks in return: if you redistribute it (a deployed fork counts), include a copy of
 the licence, state which files you changed, and **carry the [`NOTICE`](NOTICE) file with its
 upstream credit**, per section 4(d). That last mechanism is why Apache-2.0 was chosen over MIT,

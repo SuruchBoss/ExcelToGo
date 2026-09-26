@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * What changed between two versions of a workbook, cheaply enough to ask on every keystroke.
  *

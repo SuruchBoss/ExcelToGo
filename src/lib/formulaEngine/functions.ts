@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_NUM, ERR_VALUE } from "./types";
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
 

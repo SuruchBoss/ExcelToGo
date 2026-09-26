@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { promises as fs } from "fs";
 import path from "path";
 import { DataSourceConfig, PublicDataSource } from "@/lib/dataSources/types";

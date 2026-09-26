@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import Anthropic from "@anthropic-ai/sdk";
 import { heuristicSuggest } from "@/lib/aiHeuristic";
 import { AI_MAX_TOKENS, AI_MODEL, SYSTEM_PROMPTS, buildUserMessage, parseFormulaReply, parseLocale } from "@/lib/aiPrompt";

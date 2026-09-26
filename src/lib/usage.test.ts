@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { countUsage, isUsageEnabled, isUsageEvent, optedOut, resetUsage, USAGE_EVENTS, USAGE_PATH } from "./usage";
 

@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { create } from "zustand";
 import { backoffSec } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, PublicDataSource, TableData } from "@/lib/dataSources/types";

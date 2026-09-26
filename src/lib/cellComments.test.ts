@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { describe, expect, it } from "vitest";
 import { clampComments, commentKey, getComment, setComment, shiftComments } from "./cellComments";
 import { createEmptySheet, deleteColumn, deleteRow, insertColumnBefore, insertRowBefore, SheetModel } from "./sheet";

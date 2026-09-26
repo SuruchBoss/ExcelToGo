@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 export const runtime = "nodejs";
 
 // A stand-in for "the company's order API", written the way paginated APIs usually are: a page of

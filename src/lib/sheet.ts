@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FreezePanes } from "./sheetFreeze";
 import type { CellValidation } from "./dataValidation";
 import type { NameTable } from "./namedRanges";

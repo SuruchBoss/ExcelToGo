@@ -2708,6 +2708,10 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
 
 เผยแพร่ภายใต้ [Apache License 2.0](LICENSE) — เอาไปใช้ แก้ไข และใช้ในเชิงพาณิชย์ได้ฟรี
 
+ลิขสิทธิ์ © 2026 Suruch Chakrapeesirisuk · ไฟล์ซอร์สทุกไฟล์ขึ้นต้นด้วยหัวลิขสิทธิ์และตัวระบุ
+`SPDX-License-Identifier: Apache-2.0` (CI ตรวจทุก push) และ pull request จากภายนอกต้อง sign-off
+ทุก commit ตาม Developer Certificate of Origin (`git commit -s`) — รายละเอียดอยู่ใน [CONTRIBUTING.md](CONTRIBUTING.md)
+
 สิ่งที่ license ขอไว้: ถ้านำไปแจกจ่ายต่อ (รวมถึง fork ที่เอาไป deploy) ต้องแนบสำเนา license, ระบุไฟล์ที่แก้ไข
 และ**พกไฟล์ [`NOTICE`](NOTICE) ที่ระบุเครดิตต้นทางไปด้วย** ตามข้อ 4(d) — เป็นเหตุผลที่เลือก Apache-2.0
 แทน MIT เพราะ MIT ไม่มีกลไกนี้

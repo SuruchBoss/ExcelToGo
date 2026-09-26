@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { isUsageEnabled, isUsageEvent } from "@/lib/usage";
 import { recordUsage } from "@/lib/server/usageSink";
 

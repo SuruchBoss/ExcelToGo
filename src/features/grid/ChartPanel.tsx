@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 "use client";
 
 import { BarChart3, ChartLine, ChartPie, Trash2 } from "lucide-react";

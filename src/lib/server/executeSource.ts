@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { csvToTable, extractRecords, getByPath, jsonToTable, tableFromRecords } from "@/lib/dataSources/jsonToTable";
 import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "@/lib/dataSources/paginate";
 import { RateLimitError, readRateLimit } from "@/lib/dataSources/rateLimit";

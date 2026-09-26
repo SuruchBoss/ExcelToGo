@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import type { AstNode } from "./formulaEngine/ast";
 import { parseCellRef, parseRangeRef, rangeRefString, splitSheetRef } from "./formulaEngine/address";
 import { adjustFormulaForStructuralOp, type Axis, type ShiftScope } from "./formulaEngine/structuralShift";

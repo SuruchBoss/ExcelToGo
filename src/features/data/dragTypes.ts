@@ -1,3 +1,6 @@
+// Copyright 2026 Suruch Chakrapeesirisuk
+// SPDX-License-Identifier: Apache-2.0
+
 import { LiveAggregate } from "@/lib/liveBlocks";
 
 export const LIVE_DRAG_MIME = "application/x-exceltogo-live";
