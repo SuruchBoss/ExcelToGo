@@ -949,6 +949,12 @@ which would mean this app inventing a hidden sheet inside somebody's file. Dropp
 beats writing it truncated. And a **template's** own rules are still a separate thing from the
 person's — deliberately, since "unlock this template" ought to release the template's rules too.
 
+**Known bugs, not fixed yet:** a dropdown pointing at a range on *another sheet* (`=Ref!$A$2:$A$50`) is read
+from the same range on the sheet being opened, so it gets the wrong options with no warning. A **template's**
+dropdowns are written back without checking the 255-character limit, so a long list produces a file that
+breaks the spec. And a hidden or protected sheet comes back out as an ordinary one. All three have to be
+fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
+
 ### 🏷 Named ranges
 
 `=SUMIF(Sales,">1000")` against `=SUMIF(B2:B500,">1000")`: the second makes every reader go and look
@@ -2998,6 +3004,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       in a read-only transaction. Still open: a table picker instead of typed SQL, and a test that connects to
       a real database — today only the pure modules around it are covered.
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
+- [ ] **Working with PaynEat ERP** — agreed, not built (see [docs/payneat-erp.en.md](docs/payneat-erp.en.md)):
+      the import template waits on cross-sheet dropdowns read from the right sheet, range references kept
+      through the round trip, and hidden/protected sheets kept as they were. Live data from an ERP on an
+      internal network waits on an operator-named list of internal hosts, and on sending `x-request-id`
 
 **Deliberately out of scope:**
 
