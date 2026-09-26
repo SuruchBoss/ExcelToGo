@@ -8,7 +8,8 @@ import Link from "next/link";
 import LanguageToggle from "@/features/toolbar/LanguageToggle";
 import LiveSheet from "@/features/landing/LiveSheet";
 import SkipLink from "@/features/a11y/SkipLink";
-import { useT } from "@/i18n";
+import { useLocale, useT } from "@/i18n";
+import type { Locale } from "@/i18n/types";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 
 /**
@@ -35,24 +36,32 @@ const LINKEDIN_URL = "https://www.linkedin.com/in/suruchboss";
 
 /**
  * The exhibit and the anchor for each problem in `t.landing.pains`, paired by index — reorder one,
- * reorder both. Kept out of the message dictionaries because a file path, its pixel size and a
- * URL fragment are the same in every language; only the alt text needs translating. The anchors
- * are English slugs so that a link someone pastes into a chat reaches the same problem whichever
- * language the reader has chosen.
+ * reorder both. Kept out of the message dictionaries because a file name and a URL fragment are
+ * the same in every language; only the alt text needs translating. The anchors are English slugs
+ * so that a link someone pastes into a chat reaches the same problem whichever language the reader
+ * has chosen.
+ *
+ * The picture itself is not the same in every language: there is a set per language, taken by
+ * `scripts/screenshots.mjs`, and a reader of the English page sees the English app. The sizes are
+ * per language because a picture of one panel is as wide as its words — `check:readme` compares
+ * each against the file, so a retake that changes one says so.
  */
 const PAIN_EXHIBITS = [
-  { id: "formulas", src: "/screenshots/04-ai-assistant.png", width: 2720, height: 1720 },
-  // The names panel open over a sheet that is already using one: the formula bar reads
-  // `=SUM(ยอดขาย)`, the cells that name stands for are lit as its precedents, and the emerald
-  // rings down column A are the validated cells. One frame carries three of the four fixes.
-  { id: "silent-errors", src: "/screenshots/43-sheet-rules.png", width: 2720, height: 1200 },
-  // Animated, so it shows the one thing a still cannot: the number arriving in the cell, and then
+  { id: "formulas", file: "04-ai-assistant.png", size: { th: [2720, 1720], en: [2720, 1720] } },
+  // The names panel open over a sheet that is already using one: the formula bar reads the total
+  // by its name, the cells that name stands for are lit as its precedents, and the emerald rings
+  // down column A are the validated cells. One frame carries three of the four fixes.
+  { id: "silent-errors", file: "43-sheet-rules.png", size: { th: [2720, 1200], en: [2720, 1200] } },
+  // Animated, so it shows the one thing a still cannot: the table arriving in the sheet, and then
   // changing again on its own. `unoptimized` because the optimiser returns a single still frame.
-  { id: "monthly-export", src: "/screenshots/34-live-data.gif", width: 820, height: 478, unoptimized: true },
-  { id: "existing-files", src: "/screenshots/17-styled-import.png", width: 2720, height: 1720 },
-  { id: "privacy", src: "/screenshots/33-byok.png", width: 735, height: 628 },
-  { id: "lost-work", src: "/screenshots/42-save-failed.png", width: 2720, height: 1720 },
+  { id: "monthly-export", file: "34-live-data.gif", size: { th: [1000, 542], en: [1000, 542] }, unoptimized: true },
+  { id: "existing-files", file: "17-styled-import.png", size: { th: [2720, 1720], en: [2720, 1720] } },
+  { id: "privacy", file: "33-byok.png", size: { th: [735, 628], en: [735, 628] } },
+  { id: "lost-work", file: "42-save-failed.png", size: { th: [2720, 1720], en: [2720, 1720] } },
 ] as const;
+
+/** Where a screenshot lives for this language: the Thai set at the root, every other in its own folder. */
+const shotUrl = (locale: Locale, file: string) => `/screenshots/${locale === "th" ? "" : `${locale}/`}${file}`;
 
 const num = (i: number) => String(i + 1).padStart(2, "0");
 
@@ -106,6 +115,7 @@ function SectionHead({
 export default function Landing() {
   useHydrateLocaleStore();
   const t = useT();
+  const locale = useLocale();
 
   const cta = (
     <Link
@@ -212,6 +222,8 @@ export default function Landing() {
           <div className="mt-4">
             {t.landing.pains.map((p, i) => {
               const exhibit = PAIN_EXHIBITS[i];
+              const src = shotUrl(locale, exhibit.file);
+              const [width, height] = exhibit.size[locale];
               const titleId = `${exhibit.id}-title`;
               return (
                 <article
@@ -276,15 +288,15 @@ export default function Landing() {
                       anything, so the exhibit opens at full size — the link's name is the image's alt. */}
                   <figure className="min-w-0 border border-rule bg-white md:sticky md:top-24">
                     <a
-                      href={exhibit.src}
+                      href={src}
                       target="_blank"
                       rel="noreferrer"
                       className="block cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger"
                     >
                       <Image
-                        src={exhibit.src}
-                        width={exhibit.width}
-                        height={exhibit.height}
+                        src={src}
+                        width={width}
+                        height={height}
                         unoptimized={"unoptimized" in exhibit && exhibit.unoptimized}
                         alt={p.alt}
                         sizes="(max-width: 768px) 100vw, 620px"

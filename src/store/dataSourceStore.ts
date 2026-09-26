@@ -6,6 +6,7 @@ import { backoffSec } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, PublicDataSource, TableData } from "@/lib/dataSources/types";
 import { withSourcesToken } from "@/lib/dataSources/sourcesToken";
 import { useSheetStore } from "./sheetStore";
+import { getLocale } from "@/i18n";
 
 export type SourceDraft = Omit<DataSourceConfig, "id" | "createdAt">;
 
@@ -60,7 +61,7 @@ export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
   forgetSources: () => set({ sources: [], loaded: false, data: {}, errors: {}, backoff: {} }),
 
   loadSources: async () => {
-    const sources = await readJson<PublicDataSource[]>(await fetch("/api/sources", { cache: "no-store", headers: withSourcesToken() }));
+    const sources = await readJson<PublicDataSource[]>(await fetch(`/api/sources?lang=${getLocale()}`, { cache: "no-store", headers: withSourcesToken() }));
     set({ sources, loaded: true });
   },
 
@@ -73,7 +74,7 @@ export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
 
     set((s) => ({ loading: { ...s.loading, [id]: true } }));
     try {
-      const table = await readJson<TableData>(await fetch(`/api/sources/${id}/data`, { cache: "no-store", headers: withSourcesToken() }));
+      const table = await readJson<TableData>(await fetch(`/api/sources/${id}/data?lang=${getLocale()}`, { cache: "no-store", headers: withSourcesToken() }));
       set((s) => {
         const errors = { ...s.errors };
         const backoff = { ...s.backoff };

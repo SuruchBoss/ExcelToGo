@@ -151,6 +151,20 @@ describe("the array functions themselves", () => {
     expect(shown(down, 3, 2).map((r) => r[1])).toEqual(["9", "5", "2"]);
   });
 
+  it("SORT reads Excel's 1 and -1 for the order, not only TRUE and FALSE", () => {
+    // -1 is Excel's "descending". Read as a boolean it was TRUE, so a formula copied from Excel
+    // sorted the wrong way round and said nothing.
+    const down = sheetOf([["2", "=SORT(A1:A3,1,-1)"], ["9"], ["5"]]);
+    expect(shown(down, 3, 2).map((r) => r[1])).toEqual(["9", "5", "2"]);
+    const up = sheetOf([["2", "=SORT(A1:A3,1,1)"], ["9"], ["5"]]);
+    expect(shown(up, 3, 2).map((r) => r[1])).toEqual(["2", "5", "9"]);
+  });
+
+  it("SORT refuses an order that is neither 1 nor -1, as Excel does", () => {
+    const sheet = sheetOf([["2", "=SORT(A1:A3,1,0)"], ["9"], ["5"]]);
+    expect(shown(sheet, 1, 2)[0][1]).toBe("#VALUE!");
+  });
+
   it("FILTER keeps the rows whose flag is true", () => {
     const sheet = sheetOf([["1", "ก", "=FILTER(A1:B3,A1:A3>2)"], ["5", "ข"], ["9", "ค"]]);
     const out = shown(sheet, 2, 4);

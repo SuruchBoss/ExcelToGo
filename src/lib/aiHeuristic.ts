@@ -24,7 +24,8 @@ import { Locale } from "@/i18n/types";
 interface Rule {
   id: string;
   keywords: string[];
-  build: (range: string) => string;
+  /** `words` are the language's own text for anything the formula writes into a cell. */
+  build: (range: string, words: { ifOutcomes: readonly [string, string] }) => string;
 }
 
 // Keywords match regardless of the UI's selected language, so a Thai speaker who types an
@@ -50,7 +51,13 @@ const RULES: Rule[] = [
   { id: "min", keywords: ["น้อยที่สุด", "ต่ำสุด", "min", "lowest", "smallest"], build: (r) => `MIN(${r})` },
   { id: "count", keywords: ["นับ", "count", "จำนวน"], build: (r) => `COUNT(${r})` },
   { id: "vlookup", keywords: ["ค้นหา", "vlookup", "lookup", "ดึงข้อมูลจาก"], build: (r) => `VLOOKUP(A1,${r},2,FALSE)` },
-  { id: "if", keywords: ["เงื่อนไข", "ถ้า", "if"], build: () => `IF(A1>0,"ผ่าน","ไม่ผ่าน")` },
+  {
+    id: "if",
+    keywords: ["เงื่อนไข", "ถ้า", "if"],
+    // The outcomes are text that lands in the sheet, so they follow the language like the
+    // explanation does — an English sheet saying "ผ่าน" is a formula nobody asked for.
+    build: (_, { ifOutcomes: [pass, fail] }) => `IF(A1>0,"${pass}","${fail}")`,
+  },
   { id: "upper", keywords: ["ตัวพิมพ์ใหญ่", "upper"], build: () => `UPPER(A1)` },
   { id: "today", keywords: ["วันที่ปัจจุบัน", "today", "วันนี้"], build: () => `TODAY()` },
   { id: "sum", keywords: ["รวม", "บวก", "sum", "total", "ยอดรวม"], build: (r) => `SUM(${r})` },
@@ -70,7 +77,7 @@ export function heuristicSuggest(question: string, range: string | undefined, lo
   const targetRange = range?.trim() || "A1:A10";
   for (const rule of RULES) {
     if (rule.keywords.some((k) => q.includes(k.toLowerCase()))) {
-      return { formula: `=${rule.build(targetRange)}`, explanation: t.rules[rule.id] };
+      return { formula: `=${rule.build(targetRange, t)}`, explanation: t.rules[rule.id] };
     }
   }
   return { formula: null, explanation: t.noMatch };

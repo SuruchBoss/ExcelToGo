@@ -137,7 +137,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1363 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1384 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -195,7 +195,7 @@ export const en: Messages = {
           },
         ],
         outcome: "People in the team build their own reports the same day, and the file still makes sense after its author has moved on",
-        alt: "Asked in Thai, answered with a SUMIF formula and an explanation, before it goes into the cell",
+        alt: "Asked in plain English with no API key: the keyword matcher offers =AVERAGE(C2:C10) and says it is a guess, before anything goes into the cell",
       },
       {
         short: "Numbers that are quietly wrong",
@@ -221,7 +221,7 @@ export const en: Messages = {
           },
         ],
         outcome: "Bad data is stopped at the moment it is typed, not found at month-end close",
-        alt: "A formula referring to a range by its Thai name, the cells it reads lit up, and validated cells ringed in green",
+        alt: "A formula reading a range by its name, the cells it reads lit up, and validated cells ringed in green",
       },
       {
         short: "Re-pasting exports every month",
@@ -243,7 +243,7 @@ export const en: Messages = {
           },
         ],
         outcome: "One monthly chore is gone, and the number in the file is the number right now",
-        alt: "Data picked from an API, flowing into cells and refreshing on its own schedule",
+        alt: "A live table from an API landing in the sheet, then changing on its own as the source does",
       },
       {
         short: "Existing files break on the way in",
@@ -339,8 +339,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1363", label: "automated tests" },
-      { value: "255", label: "security tests" },
+      { value: "1384", label: "automated tests" },
+      { value: "261", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -884,6 +884,7 @@ export const en: Messages = {
     },
     noMatch:
       "I can't tell which formula you want — without a key this assistant only matches keywords, so it won't guess. Pick one from the Formulas panel on the left, or paste an API key in the box above and ask again.",
+    ifOutcomes: ["Pass", "Fail"],
   },
   formulas: {
     SEQUENCE: {
@@ -916,7 +917,7 @@ export const en: Messages = {
       params: {
         range: { label: "Range to sort", placeholder: "e.g. A1:B20" },
         column: { label: "Sort by which column (default 1)", placeholder: "e.g. 2" },
-        ascending: { label: "Ascending (TRUE) or descending (FALSE)", placeholder: "TRUE" },
+        ascending: { label: "Ascending (1 or TRUE) or descending (-1 or FALSE)", placeholder: "TRUE" },
       },
     },
     FILTER: {

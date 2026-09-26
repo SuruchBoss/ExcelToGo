@@ -39,11 +39,11 @@ for sideways scroll at 360/390/820/1280/1440. Two widths because one was not eno
 desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
 
 ด่านนี้ยัง **เปิดพาเนลขึ้นมาตรวจด้วย** ไม่ใช่สแกนแค่หน้าตอนโหลด — พาเลตสูตร, AI, ข้อมูลสด, conditional
-formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์, หน้าคีย์ลัด และแถบเตือนตอนบันทึกไม่ลง รวม 38 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
+formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์, หน้าคีย์ลัด, แถบเตือนตอนบันทึกไม่ลง และสองหน้าต่างของข้อมูลสด (เลือกข้อมูล · เพิ่มแหล่งข้อมูล) รวม 42 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
 `OPENED_STATES` เมื่อนั้น** และสถานะที่เปิดไม่ขึ้นถือว่าด่านตก ไม่ใช่ข้าม
 The gate also **opens panels before scanning them** rather than only scanning the page as it loads — the
 formula palette, AI, live data, conditional formatting, charts, pivots, find/replace and the shortcut
-dialog, the validation, names and comment popovers, and the alert shown when a save is refused, 38 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
+dialog, the validation, names and comment popovers, the alert shown when a save is refused, and the two live-data dialogs (the picker and adding a source), 42 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
 `npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 12 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
@@ -107,6 +107,12 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
   ลงแค่สำเนาเดียว การ์ดจึงเขียน 91 ทั้งที่ทุกที่อื่นเขียน 103 และไม่มีด่านไหนจับได้เพราะการ์ดเป็น PNG
   เพิ่มไฟล์เทสต์ความปลอดภัยใหม่ ให้เติมใน `SECURITY_TEST_FILES` ของไฟล์นั้นที่เดียว
 - จำนวน *ไฟล์* เทสต์ที่เขียนไว้ตรงกับของจริง (เคยเขียน 27 ทั้งที่มี 35)
+- **README แต่ละภาษาใช้ภาพชุดภาษาของตัวเอง** — `README.md` ใช้ `public/screenshots/` · `README.en.md` ใช้
+  `public/screenshots/en/` · ทั้งสองชุดต้องมีไฟล์ครบเท่ากัน และขนาดภาพที่หน้า landing ประกาศไว้ต้องตรงกับไฟล์จริง
+  (เคยปล่อยให้ README อังกฤษโชว์แอปภาษาไทย 43 จาก 44 ภาพ โดยทุกด่านผ่าน เพราะด่านถามแค่ว่าไฟล์มีอยู่ไหม)
+  Each README shows its own language's set — `public/screenshots/` for Thai, `public/screenshots/en/` for
+  English — both sets hold the same files, and the sizes the landing page declares match the files. The
+  English README once showed the Thai app in 43 of its 44 pictures with every gate green.
 - ตัวเลขที่เป็น *เรื่องเล่า* ไม่ใช่การเคลม (เช่น "ภาพที่เขียนว่า 519 เทสต์ รอดมาได้หลายวัน") ให้ใส่
   `<!-- historic -->` ไว้**บรรทัดเดียวกับตัวเลข** ด่านจะข้ามให้ · มาร์กเกอร์ตั้งใจให้ดูเกะกะ เพราะการเอาไป
   ปิดเลขที่ค้างจริง ๆ ควรเป็นสิ่งที่ต้องตั้งใจทำ
@@ -147,9 +153,15 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
 
 ### เรื่องอื่นที่ทำเป็นปกติ / Other habits
 
-- ภาพหน้าจอถ่ายจาก **production build** (`npm run build && npm run start`) ไม่ใช่ `next dev`
-  เพราะ dev overlay จะติดมาในภาพ — และเก็บไว้ที่ `public/screenshots/` ที่เดียว ใช้ร่วมกันทั้ง
-  landing page และ README
+- **ภาพหน้าจอถ่ายด้วย `npm run screenshots -- --lang all`** — สคริปต์ build production เอง (ไม่ใช่ `next dev`
+  ที่มี dev overlay ติดมา) แล้วเล่นทุกฉากทั้งสองภาษา: ไทยลง `public/screenshots/` อังกฤษลง `public/screenshots/en/`
+  ใช้ร่วมกันทั้ง landing page และ README · **ภาพใหม่ = ฉากใหม่ใน `SCENES` ของ `scripts/screenshots.mjs`**
+  ไม่ใช่สคริปต์ชั่วคราวที่ถ่ายภาษาเดียว — เพราะนั่นคือทางที่ทำให้สองชุดไม่เท่ากันมาแล้ว · ฉากต้องขับแอปจริงเหมือนคน
+  ห้ามพิมพ์ผลลัพธ์ใส่เอง (คำตอบ AI ไม่มี key ก็ถ่ายคำตอบของ keyword matcher ที่แอปบอกเองว่าเป็นการเดา)
+  Screenshots come from `npm run screenshots -- --lang all`: it builds for production itself and plays every
+  scene in both languages. **A new picture is a new scene in `SCENES`**, never a one-language throwaway
+  script — that is how the two sets drifted apart. A scene drives the real app; nothing on screen is typed
+  in to look like a result.
 - ยืนยันฟีเจอร์ที่เห็นด้วยตาด้วย Playwright แล้ว **ลบสคริปต์ชั่วคราวก่อน commit** — `package.json`/lockfile
   ต้องไม่มี diff **แต่ playwright กับ `@axe-core/playwright` เป็น devDependency จริงแล้ว** (ด่าน `check:a11y`)
   จึงห้าม `npm uninstall` สองตัวนี้ ส่วนเครื่องมือชั่วคราวอย่างอื่น (pdfjs-dist, openpyxl ฯลฯ) ยังต้องถอนเหมือนเดิม

@@ -7,12 +7,14 @@ import { useEffect } from "react";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { readSourcesToken } from "@/lib/dataSources/sourcesToken";
 import { DEMO_MODE } from "@/lib/demoMode";
+import { useLocaleStore } from "@/store/localeStore";
 
 /** Loads the source list once, then keeps every source polling on its own interval. Runs at the
  *  app root (not inside the panel) so live cells keep updating with the panel closed. */
 export function useLiveDataPolling() {
   const sources = useDataSourceStore((s) => s.sources);
   const loaded = useDataSourceStore((s) => s.loaded);
+  const locale = useLocaleStore((s) => s.locale);
 
   useEffect(() => {
     if (loaded) return;
@@ -29,6 +31,14 @@ export function useLiveDataPolling() {
     if (!DEMO_MODE && readSourcesToken() === "") return;
     void useDataSourceStore.getState().loadSources().catch(() => {});
   }, [loaded]);
+
+  // The built-ins answer in the language on screen, names and rows alike. Reloading the list hands
+  // the effect below a new array, which refreshes every source at once rather than leaving the old
+  // language in the cells until each one's next tick.
+  useEffect(() => {
+    if (!useDataSourceStore.getState().loaded) return;
+    void useDataSourceStore.getState().loadSources().catch(() => {});
+  }, [locale]);
 
   useEffect(() => {
     const { refresh } = useDataSourceStore.getState();

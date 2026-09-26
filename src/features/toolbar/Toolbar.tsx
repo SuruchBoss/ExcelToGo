@@ -137,8 +137,14 @@ export default function Toolbar() {
         {busy ? (
           <span className="text-xs text-zinc-500">{busy}</span>
         ) : (
-          <span title={t.toolbar.autosaveTitle} className="hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs text-zinc-500 sm:flex">
-            <Save size={13} /> {t.toolbar.autosaveLabel}
+          // The word only from 2xl up. Below that the row overflowed a 1366px laptop by 41px in
+          // English — enough to push the language toggle, the one control a reader of the wrong
+          // language is looking for, half off the edge. The icon stays, and the word stays for a
+          // screen reader, which never had a width to run out of.
+          // `relative` because `sr-only` is `position: absolute`: without a positioned parent the
+          // hidden word escaped the toolbar's own scroll box and widened the page by 86px at 820.
+          <span title={t.toolbar.autosaveTitle} className="relative hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs text-zinc-500 sm:flex">
+            <Save size={13} aria-hidden /> <span className="sr-only 2xl:not-sr-only">{t.toolbar.autosaveLabel}</span>
           </span>
         )}
         <button

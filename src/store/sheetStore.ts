@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { create, useStore } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { temporal } from "zundo";
@@ -73,6 +73,8 @@ import { checkValue, ruleAt, shiftValidation, ValidationRule, withValidation } f
 import { nameKey, nameProblem, refForSelection, shiftNames, withName, withoutName, type NameProblem } from "@/lib/namedRanges";
 import { countUsage } from "@/lib/usage";
 import { getLocale, getMessages } from "@/i18n";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/types";
+import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
 import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
@@ -98,6 +100,47 @@ export interface SheetTab {
 }
 
 /**
+ * The words of the sample, one table per language. The numbers are shared below rather than
+ * written twice, so the two samples cannot drift into totalling differently — a screenshot in
+ * either language shows the same 7,495.
+ */
+const SAMPLE_TEXT: Record<Locale, { header: string[]; items: [string, string][]; total: string }> = {
+  th: {
+    header: ["สินค้า", "หมวดหมู่", "ราคา", "จำนวน", "รวม"],
+    items: [
+      ["กาแฟลาเต้", "เครื่องดื่ม"],
+      ["ชาไทย", "เครื่องดื่ม"],
+      ["น้ำส้มคั้น", "เครื่องดื่ม"],
+      ["ครัวซองต์", "เบเกอรี่"],
+      ["ขนมปังไส้ทะลัก", "เบเกอรี่"],
+      ["เค้กช็อกโกแลต", "เบเกอรี่"],
+      ["ข้าวผัดกระเพรา", "อาหารจานเดียว"],
+      ["ผัดไทยกุ้งสด", "อาหารจานเดียว"],
+      ["ข้าวมันไก่", "อาหารจานเดียว"],
+    ],
+    total: "รวมทั้งหมด",
+  },
+  en: {
+    header: ["Product", "Category", "Price", "Qty", "Total"],
+    items: [
+      ["Caffè latte", "Drinks"],
+      ["Thai iced tea", "Drinks"],
+      ["Orange juice", "Drinks"],
+      ["Croissant", "Bakery"],
+      ["Custard bun", "Bakery"],
+      ["Chocolate cake", "Bakery"],
+      ["Basil pork rice", "Mains"],
+      ["Shrimp pad thai", "Mains"],
+      ["Chicken rice", "Mains"],
+    ],
+    total: "Grand total",
+  },
+};
+const SAMPLE_NUMBERS: [number, number][] = [
+  [65, 18], [45, 24], [55, 9], [55, 12], [35, 20], [85, 6], [60, 15], [80, 11], [50, 22],
+];
+
+/**
  * The table a first-time visitor lands on.
  *
  * Nine rows across three categories rather than the three rows it started with, because the sheet
@@ -108,31 +151,21 @@ export interface SheetTab {
  * Every total is a formula, not a number, so the first thing anyone does — change a price — visibly
  * moves the column and the grand total. That is the whole pitch in one edit.
  */
-function seedSample(): SheetModel {
+function seedSample(locale: Locale): SheetModel {
   const sheet = createEmptySheet();
-  const header = ["สินค้า", "หมวดหมู่", "ราคา", "จำนวน", "รวม"];
-  header.forEach((h, c) => (sheet.cells[0][c] = h));
-  const rows: [string, string, number, number][] = [
-    ["กาแฟลาเต้", "เครื่องดื่ม", 65, 18],
-    ["ชาไทย", "เครื่องดื่ม", 45, 24],
-    ["น้ำส้มคั้น", "เครื่องดื่ม", 55, 9],
-    ["ครัวซองต์", "เบเกอรี่", 55, 12],
-    ["ขนมปังไส้ทะลัก", "เบเกอรี่", 35, 20],
-    ["เค้กช็อกโกแลต", "เบเกอรี่", 85, 6],
-    ["ข้าวผัดกระเพรา", "อาหารจานเดียว", 60, 15],
-    ["ผัดไทยกุ้งสด", "อาหารจานเดียว", 80, 11],
-    ["ข้าวมันไก่", "อาหารจานเดียว", 50, 22],
-  ];
-  rows.forEach((row, r) => {
-    sheet.cells[r + 1][0] = row[0];
-    sheet.cells[r + 1][1] = row[1];
-    sheet.cells[r + 1][2] = String(row[2]);
-    sheet.cells[r + 1][3] = String(row[3]);
+  const text = SAMPLE_TEXT[locale];
+  text.header.forEach((h, c) => (sheet.cells[0][c] = h));
+  SAMPLE_NUMBERS.forEach(([price, qty], r) => {
+    const [name, category] = text.items[r];
+    sheet.cells[r + 1][0] = name;
+    sheet.cells[r + 1][1] = category;
+    sheet.cells[r + 1][2] = String(price);
+    sheet.cells[r + 1][3] = String(qty);
     sheet.cells[r + 1][4] = `=C${r + 2}*D${r + 2}`;
   });
-  const totalRow = rows.length + 2;
-  sheet.cells[totalRow][3] = "รวมทั้งหมด";
-  sheet.cells[totalRow][4] = `=SUM(E2:E${rows.length + 1})`;
+  const totalRow = SAMPLE_NUMBERS.length + 2;
+  sheet.cells[totalRow][3] = text.total;
+  sheet.cells[totalRow][4] = `=SUM(E2:E${SAMPLE_NUMBERS.length + 1})`;
   return sheet;
 }
 
@@ -199,6 +232,12 @@ interface SheetState {
   /** Throws away the sample workbook and starts from one empty sheet. Only reachable while the
    *  sample is untouched, so there is nothing of the user's to lose. */
   startBlank: () => void;
+  /**
+   * Swaps the sample for the one in this language. Does nothing once anything has been touched:
+   * the sample is the only content the app may replace on its own, because it is the only content
+   * that belongs to nobody.
+   */
+  showSampleIn: (locale: Locale) => void;
   renameSheet: (id: string, name: string) => void;
   deleteSheet: (id: string) => void;
 
@@ -456,7 +495,12 @@ type TemporalSlice = Pick<SheetState, "sheets">;
 /** A tab as it comes back off disk: the sheet may be packed, or dense from an older save. */
 type StoredTab = Omit<SheetTab, "sheet"> & { sheet: PackedSheet | SheetModel };
 
-const initialTab = newTab("Sheet1", seedSample());
+/**
+ * One sample per language, built once. Built once because identity is how the app tells the
+ * sample from somebody's work (see below), and each language needs an identity of its own.
+ */
+const SAMPLES: Record<Locale, SheetModel> = { th: seedSample("th"), en: seedSample("en") };
+const initialTab = newTab("Sheet1", SAMPLES[DEFAULT_LOCALE]);
 
 /**
  * Is the workbook still exactly what the app opened with — the sample, untouched?
@@ -467,9 +511,8 @@ const initialTab = newTab("Sheet1", seedSample());
  * those that leave the cells alone, and "start from a blank sheet" would then quietly throw away a
  * chart somebody had just made.
  */
-const INITIAL_SHEET = initialTab.sheet;
 export function selectShowingSample(s: SheetState): boolean {
-  return s.sheets.length === 1 && s.sheets[0].sheet === INITIAL_SHEET;
+  return s.sheets.length === 1 && Object.values(SAMPLES).includes(s.sheets[0].sheet);
 }
 
 /**
@@ -637,6 +680,20 @@ export const useSheetStore = create<SheetState>()(
         startBlank: () => {
           const tab = newTab("Sheet1");
           set({ sheets: [tab], activeSheetId: tab.id });
+        },
+
+        showSampleIn: (locale) => {
+          const s = get();
+          if (!selectShowingSample(s) || s.sheets[0].sheet === SAMPLES[locale]) return;
+          // Out of the undo history: Ctrl+Z straight after switching language would otherwise put
+          // the other language's sample back, which is not something anybody did.
+          const history = useSheetStore.temporal.getState();
+          history.pause();
+          try {
+            set({ sheets: [{ ...s.sheets[0], sheet: SAMPLES[locale] }] });
+          } finally {
+            history.resume();
+          }
         },
 
         renameSheet: (id, name) => {
@@ -1711,6 +1768,25 @@ export function useHydrateSheetStore() {
   useEffect(() => {
     useSheetStore.persist.rehydrate();
   }, []);
+}
+
+/**
+ * Keeps an untouched sample in the language on screen.
+ *
+ * Waits for the autosave to be read first. Before that, the store holds the sample whether or not
+ * this browser has saved work, and swapping it then would write the sample over that work on the
+ * way past — autosave does not know the difference between the app's change and the person's.
+ */
+export function useSampleFollowsLocale() {
+  const locale = useLocaleStore((s) => s.locale);
+  const hydrated = useSyncExternalStore(
+    (onChange) => useSheetStore.persist.onFinishHydration(onChange),
+    () => useSheetStore.persist.hasHydrated(),
+    () => false
+  );
+  useEffect(() => {
+    if (hydrated) useSheetStore.getState().showSampleIn(locale);
+  }, [hydrated, locale]);
 }
 
 export function selectActiveSheet(s: SheetState): SheetModel {

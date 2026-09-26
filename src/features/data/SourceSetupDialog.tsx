@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
 import { DEFAULT_MAX_ROWS } from "@/lib/dataSources/paginate";
@@ -43,6 +43,7 @@ const labelCls = "text-xs font-medium text-zinc-600";
 
 export default function SourceSetupDialog({ source, onClose }: Props) {
   const t = useT();
+  const titleId = useId();
   const saveSource = useDataSourceStore((s) => s.saveSource);
   const testSource = useDataSourceStore((s) => s.testSource);
   const [draft, setDraft] = useState<SourceDraft>(() => draftFrom(source));
@@ -98,13 +99,18 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
       <div
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
+        // Announced as what it is. Without the role a screen reader heard the page go on as if
+        // nothing had opened — found when the screenshot script went looking for the dialog by role.
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold text-zinc-800">{source ? t.data.setup.editTitle : t.data.setup.newTitle}</h2>
+            <h2 id={titleId} className="text-base font-semibold text-zinc-800">{source ? t.data.setup.editTitle : t.data.setup.newTitle}</h2>
             <p className="mt-0.5 text-xs text-zinc-500">{t.data.setup.intro}</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600">
+          <button onClick={onClose} aria-label={t.app.close} title={t.app.close} className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600">
             <X size={16} />
           </button>
         </div>

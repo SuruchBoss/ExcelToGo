@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1363%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1384%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,13 +56,13 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1363 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1384 automated tests.
 
 ---
 
 ## ⏱️ Try it in 60 seconds
 
-<p align="center"><img src="public/screenshots/demo.gif" width="900" alt="The three steps: change a price and the totals move, build a pivot, and the summary flags its source as stale"></p>
+<p align="center"><img src="public/screenshots/en/demo.gif" width="900" alt="The three steps: change a price and the totals move, build a pivot, and the summary flags its source as stale"></p>
 
 <p align="center"><sub>The three steps below, recorded from the running app — no edits</sub></p>
 
@@ -90,7 +90,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ## 📸 Screenshots
 
-<p align="center"><img src="public/screenshots/01-overview.png" width="900"></p>
+<p align="center"><img src="public/screenshots/en/01-overview.png" width="900"></p>
 <p align="center"><sub><b>Main screen</b> — the data grid with the drag-and-drop formula panel on the right</sub></p>
 
 > The rest of the screenshots live in [**Features**](#-features) below, each one next to the feature it shows.
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1363 passing tests could not catch
+### 🧪 What 1384 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1363 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1384 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -141,7 +141,7 @@ name links to its details below. It is the same content as the first section of 
 [landing page](https://excel-to-go.vercel.app), which is laid out like a ledger: the cost in red ink,
 the outcome under a double rule like a total.
 
-<p align="center"><img src="public/screenshots/38-landing-problems.png" width="900" alt="The problems section on the landing page: an index of six problems, and the first one with its proof"></p>
+<p align="center"><img src="public/screenshots/en/38-landing-problems.png" width="900" alt="The problems section on the landing page: an index of six problems, and the first one with its proof"></p>
 <p align="center"><sub><b>On the landing page</b> — an index of six, then each one told as who has it → cost → solved by → outcome</sub></p>
 
 ### 01 · One person writes all the formulas
@@ -238,7 +238,7 @@ the outcome under a double rule like a total.
 
 > **Outcome:** Nothing you've typed disappears quietly, and there is one copy of the file that everyone works on
 
-<p align="center"><img src="public/screenshots/42-save-failed.png" width="820" alt="The browser refuses a save: the app raises a red alert at once, with an Export Excel button"></p>
+<p align="center"><img src="public/screenshots/en/42-save-failed.png" width="820" alt="The browser refuses a save: the app raises a red alert at once, with an Export Excel button"></p>
 <p align="center"><sub><b>A refused save</b> — the alert appears the moment the browser says no, with export right in it</sub></p>
 
 ---
@@ -369,7 +369,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1363-case Vitest suite |
+| `npm test` | Run the 1384-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -382,6 +382,7 @@ Other available commands:
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
 | `npm run build:social` | Re-render `public/social-preview.png` (1280×640), counting the card's figures from source |
+| `npm run screenshots -- --lang all` | Retake every screenshot from a production build, in both languages (Thai → `public/screenshots/`, English → `public/screenshots/en/`) · `--only 05,20` for some · `--no-build` to reuse the current build |
 
 ### Step 2 — Connect the AI assistant to real Claude (optional)
 
@@ -470,7 +471,7 @@ Type what you want as a plain sentence, in Thai or English — e.g. _"I want to 
 The app sends your question plus the currently selected range to the AI and gets back a suggested formula with
 a short explanation. One click inserts it into the selected cell.
 
-<p align="center"><img src="public/screenshots/04-ai-assistant.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/04-ai-assistant.png" width="820"></p>
 
 **What only a real key could show.** Every test of this feature mocks Anthropic — which means it
 returns whatever the test author imagined it would. Put a real API key behind it and ask fourteen
@@ -527,7 +528,7 @@ The assistant answers one of three ways, and the landing page says plainly which
 | **The real Claude (BYOK)** | The visitor pastes their own API key | `api.anthropic.com`, straight from the browser | **The visitor's own account** |
 | The real Claude (server-side) | The operator sets `ANTHROPIC_API_KEY` | `/api/ai/formula` | Whoever runs the server |
 
-<p align="center"><img src="public/screenshots/33-byok.png" width="560"></p>
+<p align="center"><img src="public/screenshots/en/33-byok.png" width="560"></p>
 
 **The key never passes through this app's server.** The request goes from the browser straight to
 `api.anthropic.com` — that is what the SDK's `dangerouslyAllowBrowser` unlocks (it adds the
@@ -550,11 +551,11 @@ second is never called (`hit our own /api/ai/formula: false`); the first arrives
 
 ### 🔌 Live data from an API / CSV (prototype)
 
-<p align="center"><img src="public/screenshots/34-live-data.gif" width="820" alt="Picking a live source, pressing it into the sheet, and the cell changing on its own every five seconds"></p>
+<p align="center"><img src="public/screenshots/en/34-live-data.gif" width="820" alt="Picking a live source, pressing it into the sheet, and the table changing on its own every five seconds"></p>
 
-<sub>Recorded against a real public demo build (`NEXT_PUBLIC_DEMO_MODE=1`) — the three sources in it are the ones anyone can try.</sub>
+<sub>Recorded from a production build by `npm run screenshots` — the source in it is one of the built-in samples, the same three the public demo lets anyone try.</sub>
 
-<p align="center"><img src="public/screenshots/08-live-data.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/08-live-data.png" width="820"></p>
 
 Split into two roles so the end user touches as little technology as possible:
 
@@ -563,7 +564,7 @@ Sheets link, an auth header if needed, and a refresh interval, then "Test connec
 columns come back before saving. Config and credentials live on the server (`data/sources.json`, gitignored)
 and never reach the user's browser; the server does the fetching, so CORS isn't the user's problem.
 
-<p align="center"><img src="public/screenshots/09-source-setup.png" width="700"></p>
+<p align="center"><img src="public/screenshots/en/09-source-setup.png" width="700"></p>
 
 **2) Everyday users: three clicks, no jargon** — no JSON, no API keys, no aggregate function names.
 
@@ -576,9 +577,9 @@ and never reach the user's browser; the server does the fetching, so CORS isn't 
 <table>
 <tr>
 <td align="center"><b>Whole table — preview before placing</b><br>
-<img src="public/screenshots/10-picker-table.png" width="410"></td>
+<img src="public/screenshots/en/10-picker-table.png" width="410"></td>
 <td align="center"><b>Single value — real numbers to pick from</b><br>
-<img src="public/screenshots/12-picker-values.png" width="410"></td>
+<img src="public/screenshots/en/12-picker-values.png" width="410"></td>
 </tr>
 </table>
 
@@ -586,13 +587,13 @@ and never reach the user's browser; the server does the fetching, so CORS isn't 
 over the very columns the table just landed in. Clicking the block brings up a toolbar beside it showing which
 source it came from and how often it updates, with **Refresh / Change / Remove** — no trip back to the panel.
 
-<p align="center"><img src="public/screenshots/11-block-toolbar.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/11-block-toolbar.png" width="820"></p>
 
 **The feature is locked until you unlock it** — it tells the *server* to fetch a URL for you, which
 is a capability that needs an owner. With `SOURCES_ADMIN_TOKEN` unset the API answers 403 to
 everything rather than being left open to whoever loads the page.
 
-<p align="center"><img src="public/screenshots/24-sources-locked.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/24-sources-locked.png" width="820"></p>
 
 Three guards:
 
@@ -634,7 +635,7 @@ next link points back at a page already fetched, an empty page ends it, and if a
 through fails, **the rows already collected are still returned** rather than the whole refresh
 being thrown away.
 
-<p align="center"><img src="public/screenshots/13-partial-data.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/13-partial-data.png" width="820"></p>
 
 **And when the data is incomplete, it says so.** A silently partial table is more dangerous than a
 small one the user knows about: a "Sum" card computed from the first 40 rows of a 120-row source
@@ -663,7 +664,7 @@ response guaranteed to keep the source broken. So:
 - The user sees plain language with a live countdown and a **"Try now"** button to override it — a
   manual refresh always goes through, because a person clicking is a deliberate act, not the poller.
 
-<p align="center"><img src="public/screenshots/14-rate-limited.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/14-rate-limited.png" width="820"></p>
 
 Behind the scenes:
 
@@ -764,7 +765,7 @@ screen said so, which from the outside is indistinguishable from having lost it.
 So this screen does three things, in the order a person cares about them: says the data is safe, offers
 it as one downloadable CSV per tab right now, and only then offers to try again.
 
-<p align="center"><img src="public/screenshots/39-crash-rescue.png" width="760"></p>
+<p align="center"><img src="public/screenshots/en/39-crash-rescue.png" width="760"></p>
 
 The rescue (`crashRescue.ts`) **touches no store, no model and no formula engine** — those three are the
 prime suspects for whatever just threw. It reads the raw JSON out of `localStorage` with the same posture
@@ -823,7 +824,7 @@ believe they had one.
 Bold, text alignment (left/center/right), text color, number format (general / 2 decimal places / percent /
 currency ฿) — travels with the cell on copy/paste and survives Excel export too.
 
-<p align="center"><img src="public/screenshots/06-format-filter.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/06-format-filter.png" width="820"></p>
 
 The formatting row **folds away** (the brush button at the end of the formula bar). On a 1366×768 laptop the
 three stacked bars ate 150px before a single grid row appeared; folded, that's 107px.
@@ -834,7 +835,7 @@ Select a range, hit **Charts** in the format bar, and pick **bar, line or pie**.
 the grid just under the range it reads: **drag the bar at its top to move it, the bottom-right
 corner to resize it**, and switch its type or delete it from the chart itself.
 
-![Charts](public/screenshots/20-charts.png)
+![Charts](public/screenshots/en/20-charts.png)
 
 **A second chart steps clear of the first.** Both are built from the same range, so both land in the
 same place. The old step was one column — 112px against a chart 300px wide — which left the new chart
@@ -911,7 +912,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-![Cloud save](public/screenshots/23-cloud-save.png)
+![Cloud save](public/screenshots/en/23-cloud-save.png)
 
 Run both migrations against your project once first —
 [`0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) creates the table and the
@@ -1010,7 +1011,7 @@ and a `raw` that is not a string reaches the formula engine.
 Select a cell, hit **Comment** in the format bar, and write a note. A commented cell gets an **amber
 corner**; hover to read it.
 
-![A note on a cell](public/screenshots/22-cell-comment.png)
+![A note on a cell](public/screenshots/en/22-cell-comment.png)
 
 **One cell at a time**, because a note is something said about *a* cell. Allowing a block would mean
 either fanning it out into a note per cell or inventing a note about a rectangle, and neither is the
@@ -1076,9 +1077,9 @@ past the first 20 are cut off. All of it has to be fixed before the [PaynEat ERP
 at what is in column B, and gives the ones who guess wrong no way to find out. The formula bar is
 where a spreadsheet explains itself, and an address explains nothing.
 
-![Naming a range, and limiting what a cell will accept](public/screenshots/43-sheet-rules.png)
+![Naming a range, and limiting what a cell will accept](public/screenshots/en/43-sheet-rules.png)
 
-<sub>One frame, both halves: the formula bar reads `=SUM(ยอดขาย)` · the cells that name stands for are lit as
+<sub>One frame, both halves: the formula bar reads `=SUM(Sales)` · the cells that name stands for are lit as
 its precedents, because the engine has already substituted it · and the thin emerald rings down column A are
 the cells carrying a rule about what may go in them.</sub>
 
@@ -1130,7 +1131,7 @@ five rules:
 | **Colour scale** | Two or three stops across the range's spread — a whole column readable at a glance |
 | **Data bar** | A bar inside the cell, always measured from zero so negatives stay on the scale |
 
-![Conditional formatting](public/screenshots/18-conditional-format.png)
+![Conditional formatting](public/screenshots/en/18-conditional-format.png)
 
 Rules are re-evaluated from the computed values on every render rather than stored as colours, so
 editing a number repaints it on the same frame. Because the rules live in the sheet, they sit in
@@ -1184,7 +1185,7 @@ mention of `Ctrl+` anywhere outside the undo and redo tooltips. A feature only i
 about is not a feature. `Ctrl`/`Cmd`+`/` or `F1` opens the sheet, as does the keyboard button at the
 end of the sheet-tab strip:
 
-<p align="center"><img src="public/screenshots/35-shortcuts.png" width="760"></p>
+<p align="center"><img src="public/screenshots/en/35-shortcuts.png" width="760"></p>
 
 Not `?`, which is what most web apps use: the grid starts editing a cell on any printable character,
 so `?` with the sheet focused — which is nearly always — would put a question mark in a cell instead
@@ -1214,14 +1215,14 @@ answers as there are distinct categories, which nobody knows while typing it. So
 **spill into the cells beside them**. A spilled cell is tinted, because what is in it is not its
 own: it belongs to a formula in another cell, and it disappears the moment that formula does.
 
-<p align="center"><img src="public/screenshots/40-array-spill.png" width="900"></p>
+<p align="center"><img src="public/screenshots/en/40-array-spill.png" width="900"></p>
 
 | Formula | What it does |
 |---|---|
 | `SEQUENCE(rows, cols, start, step)` | A counted block of numbers, with no dragging to fill |
 | `TRANSPOSE(range)` | Rows become columns |
 | `UNIQUE(range)` | Each value once, in the order it first appears |
-| `SORT(range, col, asc)` | Sorted **without moving the source rows**, unlike the column-header sort |
+| `SORT(range, col, order)` | Sorted **without moving the source rows**, unlike the column-header sort · `order` takes Excel's `1`/`-1` or `TRUE`/`FALSE` |
 | `FILTER(range, include, if_empty)` | Only the rows whose condition is true |
 
 **Operators work across a range too.** `A1:A9>50` is nine answers, not one, and `SUM(A1:A3*2)`
@@ -1301,7 +1302,7 @@ life if someone creates one by that name.
 Select a cell holding a formula and the cells it reads are outlined on the grid, with the ranges
 written out beside the formula bar.
 
-![What a formula reads](public/screenshots/41-precedents.png)
+![What a formula reads](public/screenshots/en/41-precedents.png)
 
 This exists for one specific bug, and it is the most expensive one in this project's history:
 `C2:C4` and `C2:D4` differ by one character, both compute, neither errors, and the wrong total is
@@ -1331,7 +1332,7 @@ nine thousand. What was missing was showing the person the same answer.
 The first thing anyone does to a spreadsheet is drag the corner. This app had the corner grip —
 touch uses it to pull a selection out — and nothing behind it on a mouse.
 
-<p align="center"><img src="public/screenshots/37-fill-handle.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/37-fill-handle.png" width="820"></p>
 
 ```
 5, 10        → 15, 20, 25        a constant gap
@@ -1367,7 +1368,7 @@ live, which matters for undo as much as for nerves — one drag is one step back
 `Ctrl+F` is reflex, and it did nothing here — which became *more* conspicuous, not less, the moment
 a shortcut sheet went in advertising "the same keys as Excel".
 
-<p align="center"><img src="public/screenshots/36-find-replace.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/36-find-replace.png" width="820"></p>
 
 It searches the **raw text, not the displayed result**, and the panel says so rather than leaving
 you to find out. That is the decision everything else follows from: what you are looking for in a
@@ -1434,7 +1435,7 @@ of an 844px screen before the grid began. All three are fixed:
 | **Selecting a range** | A **grip on the selection's bottom-right corner**, dragged to pull the range out |
 | **Hover-revealed buttons** | Shown permanently where nothing hovers — otherwise the column filter and the delete-sheet button are invisible |
 
-![On a phone](public/screenshots/19-mobile.png)
+![On a phone](public/screenshots/en/19-mobile.png)
 
 **Dragging out a range with a finger** — a mouse sweeps a range by holding the button down and
 moving, but on a phone dragging a finger across the grid is how you scroll it, and taking that over
@@ -1443,7 +1444,7 @@ a **grip on the corner of the selection**. Only the grip takes the drag, so the 
 still scrolls normally, and **dragging to the edge scrolls the sheet to meet the finger** — without
 that a range could never be bigger than the screen, which on a phone is a handful of columns.
 
-<p align="center"><img src="public/screenshots/21-touch-select.png" width="320"></p>
+<p align="center"><img src="public/screenshots/en/21-touch-select.png" width="320"></p>
 
 The grip appears only where `(pointer: coarse)` matches. On a mouse it would sit under the cursor
 looking like Excel's fill handle while doing something else entirely.
@@ -1470,7 +1471,7 @@ Right-click a row/column header to insert or delete. The app **automatically rew
 sheet to reference the new correct positions**; a formula that referenced the exact row/column that got deleted
 turns into `#REF!`, exactly like Excel.
 
-<p align="center"><img src="public/screenshots/26-insert-row.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/26-insert-row.png" width="820"></p>
 <p align="center"><sub>Insert a row at 3 and <code>=SUM(C2:C4)</code> becomes <code>=SUM(C2:C5)</code> by itself — no chasing formulas by hand</sub></p>
 
 ### 🔗 Merging cells
@@ -1479,7 +1480,7 @@ A report title spanning the width of a table is almost always a merged cell. Thi
 merges out of an imported file and wrote them back on export — it just couldn't make one. Select a range
 and press **Merge** in the format bar.
 
-<p align="center"><img src="public/screenshots/30-merge-cells.png" width="900"></p>
+<p align="center"><img src="public/screenshots/en/30-merge-cells.png" width="900"></p>
 
 **One button, both directions.** A selection touching a merge turns the button into **Split**; one that
 doesn't leaves it as **Merge**. Two separate buttons would mean one of them is always the wrong one to
@@ -1519,13 +1520,13 @@ group by (more than one is fine), which column to fan out across the top, and wh
 average, min or max. The field buttons are named from **the first row of the range you actually selected**,
 not A/B/C, so nobody has to translate column letters into headings in their head.
 
-<p align="center"><img src="public/screenshots/28-pivot-panel.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/28-pivot-panel.png" width="820"></p>
 
 The result is a **new sheet**, not a special object you can't touch: sort it, filter it, chart it or export it
 like any other data. The header and the grand-total row are bolded, because those are the two rows a reader
 scans for first.
 
-<p align="center"><img src="public/screenshots/29-pivot-result.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/29-pivot-result.png" width="820"></p>
 
 Details that were worth getting right:
 
@@ -1543,7 +1544,7 @@ read, the fields that were picked, and a fingerprint of the values at the time. 
 notice appears on that sheet with a **Refresh** button — one press, instead of going back, re-selecting the
 range and re-picking every field.
 
-<p align="center"><img src="public/screenshots/31-pivot-refresh.png" width="900"></p>
+<p align="center"><img src="public/screenshots/en/31-pivot-refresh.png" width="900"></p>
 
 **Deliberately not live.** The result is an ordinary sheet you can sort, chart and edit; one that rewrote
 itself whenever a source cell changed would throw that away, and throw it away inside someone else's undo
@@ -1561,7 +1562,7 @@ summary sheet; one column field at a time; and the summary sheet has no filters 
 Switch/add/rename/delete sheets from the tab bar below the grid. Each sheet has independent data, formulas, and
 formatting, but **undo/redo and autosave cover every sheet together**.
 
-<p align="center"><img src="public/screenshots/05-sheet-tabs.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/05-sheet-tabs.png" width="820"></p>
 
 ### 📥 Import an existing Excel file
 
@@ -1581,9 +1582,9 @@ references with `$` stay put).
 <table>
 <tr>
 <td width="50%" align="center"><b>Parameter panel</b><br><sub>Pick range C2:C4 straight from the grid instead of typing the address</sub><br><br>
-<img src="public/screenshots/02-formula-panel.png" width="400"></td>
-<td width="50%" align="center"><b>Result the moment you confirm</b><br><sub><code>SUM(C2:C4)</code> computes to 100</sub><br><br>
-<img src="public/screenshots/03-after-insert.png" width="400"></td>
+<img src="public/screenshots/en/02-formula-panel.png" width="400"></td>
+<td width="50%" align="center"><b>Result the moment you confirm</b><br><sub><code>SUM(C2:C4)</code> computes to 165</sub><br><br>
+<img src="public/screenshots/en/03-after-insert.png" width="400"></td>
 </tr>
 </table>
 
@@ -1670,7 +1671,7 @@ has no way to say "text that happens to look like a formula", so something has t
 
 ### 🎨 It looks like the file you opened
 
-<p align="center"><img src="public/screenshots/17-styled-import.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/17-styled-import.png" width="820"></p>
 
 Real Excel files lean on **coloured header bands, large type, rules and row banding**. Import that
 as bare numbers and people don't recognise their own file. The screenshot above is an imported
@@ -1697,7 +1698,7 @@ All of it **exports back to `.xlsx`**, so the file opens in Excel as the file it
 
 ### 📋 Templates from an Excel file
 
-<p align="center"><img src="public/screenshots/15-template.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/15-template.png" width="820"></p>
 
 A form someone already built in Excel — a quote, a requisition, a data-entry sheet — **already says
 which cells are meant to be filled in**. Excel locks every cell by default, and whoever built the
@@ -1713,7 +1714,7 @@ up again**.
 | Column widths | Applied, so the form still looks like the form |
 | Formulas in the form | Compute over what was typed (`=B5*B6` feeding `=B7*1.07`) |
 
-<p align="center"><img src="public/screenshots/16-template-dropdown.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/16-template-dropdown.png" width="820"></p>
 
 **Every route in is guarded**, not just typing: Delete, paste, sorting, and adding or removing
 rows and columns are all refused *with a reason* — silently doing nothing reads as the app being
@@ -1820,7 +1821,7 @@ dictionary as the app, so the language you choose there carries through with you
 spreadsheet is asking to be taken on trust; this asks for ten seconds instead. It also keeps itself
 honest: if the engine regresses, the front page visibly breaks.
 
-<p align="center"><img src="public/screenshots/25-landing.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/25-landing.png" width="820"></p>
 
 **The old pitch said nothing.** "Open Excel and keep working in the browser" is what Google Sheets and Office on
 the web already do, for free, for millions of people. The page now answers that objection directly, straight after
@@ -1829,7 +1830,7 @@ they read far enough to find the difference themselves. Every row is a
 checkable fact — and **the row this app loses is in the table too**, because a comparison the author wins
 outright is one nobody believes.
 
-<p align="center"><img src="public/screenshots/32-landing-compare.png" width="900"></p>
+<p align="center"><img src="public/screenshots/en/32-landing-compare.png" width="900"></p>
 
 **The first section stopped being a feature list — twice.** It used to read "formula syntax you can't
 recall", "mistyped cell addresses" — capabilities dressed up as problems, which nobody reads and thinks
@@ -1842,7 +1843,7 @@ working together · and **the outcome under a double rule**, the way an account 
 each, a proof from the running app stays on screen while the entry is read, and opens full size. An
 index of all six sits on top, so the person who runs payroll reaches their problem in one press.
 
-<p align="center"><img src="public/screenshots/38-landing-problems.png" width="900"></p>
+<p align="center"><img src="public/screenshots/en/38-landing-problems.png" width="900"></p>
 
 The page is laid out as **ledger paper** rather than as a stack of rounded cards: hairline rules instead
 of boxes, square corners, the alternating pale-green row bands of accounting paper, monospace with tabular
@@ -1856,7 +1857,7 @@ and macOS. Plex Mono has no Thai either, so the `font-mono` stack names Plex San
 figures and formulas still line up in columns in Plex Mono, while Thai words on the same line are
 set in the same family as the body text rather than in the system's default monospace face.
 
-<p align="center"><img src="public/screenshots/27-landing-stats.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/27-landing-stats.png" width="820"></p>
 <p align="center"><sub>The inverted "Under the hood" band and the <b>Where this stops on purpose</b> section — the front page says where the app stops, and sends the rest of the limits here.</sub></p>
 
 ### 🌐 Bilingual (Thai / English)
@@ -1866,7 +1867,7 @@ names/descriptions, alert text, and AI replies (both the keyword heuristic and r
 selected language. The choice is remembered per browser. See [Bilingual UI (i18n)](#-bilingual-ui-i18n) for the
 architecture behind it.
 
-<p align="center"><img src="public/screenshots/07-english-ui.png" width="820"></p>
+<p align="center"><img src="public/screenshots/en/07-language-switch.png" width="820" alt="The same sample sheet after one click on TH: every label in Thai"></p>
 
 ---
 
@@ -1893,7 +1894,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1363 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1384 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2460,8 +2461,14 @@ flowchart LR
   one list), but **its reply always follows whatever language the UI is set to** — the client sends the current
   `locale` with every question, and the app picks the matching Claude system prompt or heuristic explanation
   for that language.
-- The demo seed data shown on first load stays in Thai (the app's default locale) — **deliberately not**
-  regenerated when the language is switched, since that would risk silently overwriting a user's real data.
+- **The sample sheet follows the language too — but only while nobody has touched it.** It used to stay in
+  Thai whatever the UI said, because swapping it meant the app replacing a sheet on its own. The sample is the
+  one sheet that belongs to nobody, and the app already knows exactly when that stops being true (the same
+  object-identity test that retires the sample banner), so the swap happens only then: switch language on an
+  untouched sample and it changes; type one cell and it is yours, in whatever language you were reading.
+  It waits for the autosave to be read first — otherwise a returning visitor's saved work could be
+  overwritten by the sample on its way past — and stays out of undo. The built-in live-data sources follow
+  the same rule: names and rows in the UI's language, a source someone renamed left as they named it.
 
 ---
 
@@ -2590,7 +2597,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 255 security tests
+### 261 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2756,13 +2763,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1363 cases across 84 files, via Vitest
+npm test      # 1384 cases across 84 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1363 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1384 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2856,10 +2863,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1363 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1384 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1363 passing tests could not catch](#-what-1363-passing-tests-could-not-catch), repeatable
+> [What 1384 passing tests could not catch](#-what-1384-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3141,9 +3148,17 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **A smarter fallback when there is no API key** — it answers `=SUM(A1:A10)` to nearly any question containing
   "total", and ignores the selected range too. Found while shooting the landing page's problems section, which is
   why problem 01 there says a key of your own is needed rather than promising a SUMIF from plain Thai
-- [ ] **Retake `04-ai-assistant.png` with a real key** — its toolbar predates freeze panes, validation and named
-  ranges, but retaking it without a key would mean faking the assistant's answer, which a picture used to sell the
-  app should not do, so the old one stays for now
+- [ ] **Retake `04-ai-assistant.png` with a real key** — the Thai one is still the old picture (its toolbar
+  predates freeze panes, validation and named ranges); the English one is new but shows the keyword matcher,
+  which says on screen that it is guessing, because retaking it without a key would mean faking the assistant's
+  answer. With a key, `SCREENSHOT_ANTHROPIC_KEY=… npm run screenshots -- --only 04` retakes both with a real one
+- [ ] **The AI's range guess stops at a blank row** — with the cursor under one empty row (C12 in the sample),
+  the range sent is the cursor cell alone and the answer is `=AVERAGE(C12)`. Found while writing the screenshot scenes
+- [x] **Screenshots in both languages** — the English README used to show the Thai app in 43 of its 44 pictures.
+  Every picture now comes from one script (`npm run screenshots`), and `check:readme` fails a README that shows
+  the other language's set. Found and fixed on the way: `SORT(…,-1)` sorting the wrong way, the English toolbar
+  overflowing a 1366px laptop until the language toggle was cut off, and two live-data windows that never said
+  they were dialogs
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 - [ ] **Working with PaynEat ERP** — agreed, not built (see [docs/payneat-erp.en.md](docs/payneat-erp.en.md)):
       the import template waits on cross-sheet dropdowns read from the right sheet, range references kept

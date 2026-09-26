@@ -5,18 +5,19 @@ import { createSource, listSources, toPublic } from "@/lib/server/sourceRepo";
 import { authFailureResponse, checkSourcesAuth } from "@/lib/server/sourcesAuth";
 import { parseSourceBody } from "./validate";
 import { DEMO_MODE, demoModeResponse } from "@/lib/demoMode";
-import { DEMO_SOURCES } from "@/lib/server/demoSources";
+import { DEMO_SOURCES, demoLanguage, withDemoName } from "@/lib/server/demoSources";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   // A public demo lists the three built-ins and nothing else: no token, and no touch of
   // data/sources.json, which a serverless host mounts read-only anyway.
-  if (DEMO_MODE) return Response.json(DEMO_SOURCES.map(toPublic));
+  const lang = demoLanguage(new URL(request.url).searchParams.get("lang"));
+  if (DEMO_MODE) return Response.json(DEMO_SOURCES.map((s) => withDemoName(toPublic(s), lang)));
   const denied = checkSourcesAuth(request);
   if (denied) return authFailureResponse(denied);
   const sources = await listSources();
-  return Response.json(sources.map(toPublic));
+  return Response.json(sources.map((s) => withDemoName(toPublic(s), lang)));
 }
 
 export async function POST(request: Request) {
