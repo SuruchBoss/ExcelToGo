@@ -1,12 +1,12 @@
 {
   "25-landing.png": {
-    "tests": 1348,
+    "tests": 1360,
     "paletteFormulas": 37
   },
   "27-landing-stats.png": {
     "paletteFormulas": 37,
     "engineFunctions": 64,
-    "tests": 1348,
+    "tests": 1360,
     "securityTests": 252
   },
   "38-landing-problems.png": {

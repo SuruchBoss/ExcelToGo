@@ -43,6 +43,7 @@ import {
   toTsv,
 } from "@/lib/sheet";
 import { fromStorage, PackedSheet, toStorage } from "@/lib/sheetCodec";
+import { guardedStorage } from "@/lib/saveHealth";
 import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, headerRow } from "@/lib/aiRange";
@@ -1669,7 +1670,9 @@ export const useSheetStore = create<SheetState>()(
     ),
     {
       name: "exceltogo-sheet-v2",
-      storage: createJSONStorage(() => localStorage),
+      // Guarded: a save that does not fit the quota becomes a status the app shows, not an
+      // exception thrown out of whatever action happened to trigger it. See `saveHealth.ts`.
+      storage: createJSONStorage(() => guardedStorage(localStorage)),
       // Packed on the way out, dense in memory. The model is a full grid because that is what
       // makes a lookup an array index; written out verbatim it was 4 MB for a 20,000-row sheet
       // holding one value, against a ~5 MB quota — a ceiling set by the sheet's dimensions rather
