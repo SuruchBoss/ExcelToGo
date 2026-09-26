@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Hash, Table2, X } from "lucide-react";
 import clsx from "clsx";
 import { PublicDataSource } from "@/lib/dataSources/types";
@@ -28,6 +28,7 @@ interface Props {
  */
 export default function DataPickerDialog({ source, replacing, onClose }: Props) {
   const t = useT();
+  const titleId = useId();
   const table = useDataSourceStore((s) => s.data[source.id]);
   const sheet = useSheetStore(selectActiveSheet);
   const selection = useSheetStore(selectActiveSelection);
@@ -78,10 +79,15 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
       <div
         className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
+        // Announced as what it is. Without the role a screen reader heard the page go on as if
+        // nothing had opened — found when the screenshot script went looking for the dialog by role.
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
           <div>
-            <h2 className="flex items-center gap-2 text-[17px] font-semibold text-zinc-800">
+            <h2 id={titleId} className="flex items-center gap-2 text-[17px] font-semibold text-zinc-800">
               {source.name}
               <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
@@ -90,7 +96,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
             </h2>
             <p className="mt-0.5 text-[13px] text-zinc-500">{t.data.picker.subtitle}</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600">
+          <button onClick={onClose} aria-label={t.app.close} title={t.app.close} className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600">
             <X size={16} />
           </button>
         </div>
@@ -132,7 +138,14 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
           </div>
 
           {kind === "table" ? (
-            <div className="max-h-72 overflow-auto rounded-xl border border-zinc-200">
+            // Reachable by keyboard: on a phone the preview scrolls sideways, and a region only a
+            // pointer can scroll hides the columns past the edge from anyone without one.
+            <div
+              role="region"
+              aria-label={t.data.picker.wholeTable}
+              tabIndex={0}
+              className="max-h-72 overflow-auto rounded-xl border border-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
+            >
               <table className="w-full border-collapse text-[13px]">
                 <thead className="sticky top-0 bg-zinc-50">
                   <tr>

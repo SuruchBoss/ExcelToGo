@@ -683,6 +683,8 @@ export interface Messages {
      *  the old `fallback` handed back SUM for anything unrecognised, which is how "join these
      *  names" became a number nobody questioned. */
     noMatch: string;
+    /** The two outcomes the IF suggestion writes into the cell — in the formula, so in the sheet. */
+    ifOutcomes: [pass: string, fail: string];
   };
   formulas: Record<string, FormulaMessage>;
 }

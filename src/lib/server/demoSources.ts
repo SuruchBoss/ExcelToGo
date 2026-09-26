@@ -2,6 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DataSourceConfig } from "@/lib/dataSources/types";
+import type { Locale } from "@/i18n/types";
+
+/**
+ * What the three are called, in each language. The Thai name is the one stored — it is what a
+ * local install seeds into its own list — and the English one is only ever a way of *showing* it.
+ */
+const DEMO_NAMES: Record<string, Record<Locale, string>> = {
+  "demo-sales": { th: "ยอดขายสด (ตัวอย่าง)", en: "Live sales (sample)" },
+  "demo-summary": { th: "สรุปวันนี้ (ตัวอย่าง)", en: "Today's summary (sample)" },
+  "demo-orders": { th: "รายการสั่งซื้อ (ตัวอย่าง, หลายหน้า)", en: "Orders (sample, several pages)" },
+};
 
 /**
  * The only sources a public demo is allowed to read.
@@ -25,7 +36,7 @@ import { DataSourceConfig } from "@/lib/dataSources/types";
 export const DEMO_SOURCES: DataSourceConfig[] = [
   {
     id: "demo-sales",
-    name: "ยอดขายสด (ตัวอย่าง)",
+    name: DEMO_NAMES["demo-sales"].th,
     type: "rest",
     url: "/api/demo/sales",
     method: "GET",
@@ -34,7 +45,7 @@ export const DEMO_SOURCES: DataSourceConfig[] = [
   },
   {
     id: "demo-summary",
-    name: "สรุปวันนี้ (ตัวอย่าง)",
+    name: DEMO_NAMES["demo-summary"].th,
     type: "rest",
     url: "/api/demo/summary",
     method: "GET",
@@ -45,7 +56,7 @@ export const DEMO_SOURCES: DataSourceConfig[] = [
     // Returns 25 rows per page over 120 rows, so the panel shows a source that only adds up to
     // its full size once pages have been followed.
     id: "demo-orders",
-    name: "รายการสั่งซื้อ (ตัวอย่าง, หลายหน้า)",
+    name: DEMO_NAMES["demo-orders"].th,
     type: "rest",
     url: "/api/demo/orders",
     method: "GET",
@@ -64,4 +75,31 @@ export const DEMO_SOURCES: DataSourceConfig[] = [
  */
 export function getDemoSource(id: string): DataSourceConfig | undefined {
   return DEMO_SOURCES.find((s) => s.id === id);
+}
+
+/** A `lang` parameter as a language, defaulting to the app's own. Two values; nothing else passes. */
+export function demoLanguage(value: string | null | undefined): Locale {
+  return value === "en" ? "en" : "th";
+}
+
+/**
+ * A built-in's name in the language on screen — but only while it still *is* the built-in name.
+ * On a local install the list is the operator's to edit, and a source they renamed is theirs.
+ */
+export function withDemoName<T extends { id: string; name: string }>(source: T, lang: Locale): T {
+  const names = DEMO_NAMES[source.id];
+  if (!names || !Object.values(names).includes(source.name)) return source;
+  return { ...source, name: names[lang] };
+}
+
+/**
+ * A built-in's URL asking for its rows in `lang`.
+ *
+ * Matched by exact string against the fixed list, so it adds one of two fixed query strings to one
+ * of three fixed paths: the set of places a demo can make the server fetch stays exactly as closed
+ * as it was. A URL that is not one of the three is handed back untouched.
+ */
+export function demoUrlIn(url: string, lang: Locale): string {
+  if (lang === "th" || !DEMO_SOURCES.some((d) => d.url === url)) return url;
+  return `${url}?lang=${lang}`;
 }

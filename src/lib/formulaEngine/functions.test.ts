@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { calc } from "./testUtils";
+import { calc, gridContext } from "./testUtils";
+import { parseFormula } from "./parser";
+import { evaluate } from "./evaluator";
+import { colToLetters } from "./address";
 import { isError } from "./types";
 
 const grid = [
@@ -546,5 +549,52 @@ describe("gaps the mutation gate found", () => {
     // Away from zero, as Excel does it — which is why the negative branch exists at all.
     expect(calc("ROUNDUP(-1.234,2)")).toBeCloseTo(-1.24, 10);
     expect(calc("ROUNDDOWN(1.239,2)")).toBeCloseTo(1.23, 10);
+  });
+});
+
+/**
+ * Gaps the mutation gate found once the SORT fix moved the engine's lines and the pinned seed drew a
+ * different 32 edits. Each test below is named for the edit it would have let through. (One more
+ * survivor, `cmp < 0` → `cmp <= 0` in MATCH's descending branch, is equivalent: an exact match
+ * returns two lines earlier, so `cmp` is never 0 there.)
+ */
+describe("gaps the mutation gate found", () => {
+  it("SORT orders text, not only numbers", () => {
+    // A rank that lumped every string together sorted text by nothing at all.
+    const sheet = [["ค"], ["ก"], ["ข"]];
+    const out = evaluate(parseFormula("SORT(A1:A3)"), gridContext(sheet));
+    expect(out.kind === "range" ? out.rows.map((r) => r[0]) : out).toEqual(["ก", "ข", "ค"]);
+  });
+
+  it("SORT orders numbers as numbers, and before text", () => {
+    // As text, "10" sorts before "9". Every earlier SORT test used single digits, where the two agree.
+    const sheet = [[100], ["ก"], [9], [10]];
+    const out = evaluate(parseFormula("SORT(A1:A4)"), gridContext(sheet));
+    expect(out.kind === "range" ? out.rows.map((r) => r[0]) : out).toEqual([9, 10, 100, "ก"]);
+  });
+
+  it("XLOOKUP's next-larger match takes the first of two equal candidates", () => {
+    const grid = [[10, "a"], [20, "b"], [20, "c"], [30, "d"]];
+    expect(calc("XLOOKUP(15,A1:A4,B1:B4,,1)", grid)).toBe("b");
+  });
+
+  it("DATEDIF MD is 0 on the anniversary day, including across a new year", () => {
+    expect(calc('DATEDIF("2023-11-15","2024-01-15","MD")')).toBe(0);
+  });
+
+  it("a date whose month does not exist is not a date, even when its day would survive the roll-over", () => {
+    // 2024-13-05 rolls over to 5 January 2025: the day still reads 5, only the month is wrong.
+    expect(isError(calc('YEAR("2024-13-05")'))).toBe(true);
+  });
+
+  it("a one-cell range in arithmetic stays a single value", () => {
+    const result = evaluate(parseFormula("A1:A1+1"), gridContext([[4]]));
+    expect(result).toEqual({ kind: "scalar", value: 5 });
+  });
+
+  it("column letters roll over at Z, not two short of it", () => {
+    expect(colToLetters(25)).toBe("Z");
+    expect(colToLetters(26)).toBe("AA");
+    expect(colToLetters(51)).toBe("AZ");
   });
 });

@@ -28,7 +28,14 @@ import { useFindDialog } from "@/features/search/useFindDialog";
 import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
-import { selectShowingSample, useClipboardShortcuts, useHydrateSheetStore, useSheetStore, useUndoRedoShortcuts } from "@/store/sheetStore";
+import {
+  selectShowingSample,
+  useClipboardShortcuts,
+  useHydrateSheetStore,
+  useSampleFollowsLocale,
+  useSheetStore,
+  useUndoRedoShortcuts,
+} from "@/store/sheetStore";
 import { useServiceWorker } from "@/features/offline/useServiceWorker";
 import { useHydrateLocaleStore } from "@/store/localeStore";
 import { useT } from "@/i18n";
@@ -40,6 +47,7 @@ export default function Home() {
   useHydrateSheetStore();
   useServiceWorker();
   useHydrateLocaleStore();
+  useSampleFollowsLocale();
   useUndoRedoShortcuts();
   useClipboardShortcuts();
   useLiveDataPolling();

@@ -19,6 +19,11 @@
  * all — an empty list is a decision, a missing entry is an oversight, and the difference is
  * exactly what this is for.
  *
+ * There is a set per language — Thai at the root, English in `en/` — and each must hold every
+ * scene below, no more and no fewer. The English README showed the Thai app in 43 of its 44
+ * pictures because nothing counted the pictures by language; now a scene missing from one set
+ * fails here. The figures are checked in every set, since a stale number reads as stale in either.
+ *
  *   npm run check:screens            check
  *   npm run check:screens -- --bless record today's figures, after retaking
  */
@@ -38,7 +43,8 @@ const SHOWS = {
   "04-ai-assistant.png": [],
   "05-sheet-tabs.png": [],
   "06-format-filter.png": [],
-  "07-english-ui.png": [],
+  // The other language, one click away: the Thai set shows it in English, the English set in Thai.
+  "07-language-switch.png": [],
   "08-live-data.png": [],
   "09-source-setup.png": [],
   "10-picker-table.png": [],
@@ -85,17 +91,27 @@ const SHOWS = {
 
 const bless = process.argv.includes("--bless");
 const now = counts();
-const files = readdirSync(SHOTS).filter((f) => f !== "screenshots.json");
-
+/** One folder per language; the key each image is recorded under is its path inside public/screenshots/. */
+const SETS = ["", "en"];
 const failures = [];
-for (const file of files) {
-  if (!(file in SHOWS)) {
-    failures.push(`${file} is not in SHOWS — say which counted figures it prints, or \`[]\` if none`);
+let total = 0;
+for (const set of SETS) {
+  const dir = path.join(SHOTS, set);
+  const files = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name !== "screenshots.json")
+    .map((e) => e.name);
+  total += files.length;
+  const where = `public/screenshots/${set ? `${set}/` : ""}`;
+  for (const file of files) {
+    if (!(file in SHOWS)) {
+      failures.push(`${where}${file} is not in SHOWS — say which counted figures it prints, or \`[]\` if none`);
+    }
+  }
+  for (const file of Object.keys(SHOWS)) {
+    if (!files.includes(file)) failures.push(`${file} is listed in SHOWS but is not in ${where} — take it with \`npm run screenshots\``);
   }
 }
-for (const file of Object.keys(SHOWS)) {
-  if (!files.includes(file)) failures.push(`${file} is listed in SHOWS but is not in public/screenshots/`);
-}
+const keyOf = (set, file) => (set ? `${set}/${file}` : file);
 
 let record = {};
 try {
@@ -106,9 +122,11 @@ try {
 
 if (bless) {
   const next = {};
-  for (const [file, keys] of Object.entries(SHOWS)) {
-    if (keys.length === 0) continue;
-    next[file] = Object.fromEntries(keys.map((key) => [key, now[key]]));
+  for (const set of SETS) {
+    for (const [file, keys] of Object.entries(SHOWS)) {
+      if (keys.length === 0) continue;
+      next[keyOf(set, file)] = Object.fromEntries(keys.map((key) => [key, now[key]]));
+    }
   }
   writeFileSync(RECORD, `${JSON.stringify(next, null, 2)}\n`);
   console.log(`check:screens — recorded today's figures for ${Object.keys(next).length} screenshots.`);
@@ -116,22 +134,25 @@ if (bless) {
 }
 
 let checked = 0;
-for (const [file, keys] of Object.entries(SHOWS)) {
-  if (keys.length === 0) continue;
-  const was = record[file];
-  if (!was) {
-    failures.push(`${file} shows ${keys.join(", ")} but nothing was recorded for it`);
-    continue;
-  }
-  for (const key of keys) {
-    checked++;
-    if (was[key] !== now[key]) {
-      failures.push(`${file} was taken when ${key} was ${was[key]}; it is ${now[key]} now — retake it`);
+for (const set of SETS) {
+  for (const [file, keys] of Object.entries(SHOWS)) {
+    if (keys.length === 0) continue;
+    const key = keyOf(set, file);
+    const was = record[key];
+    if (!was) {
+      failures.push(`${key} shows ${keys.join(", ")} but nothing was recorded for it`);
+      continue;
+    }
+    for (const figure of keys) {
+      checked++;
+      if (was[figure] !== now[figure]) {
+        failures.push(`${key} was taken when ${figure} was ${was[figure]}; it is ${now[figure]} now — retake it`);
+      }
     }
   }
 }
 
-console.log(`check:screens — ${files.length} screenshots, ${checked} printed figures checked`);
+console.log(`check:screens — ${total} screenshots in ${SETS.length} languages, ${checked} printed figures checked`);
 if (failures.length > 0) {
   console.log("\ncheck:screens failed:");
   for (const f of failures) console.log(`  ✗ ${f}`);

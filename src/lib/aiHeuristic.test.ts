@@ -18,6 +18,12 @@ describe("the keyword matcher", () => {
     expect(heuristicSuggest("รวม", "A1:A5", "th").explanation).toMatch(/[฀-๿]/);
     expect(heuristicSuggest("รวม", "A1:A5", "en").explanation).not.toMatch(/[฀-๿]/);
   });
+
+  it("writes the words an IF puts in the sheet in that language too", () => {
+    // Not just the explanation: these land in cells, and an English sheet was getting "ผ่าน".
+    expect(heuristicSuggest("if it is over zero", "A1:A5", "en").formula).toBe('=IF(A1>0,"Pass","Fail")');
+    expect(heuristicSuggest("ถ้ามากกว่าศูนย์", "A1:A5", "th").formula).toBe('=IF(A1>0,"ผ่าน","ไม่ผ่าน")');
+  });
 });
 
 describe("questions it cannot answer", () => {

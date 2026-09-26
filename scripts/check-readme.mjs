@@ -49,27 +49,69 @@ for (const [file, text] of Object.entries(docs)) {
   notes.push(`${file}: ${links.size} internal links resolve`);
 }
 
-// --- 2. Screenshots: referenced ones exist, and none are orphaned ------------------------------
-const shotDir = path.join(ROOT, "public/screenshots");
+// --- 2. Screenshots: each README shows its own language, and nothing is orphaned ---------------
+// Two sets, one per language — Thai at the root, English in en/ — taken by scripts/screenshots.mjs.
+// The English README used to show the Thai app in 43 of its 44 pictures, and every check here
+// passed, because they only asked whether a file existed. So the question is now which set a
+// README draws from: the Thai one from the root, the English one from en/, and nothing else.
 // .gif as well as .png: the animated ones are the most expensive to re-record and so the ones
 // most likely to be left behind by a rename. demo.gif sat outside this check for months.
-const onDisk = fs.existsSync(shotDir) ? fs.readdirSync(shotDir).filter((f) => /\.(png|gif)$/.test(f)) : [];
-const referenced = new Set();
+const SHOT_SETS = { "README.md": "", "README.en.md": "en" };
+const listShots = (set) => {
+  const dir = path.join(ROOT, "public/screenshots", set);
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.(png|gif)$/.test(f)) : [];
+};
+const onDisk = Object.fromEntries(Object.values(SHOT_SETS).map((set) => [set, listShots(set)]));
+const referenced = Object.fromEntries(Object.values(SHOT_SETS).map((set) => [set, new Set()]));
 for (const [file, text] of Object.entries(docs)) {
-  for (const m of text.matchAll(/public\/screenshots\/([\w.-]+\.(?:png|gif))/g)) {
-    referenced.add(m[1]);
-    if (!onDisk.includes(m[1])) fail(`${file}: references public/screenshots/${m[1]}, which doesn't exist`);
+  const own = SHOT_SETS[file];
+  for (const m of text.matchAll(/public\/screenshots\/((?:[a-z]{2}\/)?)([\w.-]+\.(?:png|gif))/g)) {
+    const set = m[1].replace("/", "");
+    if (set !== own) {
+      fail(`${file}: shows public/screenshots/${m[1]}${m[2]} — ${own ? `the ${own} set is public/screenshots/${own}/` : "the Thai set is public/screenshots/"}${m[2]}`);
+      continue;
+    }
+    referenced[set].add(m[2]);
+    if (!onDisk[set].includes(m[2])) fail(`${file}: references public/screenshots/${m[1]}${m[2]}, which doesn't exist`);
   }
 }
-// The landing page writes them as "/screenshots/x" (a URL), the READMEs as "public/screenshots/x"
-// (a path). Both count as showing the file; only a file nothing points at is an orphan.
-for (const m of read("src/app/page.tsx").matchAll(/["(]\/screenshots\/([\w.-]+\.(?:png|gif))/g)) {
-  referenced.add(m[1]);
+// The same scenes in every language: a picture only one README has is one the other reader misses.
+const [thShots, enShots] = [onDisk[""], onDisk.en];
+for (const f of thShots) if (!enShots.includes(f)) fail(`public/screenshots/${f} has no English twin in public/screenshots/en/`);
+for (const f of enShots) if (!thShots.includes(f)) fail(`public/screenshots/en/${f} has no Thai twin in public/screenshots/`);
+
+// The landing page names its exhibits by file and picks the folder by language, so each one it
+// names is shown from every set. The size it declares for each language has to be the file's own:
+// a retake that changes a picture's shape should say so rather than be squeezed into the old one.
+const imageSize = (file) => {
+  const buf = fs.readFileSync(file);
+  if (buf.toString("ascii", 1, 4) === "PNG") return [buf.readUInt32BE(16), buf.readUInt32BE(20)];
+  if (buf.toString("ascii", 0, 3) === "GIF") return [buf.readUInt16LE(6), buf.readUInt16LE(8)];
+  return null;
+};
+const landing = read("src/app/page.tsx");
+const exhibits = [...landing.matchAll(/file: "([\w.-]+\.(?:png|gif))", size: \{ th: \[(\d+), (\d+)\], en: \[(\d+), (\d+)\] \}/g)];
+if (exhibits.length === 0) fail("src/app/page.tsx: found no exhibits — has the PAIN_EXHIBITS shape changed?");
+for (const [, name, thW, thH, enW, enH] of exhibits) {
+  for (const [set, w, h] of [["", thW, thH], ["en", enW, enH]]) {
+    referenced[set].add(name);
+    const rel = `public/screenshots/${set ? `${set}/` : ""}${name}`;
+    if (!fs.existsSync(path.join(ROOT, rel))) {
+      fail(`src/app/page.tsx: shows ${rel}, which doesn't exist`);
+      continue;
+    }
+    const size = imageSize(path.join(ROOT, rel));
+    if (size && (size[0] !== Number(w) || size[1] !== Number(h))) {
+      fail(`src/app/page.tsx: says ${rel} is ${w}×${h}, but the file is ${size[0]}×${size[1]}`);
+    }
+  }
 }
-for (const f of onDisk) {
-  if (!referenced.has(f)) fail(`public/screenshots/${f} is in the repo but nothing shows it`);
+for (const [set, files] of Object.entries(onDisk)) {
+  for (const f of files) {
+    if (!referenced[set].has(f)) fail(`public/screenshots/${set ? `${set}/` : ""}${f} is in the repo but nothing shows it`);
+  }
 }
-notes.push(`${onDisk.length} screenshots, all referenced`);
+notes.push(`${thShots.length} screenshots in each language, each README showing its own`);
 
 // --- 3. Test counts quoted in the docs must match the suite ------------------------------------
 const actualTests = countTests();

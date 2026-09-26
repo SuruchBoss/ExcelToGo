@@ -263,7 +263,12 @@ const ARRAY_FUNCTIONS: Record<string, FnImpl> = {
   },
 
   /**
-   * SORT(range, [column], [ascending]) — sorted rows, numbers before text, blanks last.
+   * SORT(range, [column], [order]) — sorted rows, numbers before text, blanks last.
+   *
+   * `order` takes Excel's 1 / -1 as well as TRUE / FALSE. It used to be read as a plain boolean,
+   * which made Excel's own `=SORT(E2:E10,1,-1)` sort *ascending* — -1 is not zero, so it was
+   * TRUE — with no error to say so: the formula someone copied from Excel quietly did the
+   * opposite. Any other number is #VALUE!, as it is in Excel, rather than a guess.
    *
    * The comparison is shared with nothing: `sheetSort.ts` sorts a live sheet by rewriting cells,
    * which is a different job with different rules (it keeps a header row in place). Making one
@@ -276,8 +281,17 @@ const ARRAY_FUNCTIONS: Record<string, FnImpl> = {
     if (isError(col)) return col;
     const index = Math.trunc(col) - 1;
     if (index < 0 || index >= rows[0].length) return ERR_VALUE;
-    const ascending = args[2] ? toBoolean(scalarOf(args[2])) : true;
-    if (isError(ascending)) return ascending;
+    const order = args[2] ? scalarOf(args[2]) : 1;
+    if (isError(order)) return order;
+    let ascending: boolean;
+    if (typeof order === "number") {
+      if (order !== 1 && order !== -1) return ERR_VALUE;
+      ascending = order === 1;
+    } else {
+      const flag = toBoolean(order);
+      if (isError(flag)) return flag;
+      ascending = flag;
+    }
 
     const rank = (v: FormulaValue): [number, number | string] => {
       if (isBlank(v)) return [2, 0];

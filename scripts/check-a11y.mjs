@@ -29,6 +29,10 @@
  * looking at `/app` as it loads, because neither exists until someone presses a button.
  */
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
@@ -96,6 +100,20 @@ const OVERFLOW_WIDTHS = requested ? SHARDS[requested] : ALL_OVERFLOW_WIDTHS;
  * things a first-time visitor reaches in one press — the point is covering what the load-time scan
  * structurally cannot, not re-testing the app through a second harness.
  */
+/**
+ * The live-data dialogs only exist once the feature is unlocked, so the server gets an operator
+ * token for this run and the states that need it put the same token in the tab. Neither dialog was
+ * scanned until the screenshot script went looking for them by role and found they had none —
+ * and, once they did, that their close button had no name either.
+ */
+const SOURCES_TOKEN = randomBytes(12).toString("hex");
+const unlockedData = async (page) => {
+  await page.evaluate((token) => sessionStorage.setItem("exceltogo.sources-token", token), SOURCES_TOKEN);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator('button[aria-label="ข้อมูล"]').first().click();
+  await page.getByRole("button", { name: "ใส่ลงตาราง", exact: true }).first().waitFor({ timeout: 15_000 });
+};
+
 /** Opens a side panel from the button that carries this exact accessible name, then waits for it. */
 const panel = (name, opener) => ({
   name,
@@ -117,6 +135,24 @@ const panel = (name, opener) => ({
 });
 
 const OPENED_STATES = [
+  {
+    name: "data picker dialog",
+    path: "/app",
+    async open(page) {
+      await unlockedData(page);
+      await page.getByRole("button", { name: "ใส่ลงตาราง", exact: true }).first().click();
+      await page.getByRole("dialog").waitFor({ timeout: 10_000 });
+    },
+  },
+  {
+    name: "add data source dialog",
+    path: "/app",
+    async open(page) {
+      await unlockedData(page);
+      await page.getByRole("button", { name: /เชื่อมต่อข้อมูลใหม่/ }).click();
+      await page.getByRole("dialog").waitFor({ timeout: 10_000 });
+    },
+  },
   {
     name: "shortcuts dialog",
     path: "/app",
@@ -238,9 +274,15 @@ async function waitForServer(timeoutMs = 90_000) {
   throw new Error(`server did not answer on ${ORIGIN} within ${timeoutMs}ms`);
 }
 
-const server = spawn("node", ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)], {
+// Served from a scratch working directory: with a token set, the sources API reads and seeds
+// `data/sources.json` relative to it, and the repository's own is where a working install keeps
+// real credentials.
+const ROOT = process.cwd();
+const serveDir = mkdtempSync(path.join(tmpdir(), "exceltogo-a11y-"));
+const server = spawn(process.execPath, [path.join(ROOT, "node_modules/next/dist/bin/next"), "start", ROOT, "-p", String(PORT)], {
+  cwd: serveDir,
   stdio: ["ignore", "pipe", "pipe"],
-  env: { ...process.env, NODE_ENV: "production" },
+  env: { ...process.env, NODE_ENV: "production", SOURCES_ADMIN_TOKEN: SOURCES_TOKEN },
 });
 let serverLog = "";
 server.stdout.on("data", (d) => (serverLog += d));
@@ -310,6 +352,7 @@ try {
 } finally {
   await browser?.close();
   server.kill("SIGTERM");
+  rmSync(serveDir, { recursive: true, force: true });
 }
 
 if (failures.length > 0) {

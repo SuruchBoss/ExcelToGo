@@ -74,3 +74,46 @@ describe("starting from a blank sheet", () => {
     expect(s.selectionBySheetId[s.activeSheetId]).toBeUndefined();
   });
 });
+
+describe("in the language on screen", () => {
+  const cellsOf = () => useSheetStore.getState().sheets[0].sheet.cells;
+
+  it("switches to the English sample, and still counts as the sample", () => {
+    useSheetStore.getState().showSampleIn("en");
+    expect(cellsOf()[0].slice(0, 5)).toEqual(["Product", "Category", "Price", "Qty", "Total"]);
+    expect(selectShowingSample(useSheetStore.getState())).toBe(true);
+  });
+
+  it("keeps every number and formula, so both languages total the same", () => {
+    const th = cellsOf().map((row) => row.slice(2));
+    useSheetStore.getState().showSampleIn("en");
+    const en = cellsOf().map((row) => row.slice(2));
+    // Column C onwards, minus the two cells that are words: the headers and the total's label.
+    const numeric = (grid: string[][]) => grid.slice(1).map((row) => row.filter((v) => !v || /^[=\d]/.test(v)));
+    expect(numeric(en)).toEqual(numeric(th));
+  });
+
+  it("switches back, and stays out of the undo history", () => {
+    useSheetStore.temporal.getState().clear();
+    useSheetStore.getState().showSampleIn("en");
+    useSheetStore.getState().showSampleIn("th");
+    expect(cellsOf()[0][0]).toBe("สินค้า");
+    expect(useSheetStore.temporal.getState().pastStates).toHaveLength(0);
+  });
+
+  it("never touches a workbook somebody has changed", () => {
+    // The whole reason the swap is safe: the sample belongs to nobody. One typed cell and it is
+    // theirs, in whatever language they were reading when they typed it.
+    useSheetStore.getState().setCellRaw(1, 2, "100");
+    const before = useSheetStore.getState().sheets;
+    useSheetStore.getState().showSampleIn("en");
+    expect(useSheetStore.getState().sheets).toBe(before);
+    expect(cellsOf()[0][0]).toBe("สินค้า");
+  });
+
+  it("does not bring the sample back after starting blank", () => {
+    useSheetStore.getState().startBlank();
+    useSheetStore.getState().showSampleIn("en");
+    expect(cellsOf().flat().filter(Boolean)).toHaveLength(0);
+  });
+});

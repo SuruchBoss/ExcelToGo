@@ -99,9 +99,12 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
         </div>
       ) : (
         error && (
-          <p className="mt-1 rounded bg-red-50 p-1.5 text-[11px] text-red-600">
+          // red-700, not 600: at 11px on red-50, 600 measured 4.36:1 and the countdown in 500 3.48:1,
+          // both under the 4.5 a line this small needs. Found by axe over the panel with a failing
+          // source in it, which no gate state had ever shown.
+          <p className="mt-1 rounded bg-red-50 p-1.5 text-[11px] text-red-700">
             {error}
-            {waitSec > 0 && <span className="ml-1 text-red-500">· {t.data.retryIn(waitSec)}</span>}
+            {waitSec > 0 && <span className="ml-1 text-red-700">· {t.data.retryIn(waitSec)}</span>}
           </p>
         )
       )}
