@@ -124,6 +124,23 @@ only what the source is meant to publish. The connection is encrypted only if th
 it (`sslmode=require`, `?ssl=true`); `sslmode=disable` is honoured as written, because a connection
 that merely *looks* encrypted is worse than one that admits it is not.
 
+### 2c. A source's credential goes only to the source's own origin
+
+An auth header belongs to the origin of the URL the source was set up with — its scheme, host and
+port. It is sent to that origin and nowhere else:
+
+- **A redirect to another origin is followed, without the header.** Redirects are followed by hand
+  so that every hop can be checked (above), which means `fetch`'s own rule of dropping
+  `Authorization` on a cross-origin redirect does not apply by itself; the same rule is applied
+  here, to whatever header name the source uses. Once dropped it is not put back, even if a later
+  hop returns to the original origin. `https` → `http` on the same host counts as another origin.
+- **A next-page link on another origin is not followed at all.** Paging stops there, the rows
+  already fetched are kept, and the table is marked partial. A redirect to a CDN is ordinary HTTP;
+  an API whose pages continue on a different host is not something to follow blind.
+
+A source reached through the app's own path (the built-in demo sources) carries no credential and
+is unaffected.
+
 ### 3. Source credentials are encrypted at rest
 
 An auth header attached to a source is encrypted with AES-256-GCM under `SOURCES_SECRET_KEY` before
