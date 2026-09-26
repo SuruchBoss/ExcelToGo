@@ -31,7 +31,7 @@
 ## Import template: how far along it is
 
 Tested against the ERP's draft-0 templates ([`docs/integrations/exceltogo/`](https://github.com/SuruchBoss/PaynEat-ERP/tree/main/docs/integrations/exceltogo),
-commit `a184ce9`), in Node and in the real app (production build, Chromium), on 2026-09-26.
+commit `a184ce9`, which the numbers below come from), in Node and in the real app (production build, Chromium), on 2026-09-26.
 
 **Works today:** a sheet-protected file opens as a template (unlocked cells are the fields), the data sheets
 go back out still protected, and dropdowns written as an inline list (`"plant,warehouse,branch"`) survive
@@ -51,11 +51,13 @@ the round trip.
    unprotected).
 4. **Bug: empty input rows are cut off.** A sheet's size comes from the rows holding values (at least 20),
    not from unlocked cells or cells carrying a rule. The ERP's template has input rows down to row 200
-   (`Items`, `OpeningBalance`) and 50 (`Locations`); ExcelToGo opens 20.
+   (`Items`, `OpeningBalance`) and 50 (`Locations`); ExcelToGo opens 20. **The test:** input rows are now part
+   of the template contract (ERP commit `0ebd35b`). Draft 0 is `Items` rows 2–200, `Locations` rows 2–50, and
+   `OpeningBalance` rows 2 to max(200, pre-filled rows + 1); every unlocked, validated row has to survive the round trip.
 5. **A template sheet keeps only its `list` rules.** `whole`, `decimal`, `textLength` and `date` on a
    protected sheet are all dropped, on import and on export. Even on an ordinary sheet the support is
    partial: no minimum for `textLength`, `whole` read as any number, `greaterThan` read as "at least", and
-   no `date` at all.
+   no `date` at all. The ERP's `date` rules now use an Excel date serial (`43831`), so `DATE(...)` need not be supported.
 6. **Bug: when saving to `localStorage` fails, the app breaks silently.** See the numbers below.
 
 **Measured** (development machine; for comparison, not a promise):
