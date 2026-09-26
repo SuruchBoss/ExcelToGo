@@ -3,6 +3,7 @@
 
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import LanguageToggle from "@/features/toolbar/LanguageToggle";
@@ -11,6 +12,7 @@ import SkipLink from "@/features/a11y/SkipLink";
 import { useLocale, useT } from "@/i18n";
 import type { Locale } from "@/i18n/types";
 import { useHydrateLocaleStore } from "@/store/localeStore";
+import { countUsage } from "@/lib/usage";
 
 /**
  * Landing page, built as a ledger rather than as a marketing page.
@@ -116,6 +118,13 @@ export default function Landing() {
   useHydrateLocaleStore();
   const t = useT();
   const locale = useLocale();
+
+  // A page load, counted apart from `app_opened` so the two numbers say how many visits the link
+  // got and how many of them opened the app. Nothing at all unless NEXT_PUBLIC_USAGE=1 — see
+  // lib/usage.ts for the whole of what it may send.
+  useEffect(() => {
+    countUsage("landing_viewed");
+  }, []);
 
   const cta = (
     <Link

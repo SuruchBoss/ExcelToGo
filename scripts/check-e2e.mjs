@@ -387,6 +387,9 @@ const FLOWS = [
         if (r.url().includes("/api/usage")) posts.push(`${r.method()} ${r.url()}`);
       });
 
+      // The landing page first: it counts a view of its own now, and the same flag has to keep
+      // that one quiet too.
+      await page.goto(ORIGIN + "/", { waitUntil: "networkidle" });
       await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
       await typeInCell(page, 0, 0, "1");
       await typeInCell(page, 1, 0, "=A1*2");

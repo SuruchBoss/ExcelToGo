@@ -3,6 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { USAGE_EVENTS } from "@/lib/usage";
 
 /**
  * The row-level security policies, read as text.
@@ -22,7 +23,8 @@ const sharing = sql("0002_sharing_and_realtime.sql");
 const versions = sql("0003_versions.sql");
 const usage = sql("0004_usage.sql");
 const pinned = sql("0005_pin_search_paths.sql");
-const both = `${workbooks}\n${sharing}\n${versions}\n${usage}\n${pinned}`;
+const landing = sql("0006_usage_landing_viewed.sql");
+const both = `${workbooks}\n${sharing}\n${versions}\n${usage}\n${pinned}\n${landing}`;
 
 /**
  * The one table that has row-level security on and no policy, on purpose.
@@ -235,6 +237,25 @@ describe("the usage counter, which must not become a place to put a spreadsheet"
       expect(usage).toContain(`'${event}'`);
     }
     expect(usage).toMatch(/p_event not in \(/i);
+  });
+
+  it("accepts, in its newest definition, exactly the events the app can send", () => {
+    // The app's list and the database's are written twice on purpose (see 0004), which is also
+    // how they can drift: an event the app sends and the database ignores is a count that reads
+    // zero forever, with nothing to say why. The last migration to define the function wins.
+    const list = /p_event not in \(([\s\S]*?)\)/i.exec(landing)![1];
+    const accepted = [...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    expect([...accepted].sort()).toEqual([...USAGE_EVENTS].sort());
+  });
+
+  it("keeps the newest definition as locked down as the first", () => {
+    expect(landing).toMatch(/security definer/i);
+    expect(landing).toMatch(/set search_path = public, pg_temp/i);
+    expect(landing).toMatch(/values \(current_date, p_event, 1\)/i);
+    const revokeAt = landing.search(/revoke all on function public\.bump_usage/i);
+    const grantAt = landing.search(/grant execute on function public\.bump_usage/i);
+    expect(revokeAt).toBeGreaterThan(-1);
+    expect(grantAt).toBeGreaterThan(revokeAt);
   });
 
   it("stamps the day itself rather than believing the caller", () => {

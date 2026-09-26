@@ -175,7 +175,7 @@ recorded — and a `check:e2e` flow drives the acts that are wired to count on a
 asserts that **zero** requests reach `/api/usage`, because "this bundle sends nothing" is a claim
 about the build and not about a function.
 
-**The event name is the whole payload, and it comes from a fixed list of six.** This is the
+**The event name is the whole payload, and it comes from a fixed list of seven.** This is the
 load-bearing part, not a tidiness preference. The policy already allows the page to talk to its own
 origin, so a free-text field here would be a ready-made way for a bug — or an injected script — to
 post a cell's contents somewhere and have it look like telemetry. A closed union cannot carry a
