@@ -51,6 +51,23 @@ export const usageFailureLine = (event: UsageEvent, reason: string): string =>
 const REASON = /^[A-Za-z0-9_]{1,32}$/;
 
 /**
+ * What a key has to look like before it is worth sending: printable ASCII, no whitespace.
+ *
+ * Found in production rather than in review. A key pasted into the host's dashboard with a line
+ * break in the middle — or copied while it was displayed truncated, `…` and all — cannot be put in
+ * an HTTP header, so `fetch` throws before a byte leaves the function. The log said `TypeError` and
+ * "no outgoing requests", which is true and useless: the same error comes from a dozen causes, and
+ * working out which one took reproducing each paste mistake against the real code by hand.
+ *
+ * The rule is what HTTP itself refuses plus whitespace, which no key has — not a guess at the
+ * provider's format. Guessing the format (base64url and dots, say) would catch more, but a key
+ * format that changes would then be refused with a confident, wrong `bad_key`, and a working
+ * deployment would stop counting. Quotes and a `KEY=` prefix still get through here and come back
+ * as `http_401`, which already names the fix. The key itself is never in the line.
+ */
+const KEY_SHAPE = /^[\x21-\x7E]+$/;
+
+/**
  * One word for why the write did not land, and nothing else.
  *
  * Deliberately not the error's message. A `fetch` failure puts the host it could not reach in its
@@ -91,6 +108,10 @@ export async function recordUsage(
 
   const send = deps.fetch ?? fetch;
   const complain = deps.warn ?? console.warn;
+  if (!KEY_SHAPE.test(key)) {
+    complain(usageFailureLine(event, "bad_key"));
+    return;
+  }
   try {
     const res = await send(`${url.replace(/\/$/, "")}/rest/v1/rpc/bump_usage`, {
       method: "POST",
