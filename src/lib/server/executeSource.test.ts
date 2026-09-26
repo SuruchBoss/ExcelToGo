@@ -356,3 +356,93 @@ describe("the URL guard on the path that actually fetches", () => {
     ).rejects.toThrow(/not a public address/);
   });
 });
+
+/**
+ * A source's credential belongs to the source's own origin — the scheme, host and port of the URL
+ * it was set up with. Redirects are followed by hand (so every hop is checked), which also means
+ * fetch's own habit of dropping `Authorization` on a cross-origin redirect is this code's job, for
+ * whatever header name the source uses.
+ */
+describe("where a source's credential is sent", () => {
+  const AUTH = { name: "X-Api-Key", value: "k-123" };
+
+  /** Like stubFetch, but also records the headers each request carried. */
+  function recordFetch(routes: Record<string, Stub>) {
+    const sent: Array<{ url: string; key: string | undefined }> = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      sent.push({ url, key: (init.headers as Record<string, string>)[AUTH.name] });
+      const stub = routes[url];
+      if (!stub) throw new Error(`unexpected fetch: ${url}`);
+      const headers = new Headers({ ...(stub.link ? { link: stub.link } : {}), ...(stub.headers ?? {}) });
+      return {
+        ok: (stub.status ?? 200) < 400,
+        status: stub.status ?? 200,
+        statusText: "",
+        headers,
+        text: async () => (typeof stub.body === "string" ? stub.body : JSON.stringify(stub.body)),
+      } as unknown as Response;
+    });
+    return sent;
+  }
+  const keyAt = (sent: Array<{ url: string; key: string | undefined }>, url: string) => sent.find((s) => s.url === url)?.key;
+
+  it("follows a redirect to another origin, without the credential", async () => {
+    const sent = recordFetch({
+      "https://api.test/data": { body: "", status: 302, headers: { location: "https://cdn.other.test/data.json" } },
+      "https://cdn.other.test/data.json": { body: [{ a: 1 }] },
+    });
+    const table = await executeSource({ type: "rest", url: "https://api.test/data", authHeader: AUTH }, ORIGIN);
+    expect(table.rows).toHaveLength(1);
+    expect(keyAt(sent, "https://api.test/data")).toBe("k-123");
+    expect(keyAt(sent, "https://cdn.other.test/data.json")).toBeUndefined();
+  });
+
+  it("keeps the credential on a redirect within the same origin", async () => {
+    const sent = recordFetch({
+      "https://api.test/v1/data": { body: "", status: 301, headers: { location: "/v2/data" } },
+      "https://api.test/v2/data": { body: [{ a: 1 }] },
+    });
+    await executeSource({ type: "rest", url: "https://api.test/v1/data", authHeader: AUTH }, ORIGIN);
+    expect(keyAt(sent, "https://api.test/v2/data")).toBe("k-123");
+  });
+
+  it("treats https → http on the same host as another origin", async () => {
+    const sent = recordFetch({
+      "https://api.test/data": { body: "", status: 302, headers: { location: "http://api.test/data" } },
+      "http://api.test/data": { body: [{ a: 1 }] },
+    });
+    await executeSource({ type: "rest", url: "https://api.test/data", authHeader: AUTH }, ORIGIN);
+    expect(keyAt(sent, "http://api.test/data")).toBeUndefined();
+  });
+
+  it("does not put the credential back when a later hop returns to the source's origin", async () => {
+    const sent = recordFetch({
+      "https://api.test/a": { body: "", status: 302, headers: { location: "https://hop.other.test/b" } },
+      "https://hop.other.test/b": { body: "", status: 302, headers: { location: "https://api.test/c" } },
+      "https://api.test/c": { body: [{ a: 1 }] },
+    });
+    await executeSource({ type: "rest", url: "https://api.test/a", authHeader: AUTH }, ORIGIN);
+    expect(sent.map((s) => s.key)).toEqual(["k-123", undefined, undefined]);
+  });
+
+  it("stops paging at a next link on another origin, keeps the rows, and says the table is partial", async () => {
+    const sent = recordFetch({
+      "https://api.test/orders": { body: { items: rows(1, 3), next: "https://api.test/orders?page=2" } },
+      "https://api.test/orders?page=2": { body: { items: rows(4, 3), next: "https://elsewhere.test/orders?page=3" } },
+    });
+    const table = await executeSource({ type: "rest", url: "https://api.test/orders", authHeader: AUTH }, ORIGIN);
+    expect(sent.map((s) => s.url)).toEqual(["https://api.test/orders", "https://api.test/orders?page=2"]);
+    expect(table.rows).toHaveLength(6);
+    expect(table.truncated).toBe(true);
+  });
+
+  it("stops the same way when the next page comes from a Link header", async () => {
+    const sent = recordFetch({
+      "https://api.test/items": { body: rows(1, 2), link: '<https://elsewhere.test/items?page=2>; rel="next"' },
+    });
+    const table = await executeSource({ type: "rest", url: "https://api.test/items", authHeader: AUTH }, ORIGIN);
+    expect(sent).toHaveLength(1);
+    expect(table.rows).toHaveLength(2);
+    expect(table.truncated).toBe(true);
+  });
+});

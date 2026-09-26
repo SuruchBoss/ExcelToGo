@@ -32,20 +32,31 @@ type FetchedPage = { body: unknown; linkHeader: string | null; records: number }
  * `sameOrigin` marks the app's own demo endpoints, which are reached through a relative path and
  * are the one case where a loopback address is not a warning sign: the host isn't user-controlled,
  * it is this deployment.
+ *
+ * `credentialOrigin` is the origin the source's auth header was configured for — the scheme, host
+ * and port of its own URL. The header goes only to that origin. Following redirects by hand means
+ * fetch's own rule (drop `Authorization` when a redirect changes origin) no longer applies, so it
+ * is applied here, to whatever header name the source uses: a hop to another origin is still
+ * followed and still checked, but without the header, and it is not put back if a later hop
+ * returns — the same as fetch. https → http on the same host is another origin.
  */
 async function fetchPage(
   url: string,
   src: SourceInput,
-  sameOrigin: boolean
+  sameOrigin: boolean,
+  credentialOrigin: string
 ): Promise<{ text: string; linkHeader: string | null }> {
-  const headers: Record<string, string> = { Accept: "application/json, text/csv, text/plain;q=0.9, */*;q=0.8" };
+  const accept = { Accept: "application/json, text/csv, text/plain;q=0.9, */*;q=0.8" };
   const secret = src.authHeader?.value;
-  if (src.authHeader?.name && secret) headers[src.authHeader.name] = secret;
+  const credential: Record<string, string> = src.authHeader?.name && secret ? { [src.authHeader.name]: secret } : {};
+  let carryCredential = true;
 
   let target = url;
   let res: Response | null = null;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     if (!sameOrigin) await assertFetchable(target);
+    if (new URL(target).origin !== credentialOrigin) carryCredential = false;
+    const headers = carryCredential ? { ...accept, ...credential } : accept;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -118,7 +129,9 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
   }
   const sameOrigin = resolved.origin === base.origin;
   const startUrl = resolved.toString();
-  const first = await fetchPage(startUrl, src, sameOrigin);
+  // The origin the source's credential belongs to: its own URL's, never wherever a response points.
+  const credentialOrigin = resolved.origin;
+  const first = await fetchPage(startUrl, src, sameOrigin, credentialOrigin);
   const fetchedAt = new Date().toISOString();
 
   const parsed = parseBody(first.text);
@@ -156,6 +169,13 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
       firstPageRecords,
     });
     if (!nxt) break; // Genuinely the last page.
+    // A next page on another origin is not followed at all. A redirect to a CDN is ordinary HTTP;
+    // an API whose pages continue on a different host is not something real APIs do, and the rows
+    // already collected are kept and marked partial rather than fetched from somewhere unvetted.
+    if (new URL(nxt.url).origin !== credentialOrigin) {
+      truncated = true;
+      break;
+    }
     if (all.length >= maxRows || pageCount >= MAX_PAGES || Date.now() > deadline || seen.has(nxt.url)) {
       truncated = true; // There is more data; we're choosing to stop.
       break;
@@ -166,7 +186,7 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
     let next: { text: string; linkHeader: string | null };
     try {
       // Paging URLs come from the response body, so they are never treated as same-origin.
-      next = await fetchPage(currentUrl, src, false);
+      next = await fetchPage(currentUrl, src, false, credentialOrigin);
     } catch (err) {
       // A rate limit partway through is the one failure worth carrying forward rather than just
       // swallowing: the rows already collected are still good, but the caller has to know to wait

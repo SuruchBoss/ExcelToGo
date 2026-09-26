@@ -100,9 +100,6 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
   return "";
 }
 
-/** Reads the values a dropdown points at, for a validation list given as a range instead of an
- *  inline list. Runs after the cells are in, so it reads the sheet we just built. */
-
 /**
  * Conditional formatting, translated to and from the shapes ExcelJS writes.
  *
@@ -312,19 +309,52 @@ function excelRuleToStyle(raw: Record<string, unknown>): CfRule["style"] {
   return out.fill || out.color || out.bold ? out : undefined;
 }
 
-function rangeReader(sheet: SheetModel) {
+/**
+ * Reads the values a range-based dropdown points at, from the sheet the rule names.
+ *
+ * It used to drop the sheet name and read the same range from the sheet being imported, so every
+ * `Ref!$A$2:$A$9` rule offered whatever happened to sit in A2:A9 of the sheet it was on — the unit
+ * column of a template listing item codes, with nothing to say so. Reading from the workbook
+ * rather than from the sheets already imported means import order does not matter, and a hidden
+ * sheet is read like any other: whether a sheet gets a tab is a separate question from whether its
+ * values can be read.
+ *
+ * A rule naming a sheet the file does not have gives no options, and so no dropdown — never a
+ * guess from another sheet. A bare range (`$A$2:$A$9`) is the rule's own sheet, as before. A
+ * named range (`=Units`) is still not resolved here, as before.
+ */
+function listReader(worksheet: ExcelJS.Worksheet) {
   return (ref: string): string[] => {
-    const range = parseRangeRef(ref.replace(/^.*!/, ""));
+    const { sheet: name, ref: address } = splitSheetRef(ref.trim());
+    const source =
+      name === null ? worksheet : worksheet.workbook.worksheets.find((ws) => ws.name.toLowerCase() === name.toLowerCase());
+    if (!source) return [];
+    const single = parseCellRef(address);
+    const range =
+      parseRangeRef(address) ?? (single && { startRow: single.row, startCol: single.col, endRow: single.row, endCol: single.col });
     if (!range) return [];
     const out: string[] = [];
-    for (let r = range.startRow; r <= Math.min(range.endRow, sheet.rows - 1); r++) {
-      for (let c = range.startCol; c <= Math.min(range.endCol, sheet.cols - 1); c++) {
-        const v = sheet.cells[r]?.[c];
+    // Bounded by what the source sheet holds, and read with findCell: `getCell` creates the cells
+    // it is asked for, so a rule reaching row 100000 would otherwise build them all.
+    for (let r = range.startRow; r <= Math.min(range.endRow, source.rowCount - 1); r++) {
+      for (let c = range.startCol; c <= Math.min(range.endCol, source.columnCount - 1); c++) {
+        const cell = source.findCell(r + 1, c + 1);
+        const v = cell ? listValue(cell) : "";
         if (v) out.push(v);
       }
     }
     return out;
   };
+}
+
+/** A cell as a dropdown option: what it shows, so a formula offers its result rather than its text. */
+function listValue(cell: ExcelJS.Cell): string {
+  const v = cell.value;
+  if (v && typeof v === "object" && "formula" in v) {
+    const result = (v as { result?: unknown }).result;
+    return result === undefined || result === null || typeof result === "object" ? "" : String(result);
+  }
+  return cellValueToRaw(cell);
 }
 
 function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
@@ -393,7 +423,7 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
     // belong to the *form*, and merging the two would make "unlock this template" also mean
     // "keep enforcing the form's rules", which is the opposite of what it says.
     const rules: CellValidation = {};
-    const readRange = rangeReader(sheet);
+    const readRange = listReader(worksheet);
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const dv = worksheet.getCell(r + 1, c + 1).dataValidation as ExcelValidation | undefined;
@@ -444,7 +474,7 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
   if (merges.length > 0) sheet.merges = merges;
 
   if (isTemplate) {
-    const readRange = rangeReader(sheet);
+    const readRange = listReader(worksheet);
     const choices: Record<string, string[]> = {};
     for (const v of validations) {
       const options = parseValidationList(v.formulae, readRange);

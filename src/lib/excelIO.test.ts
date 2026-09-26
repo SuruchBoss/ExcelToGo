@@ -552,3 +552,100 @@ describe("named ranges go into the file and come back", () => {
     expect(wb.definedNames.model[0].ranges[0]).toMatch(/หนึ่ง'?!\$A\$1$/);
   });
 });
+
+/**
+ * A `list` rule pointing at a range on another sheet reads that sheet. It used to drop the sheet
+ * name and read the same range from the sheet being imported, so the options were whatever sat
+ * there — with nothing to say they were wrong.
+ */
+describe("dropdowns whose list lives on another sheet", () => {
+  /** A workbook with a sheet `Form` carrying one list rule, plus whatever other sheets are given. */
+  async function workbookWith(
+    formula: string,
+    others: { name: string; values: string[]; hidden?: boolean }[],
+    opts: { protect?: boolean; otherFirst?: boolean } = {}
+  ): Promise<File> {
+    const wb = new ExcelJS.Workbook();
+    const addOthers = () => {
+      for (const o of others) {
+        const ws = wb.addWorksheet(o.name, o.hidden ? { state: "hidden" } : undefined);
+        o.values.forEach((v, i) => (ws.getCell(i + 1, 1).value = v));
+      }
+    };
+    if (opts.otherFirst) addOthers();
+    const form = wb.addWorksheet("Form");
+    // Decoys in the same cells the rule names, on the rule's own sheet: reading the wrong sheet
+    // offers these, which is exactly what the old code did.
+    ["decoy-1", "decoy-2", "decoy-3", "decoy-4", "decoy-5"].forEach((v, i) => (form.getCell(i + 1, 1).value = v));
+    form.getCell("C2").dataValidation = { type: "list", allowBlank: true, formulae: [formula] };
+    if (opts.protect) {
+      form.getCell("C2").protection = { locked: false };
+      await form.protect("", {});
+    }
+    if (!opts.otherFirst) addOthers();
+    return new File([await wb.xlsx.writeBuffer()], "cross.xlsx");
+  }
+  const formSheet = async (file: File) => (await importWorkbookFromFile(file)).find((s) => s.name === "Form")!.sheet;
+  const listAt = (sheet: SheetModel) => {
+    const rule = ruleAt(sheet, 1, 2);
+    return rule?.kind === "list" ? rule.values : undefined;
+  };
+  const REF = { name: "Ref", values: ["unit", "kg", "g", "pcs"] };
+
+  it("reads an ordinary sheet's rule from the sheet it names, whichever order the sheets come in", async () => {
+    expect(listAt(await formSheet(await workbookWith("Ref!$A$2:$A$4", [REF])))).toEqual(["kg", "g", "pcs"]);
+    expect(listAt(await formSheet(await workbookWith("Ref!$A$2:$A$4", [REF], { otherFirst: true })))).toEqual(["kg", "g", "pcs"]);
+  });
+
+  it("reads a template's choices from the sheet it names, even when that sheet is hidden", async () => {
+    const sheet = await formSheet(await workbookWith("Ref!$A$2:$A$4", [{ ...REF, hidden: true }], { protect: true }));
+    expect(sheet.template?.choices[cellKey(1, 2)]).toEqual(["kg", "g", "pcs"]);
+  });
+
+  it("reads quoted sheet names: Thai, with a space, and with an escaped quote", async () => {
+    const cases: [string, string][] = [
+      ["'ใบเสนอราคา'!$A$1:$A$3", "ใบเสนอราคา"],
+      ["'My Sheet'!A1:A3", "My Sheet"],
+      ["'Bob''s list'!$A$1:$A$3", "Bob's list"],
+    ];
+    for (const [formula, name] of cases) {
+      const sheet = await formSheet(await workbookWith(formula, [{ name, values: ["a", "b", "c"] }]));
+      expect(listAt(sheet), formula).toEqual(["a", "b", "c"]);
+    }
+  });
+
+  it("gives no dropdown for a sheet the file does not have, rather than one from another sheet", async () => {
+    const sheet = await formSheet(await workbookWith("Missing!$A$1:$A$3", [REF]));
+    expect(ruleAt(sheet, 1, 2)).toBeUndefined();
+    const template = await formSheet(await workbookWith("Missing!$A$1:$A$3", [REF], { protect: true }));
+    expect(template.template?.choices[cellKey(1, 2)]).toBeUndefined();
+  });
+
+  it("still reads a bare range from the rule's own sheet", async () => {
+    expect(listAt(await formSheet(await workbookWith("$A$1:$A$3", [REF])))).toEqual(["decoy-1", "decoy-2", "decoy-3"]);
+  });
+
+  it("leaves a named-range list as it was: no dropdown, and no error", async () => {
+    const sheet = await formSheet(await workbookWith("Units", [REF]));
+    expect(ruleAt(sheet, 1, 2)).toBeUndefined();
+  });
+
+  it("gives every dropdown in the PaynEat ERP draft-0 template the values from its Ref sheet", async () => {
+    const { readFileSync } = await import("node:fs");
+    const bytes = readFileSync(new URL("./fixtures/payneat-erp-sample-import-template.xlsx", import.meta.url));
+    const sheets = await importWorkbookFromFile(new File([bytes], "sample-import-template.xlsx"));
+    const choicesOf = (name: string, row: number, col: number) =>
+      sheets.find((s) => s.name === name)!.sheet.template?.choices[cellKey(row, col)];
+
+    const units = ["kg", "g", "pcs", "L", "ml", "case", "bag", "tin"];
+    expect(choicesOf("Items", 1, 3)).toEqual(units); // base_unit
+    expect(choicesOf("Items", 1, 6)).toEqual(units); // purchase_unit
+    expect(choicesOf("OpeningBalance", 1, 0)).toEqual(["PLANT-01", "BR-SILOM", "BR-ARI", "BR-BANGNA"]);
+    expect(choicesOf("OpeningBalance", 1, 1)).toEqual([
+      "WHOLE-CHICKEN", "CHICKEN-BREAST", "CHICKEN-THIGH", "CHICKEN-DRUMSTICK", "CHICKEN-WING",
+      "CHICKEN-FRAME", "FLOUR", "FRYING-OIL", "SEASONING",
+    ]);
+    // An inline list on the same sheet is untouched.
+    expect(choicesOf("Items", 1, 4)).toEqual(["TRUE", "FALSE"]);
+  });
+});
