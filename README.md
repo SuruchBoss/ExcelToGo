@@ -32,7 +32,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1496%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1502%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ and saying so when data came back incomplete. A range can be given a name (in Th
 what it means, and a cell can carry a rule about what may go in it, refused before it is written rather than
 flagged afterwards. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 1496 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 1502 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -97,7 +97,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 
 ---
 
-### 🧪 สิ่งที่เทสต์ 1496 เคสจับไม่ได้
+### 🧪 สิ่งที่เทสต์ 1502 เคสจับไม่ได้
 
 เทสต์ของผู้ช่วย AI ใช้ **mock ทั้งหมด** — มันตอบตามที่ผมคิดว่ามันจะตอบ พอเอา API key จริงมายิงคำถามธรรมดา
 14 ข้อ **6 คำตอบใช้ฟังก์ชันที่เอนจินนี้ไม่มี** (`TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR`)
@@ -107,7 +107,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 มันจึงตอบคำถาม *"ต่อชื่อทั้งหมดเป็นบรรทัดเดียว"* ด้วย `=SUM(A2:A20)` ซึ่งได้ `0` โดยไม่มีอะไรบอกว่าผิด
 **เปลี่ยน error ที่มองเห็น เป็นตัวเลขผิดที่มองไม่เห็น**
 
-**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1496 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
+**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1502 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
 ที่สองความกว้าง — ผมลองไล่คลิก build สาธารณะแบบคนที่เพิ่งเข้ามาครั้งแรกอยู่ชั่วโมงหนึ่ง แล้วเจอสามอย่าง
 ที่ไม่มีด่านไหนมองเห็น:
 
@@ -355,7 +355,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 1496 เคสด้วย Vitest |
+| `npm test` | รัน unit test 1502 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:screens` | ตัวเลขที่พิมพ์อยู่บนภาพหน้าจอยังตรงกับซอร์สไหม |
 | `npm run check:rls` | ยิงจริงสองบัญชีบน Supabase ของคุณ ว่าฐานข้อมูลปฏิเสธตามที่ policy เขียนไว้ไหม (ต้องตั้ง env) |
@@ -363,7 +363,7 @@ npm run dev
 | `npm run check:bundle` | งบขนาด bundle + ไลบรารีคลาวด์ต้องอยู่ chunk แยก (ต้อง build ก่อน) |
 | `npm run check:mutants` | ทุบเอนจินทีละจุดแล้วดูว่าเทสต์จับได้ไหม — 31/32 (ไม่ต้อง build) |
 | `npm run check:a11y` | รัน axe บนทั้งสองหน้าที่ 390px และ 1280px + เช็กการเลื่อนแนวนอน (ต้อง build ก่อน) · `A11Y_WIDTH=390` รันครึ่งเดียว ซึ่งเป็นวิธีที่ CI ใช้ |
-| `npm run check:e2e` | ขับแอปจริงในเบราว์เซอร์ 12 flow: พิมพ์สูตร, ส่งออก-นำเข้า `.xlsx`, คีย์บอร์ดล้วน, undo, เสียงประกาศ, ผู้ช่วย AI, CSP (ต้อง build ก่อน) |
+| `npm run check:e2e` | ขับแอปจริงในเบราว์เซอร์ 13 flow: พิมพ์สูตร, ส่งออก-นำเข้า `.xlsx`, คีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, เสียงประกาศ, ผู้ช่วย AI, CSP (ต้อง build ก่อน) |
 | `npm run check:ai` | ถาม Claude จริงด้วย key ของคุณ แล้วเช็กว่าสูตรที่ได้เอนจินนี้รันได้จริงไหม — ไม่อยู่ใน `verify` เพราะต้องใช้ key และมีค่าใช้จ่าย |
 | `npm run verify` | รันรวดเดียวก่อน push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 นาที) |
 | `npm run verify:quick` | ด่านเดียวกันแบบตัด `check:mutants`, `check:a11y`, `check:e2e`, `check:deps` ออก — **37 วินาที** สำหรับลูประหว่างเขียน ไม่ใช่ตัวแทนของ `verify` ตอน push |
@@ -1760,7 +1760,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1496 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1502 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -2545,19 +2545,19 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 1496 เคส ใน 86 ไฟล์ ด้วย Vitest
+npm test      # 1502 เคส ใน 87 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง
 
-**แต่ 1496 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
+**แต่ 1502 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
 ทุกตัวแทบทั้งหมด — ปุ่ม "+ แถว" บนแถบเครื่องมือเรียก `addRow` ที่ไม่ประกาศอะไรเลย ขณะที่ `insertRowAtSelection`
 ข้าง ๆ ประกาศถูกต้อง (ทั้งคู่เทสต์ผ่าน) · ผู้ช่วย AI ส่งช่วงที่รวมหัวคอลัมน์ไปด้วย เพราะตัวประกอบ context อ่าน
 `sheet.cells` ที่เป็นสูตรดิบแทนค่าที่คำนวณแล้ว (ทั้งคู่เทสต์ผ่าน) · ปุ่มใหม่หนึ่งปุ่มดันปุ่มสลับภาษาตกขอบจอไป 42px
 
 ```bash
-npm run check:e2e   # 12 flow ในเบราว์เซอร์จริง (ต้อง build ก่อน)
+npm run check:e2e   # 13 flow ในเบราว์เซอร์จริง (ต้อง build ก่อน)
 ```
 
 เกณฑ์เลือก flow มีข้อเดียว: **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ —
@@ -2631,9 +2631,9 @@ seed ถูกปักไว้ ด่านที่แดงจึงแด�
 ในตารางแล้วสองข้อในflow ที่สามตกทันที (ครั้งแรกที่ลองปิดยังเขียวอยู่ เพราะ `case` ที่แทรกเข้าไปไปอยู่หลัง
 `case "ArrowRight"` เดิม กลายเป็นโค้ดตาย — การพิสูจน์ต้องเช็กด้วยว่าของที่ตั้งใจทำให้พังนั้นพังจริง)
 
-> **1496 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
+> **1502 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
 > มันจึงตอบตามที่คนเขียนเทสต์คิดว่ามันจะตอบ จำนวนเทสต์บอกได้แค่ว่าเราถามอะไรไปบ้าง ไม่ได้บอกว่าเราถาม
-> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1496 เคสจับไม่ได้](#-สิ่งที่เทสต์-1496-เคสจับไม่ได้)
+> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1502 เคสจับไม่ได้](#-สิ่งที่เทสต์-1502-เคสจับไม่ได้)
 > และรันซ้ำเองได้ด้วย `npm run check:ai`
 
 | ไฟล์ | เคส | ทดสอบอะไร |
@@ -2824,7 +2824,7 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
       สร้าง nonce ต่อ request พร้อม `'strict-dynamic'` ลอง SRI ก่อนเพราะอยากเก็บ prerender ไว้ แต่ใช้ไม่ได้:
       inline script ไม่ใช่ไฟล์จึงแฮชไม่ได้ หน้าเลย hydrate ไม่ขึ้นเลย ราคาที่จ่ายคือ prerender
       (TTFB +10–15 ms วัดแล้ว) ยังเหลือ: CSP หยุด top-level navigation ไม่ได้
-- [x] **เทสต์ที่เปิดแอปจริง (E2E) ใน CI** — ทำแล้ว: `npm run check:e2e` ขับ Chromium ผ่าน 12 flow
+- [x] **เทสต์ที่เปิดแอปจริง (E2E) ใน CI** — ทำแล้ว: `npm run check:e2e` ขับ Chromium ผ่าน 13 flow
       เป็น job ของตัวเองใน CI — พิมพ์สูตรแล้วค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, คีย์บอร์ดล้วน, undo,
       และเสียงประกาศ บั๊กสามตัวที่เคยเจอด้วยการนั่งกดเอง อยู่ในขอบเขตของด่านนี้แล้ว และพิสูจน์ด้วยการทำให้พังจริง
       **และผู้ช่วย AI อยู่ในนั้นแล้ว** ด้วยการ stub `/api/ai/formula` ไว้ — ตรวจทั้งช่วงเซลล์ที่แพเนลส่งออกไป

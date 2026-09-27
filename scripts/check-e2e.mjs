@@ -41,6 +41,7 @@ const label = {
   exportExcel: /^(ส่งออก Excel|Export Excel)$/,
   importFile: /^(นำเข้าไฟล์|Import file)$/,
   addRow: /^(แถว|Row)$/,
+  addSheet: /^(เพิ่มชีตใหม่|Add a new sheet)$/,
 };
 
 const failures = [];
@@ -226,6 +227,27 @@ const FLOWS = [
 
       await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "first");
       note(true, "Ctrl+Z restores the previous value");
+    },
+  },
+  {
+    name: "an edit after undoing a new sheet is kept (#40)",
+    async run(page) {
+      // Undo takes the new tab away. What is typed next has to land on the tab that is left and
+      // survive a reload — it used to go nowhere, with nothing on screen to say so.
+      await page.getByTitle(label.addSheet).click();
+      await page.keyboard.press("Control+z");
+      await page.getByTitle(label.addSheet).waitFor();
+      await typeInCell(page, 1, 0, "important");
+      const shown = (await cell(page, 1, 0).innerText()).trim();
+      note(shown === "important", `A2 shows what was typed after the undo (showed "${shown}")`);
+
+      await page.reload({ waitUntil: "networkidle" });
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "important", null, {
+        timeout: 5000,
+      }).then(
+        () => note(true, "it is still there after a reload"),
+        async () => note(false, "it is still there after a reload", `A2 showed "${(await cell(page, 1, 0).innerText()).trim()}"`)
+      );
     },
   },
   {

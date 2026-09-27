@@ -447,7 +447,11 @@ function activeSelectionOf(s: SheetState): SelectionRect {
  *  its name/id) untouched. Every action that edits cell content goes through this instead of
  *  a top-level `sheet` field, since edits always target "whichever tab is open right now". */
 function withActiveSheet(s: SheetState, fn: (tab: SheetTab) => SheetModel): SheetTab[] {
-  return s.sheets.map((tab) => (tab.id === s.activeSheetId ? { ...tab, sheet: fn(tab) } : tab));
+  // The tab `activeTab` reads, found the same way, so a write can never miss the tab the read
+  // came from. Matching `activeSheetId` directly here, while reads fell back to the first tab, is
+  // how an id that named no tab turned every edit into a silent no-op (#40).
+  const id = activeTab(s).id;
+  return s.sheets.map((tab) => (tab.id === id ? { ...tab, sheet: fn(tab) } : tab));
 }
 
 /** The shape behind almost every action that edits cell content: read the active sheet and its
@@ -1761,6 +1765,23 @@ export const useSheetStore = create<SheetState>()(
     }
   )
 );
+
+/**
+ * `activeSheetId` always names a tab that exists.
+ *
+ * Undo history holds only `sheets`, on purpose — switching tabs is not something Ctrl+Z should
+ * step through — so undoing "add sheet", an import or "start blank" takes away the tab the id
+ * points at, and a cloud resync can do the same. Kept here, on every change, rather than in each
+ * of those paths, so a path added later cannot forget it. The replacement is the tab now in the
+ * position the missing one had, or the last tab if the list got shorter: after undoing "add
+ * sheet" that is the tab the person was on before they added it.
+ */
+useSheetStore.subscribe((s, prev) => {
+  if (s.sheets.length === 0 || s.sheets.some((t) => t.id === s.activeSheetId)) return;
+  const was = prev.sheets.findIndex((t) => t.id === s.activeSheetId);
+  const index = Math.min(Math.max(was, 0), s.sheets.length - 1);
+  useSheetStore.setState({ activeSheetId: s.sheets[index].id });
+});
 
 /** Reads any autosaved sheets from localStorage once, after the initial render has already
  *  matched the server-rendered HTML. Call once near the root of the app. */
