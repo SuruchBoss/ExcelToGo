@@ -3,6 +3,7 @@
 
 import { DataSourceConfig, DataSourceType, isDbType } from "@/lib/dataSources/types";
 import { sqlProblem } from "@/lib/dataSources/sqlGuard";
+import { MAX_ROWS_CEILING } from "@/lib/dataSources/fetchLimits";
 import { parseConnectionString } from "@/lib/server/dbGuard";
 
 type SourceBody = Omit<DataSourceConfig, "id" | "createdAt">;
@@ -29,7 +30,7 @@ export async function parseSourceBody(request: Request): Promise<{ value: Source
   // upper bound is a guard on us as much as on the source: every extra row is more work the server
   // does on the user's behalf.
   const maxRowsRaw = Number(body.maxRows);
-  const maxRows = Number.isFinite(maxRowsRaw) ? Math.min(Math.max(Math.round(maxRowsRaw), 0), 50_000) : undefined;
+  const maxRows = Number.isFinite(maxRowsRaw) ? Math.min(Math.max(Math.round(maxRowsRaw), 0), MAX_ROWS_CEILING) : undefined;
 
   // A database source names no URL at all: what it has is a connection string and one saved
   // statement. Checked here rather than at connect time so the operator filling in the form is

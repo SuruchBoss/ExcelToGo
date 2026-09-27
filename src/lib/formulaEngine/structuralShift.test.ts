@@ -73,3 +73,11 @@ describe("adjustFormulaForStructuralOp: mixed content", () => {
     expect(adjustFormulaForStructuralOp('SUM(A2:A5)&"x"', "row", 1, -1)).toBe('SUM(A2:A4)&"x"');
   });
 });
+
+describe("adjustFormulaForStructuralOp: signed powers (#25)", () => {
+  it("rewrites only the references in -A3^2, keeping the operators where they were", () => {
+    expect(adjustFormulaForStructuralOp("-A3^2+0-A4^2", "row", 1, -1)).toBe("-A2^2+0-A3^2");
+    expect(adjustFormulaForStructuralOp("--B2^-1", "col", 0, 1)).toBe("--C2^-1");
+  });
+});
+

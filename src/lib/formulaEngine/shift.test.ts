@@ -39,4 +39,16 @@ describe("shiftFormulaRefs", () => {
   it("round-trips string literals, re-escaping embedded quotes", () => {
     expect(shiftFormulaRefs('A1&"say ""hi"""', 1, 0)).toBe('A2&"say ""hi"""');
   });
+
+  it("does not shift the exponent of a number as if it were a cell (#37)", () => {
+    // Read as the number 1 and the cell E3, a fill one row down turned 1E3 into 1E4.
+    expect(shiftFormulaRefs("1E3+A1", 1, 0)).toBe("1E3+A2");
+    expect(shiftFormulaRefs("2.5e-4*B2", 0, 1)).toBe("2.5e-4*C2");
+  });
+
+  it("leaves the text of a signed power exactly as written (#25)", () => {
+    // Fills rewrite the text token by token, so how the parser groups `-A1^2` cannot leak into it.
+    expect(shiftFormulaRefs("-A1^2+0-B1^2", 1, 0)).toBe("-A2^2+0-B2^2");
+  });
 });
+

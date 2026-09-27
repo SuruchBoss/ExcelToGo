@@ -24,7 +24,9 @@ const versions = sql("0003_versions.sql");
 const usage = sql("0004_usage.sql");
 const pinned = sql("0005_pin_search_paths.sql");
 const landing = sql("0006_usage_landing_viewed.sql");
-const both = `${workbooks}\n${sharing}\n${versions}\n${usage}\n${pinned}\n${landing}`;
+const grants = sql("0007_revoke_unneeded_execute.sql");
+/** Every migration, in the order they run. */
+const both = `${workbooks}\n${sharing}\n${versions}\n${usage}\n${pinned}\n${landing}\n${grants}`;
 
 /**
  * The one table that has row-level security on and no policy, on purpose.
@@ -286,5 +288,78 @@ describe("the usage counter, which must not become a place to put a spreadsheet"
     const grantAt = usage.search(/grant execute on function public\.bump_usage/i);
     expect(revokeAt).toBeGreaterThan(-1);
     expect(grantAt).toBeGreaterThan(revokeAt);
+  });
+});
+
+/**
+ * Who may call each helper function once every migration has run.
+ *
+ * Replayed statement by statement rather than grepped for, because the answer is whatever the
+ * *last* grant or revoke on a function says, and a later file putting a grant back would pass a
+ * test that only looked for the revoke. Starts from what Supabase gives a new function in
+ * `public`: EXECUTE for `public` (Postgres) and for `anon`, `authenticated` and `service_role`
+ * (Supabase's default privileges).
+ */
+function executeRoles(fn: string): Set<string> {
+  const roles = new Set(["public", "anon", "authenticated", "service_role"]);
+  const re = new RegExp(
+    `(grant|revoke)\\s+(?:all|execute)\\s+on\\s+function\\s+public\\.${fn}\\([^)]*\\)\\s+(?:to|from)\\s+([\\w\\s,]+?);`,
+    "gi"
+  );
+  for (const m of both.matchAll(re)) {
+    for (const role of m[2].split(",").map((r) => r.trim().toLowerCase())) {
+      if (m[1].toLowerCase() === "grant") roles.add(role);
+      else roles.delete(role);
+    }
+  }
+  return roles;
+}
+
+describe("who may call the helper functions (0007)", () => {
+  it("keeps the two access checks for signed-in callers only", () => {
+    // The policies call them with the caller's rights, so `authenticated` must keep EXECUTE.
+    for (const fn of ["can_access_workbook", "owns_workbook"]) {
+      const roles = executeRoles(fn);
+      expect([fn, roles.has("authenticated")]).toEqual([fn, true]);
+      expect([fn, roles.has("anon"), roles.has("public")]).toEqual([fn, false, false]);
+    }
+  });
+
+  it("lets nobody call the snapshot trigger by hand", () => {
+    // Postgres does not check EXECUTE when a trigger fires, so no caller needs it.
+    const roles = executeRoles("snapshot_workbook");
+    expect(["public", "anon", "authenticated"].filter((r) => roles.has(r))).toEqual([]);
+  });
+
+  it("leaves the usage counter callable by anyone, which is its whole design", () => {
+    const roles = executeRoles("bump_usage");
+    expect(roles.has("anon")).toBe(true);
+    expect(roles.has("authenticated")).toBe(true);
+    // Named in 0007's header, to say why it is left alone — never in a statement.
+    expect(grants).not.toMatch(/(grant|revoke)[^;]*bump_usage/i);
+  });
+
+  it("scopes every policy that calls those functions to signed-in callers first", () => {
+    // Postgres checks EXECUTE as the caller. A policy left `to public` that calls a function
+    // `anon` can no longer execute turns a signed-out request's empty answer into an error — so
+    // each one must be `to authenticated`, where it was written or in 0007 before the revoke.
+    const scopedLater = new Set(
+      [...grants.matchAll(/alter policy\s+"([^"]+)"\s+on\s+[\w.]+\s+to\s+authenticated/gi)].map((m) => m[1])
+    );
+    const callers = [...all].filter(([, p]) => /(can_access_workbook|owns_workbook)\(/.test(p.body));
+    expect(callers.length).toBe(8);
+    for (const [name, policy] of callers) {
+      const scoped = /\bto\s+authenticated\b/i.test(policy.body) || scopedLater.has(name);
+      expect([name, scoped]).toEqual([name, true]);
+    }
+    const lastAlter = [...grants.matchAll(/alter policy/gi)].pop()!.index!;
+    expect(grants.search(/revoke execute/i)).toBeGreaterThan(lastAlter);
+  });
+
+  it("names only policies that exist, so a typo cannot pass as a scoping", () => {
+    // `alter policy` on a name that is not there fails in Postgres; this fails first, here.
+    for (const m of grants.matchAll(/alter policy\s+"([^"]+)"\s+on\s+([\w.]+)/gi)) {
+      expect([m[1], all.get(m[1])?.on]).toEqual([m[1], m[2]]);
+    }
   });
 });

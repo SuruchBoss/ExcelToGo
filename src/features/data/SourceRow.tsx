@@ -10,6 +10,7 @@ import { PublicDataSource } from "@/lib/dataSources/types";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
 import { setLiveDragData } from "./dragTypes";
+import { sourceErrorText } from "./sourceError";
 
 interface Props {
   source: PublicDataSource;
@@ -103,7 +104,7 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
           // both under the 4.5 a line this small needs. Found by axe over the panel with a failing
           // source in it, which no gate state had ever shown.
           <p className="mt-1 rounded bg-red-50 p-1.5 text-[11px] text-red-700">
-            {error}
+            {sourceErrorText(error, t.data)}
             {waitSec > 0 && <span className="ml-1 text-red-700">· {t.data.retryIn(waitSec)}</span>}
           </p>
         )

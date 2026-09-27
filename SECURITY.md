@@ -63,12 +63,14 @@ and Azure alike), RFC 1918 private ranges, carrier-grade NAT, multicast, and the
 documentation ranges (IPv4, and IPv6's `2001:db8::/32`). IPv6 link-local and unique-local go too.
 An IPv4 address carried inside an IPv6 one is unpacked and checked as the IPv4 address it is, for
 these forms: IPv4-mapped `::ffff:169.254.169.254` and the hex form `::ffff:a9fe:a9fe` a URL
-normalises it to, the deprecated IPv4-compatible `::a9fe:a9fe`, NAT64's well-known prefix
+normalises it to, the deprecated IPv4-compatible `::a9fe:a9fe`, SIIT's IPv4-translated
+`::ffff:0:a9fe:a9fe` (RFC 6145), NAT64's well-known prefix
 `64:ff9b::a9fe:a9fe` (RFC 6052 — on an IPv6-only subnet the gateway really does turn that into
 169.254.169.254) and 6to4 `2002:a9fe:a9fe::` (RFC 3056). A public IPv4 address reached through
 NAT64 still works, since that is the only way an IPv6-only host reaches one. The local-use NAT64
 prefix `64:ff9b:1::/48` (RFC 8215) is refused outright: where its IPv4 sits depends on a prefix
-length the address does not state. Only `http` and `https` are allowed.
+length the address does not state. So is Teredo, `2001::/32` (RFC 4380), which carries its IPv4
+obscured and is switched off almost everywhere. Only `http` and `https` are allowed.
 
 A URL beginning with a single `/` is one of the app's own routes and is the one case the guard is
 skipped for — a demo source reaches `/api/demo/sales` even when the deployment's own origin is
@@ -147,6 +149,29 @@ port. It is sent to that origin and nowhere else:
 A source reached through the app's own path (the built-in demo sources) carries no credential and
 is unaffected.
 
+### 2d. One refresh has a size and a time it cannot exceed
+
+Reliability as much as security — reaching this needs the operator token, or control of an API the
+operator chose — but a URL that turns out to point at a 2 GB export should cost a failed refresh,
+not the server's memory. All four numbers live in `src/lib/dataSources/fetchLimits.ts`.
+
+- **About 49 MB of body per refresh, across every page, counted after decompression.** One kilobyte
+  per row at the 50,000-row ceiling the form offers; measured before choosing it, 50,000 rows are
+  8.1 MB for the demo's orders and 34.9 MB for twenty fields of mostly Thai text. The body is read as
+  a stream and the read stops the moment it passes the budget, rather than after `res.text()` has
+  taken the lot; a `content-length` over the budget is refused before a byte is read. Counted after
+  decompression because `fetch` inflates gzip and brotli before this code sees anything, and 53 KB
+  on the wire was measured turning into 40 MB of text.
+- **15 seconds per request, from sending it to the body's last byte.** The timer used to be
+  cleared the moment the headers arrived, so a server that answered at once and then sent a byte a
+  second held a refresh open for as long as it liked.
+- **45 seconds across every redirect and page of one refresh**, enforced inside each request as
+  well as between pages.
+
+Hitting either on the first page fails the refresh with a code the data panel turns into a
+sentence in the reader's language; hitting either on a later page keeps the rows already fetched
+and marks the table partial, the same as the 20-page ceiling does.
+
 ### 3. Source credentials are encrypted at rest
 
 An auth header attached to a source is encrypted with AES-256-GCM under `SOURCES_SECRET_KEY` before
@@ -217,11 +242,21 @@ have caught it did not: Supabase's database linter reported four functions with 
 `search_path`. All four are in `0001`–`0002`, none is `security definer` — three triggers and one
 `immutable` helper — which is exactly why `policies.test.ts` passed over them; it only asked about
 definers. `0005_pin_search_paths.sql` pins them, and the test now asks it of **every** function in
-the migrations rather than only the ones where it is most dangerous. Two warnings remain and are
-understood: `bump_usage` being callable by `anon` is the whole design of the counter, and
-`can_access_workbook` / `owns_workbook` are called *from inside the policies*, so the roles those
-policies apply to must hold `execute` on them — revoking it would not harden the database, it
-would turn row-level security off for everyone it protects.
+the migrations rather than only the ones where it is most dangerous.
+
+**The security advisor's other warning, and `0007`.** It lists every `security definer` function
+`anon` can call through `/rest/v1/rpc/…`. None was a hole — `can_access_workbook` / `owns_workbook`
+answer from the caller's own token, so a signed-out caller always got `false`, and
+`snapshot_workbook` is a trigger — but nothing needed the grant either, so
+`0007_revoke_unneeded_execute.sql` takes it away: the trigger is callable by nobody (Postgres does
+not check EXECUTE when a trigger fires), and the two access checks keep EXECUTE for
+`authenticated` only, because the policies call them with the caller's rights. That order matters:
+six policies had been written without a `to` clause, which means `to public`, and with those left
+as they were the revoke would have turned a signed-out request's empty answer into "permission
+denied for function". So `0007` scopes them to `authenticated` first. Replayed on a real Postgres
+16 before it was written down here: signed out still reads zero rows without an error, a signed-in
+owner and a member still read, write and leave versions behind. `bump_usage` stays callable by
+`anon` — that is the whole design of the counter.
 
 **What it cannot tell you**, said here so nobody reads more into a number than is in it: how many
 *people* (two visits from one person and one each from two are the same number), whether anyone
