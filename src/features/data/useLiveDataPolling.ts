@@ -5,36 +5,49 @@
 
 import { useEffect } from "react";
 import { useDataSourceStore } from "@/store/dataSourceStore";
+import { useSheetStore } from "@/store/sheetStore";
 import { readSourcesToken } from "@/lib/dataSources/sourcesToken";
-import { DEMO_MODE } from "@/lib/demoMode";
 import { useLocaleStore } from "@/store/localeStore";
+import { pendingOrigin, takePending } from "./allowOrigin";
+import { serverSourcesOffered } from "./useServerSources";
 
-/** Loads the source list once, then keeps every source polling on its own interval. Runs at the
+/** Loads the source lists once, then keeps every source polling on its own interval. Runs at the
  *  app root (not inside the panel) so live cells keep updating with the panel closed. */
 export function useLiveDataPolling() {
   const sources = useDataSourceStore((s) => s.sources);
   const loaded = useDataSourceStore((s) => s.loaded);
   const locale = useLocaleStore((s) => s.locale);
 
+  // This browser's own sources (#110), at once and for everyone — they need no server and no token.
+  // A test that reloaded the page to allow its origin is picked up again here: the form reopens and
+  // runs it, or the picker opens for a source that was just saved.
+  useEffect(() => {
+    useDataSourceStore.getState().loadBrowserSources(pendingOrigin());
+    const pending = takePending();
+    if (!pending) return;
+    // After the page's own first effects, one of which closes the sidebar on a phone.
+    const timer = setTimeout(() => {
+      if (pending.action === "test") {
+        useDataSourceStore.getState().setResume({ draft: pending.draft, headerValue: pending.headerValue, id: pending.id });
+        useSheetStore.getState().setSidebarMode("data");
+      } else {
+        useSheetStore.getState().openDataPicker({ sourceId: pending.sourceId });
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     if (loaded) return;
-    // Don't ask a question whose answer is already known to be no. The list endpoint refuses
-    // without a token — and on a public demo it refuses outright — so firing this at startup
-    // produced a red 403 in the console of every first visit, which reads as a broken app to
-    // anyone who opens devtools. The catch() swallowed the rejection but not the browser's own
-    // network log, which no JS can suppress: the fix has to be not making the request.
-    //
-    // Nothing is lost by waiting. Unlocking calls loadSources() itself, and a token already
-    // stored from a previous session still starts polling straight away.
-    // A demo needs no token — the list endpoint answers it with the three built-ins — so only the
-    // tokenless non-demo case is still a question whose answer is known to be no.
-    if (!DEMO_MODE && readSourcesToken() === "") return;
+    // Don't ask a question whose answer is already known to be no. The server's list refuses
+    // without a token — and a deployment without SOURCES_ADMIN_TOKEN offers no server sources at
+    // all — so asking anyway put a red 403 in the console of every first visit, which reads as a
+    // broken app to anyone who opens devtools.
+    if (!serverSourcesOffered() || readSourcesToken() === "") return;
     void useDataSourceStore.getState().loadSources().catch(() => {});
   }, [loaded]);
 
-  // The built-ins answer in the language on screen, names and rows alike. Reloading the list hands
-  // the effect below a new array, which refreshes every source at once rather than leaving the old
-  // language in the cells until each one's next tick.
+  // Server sources answer in the language on screen; reloading the list refreshes them all at once.
   useEffect(() => {
     if (!useDataSourceStore.getState().loaded) return;
     void useDataSourceStore.getState().loadSources().catch(() => {});

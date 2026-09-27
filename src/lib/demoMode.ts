@@ -2,30 +2,33 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Whether this instance is a public demo, where the live-data feature is switched off.
+ * Whether this deployment offers **server-side** live sources — and nothing else (#109).
  *
- * Everything else in the app runs in the browser and is safe to expose: the grid, the formula
- * engine, import/export, conditional formatting. Live data is the exception, and `SECURITY.md`
- * says why — its API has no authentication, and it will make the *server* fetch any URL a visitor
- * gives it, which on a cloud host reaches instance metadata and internal services.
+ * There is no demo: the public site is the app people use. Everything runs in the browser — the
+ * grid, the engine, import/export, and since #110 live sources too, fetched by the visitor's own
+ * browser. The one thing a deployment decides is whether *its server* may also fetch sources for
+ * people, which is a different kind of feature: the server fetches a URL on someone's behalf and
+ * keeps a credential for it, so it sits behind `SOURCES_ADMIN_TOKEN` (see `SECURITY.md`).
  *
- * Turning it off is what makes a public deployment reasonable. It also avoids a second problem:
- * sources are persisted to `data/sources.json` on disk, and a serverless host's filesystem is
- * read-only, so the feature could not work there anyway — better a clear "off" than a confusing
- * write error.
- *
- * `NEXT_PUBLIC_` so one setting covers both sides: the server routes refuse, and the UI stops
- * offering a button that would only fail.
+ * - No `SOURCES_ADMIN_TOKEN`: the server-source UI is not shown at all — no token box, no "switched
+ *   off" message — and every `/api/sources*` route still refuses (`src/lib/server/sourcesAuth.ts`).
+ * - `NEXT_PUBLIC_DEMO_MODE=1` is still read, for deployments that set it before this change, and it
+ *   now means exactly one thing: server sources off, even with a token. It says nothing to users.
+ *   Kept rather than removed so an old setting cannot silently turn a server feature *on*.
  */
 export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
 
-/** The refusal returned by every live-data route while the demo switch is on. */
+/** Server-side only: read per request, because a deployment can set the token after the build. */
+export function serverSourcesConfigured(): boolean {
+  return !DEMO_MODE && Boolean(process.env.SOURCES_ADMIN_TOKEN?.trim());
+}
+
+/** The refusal every server-source route gives while they are switched off. */
 export function demoModeResponse(): Response {
   return Response.json(
     {
-      error: "demo_mode",
-      message:
-        "Live data sources are disabled on this public demo. Run ExcelToGo locally to use them — see the README.",
+      error: "server_sources_off",
+      message: "Server-side live sources are switched off on this deployment. Connect your API from the browser instead.",
     },
     { status: 403 }
   );

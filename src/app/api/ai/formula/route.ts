@@ -5,7 +5,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import { heuristicSuggest } from "@/lib/aiHeuristic";
 import { AI_MAX_TOKENS, AI_MODEL, SYSTEM_PROMPTS, buildUserMessage, parseFormulaReply, parseLocale } from "@/lib/aiPrompt";
 import { clientKey, createRateLimiter } from "@/lib/server/rateLimiter";
-import { DEMO_MODE } from "@/lib/demoMode";
 
 export const runtime = "nodejs";
 
@@ -53,12 +52,13 @@ export async function POST(request: Request) {
   const headers = Array.isArray(body.headers) ? body.headers.slice(0, 50).map((h) => String(h).slice(0, 60)) : [];
   const locale = parseLocale(body.locale);
 
-  // A public demo must not be able to spend the operator's Anthropic budget. This route takes no
-  // token, so a key configured on the host is billable by anyone who finds the URL, and the
-  // per-process rate limit is a speed bump, not a ceiling. The panel keeps working either way —
-  // `heuristicSuggest` runs locally and costs nothing — so the demo gives up the model's judgement,
-  // not the feature. Structural, so it holds even if someone sets the key on the demo by mistake.
-  const apiKey = DEMO_MODE ? undefined : process.env.ANTHROPIC_API_KEY;
+  // The deployment's own key, when it set one — and only then. This route takes no token, so **a key
+  // set on a public deployment is spent by everyone who uses the site**; the per-process rate limit
+  // is a speed bump, not a ceiling. README and `.env.example` say so where the key is configured.
+  // Without a key the panel still answers: `heuristicSuggest` runs locally and costs nothing, and a
+  // visitor can bring their own key, which never touches this route (`src/lib/byok.ts`).
+  // `NEXT_PUBLIC_DEMO_MODE` no longer changes this (#109): it now only switches server sources off.
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return Response.json({ ...heuristicSuggest(question, selection, locale), source: "heuristic" });
   }

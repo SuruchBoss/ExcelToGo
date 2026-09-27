@@ -91,6 +91,8 @@ const SHOWS = {
   "44-mobile-menu.png": [],
   "45-mobile-cell-tools.png": [],
   "46-guide.png": [],
+  "47-browser-source.png": [],
+  "48-browser-error.png": [],
   "demo.gif": [],
 };
 

@@ -39,6 +39,8 @@ export const SECURITY_TEST_FILES = [
   "src/lib/byok.test.ts",
   "src/lib/csvInjection.test.ts",
   "src/lib/xlsxFormulaExport.test.ts",
+  "src/lib/apiOrigins.test.ts",
+  "src/lib/dataSources/browserSource.test.ts",
   "src/lib/cloud/liveMessage.test.ts",
   "src/lib/cloud/policies.test.ts",
   "src/lib/errorReport.test.ts",
