@@ -3,12 +3,12 @@
 
 import ExcelJS from "exceljs";
 import { beforeEach, describe, expect, it } from "vitest";
-import { literalValue } from "./cellLiteral";
+import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { computeSheet, createEmptySheet, setCellRaw, SheetModel } from "./sheet";
 import { resetComputeCache } from "./sheetCompute";
 import { sortRange } from "./sheetSort";
 import { toCsv, trimGrid, valuesToCsvGrid } from "./csv";
-import { exportWorkbookToXlsxBlob } from "./excelIO";
+import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
 import { fromStorage } from "./sheetCodec";
 
 /** The three values the bug was reported with (#23): a phone number, an ID card, a code. */
@@ -159,5 +159,92 @@ describe("a sheet saved before #23", () => {
     const computed = computeSheet(sheet);
     expect([0, 1, 2, 3].map((r) => computed.display[r][0])).toEqual([PHONE, ID_CARD, CODE, "42"]);
     expect(computed.values[3][0]).toBe(42);
+  });
+});
+
+describe("rawForText", () => {
+  it("leaves text alone when the rules already keep it text", () => {
+    for (const t of [PHONE, ID_CARD, CODE, "hello", "", "="]) expect(rawForText(t)).toBe(t);
+  });
+
+  it("marks text that would otherwise be read as something else", () => {
+    expect(rawForText("123")).toBe("'123");
+    expect(rawForText("-3")).toBe("'-3");
+    expect(rawForText("=SUM(A1)")).toBe("'=SUM(A1)");
+    expect(rawForText("'quoted")).toBe("''quoted");
+  });
+
+  it("always reads back as the same text", () => {
+    for (const t of [PHONE, ID_CARD, CODE, "123", "0", "1e3", "=A1", "'x", "  7 ", "hello"]) {
+      expect(literalValue(rawForText(t))).toBe(t);
+    }
+  });
+
+  it("knows what a spreadsheet would read as a number", () => {
+    expect(looksNumeric("123")).toBe(true);
+    expect(looksNumeric(PHONE)).toBe(true);
+    expect(looksNumeric("12a")).toBe(false);
+    expect(looksNumeric(" ")).toBe(false);
+  });
+});
+
+describe("the .xlsx round trip", () => {
+  async function exported(column: string[]): Promise<ExcelJS.Worksheet> {
+    const sheet = sheetWith(column);
+    const blob = await exportWorkbookToXlsxBlob([{ name: "S", sheet, computed: computeSheet(sheet) }]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    return wb.worksheets[0];
+  }
+
+  async function roundTrip(column: string[]): Promise<SheetModel> {
+    const sheet = sheetWith(column);
+    const blob = await exportWorkbookToXlsxBlob([{ name: "S", sheet, computed: computeSheet(sheet) }]);
+    const [{ sheet: back }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "t.xlsx"));
+    return back;
+  }
+
+  it("marks number-looking text as text (@) so Excel does not turn it back into a number", async () => {
+    const ws = await exported([PHONE, ID_CARD, CODE, "'123", "42", "hello"]);
+    for (const addr of ["A1", "A2", "A3", "A4"]) {
+      expect(typeof ws.getCell(addr).value).toBe("string");
+      expect(ws.getCell(addr).numFmt).toBe("@");
+    }
+    expect(ws.getCell("A5").numFmt).not.toBe("@");
+    // Ordinary text needs no marker: nothing would read it as a number.
+    expect(ws.getCell("A6").numFmt).not.toBe("@");
+  });
+
+  it("brings the three reported values back exactly as typed", async () => {
+    const back = await roundTrip([PHONE, ID_CARD, CODE]);
+    const computed = computeSheet(back);
+    expect([0, 1, 2].map((r) => computed.display[r][0])).toEqual([PHONE, ID_CARD, CODE]);
+    expect([0, 1, 2].map((r) => computed.values[r][0])).toEqual([PHONE, ID_CARD, CODE]);
+  });
+
+  it("keeps apostrophe text as text, and numbers as numbers", async () => {
+    const back = await roundTrip(["'123", "42"]);
+    expect(back.cells[0][0]).toBe("'123");
+    const computed = computeSheet(back);
+    expect(computed.values[0][0]).toBe("123");
+    expect(computed.values[1][0]).toBe(42);
+  });
+
+  it("reads a string cell from Excel as text, even when it is digits or starts with =", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("S");
+    ws.getCell("A1").value = "123";
+    ws.getCell("A2").value = "=1+1";
+    ws.getCell("A3").value = 123;
+    ws.getCell("A4").value = { formula: "1+1", result: 2 };
+    const [{ sheet }] = await importWorkbookFromFile(new File([await wb.xlsx.writeBuffer()], "x.xlsx"));
+    expect(sheet.cells[0][0]).toBe("'123");
+    expect(sheet.cells[1][0]).toBe("'=1+1");
+    expect(sheet.cells[2][0]).toBe("123");
+    expect(sheet.cells[3][0]).toBe("=1+1");
+    const computed = computeSheet(sheet);
+    expect(computed.values[0][0]).toBe("123");
+    expect(computed.values[1][0]).toBe("=1+1");
+    expect(computed.values[3][0]).toBe(2);
   });
 });

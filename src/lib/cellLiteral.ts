@@ -35,3 +35,23 @@ export function literalValue(raw: string): FormulaValue {
 
 const LEADING_ZERO = /^0\d+$/;
 const LONG_DIGITS = /^\d{12,}$/;
+
+/** Text a spreadsheet would read as a number if somebody typed it in: what Excel flags with a green corner. */
+export function looksNumeric(text: string): boolean {
+  return text.trim() !== "" && !Number.isNaN(Number(text));
+}
+
+/**
+ * The cell text that reads back as exactly `text`, and as text.
+ *
+ * The other direction of `literalValue`, for text arriving from somewhere that already knows it is
+ * text — a string cell in an .xlsx. `"0812345678"` needs nothing, the rules above keep it; `"123"`
+ * would become the number 123, so it gets the apostrophe Excel itself would show in the formula bar.
+ * So does text that starts with `=` (it would otherwise be run as a formula) or with an apostrophe
+ * of its own (which would otherwise be eaten as the marker).
+ */
+export function rawForText(text: string): string {
+  if (text === "") return "";
+  const formula = text.startsWith("=") && text.length > 1;
+  return formula || literalValue(text) !== text ? `'${text}` : text;
+}
