@@ -37,10 +37,13 @@
 /**
  * Everything that may be counted.
  *
- * Chosen to separate "opened it" from "used it", which is the distinction the whole feature exists
- * for: `app_opened` is a page load, and every other one takes a deliberate act.
+ * Chosen to separate "looked", "opened it" and "used it", which is the distinction the whole feature
+ * exists for: `landing_viewed` and `app_opened` are page loads, and every other one takes a
+ * deliberate act. The landing page is counted apart from the app because they answer different
+ * questions — how many people the link reached, and how many of them went on to try the thing.
  */
 export const USAGE_EVENTS = [
+  "landing_viewed",
   "app_opened",
   "formula_entered",
   "file_imported",
