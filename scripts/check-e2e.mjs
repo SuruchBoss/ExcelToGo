@@ -42,6 +42,7 @@ const label = {
   importFile: /^(นำเข้าไฟล์|Import file)$/,
   addRow: /^(แถว|Row)$/,
   addSheet: /^(เพิ่มชีตใหม่|Add a new sheet)$/,
+  formulaBar: /^(พิมพ์ค่าหรือสูตร|Type a value or formula)/,
 };
 
 const failures = [];
@@ -280,6 +281,42 @@ const FLOWS = [
       await page.getByText("Sheet1", { exact: true }).click();
       const source = [await at(0, 0), await at(1, 0)];
       note(source.join() === ",", `the source sheet's A1:A2 is cleared (showed "${source.join('", "')}")`);
+    },
+  },
+  {
+    name: "the formula bar shows the cell as it is now, and leaving it writes nothing (#42)",
+    async run(page) {
+      const bar = page.getByPlaceholder(label.formulaBar);
+      const at = async (r, c) => (await cell(page, r, c).innerText()).trim();
+
+      // Delete under the same address: the bar has to follow, and clicking in and out must not
+      // put the old value back.
+      await typeInCell(page, 0, 0, "hello");
+      await cell(page, 0, 0).click();
+      await page.keyboard.press("Delete");
+      note((await bar.inputValue()) === "", `after Delete the bar is empty (showed "${await bar.inputValue()}")`);
+      await bar.click();
+      await cell(page, 3, 3).click();
+      note((await at(0, 0)) === "", `focusing the bar and leaving it does not bring "hello" back (A1 showed "${await at(0, 0)}")`);
+
+      // Undo under the same address, then Tab out of the bar.
+      await typeInCell(page, 1, 0, "v1");
+      await typeInCell(page, 1, 0, "v2");
+      await cell(page, 1, 0).click();
+      await page.keyboard.press("Control+z");
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "v1");
+      note((await bar.inputValue()) === "v1", `after undo the bar shows v1 (showed "${await bar.inputValue()}")`);
+      await bar.focus();
+      await page.keyboard.press("Tab");
+      note((await at(1, 0)) === "v1", `tabbing out of the bar leaves A2 at v1 (showed "${await at(1, 0)}")`);
+
+      // Typing still writes — Thai included, through the input method path the harness has.
+      // An empty cell well below the sample, so what lands is only what was typed.
+      await cell(page, 14, 1).click();
+      await bar.click();
+      await page.keyboard.insertText("ยอดขายเดือนนี้");
+      await page.keyboard.press("Enter");
+      note((await at(14, 1)) === "ยอดขายเดือนนี้", `Thai typed into the bar lands in B15 (showed "${await at(14, 1)}")`);
     },
   },
   {
