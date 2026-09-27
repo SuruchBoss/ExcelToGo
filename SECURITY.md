@@ -194,6 +194,15 @@ ciphertext fails loudly instead of quietly becoming somebody's `Authorization` h
 The data file is per-deployment, not per-user: anyone holding the operator token sees and edits the
 same set of sources. That is the intended shape of the feature, not an oversight.
 
+## What an exported file carries
+
+- **CSV:** a value beginning `=`, `+`, `-`, `@`, a tab or a newline is written with a leading apostrophe,
+  so the next program reads it as text; numbers are never touched (`src/lib/csvInjection.test.ts`).
+- **`.xlsx`:** a formula goes out as a formula only if this app's engine can parse it. One it cannot
+  parse — already an error in the app — goes out as a text cell, and reads back in as text
+  (`src/lib/xlsxFormulaExport.test.ts`). Formulas the engine reads are unchanged, including ones that
+  arrived from a CSV, as they would be if Excel itself had opened and saved that file.
+
 ## Counting that the app was used, without learning who used it
 
 `/api/usage` answers one question — has anyone actually used this — and it is at odds with the

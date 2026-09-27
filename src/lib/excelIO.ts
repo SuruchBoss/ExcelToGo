@@ -35,6 +35,7 @@ import { nameKey, nameProblem, refToNode, type NameTable } from "./namedRanges";
 import { parseRangeRef, parseCellRef, rangeRefString, sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { MergeRange, parseMergeRef } from "./sheetMerges";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
+import { compileFormula } from "./formulaEngine/formulaProgram";
 import { CfRule, CfComparison, CfTest } from "./conditionalFormat";
 
 function hexToArgb(hex: string): string {
@@ -657,7 +658,12 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
     for (let c = 0; c < sheet.cols; c++) {
       const raw = sheet.cells[r][c];
       const cell = worksheet.getCell(r + 1, c + 1);
-      if (raw.startsWith("=") && raw.length > 1) {
+      // A formula goes out as a formula only if this engine can read it. One that does not parse is
+      // an error here whatever it would do elsewhere, and the file should not promise more than the
+      // app showed — so it goes out as the text it is.
+      if (raw.startsWith("=") && raw.length > 1 && compileFormula(raw.slice(1)).ast === null) {
+        cell.value = raw;
+      } else if (raw.startsWith("=") && raw.length > 1) {
         const computedValue = computed.values[r][c];
         cell.value = {
           formula: raw.slice(1),
