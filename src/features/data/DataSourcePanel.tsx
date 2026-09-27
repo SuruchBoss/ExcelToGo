@@ -4,7 +4,8 @@
 "use client";
 
 import { useState } from "react";
-import { Database, Plus, X } from "lucide-react";
+import { ArrowRight, BookOpen, Database, Plus, X } from "lucide-react";
+import Link from "next/link";
 import { PublicDataSource } from "@/lib/dataSources/types";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { useLiveBlocks, useSheetStore } from "@/store/sheetStore";
@@ -45,7 +46,27 @@ export default function DataSourcePanel() {
 
       {!DEMO_MODE && <SourcesUnlock />}
 
-      {DEMO_MODE && <p className="rounded-md bg-zinc-50 px-2.5 py-2 text-[11.5px] leading-relaxed text-zinc-600">{t.data.demoNote}</p>}
+      {/* On the demo this used to be one grey sentence saying "clone it and run it yourself", and
+          the person who wrote the app read past it looking for a button. So it is a box with a
+          question in bold — the one the reader arrived with — and a way to the answer. */}
+      {DEMO_MODE && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5">
+          <p className="text-[13px] font-semibold text-emerald-950">{t.data.ownTitle}</p>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-700">{t.data.demoNote}</p>
+          <Link
+            href="/guide"
+            className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:py-1.5"
+          >
+            <BookOpen size={14} aria-hidden /> {t.data.guideCta} <ArrowRight size={13} aria-hidden />
+          </Link>
+        </div>
+      )}
+
+      {!DEMO_MODE && !unlocked && (
+        <Link href="/guide" className="-mt-1 inline-flex items-center gap-1 self-start text-xs font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-950">
+          {t.data.guideLinkLocked} <ArrowRight size={12} aria-hidden />
+        </Link>
+      )}
 
       {unlocked && (
       <div className="flex flex-col gap-2 overflow-y-auto pr-1">
@@ -68,6 +89,11 @@ export default function DataSourcePanel() {
         >
           <Plus size={15} /> {t.data.addSource}
         </button>
+      )}
+      {unlocked && !DEMO_MODE && (
+        <Link href="/guide" className="-mt-1 inline-flex items-center gap-1 self-center text-[11px] text-zinc-600 underline underline-offset-2 hover:text-emerald-800">
+          {t.data.guideLink}
+        </Link>
       )}
 
       <div className="mt-auto border-t border-zinc-100 pt-2.5">

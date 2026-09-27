@@ -345,6 +345,8 @@ interface SheetState {
   clearConditionalRules: () => void;
 
   toggleBold: () => void;
+  toggleItalic: () => void;
+  toggleUnderline: () => void;
   setAlign: (align: CellAlign) => void;
   setTextColor: (color: string) => void;
   setNumberFormat: (fmt: NumberFormat) => void;
@@ -1207,6 +1209,25 @@ export const useSheetStore = create<SheetState>()(
             sheets: updateActiveSheet(s, (sheet, selection) => {
               const anchorBold = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).bold;
               return applySelectionFormat(sheet, selection, { bold: !anchorBold });
+            }),
+          })),
+
+        // Both already existed in the model — an imported .xlsx kept them, the grid drew them and
+        // the export wrote them back — but nothing in the app could set them. Same rule as bold:
+        // the anchor cell decides which way the whole selection goes.
+        toggleItalic: () =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const anchorItalic = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).italic;
+              return applySelectionFormat(sheet, selection, { italic: !anchorItalic });
+            }),
+          })),
+
+        toggleUnderline: () =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const anchorUnderline = getCellFormat(sheet, selection.anchorRow, selection.anchorCol).underline;
+              return applySelectionFormat(sheet, selection, { underline: !anchorUnderline });
             }),
           })),
 

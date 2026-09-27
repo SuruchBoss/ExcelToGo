@@ -86,6 +86,11 @@ const SHOWS = {
   "41-precedents.png": [],
   // The alert a refused save raises. The sheet's numbers are the sample's own, not counted figures.
   "42-save-failed.png": [],
+  // The phone menu, the phone cell-tools sheet and the connection guide: labels and steps, no
+  // counted figures on any of them.
+  "44-mobile-menu.png": [],
+  "45-mobile-cell-tools.png": [],
+  "46-guide.png": [],
   "demo.gif": [],
 };
 

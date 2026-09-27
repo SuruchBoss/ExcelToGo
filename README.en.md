@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1537%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1541%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1537 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1541 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1537 passing tests could not catch
+### 🧪 What 1541 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1537 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1541 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -255,6 +255,7 @@ the outcome under a double rule like a total.
   - [Bring your own API key (BYOK)](#-bring-your-own-api-key-byok)
   - [Live data from an API / CSV (prototype)](#-live-data-from-an-api--csv-prototype)
   - [Straight into a database (PostgreSQL / MySQL)](#-straight-into-a-database-postgresql--mysql)
+  - [Connect your own data: the in-app guide](#-connect-your-own-data-the-in-app-guide)
   - [Spreadsheet grid](#-spreadsheet-grid)
   - [Autosave + Undo/Redo](#-autosave--undoredo)
   - [The app can break and you still get your file out](#-the-app-can-break-and-you-still-get-your-file-out)
@@ -370,7 +371,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1537-case Vitest suite |
+| `npm test` | Run the 1541-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -378,7 +379,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 15 flows: formulas, `.xlsx` round trip, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP (needs a build) |
+| `npm run check:e2e` | Drives the real app through 16 flows: formulas, `.xlsx` round trip, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, the phone tab bar (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -434,7 +435,7 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 > **Deploying a public demo? Set `NEXT_PUBLIC_DEMO_MODE=1` as well.**
 >
 > It switches the live-data feature off on both sides: every `/api/sources*` route answers 403, and the
-> UI stops offering the "Data" button. That API now requires an operator token and refuses to fetch
+> UI stops offering the "Connect new data" button. That API now requires an operator token and refuses to fetch
 > private addresses (see [`SECURITY.md`](SECURITY.md)), but switching it off outright still matches
 > what a demo is for: there is nothing to unlock, and everything left runs in the browser.
 >
@@ -569,7 +570,7 @@ second is never called (`hit our own /api/ai/formula: false`); the first arrives
 
 Split into two roles so the end user touches as little technology as possible:
 
-**1) Tech sets it up once** — "Connect new data" in the **Data** panel: enter a REST API URL or a CSV/Google
+**1) Tech sets it up once** — "Connect new data" in the **Live data** panel: enter a REST API URL or a CSV/Google
 Sheets link, an auth header if needed, and a refresh interval, then "Test connection" to see how many rows and
 columns come back before saving. Config and credentials live on the server (`data/sources.json`, gitignored)
 and never reach the user's browser; the server does the fetching, so CORS isn't the user's problem.
@@ -604,6 +605,11 @@ is a capability that needs an owner. With `SOURCES_ADMIN_TOKEN` unset the API an
 everything rather than being left open to whoever loads the page.
 
 <p align="center"><img src="public/screenshots/en/24-sources-locked.png" width="820"></p>
+
+Under the token box, **"No token yet? How to switch this on"** leads to the [in-app guide](#-connect-your-own-data-the-in-app-guide).
+On the public demo, where the add-a-source button is absent on purpose, the panel shows a box asking
+**"Want to connect your own API or database?"** with a button to the same guide, instead of the single grey
+sentence that used to say only "clone it and run it yourself".
 
 The guards:
 
@@ -749,6 +755,31 @@ table picker yet (the SQL is typed), and **no test connects to a real database**
 touches a driver is kept as thin as it can be, and every judgement call lives in pure modules that
 are tested without one.
 
+### 📘 Connect your own data: the in-app guide
+
+**`/guide`** is where the app sends someone who wants their own API or database: from the phone menu,
+from the live-data panel (on the demo and before a token is entered), and from the landing page's footer.
+The answer used to live only in this README, which is where people who already know it come to read. The
+person asking is the one who just looked for it in the app and could not find it.
+
+<p align="center"><img src="public/screenshots/en/46-guide.png" width="820"></p>
+
+Written for the person doing the setup, in the order it has to be done, and **every command block has a copy
+button** (the result is announced through a live region):
+
+| Part | What is in it |
+|---|---|
+| Why the demo can't do it | The demo is shared; letting people add sources would let anyone point its server at any address |
+| What you can connect | REST API · CSV/Google Sheets · PostgreSQL · MySQL/MariaDB — what each asks for, with an example |
+| A four-step starter kit | clone and install → `.env.local` (`SOURCES_ADMIN_TOKEN`, `SOURCES_SECRET_KEY`, `SOURCES_ALLOWED_DB_HOSTS`) → run on a server that can write files → unlock and connect in the app |
+| What the app guards, and what is up to you | The token, private networks, encrypted credentials, read-only SQL — and the database role you still have to scope |
+| "Cloud save" is not connecting a database | The cloud tab keeps your workbook on your own Supabase; it has nothing to do with pulling data in |
+
+**Stated on that page, plainly:** live data **does not work on Vercel**, because sources are kept in
+`data/sources.json` and Vercel's disk is read-only; it needs a VPS, Docker with a volume, or a machine of
+your own. The page is what this README and `SECURITY.md` already say, in fewer words. When either of those
+changes, it has to follow — and no gate compares them yet.
+
 
 ### 📐 Spreadsheet grid
 
@@ -841,10 +872,15 @@ believe they had one.
 
 ### 🎨 Cell formatting
 
-Bold, text alignment (left/center/right), text color, number format (general / 2 decimal places / percent /
+Bold, **italic, underline**, text alignment (left/center/right), text color, number format (general / 2 decimal places / percent /
 currency ฿ / [text](#-phone-numbers-and-codes-keep-their-zeros)) — travels with the cell on copy/paste and survives Excel export too.
 
 <p align="center"><img src="public/screenshots/en/06-format-filter.png" width="820"></p>
+
+**Italic and underline only just got buttons.** Both were in the model long before: an imported .xlsx kept
+them, the grid drew them and the export wrote them back, but nothing in the app could set them. They now sit
+with bold (B · I · U joined into one group like the alignment buttons, which takes less room than three
+separate ones); the whole selection follows its first cell, as bold does, and it is one undo step.
 
 The formatting row **folds away** (the brush button at the end of the formula bar). On a 1366×768 laptop the
 three stacked bars ate 150px before a single grid row appeared; folded, that's 107px.
@@ -1506,14 +1542,37 @@ of an 844px screen before the grid began. All three are fixed:
 
 | Thing | What it does on a phone |
 |---|---|
-| **Formula / AI / data panels** | Cover the screen with a close button instead of competing with the grid, and **start closed** so the sheet is what you see first |
-| **Toolbar** | Icons only, labels hidden, and **one horizontally scrolling row** rather than a wrapping one |
+| **Formulas / AI / live data / cloud** | A **tab bar along the bottom with a name on every tab**, where a thumb reaches. A panel rises as a sheet that **stops short of the top**, so the first rows and the selected cell stay in view, and stops above the tab bar, so the next panel is one press away · **starts closed** so the sheet is what you see first |
+| **Top row** | Four things: the name · undo · redo · language — **nothing past the edge**. The rest (import, export, add row/column, connecting an API) is in a **menu** with a name on every line |
+| **Formatting row** | Bold · italic · underline · alignment · colour · **Tools**, which fits 390px. The rest (number format, merge, freeze, sort, rules, charts, pivot) is in a **cell tools sheet**, every button named |
 | **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all |
 | **Tap targets** | 44×44 everywhere, in both bars (up from 28px — and five format-bar buttons were still only 32px wide until a later measurement caught them) |
 | **Selecting a range** | A **grip on the selection's bottom-right corner**, dragged to pull the range out |
 | **Hover-revealed buttons** | Shown permanently where nothing hovers — otherwise the column filter and the delete-sheet button are invisible |
 
 ![On a phone](public/screenshots/en/19-mobile.png)
+
+**Why the phone toolbar was taken apart.** It used to be one row of bare icons that scrolled sideways. It
+passed every gate (44px targets, names for a screen reader, no sideways page scroll), and **the person who
+wrote the app opened it on their phone and could not find where to connect an API.** Σ, a sparkle, a
+cylinder and a cloud say nothing, half the row was off screen, and the cloud was read as "connect a
+database" when it is cloud save. Now **every button on a phone has a name and nothing has to be scrolled to.**
+What it covers is kept in check: the top row lost as much height as the tab bar adds, the tab bar hides
+while a keyboard is up, and every sheet closes itself once a tool is pressed, so the result is on the grid.
+
+<table>
+<tr>
+<td align="center"><b>The menu — the way to an API or database is its first line</b><br>
+<img src="public/screenshots/en/44-mobile-menu.png" width="300"></td>
+<td align="center"><b>The cell tools sheet — every formatting tool, named</b><br>
+<img src="public/screenshots/en/45-mobile-cell-tools.png" width="300"></td>
+</tr>
+</table>
+
+The buttons in the cell tools sheet are **the same elements as the desktop row, not copies**: the box around
+them is `sm:contents`, so from 640px up it dissolves back into the row, and on a phone it becomes the sheet.
+A screen reader and the gates see one set of names. `check:a11y` opens both sheets and scans them at 390px,
+and one e2e flow asks plainly: "at 390px, is the way to live data on screen and named?"
 
 **Dragging out a range with a finger** — a mouse sweeps a range by holding the button down and
 moving, but on a phone dragging a finger across the grid is how you scroll it, and taking that over
@@ -1967,6 +2026,12 @@ set in the same family as the body text rather than in the system's default mono
 <p align="center"><img src="public/screenshots/en/27-landing-stats.png" width="820"></p>
 <p align="center"><sub>The inverted "Under the hood" band and the <b>Where this stops on purpose</b> section — the front page says where the app stops, and sends the rest of the limits here.</sub></p>
 
+**How to get in touch sits at the foot of the page, beside the button that opens the app** (`/#contact`) —
+email and LinkedIn written as two lines of the ledger like everything above them. The address is
+**printed in full** rather than hidden behind a "Contact" button, with a copy button beside it, because
+on webmail a `mailto:` link does nothing at all; the copy result is announced in a live region. The
+footer gains an email link next to LinkedIn and GitHub as well.
+
 ### 🌐 Bilingual (Thai / English)
 
 Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 37 formula
@@ -2001,7 +2066,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1537 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1541 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2157,6 +2222,7 @@ src/
   app/
     page.tsx                 # The landing page at / — features, screenshots, and the button into the app
     app/page.tsx             # The app itself at /app — assembles components from store state (holds none)
+    guide/page.tsx           # /guide — connecting your own API or database, step by step, commands copyable
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
                               # errorResponse.ts: failures → responses; a rate limit keeps a real 429 + its wait
@@ -2216,8 +2282,9 @@ src/
     data/SourceSetupDialog.tsx      # Tech-side setup form + "test connection"
     data/useLiveDataPolling.ts      # Root hook: loads sources + polls each on its own interval
                                      # (a tick landing inside a backoff makes no request at all)
-    toolbar/Toolbar.tsx             # The top toolbar
-    toolbar/FormatBar.tsx           # The cell-formatting bar + sort buttons
+    toolbar/Toolbar.tsx             # The top toolbar · on a phone its panel buttons become a named tab bar
+    toolbar/MobileMenu.tsx          # The phone menu: connect an API/database, cloud, the guide, files, rows/columns
+    toolbar/FormatBar.tsx           # The cell-formatting bar + sort buttons · on a phone the rest is a cell tools sheet
     toolbar/LanguageToggle.tsx      # The UI language switch button
   lib/                       # Core domain logic, no React/UI coupling — editable/testable independently
     formulaEngine/           # The hand-written formula engine — tokenizer.ts, parser.ts, ast.ts, evaluator.ts,
@@ -2918,20 +2985,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1537 cases across 93 files, via Vitest
+npm test      # 1541 cases across 94 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1537 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1541 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 15 flows in a real browser (needs a build)
+npm run check:e2e   # 16 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3018,10 +3085,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1537 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1541 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1537 passing tests could not catch](#-what-1537-passing-tests-could-not-catch), repeatable
+> [What 1541 passing tests could not catch](#-what-1541-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3171,9 +3238,19 @@ What's not done yet, and why — to show this is a known gap, not something forg
       needn't be leftmost, matching exactly by default and taking its own not-found value, plus date
       gaps in all six units (which turned up a bug where `DAY`/`MONTH`/`YEAR` were a day out west of
       UTC)
-- [x] **Mobile/tablet support** — done (see ✨ Features): the panel opens over the screen, the
-      toolbar folds to icons, a second tap edits a cell, 44px targets, and a range is dragged out
-      with a finger from a grip on the selection's corner (which scrolls the sheet to meet it)
+- [x] **Mobile/tablet support** — done (see ✨ Features): a tab bar with a name on every tab, a menu and a
+      cell tools sheet instead of rows that scrolled off screen, a second tap edits a cell, 44px targets, and
+      a range is dragged out with a finger from a grip on the selection's corner (which scrolls the sheet to meet it)
+- [x] **Finding how to connect an API or database on a phone** — done: the menu's first line, a box on the demo's
+      live-data panel, and the [in-app guide](#-connect-your-own-data-the-in-app-guide)
+- [x] **Italic / underline** — done: long in the model, now with buttons
+- [ ] **Live data on Vercel** — sources are kept in `data/sources.json`, which Vercel cannot write; they need
+      to move into a database (Supabase, which the app already supports) before this can run serverless
+- [ ] **Tell "not switched on on the server" apart from "wrong token"** — the server already answers
+      differently (403 / 401), but the token box shows one message for both; there is a link to the guide under it instead
+- [ ] **Ctrl+B / Ctrl+I / Ctrl+U** — the buttons exist, the shortcuts don't yet
+- [ ] **Nothing compares the in-app guide with the README** — when an env var or a step changes, `/guide` has
+      to be updated by hand
 - [x] **Accessibility checks in CI** — done: `npm run check:a11y` runs axe (WCAG 2.0/2.1/2.2 A+AA) on both
       pages at 390px and 1280px and checks for sideways scroll at five widths, as its own CI job. **Two
       widths is the whole point** — the previous audit ran at desktop width only and reported zero
@@ -3243,7 +3320,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       script is not a file and cannot be hashed, so the page never hydrated at all. The price is
       prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 15 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 16 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -3315,8 +3392,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **A smarter fallback when there is no API key** — it answers `=SUM(A1:A10)` to nearly any question containing
   "total", and ignores the selected range too. Found while shooting the landing page's problems section, which is
   why problem 01 there says a key of your own is needed rather than promising a SUMIF from plain Thai
-- [ ] **Retake `04-ai-assistant.png` with a real key** — the Thai one is still the old picture (its toolbar
-  predates freeze panes, validation and named ranges); the English one is new but shows the keyword matcher,
+- [ ] **Retake `04-ai-assistant.png` with a real key** — both languages are retaken with today's toolbar, but they
+  show the keyword matcher,
   which says on screen that it is guessing, because retaking it without a key would mean faking the assistant's
   answer. With a key, `SCREENSHOT_ANTHROPIC_KEY=… npm run screenshots -- --only 04` retakes both with a real one
 - [ ] **The AI's range guess stops at a blank row** — with the cursor under one empty row (C12 in the sample),
@@ -3357,6 +3434,7 @@ Built by **Suruch Boss**
 
 - GitHub — [github.com/SuruchBoss](https://github.com/SuruchBoss)
 - LinkedIn — [linkedin.com/in/suruchboss](https://www.linkedin.com/in/suruchboss)
+- Email — [bossxiii@gmail.com](mailto:bossxiii@gmail.com)
 
 If this project is useful to you, or you'd like to talk about work, do get in touch.
 
