@@ -59,6 +59,8 @@ export const en: Messages = {
     liveCellReadOnly: "This cell is live data and can't be edited — click \"Remove\" first to type over it",
     partial: (rows) => `Only the first ${rows.toLocaleString("en-US")} rows`,
     partialHint: "This source has more data — raise the row limit in the source's settings",
+    partialSizeHint: (mb) =>
+      `This table is bigger than the ${mb} MB one refresh can send to the browser, so it holds the rows that fit — fewer columns or a smaller endpoint will get more of them`,
     rateLimited: "This source asked to be called less often",
     retryIn: (s) => (s >= 60 ? `retrying in ${Math.ceil(s / 60)} min` : `retrying in ${s}s`),
     tooLarge: (mb) =>
@@ -140,7 +142,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1496 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1537 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -342,8 +344,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1496", label: "automated tests" },
-      { value: "299", label: "security tests" },
+      { value: "1537", label: "automated tests" },
+      { value: "303", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -870,6 +872,8 @@ export const en: Messages = {
     busyExportingPdf: "Building PDF...",
     busyExportingCsv: "Building CSV...",
     importError: "Couldn't import this file. Please check that it's a valid Excel (.xlsx) or CSV file.",
+    importClipped: (sheet, rowsInFile, rowsOpened) =>
+      `Sheet "${sheet}" goes down to row ${rowsInFile.toLocaleString("en-US")}, but only ${rowsOpened.toLocaleString("en-US")} rows can be opened — the rows past that were not imported (the original file is untouched).`,
     csvEmpty: "This sheet is empty, so there is nothing to export.",
   },
   aiHeuristic: {

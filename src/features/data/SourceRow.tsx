@@ -10,7 +10,7 @@ import { PublicDataSource } from "@/lib/dataSources/types";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
 import { setLiveDragData } from "./dragTypes";
-import { sourceErrorText } from "./sourceError";
+import { partialHintText, sourceErrorText } from "./sourceError";
 
 interface Props {
   source: PublicDataSource;
@@ -84,7 +84,7 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
         {table && ` · ${t.data.updatedAgo(ago)}`}
       </p>
       {table?.truncated && (
-        <p className="mt-1 text-[11px] font-medium text-amber-700" title={t.data.partialHint}>
+        <p className="mt-1 text-[11px] font-medium text-amber-700" title={partialHintText(table, t.data)}>
           ⚠ {t.data.partial(table.rows.length)}
         </p>
       )}

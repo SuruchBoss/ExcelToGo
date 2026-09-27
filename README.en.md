@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1496%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1537%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1496 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1537 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1496 passing tests could not catch
+### 🧪 What 1537 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1496 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1537 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -340,10 +340,10 @@ cd ExcelToGo
 
 ### Step 1 — Install and run
 
-**Requires:** [Node.js](https://nodejs.org) **20.19+ or 22.12+** (22 or 24 recommended) and npm. That floor
-comes from Vite 7, which the test suite runs on: it needs `require(esm)`, which lands in exactly those two
-versions — higher than Next 16's own `>=20.9`. It's declared in `package.json`'s `engines`, and CI runs both
-floors for real
+**Requires:** [Node.js](https://nodejs.org) **22.12+ or 24** and npm. The 22.12 floor comes from Vite 7,
+which the test suite runs on and which needs `require(esm)`; `@supabase/supabase-js` wants Node 22 anyway.
+`package.json` declares `^22.12.0 || ^24.0.0` in `engines`, exactly the two versions CI runs. **Node 20 is no
+longer supported**: it went out of support (no more security fixes) on 2026-04-30
 
 ```bash
 npm install
@@ -370,7 +370,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1496-case Vitest suite |
+| `npm test` | Run the 1537-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -378,7 +378,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 12 flows: formulas, `.xlsx` round trip, keyboard only, undo, announcements, the AI assistant, the CSP (needs a build) |
+| `npm run check:e2e` | Drives the real app through 15 flows: formulas, `.xlsx` round trip, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -420,6 +420,14 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
   the trip either way. The Hobby plan allows one region; change it if you deploy for users elsewhere.
   **Do not reach for `export const preferredRegion` in a route file instead** — in this Next.js version it is
   deprecated, and on Vercel it accepts only `'auto'`, `'global'` or `'home'`, so `'sin1'` fails the build.
+
+  **Live data on Vercel has a size limit.** Vercel will not send a function response over 4.5 MB (it
+  answers 413 instead), so the app sends at most 4 MB of live-data table to the browser per refresh. A
+  bigger table arrives with the rows that fit and a warning that it is partial — about 41,800 rows of the
+  demo's shape, about 7,700 of twenty Thai text fields, against the 50,000 the form allows. **Self-hosted
+  has no 4.5 MB limit**, but the app uses the same 4 MB so one source behaves the same in both places; to
+  allow more on your own server, change `MAX_DELIVERED_BYTES` in `src/lib/dataSources/fetchLimits.ts`,
+  the one place it is set.
 - Self-host with Docker/any Node server: `npm run build` then `npm run start`.
 
 > [!IMPORTANT]
@@ -603,7 +611,7 @@ The guards:
 |---|---|
 | **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
 | **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local, unique-local and documentation, and IPv4 carried inside IPv6 as `::ffff:`, `::`, SIIT `::ffff:0:0/96`, NAT64 `64:ff9b::/96` or 6to4 `2002::/16` (unpacked and checked as IPv4) · local-use NAT64 `64:ff9b:1::/48` and Teredo `2001::/32` refused outright |
-| **One refresh has a size and a time limit** | The body is read as a stream and stopped the moment it passes ~49 MB per refresh (every page together, counted after decompression — room for 50,000 rows, measured at 8.1–34.9 MB) · 15 seconds per request, up to the body's last byte · 45 seconds for the whole refresh · on the first page the panel says which limit was hit, in plain words; on a later page the rows already fetched are kept and marked partial |
+| **One refresh has a size and a time limit** | The body is read as a stream and stopped the moment it passes ~49 MB per refresh (every page together, counted after decompression — room for 50,000 rows, measured at 8.1–34.9 MB) · 15 seconds per request, up to the body's last byte · 45 seconds for the whole refresh · on the first page the panel says which limit was hit, in plain words; on a later page the rows already fetched are kept and marked partial · **at most 4 MB goes on to the browser per refresh** (under Vercel's 4.5 MB response limit): a bigger table arrives with the rows that fit, marked partial for its size, never as a 413 · measured on the route's own JSON: the demo's shape (7 fields) fits about **41,800 rows**, twenty fields of Thai text about **7,700** |
 | **A credential stays on its own origin** | The auth header goes only to the scheme, host and port the source was set up with · a redirect elsewhere is followed without it (and it is not put back) · a next-page link to another origin is not followed — the table stops there, marked partial |
 | **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear · a database connection string counts as one |
 | **A database query cannot write** | Every query runs in a read-only transaction, so the database itself refuses a write, and `sqlGuard` refuses again at save time · a database on a private address needs its host in `SOURCES_ALLOWED_DB_HOSTS` |
@@ -747,6 +755,8 @@ are tested without one.
 - Click to select a cell, **double-click**/**F2** to edit, or just start typing to overwrite it directly.
 - An always-visible **formula bar** shows the selected cell's address and raw content, just like Excel — edit
   from there directly.
+  It always shows what the cell holds *now*, even right after a Delete, a sort or an undo, and clicking into it
+  and out again without typing writes nothing.
 - Move with arrow keys/Enter/Tab, clear content with Delete/Backspace (formatting is preserved).
 - Select a range by dragging or Shift+click; click a row/column header to select the whole row/column.
 - Row/column headers are sticky and highlighted for the current selection — fixes the "scrolled and now I'm
@@ -824,6 +834,10 @@ believe they had one.
 - Pasting a copied formula adjusts relative references automatically, just like Excel.
 - Paste text from elsewhere too (e.g. real Excel or Google Sheets) — splits into columns/rows by tabs/newlines
   automatically, and grows the sheet if the pasted block is bigger than the current table.
+- **Cut works across sheets** — cut on one sheet, paste on another: the source cells are cleared, the destination
+  changes only where the block lands, and one undo puts both sheets back. If the source sheet was deleted before
+  the paste, the paste is a copy and clears nothing. **Not supported yet:** formulas that pointed at the moved cells
+  still point at the old address rather than following them, as Excel's would.
 
 ### 🎨 Cell formatting
 
@@ -1128,9 +1142,12 @@ not update them), and a list given as a named range (`=Units`) is still not read
 
 **Known bugs, not fixed yet:** a **template's**
 dropdowns are written back without checking the 255-character limit, so a long list produces a file that
-breaks the spec. A hidden or protected sheet comes back out as an ordinary one. A template keeps only its
-`list` rules — `whole`/`decimal`/`textLength`/`date` on a protected sheet are dropped — and empty input rows
-past the first 20 are cut off. All of it has to be fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
+breaks the spec. ~~Empty input rows past the first 20 are cut off~~ — fixed
+([#43](https://github.com/SuruchBoss/ExcelToGo/issues/43), [#10](https://github.com/SuruchBoss/ExcelToGo/issues/10)): a sheet
+opens down to its last input cell, and the ERP's draft 0 gets `Items` 200, `Locations` 50 and `OpeningBalance` 200 rows as
+contracted. A hidden or protected sheet comes back out as an ordinary one. A template keeps only its
+`list` rules — `whole`/`decimal`/`textLength`/`date` on a protected sheet are dropped. All of it has to be
+fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
 
 ### 🏷 Named ranges
 
@@ -1632,6 +1649,24 @@ multi-sheet file imports as separate tabs. The file's **look** comes too — col
 row heights, merged cells — see [It looks like the file you opened](#-it-looks-like-the-file-you-opened), and
 if the file was built as a form, [Templates from an Excel file](#-templates-from-an-excel-file).
 
+**A formula filled down or across in Excel stays a formula in every cell.** Excel stores a filled
+range as a *shared formula* — the first cell holds the text, the rest only point back at it — and each
+cell gets its references moved by the same shift the fill handle uses: `$` references stay put, and
+text in quotes that happens to look like an address (`"Q1"`) is left alone.
+
+**The sheet is sized from the last row and column the file actually uses.** A blank separator row does
+not cost the rows after it, and the empty rows a form still needs count too — unlocked cells on a
+protected sheet, and cells under a validation rule — so they survive opening, saving and exporting. A
+rule on a *whole column* (`A:A`) means "every row", so it applies to every row the sheet has rather
+than stretching the sheet to a million.
+
+> **Ceiling:** an import opens at most **100,000 rows** and **2,600,000 cells per sheet** (so a wider
+> sheet gets proportionally fewer rows — 260 columns get 10,000). In memory a sheet is a full grid,
+> so the cost is rows × columns: measured, 100,000 × 26 builds and computes in under a second, while
+> 200,000 × 26 took nearly three seconds and about 780 MB. A longer file is opened as far as the
+> ceiling allows, and **the app says so at once** — which sheet, the row the file reaches, and how many
+> rows were opened. Nothing is cut silently.
+
 ### 🧩 Drag-and-drop formulas
 
 Search/filter by category (Math / Statistics / Logic / Text / Date / Lookup), then **drag** or **click** a
@@ -1653,7 +1688,8 @@ references with `$` stay put).
 
 - **Excel**: a single `.xlsx` with **every sheet** included — original formulas, formatting (fills, font sizes,
   borders, row heights, column widths, merged cells) and a template's locking all intact, so it opens in
-  Excel/Google Sheets as the file it was rather than as computed numbers.
+  Excel/Google Sheets as the file it was rather than as computed numbers. **A formula the engine cannot read
+  goes out as text** — it is an error in the app already, and the file should not promise more than the app showed.
 - **CSV**: the currently open sheet, as computed values, with the BOM Excel needs to read Thai
   (see [CSV in and out](#-csv-in-and-out)).
 - **PDF**: the currently open sheet only, showing computed values with row/column headers, with the
@@ -1965,7 +2001,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1496 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1537 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1973,7 +2009,7 @@ architecture behind it.
 
 ### Tooling
 
-- **Node.js 20.19+ or 22.12+** (22 or 24 recommended) and npm — the floor the test suite's Vite 7 needs
+- **Node.js 22.12+ or 24** and npm — the floor the test suite's Vite 7 needs · Node 20 is past end of life and not supported
 - **ESLint 9** (`eslint-config-next`), including React 19-specific rules (`react-hooks/set-state-in-effect`, `react-hooks/refs`)
 - **Vitest 3** for unit tests
 - No database or separate backend — everything runs in one Next.js app
@@ -2287,7 +2323,7 @@ src/
   types/
     sheet-ui.ts               # Types for the grid's selection state
 .github/workflows/
-  ci.yml                     # CI: lint → check:readme → test → check:mutants → build on every push/PR, Node 20.19/22.12/24
+  ci.yml                     # CI: lint → check:readme → test → check:mutants → build on every push/PR, Node 22.12/24
                              #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
@@ -2397,6 +2433,20 @@ forty are on screen.
 `rowWindow.ts` works out which band is visible and stands two spacer rows in for the rest, so the
 scrollbar still measures exactly the same height. Checked in a browser by importing a 5,000-row
 CSV: **41 `<tr>` in the DOM**, 160,064px of scroll height, and row 5,001 still reachable.
+
+**That now holds on the first render too**, which it did not: before the container could be measured,
+the window assumed the whole sheet was on screen, so importing a big sheet — or reloading with one
+saved — laid out every row once, even though that render was replaced before anything was painted. It
+now assumes one screenful (1,440px). Measured on a production build with a 10,000 × 10 `.xlsx`,
+median of three runs:
+
+| | Before | After |
+|---|---|---|
+| `<tr>` added to the DOM on import | 9,971 | **35** |
+| Longest task on import | 7.5 s | **0.5 s** |
+| Reload until A1 shows (sheet saved) | 7.8 s | **0.5 s** |
+
+Not done yet: reading a large file in a Web Worker — the page still sits still for that half second.
 
 Two things it is easy to get wrong, both pinned by tests: **a filtered row must take no height at
 all**, or charts drift away from the data they sit next to; and **a merge that crosses the edge of
@@ -2701,7 +2751,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 299 security tests
+### 303 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2715,6 +2765,7 @@ nothing but the anon key, which is the thing that used to work.
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
 | `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
+| `xlsxFormulaExport.test.ts` | 4 | An exported `.xlsx` holds only formulas the engine can read, whether the sheet came from a CSV or an `.xlsx` · one it cannot read goes out as text and comes back in as text · the cell in the app is unchanged |
 | `dataSources/sqlGuard.test.ts` | 17 | A saved query must be one SELECT: a semicolon hidden in a comment, a string or a dollar-quote, `SELECT … INTO OUTFILE`, `pg_read_file`, and a column called `updated_at` that must not be mistaken for one |
 | `server/dbGuard.test.ts` | 12 | Connection strings: both spellings of each kind, a password full of punctuation, unix sockets in both forms, private addresses refused, and an operator allow list that has to match the whole name |
 | `server/executeDbSource.test.ts` | 4 | The order of the refusals: a query that fails the guard is rejected before DNS is even asked |
@@ -2725,7 +2776,7 @@ nothing but the anon key, which is the thing that used to work.
 | `errorReport.test.ts` | 20 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
-Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
+Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/xlsxFormulaExport.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -2867,20 +2918,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1496 cases across 86 files, via Vitest
+npm test      # 1537 cases across 93 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1496 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1537 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 12 flows in a real browser (needs a build)
+npm run check:e2e   # 15 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -2967,10 +3018,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1496 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1537 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1496 passing tests could not catch](#-what-1496-passing-tests-could-not-catch), repeatable
+> [What 1537 passing tests could not catch](#-what-1537-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2978,6 +3029,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
 | `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
+| `xlsxFormulaExport.test.ts` | 4 | An exported `.xlsx` holds only formulas the engine can read: `=1+1` from a CSV is still a formula, one the engine cannot read goes out as text, on both the CSV → xlsx and xlsx → xlsx paths · opening that file again keeps it text |
 | `arrayFormulas.test.ts` | 21 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
 | `sheetCodec.test.ts` | 12 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
 | `saveHealth.test.ts` | 9 | A save the browser refuses becomes a status rather than an exception, "full" told apart from "disabled" in every spelling browsers use, the last good save left in place, recovery the moment a save lands, and listeners told when the status changes rather than on every keystroke |
@@ -3025,14 +3077,20 @@ whole project, including the two languages' `Messages` parity). **It has to be g
 full rule lives in `AGENTS.md`.
 
 **GitHub Actions** (`.github/workflows/ci.yml`) runs those same five gates on every push and pull request,
-across **Node 20.19, 22.12 and 24** — the first two being both floors `engines` declares, so the claim is
-tested rather than asserted. They run as separate steps so the run summary names the gate that failed instead
+across **Node 22.12 and 24** — exactly what `engines` declares, so the 22.12 floor is tested rather than
+asserted. They run as separate steps so the run summary names the gate that failed instead
 of showing one opaque red cross.
 
 Testing the real floor caught the same class of bug twice, and both times it was "the documented minimum
 doesn't actually work": first `check:readme` died on `import.meta.dirname` (Node 20.11+), then `npm test` died
 instantly because Vite 7 is ESM-only and needs `require(esm)`, which exists only from 20.19/22.12. This
-project's true floor comes from Vite, not Next — which is only knowable by running CI on it.
+project's true floor comes from Vite, not Next — which is only knowable by running CI on it. The 20 line has
+since been dropped as past end of life ([#68](https://github.com/SuruchBoss/ExcelToGo/issues/68)), leaving 22.12
+as the one floor.
+
+**On Vercel:** Vercel reads `engines` and picks the newest major inside the range, so it builds on **24.x** —
+and because the range does not reach the next major, Vercel will not quietly move to it. A new Node major goes
+into CI and `engines` together.
 
 ---
 
@@ -3041,7 +3099,7 @@ project's true floor comes from Vite, not Next — which is only knowable by run
 What's not done yet, and why — to show this is a known gap, not something forgotten:
 
 - [x] **Automated CI (GitHub Actions)** — done: lint → check:readme → test → build on every push and PR,
-      across Node 20.19, 22.12 and 24
+      across Node 22.12 and 24
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live
@@ -3185,7 +3243,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       script is not a file and cannot be hashed, so the page never hydrated at all. The price is
       prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 12 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 15 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

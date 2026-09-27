@@ -50,7 +50,11 @@ the round trip.
    into every cell** at import. `Ref!$C$2:$C$3001` has to be kept end to end — along with **the reference
    sheet's hidden and protected state**, which is currently lost on export (`Ref` comes back visible and
    unprotected).
-4. **Bug: empty input rows are cut off.** A sheet's size comes from the rows holding values (at least 20),
+4. ~~**Bug: empty input rows are cut off.**~~ **Fixed** ([#43](https://github.com/SuruchBoss/ExcelToGo/issues/43), [#10](https://github.com/SuruchBoss/ExcelToGo/issues/10)):
+   a sheet is sized from the last row and column holding a value, an unlocked cell or a rule. Draft 0 opens with
+   `Items` 200, `Locations` 50 and `OpeningBalance` 200 rows, and after export every contracted row is still
+   unlocked and still has its dropdowns (`src/store/importSize.test.ts`). Rules other than `list` are still lost —
+   that is item 5. Before: a sheet's size came from the rows holding values (at least 20),
    not from unlocked cells or cells carrying a rule. The ERP's template has input rows down to row 200
    (`Items`, `OpeningBalance`) and 50 (`Locations`); ExcelToGo opens 20. **The test:** input rows are now part
    of the template contract (ERP commit `0ebd35b`). Draft 0 is `Items` rows 2–200, `Locations` rows 2–50, and

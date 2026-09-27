@@ -34,6 +34,8 @@ import {
 import { nameKey, nameProblem, refToNode, type NameTable } from "./namedRanges";
 import { parseRangeRef, parseCellRef, rangeRefString, sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { MergeRange, parseMergeRef } from "./sheetMerges";
+import { shiftFormulaRefs } from "./formulaEngine/shift";
+import { compileFormula } from "./formulaEngine/formulaProgram";
 import { CfRule, CfComparison, CfTest } from "./conditionalFormat";
 
 function hexToArgb(hex: string): string {
@@ -88,6 +90,9 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
   if ("formula" in v && typeof v.formula === "string") {
     return `=${v.formula}`;
   }
+  if ("sharedFormula" in v && typeof v.sharedFormula === "string") {
+    return `=${filledFormula(cell, v.sharedFormula)}`;
+  }
   if ("richText" in v && Array.isArray(v.richText)) {
     return v.richText.map((r) => r.text).join("");
   }
@@ -99,6 +104,31 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
     return result === undefined || result === null ? "" : String(result);
   }
   return "";
+}
+
+/**
+ * The formula of a cell Excel filled from another one (#44).
+ *
+ * A formula filled down or across is stored once, as a *shared formula*: the first cell holds the
+ * text and every other cell only names it. Read the way a plain formula is, those cells came in as
+ * the number they last showed, and the next export wrote the numbers.
+ *
+ * The text is the first cell's, moved by this cell's offset from it with the engine's own shift —
+ * the same one the fill handle uses. ExcelJS offers a translation too (`cell.formula`), but it
+ * rewrites anything shaped like an address, inside quotes included: `"Q1 "` filled down two rows
+ * became `"Q3 "`. Its translation is kept as the fallback for a formula the shift cannot read.
+ */
+function filledFormula(cell: ExcelJS.Cell, master: string): string {
+  const source = cell.worksheet.getCell(master).value;
+  const at = parseCellRef(master);
+  if (at && source && typeof source === "object" && "formula" in source && typeof source.formula === "string") {
+    try {
+      return shiftFormulaRefs(source.formula, Number(cell.row) - 1 - at.row, Number(cell.col) - 1 - at.col);
+    } catch {
+      // The tokenizer refused it; ExcelJS's reading is better than losing the formula.
+    }
+  }
+  return cell.formula;
 }
 
 /**
@@ -364,23 +394,99 @@ function listReader(worksheet: ExcelJS.Worksheet) {
 /** A cell as a dropdown option: what it shows, so a formula offers its result rather than its text. */
 function listValue(cell: ExcelJS.Cell): string {
   const v = cell.value;
-  if (v && typeof v === "object" && "formula" in v) {
+  if (v && typeof v === "object" && ("formula" in v || "sharedFormula" in v)) {
     const result = (v as { result?: unknown }).result;
     return result === undefined || result === null || typeof result === "object" ? "" : String(result);
   }
   return cellValueToRaw(cell);
 }
 
-function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
-  const rowCount = Math.max(worksheet.actualRowCount || 0, 1);
-  const colCount = Math.max(worksheet.actualColumnCount || 0, 1);
-  const rows = Math.max(rowCount, 20);
-  const cols = Math.max(colCount, 10);
+/**
+ * The most rows an import opens. The model is a full grid in memory, so what costs is rows × columns:
+ * measured in the test runner, 100,000 × 26 builds in 0.27s, computes in 0.47s and holds ~100 MB,
+ * while 200,000 × 26 took 2.8s and ~780 MB.
+ */
+export const IMPORT_MAX_ROWS = 100_000;
+/** …and the most cells, so a wide sheet opens fewer rows rather than the same number at many times the cost. */
+export const IMPORT_MAX_CELLS = 2_600_000;
+const EXCEL_LAST_ROW = 1_048_576;
+const EXCEL_LAST_COL = 16_384;
 
-  const sheet = createEmptySheet(rows, cols);
+/**
+ * How far into the sheet the file actually reaches, as 1-based row and column numbers.
+ *
+ * Read from the last index of everything that has to survive, not from ExcelJS's
+ * `actualRowCount`/`actualColumnCount` — those *count* the rows and columns holding something, so
+ * one blank row or column made the count fall short of the last index, and everything past it was
+ * dropped without a word (#43). What reaches:
+ *
+ * - every cell holding a value, and the far corner of every merge;
+ * - every cell a validation rule covers, because a form's fields are empty rows by design (#10) —
+ *   except a rule on a whole column (or row), which means "all of them", not a million fields;
+ * - on a protected sheet, every unlocked cell the file writes out, for the same reason.
+ */
+function usedExtent(worksheet: ExcelJS.Worksheet, isTemplate: boolean): { rows: number; cols: number } {
+  let rows = 0;
+  let cols = 0;
+  const reach = (r: number, c: number) => {
+    if (r > rows) rows = r;
+    if (c > cols) cols = c;
+  };
+  worksheet.eachRow({ includeEmpty: false }, (row, r) => row.eachCell({ includeEmpty: false }, (_cell, c) => reach(r, c)));
+  for (const ref of worksheet.model?.merges ?? []) {
+    const m = parseMergeRef(ref, parseCellRef);
+    if (m) reach(m.endRow + 1, m.endCol + 1);
+  }
+
+  // ExcelJS expands each rule's range into one entry per cell, all sharing the rule's object — so
+  // grouping by that object gives back each range, and with it whether it ran to the sheet's edge.
+  const model = (worksheet as unknown as { dataValidations?: { model?: Record<string, object> } }).dataValidations?.model ?? {};
+  const farthest = new Map<object, { r: number; c: number }>();
+  // A whole-column rule is a million entries, so each address is read by hand rather than through
+  // the general parser — that file's import went from 1.8s to 1.4s in the test runner.
+  for (const address in model) {
+    let i = 0;
+    let c = 0;
+    for (let code = address.charCodeAt(0); code >= 65 && code <= 90; code = address.charCodeAt(++i)) c = c * 26 + code - 64;
+    const r = Number(address.slice(i));
+    if (i === 0 || !Number.isInteger(r) || r < 1) continue;
+    const seen = farthest.get(model[address]);
+    if (!seen) farthest.set(model[address], { r, c });
+    else {
+      if (r > seen.r) seen.r = r;
+      if (c > seen.c) seen.c = c;
+    }
+  }
+  for (const { r, c } of farthest.values()) reach(r >= EXCEL_LAST_ROW ? 0 : r, c >= EXCEL_LAST_COL ? 0 : c);
+
+  if (isTemplate) {
+    worksheet.eachRow({ includeEmpty: true }, (row, r) =>
+      row.eachCell({ includeEmpty: true }, (cell, c) => {
+        if (cell.protection?.locked === false) reach(r, c);
+      })
+    );
+  }
+  return { rows, cols };
+}
+
+/**
+ * The size a sheet opens at: at least 20 × 10 to have room to work in, and never past the ceilings
+ * above. `rowsInFile` is set only when the ceiling cut rows off, so the import can say so.
+ */
+export function importSize(used: { rows: number; cols: number }): { rows: number; cols: number; rowsInFile?: number } {
+  const cols = Math.min(Math.max(used.cols, 10), EXCEL_LAST_COL);
+  const ceiling = Math.min(IMPORT_MAX_ROWS, Math.floor(IMPORT_MAX_CELLS / cols));
+  const rows = Math.min(Math.max(used.rows, 20), ceiling);
+  return used.rows > rows ? { rows, cols, rowsInFile: used.rows } : { rows, cols };
+}
+
+function importWorksheet(worksheet: ExcelJS.Worksheet): { sheet: SheetModel; rowsInFile?: number } {
   // Only a protected sheet makes "locked" mean anything: that's the file telling us it was built
   // as a form, with the unlocked cells as the fields. An unprotected file is just a spreadsheet.
   const isTemplate = (worksheet as unknown as { sheetProtection?: { sheet?: boolean } }).sheetProtection?.sheet === true;
+  const { rows, cols, rowsInFile } = importSize(usedExtent(worksheet, isTemplate));
+
+  const sheet = createEmptySheet(rows, cols);
   const inputs: Record<string, true> = {};
   const comments: Record<string, string> = {};
   const validations: { key: string; formulae: unknown[] }[] = [];
@@ -501,7 +607,7 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
   }
 
   sheet.conditionalRules = readConditionalFormats(worksheet);
-  return sheet;
+  return rowsInFile === undefined ? { sheet } : { sheet, rowsInFile };
 }
 
 /**
@@ -524,6 +630,8 @@ function noteText(note: unknown): string {
 export interface ImportedSheet {
   name: string;
   sheet: SheetModel;
+  /** Set when the file goes further down than the sheet could open: the file's last row. */
+  rowsInFile?: number;
 }
 
 /** Imports every worksheet in the workbook (not just the first) as a separate tab. */
@@ -537,9 +645,11 @@ export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[
   const named = readDefinedNames(workbook);
   return workbook.worksheets.map((worksheet) => {
     const name = worksheet.name || "Sheet1";
-    const sheet = importWorksheet(worksheet);
+    const { sheet, rowsInFile } = importWorksheet(worksheet);
     const names = named.get(name.toLowerCase());
-    return { name, sheet: names ? { ...sheet, names } : sheet };
+    const imported: ImportedSheet = { name, sheet: names ? { ...sheet, names } : sheet };
+    if (rowsInFile !== undefined) imported.rowsInFile = rowsInFile;
+    return imported;
   });
 }
 
@@ -548,7 +658,12 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
     for (let c = 0; c < sheet.cols; c++) {
       const raw = sheet.cells[r][c];
       const cell = worksheet.getCell(r + 1, c + 1);
-      if (raw.startsWith("=") && raw.length > 1) {
+      // A formula goes out as a formula only if this engine can read it. One that does not parse is
+      // an error here whatever it would do elsewhere, and the file should not promise more than the
+      // app showed — so it goes out as the text it is.
+      if (raw.startsWith("=") && raw.length > 1 && compileFormula(raw.slice(1)).ast === null) {
+        cell.value = raw;
+      } else if (raw.startsWith("=") && raw.length > 1) {
         const computedValue = computed.values[r][c];
         cell.value = {
           formula: raw.slice(1),

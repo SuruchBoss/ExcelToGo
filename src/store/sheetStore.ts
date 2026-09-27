@@ -196,6 +196,9 @@ function selectionToAddress(sel: SelectionRect): string {
 
 interface ClipboardState extends ClipboardBlock {
   cut: boolean;
+  /** The tab it was copied or cut from. A cut clears *that* sheet — not whichever one is open when
+   *  the paste happens, which is how a cut across sheets used to wipe the destination (#41). */
+  sheetId: string;
 }
 
 interface SheetState {
@@ -447,7 +450,11 @@ function activeSelectionOf(s: SheetState): SelectionRect {
  *  its name/id) untouched. Every action that edits cell content goes through this instead of
  *  a top-level `sheet` field, since edits always target "whichever tab is open right now". */
 function withActiveSheet(s: SheetState, fn: (tab: SheetTab) => SheetModel): SheetTab[] {
-  return s.sheets.map((tab) => (tab.id === s.activeSheetId ? { ...tab, sheet: fn(tab) } : tab));
+  // The tab `activeTab` reads, found the same way, so a write can never miss the tab the read
+  // came from. Matching `activeSheetId` directly here, while reads fell back to the first tab, is
+  // how an id that named no tab turned every edit into a silent no-op (#40).
+  const id = activeTab(s).id;
+  return s.sheets.map((tab) => (tab.id === id ? { ...tab, sheet: fn(tab) } : tab));
 }
 
 /** The shape behind almost every action that edits cell content: read the active sheet and its
@@ -1056,7 +1063,10 @@ export const useSheetStore = create<SheetState>()(
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-          set({ clipboard: { ...block, cut: false }, ...say(getMessages().live.copied(rangeLabel(selection))) });
+          set({
+            clipboard: { ...block, cut: false, sheetId: activeTab(s).id },
+            ...say(getMessages().live.copied(rangeLabel(selection))),
+          });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
@@ -1065,7 +1075,10 @@ export const useSheetStore = create<SheetState>()(
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-          set({ clipboard: { ...block, cut: true }, ...say(getMessages().live.cut(rangeLabel(selection))) });
+          set({
+            clipboard: { ...block, cut: true, sheetId: activeTab(s).id },
+            ...say(getMessages().live.cut(rangeLabel(selection))),
+          });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
@@ -1087,25 +1100,40 @@ export const useSheetStore = create<SheetState>()(
             if (clipboard) {
               let next = pasteClipboardBlock(sheet, clipboard, targetRow, targetCol);
               let clearedClipboard: ClipboardState | null = clipboard;
+              let sheets = withActiveSheet(s, () => next);
               if (clipboard.cut) {
                 const height = clipboard.rows.length;
                 const width = clipboard.rows[0]?.length ?? 0;
                 const srcEndRow = clipboard.startRow + height - 1;
                 const srcEndCol = clipboard.startCol + width - 1;
-                const destOverlapsSource =
-                  targetRow <= srcEndRow &&
-                  targetRow + height - 1 >= clipboard.startRow &&
-                  targetCol <= srcEndCol &&
-                  targetCol + width - 1 >= clipboard.startCol;
-                // Moving to a spot that overlaps the original block would otherwise wipe out
-                // the very cells pasteClipboardBlock just wrote there.
-                if (!destOverlapsSource) {
-                  next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+                const destId = activeTab(s).id;
+                if (clipboard.sheetId === destId) {
+                  const destOverlapsSource =
+                    targetRow <= srcEndRow &&
+                    targetRow + height - 1 >= clipboard.startRow &&
+                    targetCol <= srcEndCol &&
+                    targetCol + width - 1 >= clipboard.startCol;
+                  // Moving to a spot that overlaps the original block would otherwise wipe out
+                  // the very cells pasteClipboardBlock just wrote there.
+                  if (!destOverlapsSource) {
+                    next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+                    sheets = withActiveSheet(s, () => next);
+                  }
+                } else {
+                  // Cleared on the sheet it was cut from. If that sheet has been deleted since,
+                  // there is nothing left to clear, and this is a copy: nothing on the sheet being
+                  // pasted into is touched beyond the block itself. Both sheets change in one
+                  // update, so one undo puts both back.
+                  sheets = sheets.map((t) =>
+                    t.id === clipboard.sheetId
+                      ? { ...t, sheet: clearRange(t.sheet, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol) }
+                      : t
+                  );
                 }
                 clearedClipboard = null;
               }
               return {
-                sheets: withActiveSheet(s, () => next),
+                sheets,
                 clipboard: clearedClipboard,
                 ...say(
                   getMessages().live.pasted(
@@ -1635,6 +1663,13 @@ export const useSheetStore = create<SheetState>()(
             const imported = await importWorkbookFromFile(file);
             const sheets = imported.map((w) => newTab(w.name, w.sheet));
             set({ sheets, activeSheetId: sheets[0].id, ...say(getMessages().live.imported(sheets.length)) });
+            // A file longer than the sheet can open is opened as far as it goes — and said out loud,
+            // because rows missing without a word is the bug this replaced (#43).
+            const clipped = imported.filter((w) => w.rowsInFile !== undefined);
+            if (clipped.length > 0) {
+              const { importClipped } = getMessages().store;
+              alert(clipped.map((w) => importClipped(w.name, w.rowsInFile!, w.sheet.rows)).join("\n"));
+            }
           } catch (err) {
             console.error(err);
             alert(getMessages().store.importError);
@@ -1761,6 +1796,23 @@ export const useSheetStore = create<SheetState>()(
     }
   )
 );
+
+/**
+ * `activeSheetId` always names a tab that exists.
+ *
+ * Undo history holds only `sheets`, on purpose — switching tabs is not something Ctrl+Z should
+ * step through — so undoing "add sheet", an import or "start blank" takes away the tab the id
+ * points at, and a cloud resync can do the same. Kept here, on every change, rather than in each
+ * of those paths, so a path added later cannot forget it. The replacement is the tab now in the
+ * position the missing one had, or the last tab if the list got shorter: after undoing "add
+ * sheet" that is the tab the person was on before they added it.
+ */
+useSheetStore.subscribe((s, prev) => {
+  if (s.sheets.length === 0 || s.sheets.some((t) => t.id === s.activeSheetId)) return;
+  const was = prev.sheets.findIndex((t) => t.id === s.activeSheetId);
+  const index = Math.min(Math.max(was, 0), s.sheets.length - 1);
+  useSheetStore.setState({ activeSheetId: s.sheets[index].id });
+});
 
 /** Reads any autosaved sheets from localStorage once, after the initial render has already
  *  matched the server-rendered HTML. Call once near the root of the app. */

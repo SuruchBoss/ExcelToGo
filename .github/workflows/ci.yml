@@ -22,11 +22,12 @@ jobs:
       # Don't hide a failure on one version because the other failed first.
       fail-fast: false
       matrix:
-        # Both floors `engines` declares, plus a current release. The floor comes from Vite 7
-        # (^20.19 || >=22.12), not from Next — it needs `require(esm)`, which lands in exactly
-        # those two versions. Testing the floors is the point: an earlier matrix asserted 20.9
-        # and the suite turned out not to run there at all.
-        node: ["20.19", "22.12", "24"]
+        # Exactly what `engines` declares: the 22.12 floor and 24. The floor comes from Vite 7,
+        # which needs `require(esm)` (22.12 on this line), and a production dependency,
+        # @supabase/supabase-js, wants 22 anyway. Testing the floor is the point: an earlier matrix
+        # asserted 20.9 and the suite turned out not to run there at all. Node 20 went out of
+        # support on 2026-04-30 and is no longer declared or tested (#68).
+        node: ["22.12", "24"]
 
     steps:
       - uses: actions/checkout@v7

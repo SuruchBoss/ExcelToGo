@@ -41,6 +41,8 @@ const label = {
   exportExcel: /^(ส่งออก Excel|Export Excel)$/,
   importFile: /^(นำเข้าไฟล์|Import file)$/,
   addRow: /^(แถว|Row)$/,
+  addSheet: /^(เพิ่มชีตใหม่|Add a new sheet)$/,
+  formulaBar: /^(พิมพ์ค่าหรือสูตร|Type a value or formula)/,
 };
 
 const failures = [];
@@ -226,6 +228,95 @@ const FLOWS = [
 
       await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "first");
       note(true, "Ctrl+Z restores the previous value");
+    },
+  },
+  {
+    name: "an edit after undoing a new sheet is kept (#40)",
+    async run(page) {
+      // Undo takes the new tab away. What is typed next has to land on the tab that is left and
+      // survive a reload — it used to go nowhere, with nothing on screen to say so.
+      await page.getByTitle(label.addSheet).click();
+      await page.keyboard.press("Control+z");
+      await page.getByTitle(label.addSheet).waitFor();
+      await typeInCell(page, 1, 0, "important");
+      const shown = (await cell(page, 1, 0).innerText()).trim();
+      note(shown === "important", `A2 shows what was typed after the undo (showed "${shown}")`);
+
+      await page.reload({ waitUntil: "networkidle" });
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "important", null, {
+        timeout: 5000,
+      }).then(
+        () => note(true, "it is still there after a reload"),
+        async () => note(false, "it is still there after a reload", `A2 showed "${(await cell(page, 1, 0).innerText()).trim()}"`)
+      );
+    },
+  },
+  {
+    name: "a cut on one sheet pasted on another clears the source, not the destination (#41)",
+    async run(page) {
+      await typeInCell(page, 0, 0, "move-me-1");
+      await typeInCell(page, 1, 0, "move-me-2");
+      await page.getByTitle(label.addSheet).click();
+      await typeInCell(page, 0, 0, "KEEP-A1");
+      await typeInCell(page, 0, 1, "KEEP-B1");
+      await typeInCell(page, 1, 0, "KEEP-A2");
+
+      // Back to the first sheet, cut A1:A2 with the keyboard, paste at D1 on the second.
+      await page.getByText("Sheet1", { exact: true }).click();
+      await cell(page, 0, 0).click();
+      await cell(page, 1, 0).click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Control+x");
+      await page.getByText("Sheet2", { exact: true }).click();
+      await cell(page, 0, 3).click();
+      await page.keyboard.press("Control+v");
+
+      const at = async (r, c) => (await cell(page, r, c).innerText()).trim();
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="3"]')?.innerText.trim() === "move-me-1", null, {
+        timeout: 5000,
+      });
+      const kept = [await at(0, 0), await at(0, 1), await at(1, 0)];
+      note(kept.join() === "KEEP-A1,KEEP-B1,KEEP-A2", `the destination's own cells survive (A1,B1,A2: ${kept.join(", ")})`);
+      note((await at(1, 3)) === "move-me-2", "the block lands at D1:D2");
+
+      await page.getByText("Sheet1", { exact: true }).click();
+      const source = [await at(0, 0), await at(1, 0)];
+      note(source.join() === ",", `the source sheet's A1:A2 is cleared (showed "${source.join('", "')}")`);
+    },
+  },
+  {
+    name: "the formula bar shows the cell as it is now, and leaving it writes nothing (#42)",
+    async run(page) {
+      const bar = page.getByPlaceholder(label.formulaBar);
+      const at = async (r, c) => (await cell(page, r, c).innerText()).trim();
+
+      // Delete under the same address: the bar has to follow, and clicking in and out must not
+      // put the old value back.
+      await typeInCell(page, 0, 0, "hello");
+      await cell(page, 0, 0).click();
+      await page.keyboard.press("Delete");
+      note((await bar.inputValue()) === "", `after Delete the bar is empty (showed "${await bar.inputValue()}")`);
+      await bar.click();
+      await cell(page, 3, 3).click();
+      note((await at(0, 0)) === "", `focusing the bar and leaving it does not bring "hello" back (A1 showed "${await at(0, 0)}")`);
+
+      // Undo under the same address, then Tab out of the bar.
+      await typeInCell(page, 1, 0, "v1");
+      await typeInCell(page, 1, 0, "v2");
+      await cell(page, 1, 0).click();
+      await page.keyboard.press("Control+z");
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "v1");
+      note((await bar.inputValue()) === "v1", `after undo the bar shows v1 (showed "${await bar.inputValue()}")`);
+      await bar.focus();
+      await page.keyboard.press("Tab");
+      note((await at(1, 0)) === "v1", `tabbing out of the bar leaves A2 at v1 (showed "${await at(1, 0)}")`);
+
+      // Typing still writes — Thai included, through the input method path the harness has.
+      // An empty cell well below the sample, so what lands is only what was typed.
+      await cell(page, 14, 1).click();
+      await bar.click();
+      await page.keyboard.insertText("ยอดขายเดือนนี้");
+      await page.keyboard.press("Enter");
+      note((await at(14, 1)) === "ยอดขายเดือนนี้", `Thai typed into the bar lands in B15 (showed "${await at(14, 1)}")`);
     },
   },
   {

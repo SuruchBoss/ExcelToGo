@@ -21,11 +21,11 @@ node scripts/license-headers.mjs  # หัวไฟล์ลิขสิทธ�
 the four gates that have caught every remaining bug in this project. The full one still has to be
 green before pushing.
 
-GitHub Actions รันสิบด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+GitHub Actions รันสิบด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 22.12 / 24;
 ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์ และ **a11y ยังแยกอีกเป็นสอง job ตามความกว้าง**
 เพราะมันเคยเป็น job ที่ยาวที่สุด ทั้ง run จึงรอมันอยู่ job เดียว — `A11Y_WIDTH=390` หรือ `1280` เลือกครึ่งเดียว
 ถ้าไม่ตั้งจะรันทั้งหมด ซึ่งเป็นสิ่งที่คนรันมือควรได้) — รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same ten gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
+GitHub Actions runs the same ten gates on every push and PR (Node 22.12 / 24; the a11y and e2e gates
 are jobs of their own because they need a browser, and **a11y is two jobs split by width** because it was the
 longest one and so the only thing the run waited on — `A11Y_WIDTH=390` or `1280` picks a half, unset runs
 everything, which is what someone running it by hand should get) — running them yourself
@@ -46,12 +46,12 @@ formula palette, AI, live data, conditional formatting, charts, pivots, find/rep
 dialog, the validation, names and comment popovers, the alert shown when a save is refused, and the two live-data dialogs (the picker and adding a source), 42 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 12 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
-เดินด้วยคีย์บอร์ดล้วน, undo, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 15 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+เดินด้วยคีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, ตัดข้ามชีต, แถบสูตรไม่เขียนค่าค้าง, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
 ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) และบันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้ เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 12 flows — type a formula and watch the value
-move, export `.xlsx` and import it back, keyboard only, undo, whether a change away from the cursor is
+`npm run check:e2e` drives the real app in a browser through 15 flows — type a formula and watch the value
+move, export `.xlsx` and import it back, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up), and a refused save that is announced while export still works. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.

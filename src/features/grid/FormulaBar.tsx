@@ -3,21 +3,27 @@
 
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { Paintbrush } from "lucide-react";
 import { selectActiveSelection, selectActiveSheet, useBoundCells, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
 import { singleCellSelection } from "@/types/sheet-ui";
 import { useT } from "@/i18n";
 import { precedentsOf } from "@/lib/precedents";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
+import { FormulaBarDraft, formulaBarCellKey, formulaBarShown, formulaBarWrite } from "./formulaBarDraft";
 
 /**
  * Always-visible bar showing the selected cell's address and raw content (a formula or a
  * plain value), editable independently of the grid's own double-click-to-edit overlay — the
- * way Excel's formula bar works. Uses an uncontrolled input keyed by the cell address: moving
- * to a different cell remounts it with that cell's content as the new `defaultValue`, instead
- * of syncing a controlled draft via a ref or effect (both of which this project's lint rules
- * for React 19 reject as unsafe during render).
+ * way Excel's formula bar works.
+ *
+ * Controlled, and showing the cell as it is *now* unless somebody has typed into the bar. It used
+ * to be an uncontrolled input keyed by address, holding its own copy of the content from when it
+ * was shown: a sort, a Delete or an undo changed the cell under the same address, the bar kept the
+ * old copy, and focusing it then leaving wrote that copy back (#42). Now there is no copy until a
+ * key is pressed (`formulaBarDraft.ts`), so leaving without typing writes nothing. Not remounted
+ * when the content changes either — a remount mid-composition drops what a Thai input method has
+ * not committed yet.
  */
 export default function FormulaBar() {
   const t = useT();
@@ -29,21 +35,29 @@ export default function FormulaBar() {
   const formatBarOpen = useSheetStore((s) => s.formatBarOpen);
   const toggleFormatBar = useSheetStore((s) => s.toggleFormatBar);
 
+  const activeSheetId = useSheetStore((s) => s.activeSheetId);
   const raw = sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "";
   const inputRef = useRef<HTMLInputElement>(null);
   const bound = useBoundCells().has(`${selection.anchorRow},${selection.anchorCol}`);
+  const cellKey = formulaBarCellKey(activeSheetId, selection.anchorRow, selection.anchorCol);
+  const [draft, setDraft] = useState<FormulaBarDraft | null>(null);
+  // The same draft, readable synchronously: a click elsewhere commits from the window's mousedown
+  // and then again from the input's own blur, and the second call may still hold the first one's
+  // closure. Clearing this on the first commit is what makes the second write nothing.
+  const draftRef = useRef<FormulaBarDraft | null>(null);
 
   const commit = () => {
-    if (bound) return;
-    const value = inputRef.current?.value ?? raw;
-    if (value !== raw) setCellRaw(selection.anchorRow, selection.anchorCol, value);
+    const pending = draftRef.current;
+    draftRef.current = null;
+    setDraft(null);
+    const value = bound ? null : formulaBarWrite(pending, cellKey, raw);
+    if (value !== null) setCellRaw(selection.anchorRow, selection.anchorCol, value);
   };
 
-  // Clicking a grid cell/header changes `selection` (and thus this input's `key`, remounting
-  // it) from the same mousedown that would otherwise blur it — by the time a native blur
-  // fires, React may have already re-rendered with the new selection, so `commit` above would
-  // read the wrong target cell. Committing on the capture phase runs before that click's own
-  // (bubble-phase) handler changes anything, avoiding the race.
+  // Clicking a grid cell/header changes `selection` from the same mousedown that would otherwise
+  // blur the bar — by the time a native blur fires, React may have already re-rendered with the
+  // new selection, so `commit` above would read the wrong target cell. Committing on the capture
+  // phase runs before that click's own (bubble-phase) handler changes anything, avoiding the race.
   useEffect(() => {
     function handleWindowMouseDown(e: MouseEvent) {
       if (document.activeElement === inputRef.current && e.target !== inputRef.current) commit();
@@ -84,16 +98,20 @@ export default function FormulaBar() {
       </span>
       <span className="shrink-0 text-xs italic text-zinc-500">fx</span>
       <input
-        key={address}
         ref={inputRef}
-        defaultValue={raw}
+        value={formulaBarShown(draft, cellKey, raw)}
+        onChange={(e) => {
+          draftRef.current = { cellKey, text: e.target.value };
+          setDraft(draftRef.current);
+        }}
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             commit();
             setSelection(singleCellSelection(Math.min(selection.anchorRow + 1, sheet.rows - 1), selection.anchorCol));
           } else if (e.key === "Escape") {
-            if (inputRef.current) inputRef.current.value = raw;
+            draftRef.current = null;
+            setDraft(null);
             inputRef.current?.blur();
           }
         }}

@@ -6,6 +6,7 @@ import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "@/lib/dataSources/pagi
 import { RateLimitError, readRateLimit } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, isDbType, TableData } from "@/lib/dataSources/types";
 import {
+  MAX_DELIVERED_BYTES,
   MAX_RESPONSE_BYTES,
   REQUEST_TIMEOUT_MS,
   SOURCE_TIMED_OUT,
@@ -171,6 +172,33 @@ function parseBody(text: string): { json: unknown } | { csv: string } {
  * data — showing a silently partial table is the one outcome worth avoiding here.
  */
 export async function executeSource(src: SourceInput, origin: string): Promise<TableData> {
+  return fitForDelivery(await collectSource(src, origin));
+}
+
+/**
+ * The table cut to the rows that fit in `limit` bytes of JSON, as the route will send it (#80).
+ *
+ * Whole when it fits, which is the usual case and costs one `JSON.stringify` to find out. Otherwise
+ * each row is measured once and the table keeps the longest run from the top that fits alongside
+ * the columns and the flags — a partial table the panel already knows how to say is partial, rather
+ * than a response the platform refuses.
+ */
+export function fitForDelivery(table: TableData, limit = MAX_DELIVERED_BYTES): TableData {
+  if (Buffer.byteLength(JSON.stringify(table)) <= limit) return table;
+  const cut: TableData = { ...table, rows: [], truncated: true, sizeLimited: true };
+  let used = Buffer.byteLength(JSON.stringify(cut));
+  let n = 0;
+  for (const row of table.rows) {
+    const bytes = Buffer.byteLength(JSON.stringify(row)) + (n > 0 ? 1 : 0); // the comma between rows
+    if (used + bytes > limit) break;
+    used += bytes;
+    n++;
+  }
+  cut.rows = table.rows.slice(0, n);
+  return cut;
+}
+
+async function collectSource(src: SourceInput, origin: string): Promise<TableData> {
   // Every caller — the data route, the test button, the demo path — comes through here, so the
   // branch lives here too rather than at each of them. A database source has no URL to resolve and
   // nothing below this line applies to it.
