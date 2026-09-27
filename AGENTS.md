@@ -172,6 +172,32 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
   adds it, and CI's "License headers" job fails without it. Applied migrations in `supabase/migrations/` are exempt.
 - พัฒนาบนบรานช์ `claude/excel-sheet-ui-builder-8ooz26` และ merge เข้า `main` เฉพาะตอนที่สั่งเท่านั้น
 
+### ช่องโหว่ความปลอดภัย: รายงานแบบส่วนตัวเท่านั้น / Security findings are reported privately
+
+- **ช่องโหว่ห้ามลง issue, PR, commit message หรือคอมเมนต์สาธารณะ** — `SECURITY.md` ระบุช่องทางไว้ช่องเดียวคือ
+  private vulnerability reporting (Security → Report a vulnerability) · agent หรือ QA ที่เจอช่องโหว่ให้**ร่าง advisory**
+  (เกิดอะไรขึ้น, ขั้นตอนทำซ้ำแบบสั้นที่สุด, ผลกระทบ, แนวทางแก้) แล้วส่งให้ owner เป็นคนยื่น เพราะ agent ไม่มีเครื่องมือ
+  สร้าง private advisory · **เคยพลาดมาแล้ว:** รอบ QA หนึ่งเปิด finding ความปลอดภัยสามเรื่องเป็น issue สาธารณะ
+  และเรื่องหนึ่งเขียนวิธีหลบตัวกันไว้ชัดเจน งานแก้จึงต้องแซงคิวขึ้นมาเพื่อปิดช่วงที่มันเปิดเผยอยู่ การปิด issue
+  ทีหลังไม่ช่วยอะไร เพราะ notification ถูกส่งออกไปแล้ว
+  A vulnerability never goes into a public issue, PR, commit message or comment. `SECURITY.md` names one channel,
+  private vulnerability reporting. An agent that finds one **drafts the advisory** — what happened, the shortest
+  repro, impact, fix direction — and hands it to the owner to file, because agents have no tool to create a private
+  advisory. It went wrong once: a QA pass opened three security findings as public issues, one of them spelling out
+  a way past a guard, and the fix had to jump the queue to shorten the window. Closing an issue afterwards does not
+  help — the notifications have already gone out.
+- **ไม่แน่ใจว่านับเป็นช่องโหว่ไหม ให้ถือว่านับ** — อะไรก็ตามที่ผ่านสิ่งที่ `SECURITY.md` หรือ README อ้างว่ากันไว้
+  (SSRF, auth, RLS, CSP, secret, rate limit) นับทั้งหมด owner ย้ายรายงานไปเป็น issue สาธารณะทีหลังได้ แต่ของที่
+  เปิดเผยไปแล้วไม่มีใครดึงคืนได้
+  When unsure, treat it as a vulnerability: anything that gets past a guard `SECURITY.md` or the README claims
+  counts. The owner can move a report into the open later; nobody can take a public one back.
+- **ประเมิน severity จาก "ใครเข้าถึงได้" ก่อน** — ช่องที่ต้องมี `SOURCES_ADMIN_TOKEN` ถึงจะใช้ได้ คนที่ใช้ได้คือ
+  operator หรือคนที่คุม API ปลายทางที่ operator เลือก ไม่ใช่ใครก็ได้บนอินเทอร์เน็ต · #18/#19 ถูกเปิดเป็น Medium
+  แล้วถูกลดเป็น Low ด้วยเหตุผลนี้ finding ที่เป็นแบบนั้นคือเรื่อง reliability และเปิดเป็น issue ปกติได้
+  Rate severity by who can reach it. A path behind `SOURCES_ADMIN_TOKEN` is open to the operator, or to whoever
+  runs an upstream the operator picked — not to the public. #18/#19 were filed as Medium and moved to Low for
+  exactly that reason; a finding shaped like that is reliability, and an ordinary issue is fine.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
