@@ -35,7 +35,15 @@ const SHEET_QUALIFIED_RE =
   /^(?:'(?:[^']|'')+'|[^\s'!,()+\-*/^&=<>%:]+)!\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?/;
 const RANGE_RE = /^\$?[A-Za-z]{1,3}\$?\d+:\$?[A-Za-z]{1,3}\$?\d+/;
 const CELL_RE = /^\$?[A-Za-z]{1,3}\$?\d+/;
-const NUMBER_RE = /^\d+(\.\d+)?/;
+/**
+ * A number literal, with an optional exponent: `1E3`, `2.5e-4`, `6E+23`.
+ *
+ * Tried after `CELL_RE`, which needs a letter first, so `E3` on its own is still the cell E3 and
+ * only a digit in front makes it an exponent. Without the exponent `1E3` came out as the number 1
+ * followed by the cell E3 — a syntax error in a formula, and worse inside a fill, where the "cell"
+ * was shifted and `1E3` quietly became `1E4`.
+ */
+const NUMBER_RE = /^\d+(\.\d+)?([eE][+-]?\d+)?/;
 /**
  * A word: a function name, `TRUE`/`FALSE`, or a range somebody has given a name.
  *

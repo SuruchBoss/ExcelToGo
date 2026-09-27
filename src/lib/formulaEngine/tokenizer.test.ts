@@ -83,4 +83,32 @@ describe("tokenize", () => {
     ]);
     expect(() => tokenize("1@2")).not.toThrow();
   });
+
+  it("reads a number with an exponent as one number (#37)", () => {
+    const numbers = (src: string) => tokenize(src).filter((t) => t.type !== "EOF");
+    expect(numbers("1E3")).toEqual([{ type: "NUMBER", value: "1E3" }]);
+    expect(numbers("1e3")).toEqual([{ type: "NUMBER", value: "1e3" }]);
+    expect(numbers("2.5E-4")).toEqual([{ type: "NUMBER", value: "2.5E-4" }]);
+    expect(numbers("6E+23")).toEqual([{ type: "NUMBER", value: "6E+23" }]);
+  });
+
+  it("still reads E3 on its own as a cell, and an E with no digits as no exponent", () => {
+    expect(tokenize("E3")[0]).toEqual({ type: "CELL", value: "E3" });
+    expect(tokenize("E3+1E3").slice(0, 3)).toEqual([
+      { type: "CELL", value: "E3" },
+      { type: "OP", value: "+" },
+      { type: "NUMBER", value: "1E3" },
+    ]);
+    // `1E` then `+` is 1 followed by the name E, not an exponent waiting for digits.
+    expect(tokenize("1E+A1").slice(0, 2)).toEqual([
+      { type: "NUMBER", value: "1" },
+      { type: "NAME", value: "E" },
+    ]);
+    // A range starting at column E, right after a number and an operator, stays a range.
+    expect(tokenize("1*E3:E5").slice(0, 3)).toEqual([
+      { type: "NUMBER", value: "1" },
+      { type: "OP", value: "*" },
+      { type: "RANGE", value: "E3:E5" },
+    ]);
+  });
 });

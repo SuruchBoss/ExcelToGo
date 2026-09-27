@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1472%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1478%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1472 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1478 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1472 passing tests could not catch
+### 🧪 What 1478 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1472 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1478 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -370,7 +370,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1472-case Vitest suite |
+| `npm test` | Run the 1478-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1964,7 +1964,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1472 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1478 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2512,6 +2512,12 @@ cell (`0^0` is `#NUM!` and `0^-1` is `#DIV/0!`, as in Excel); `AVERAGEIF` skips 
 the way `AVERAGEIFS` already did; and `LEFT`/`RIGHT` with a negative count or `MID` starting before the
 first character is `#VALUE!` rather than a slice from the other end.
 
+**Numbers can be written with an exponent** — `=1E3` is 1000, and `=2.5E-4` and `=6E+23` work too.
+`E3` on its own is still a cell, because only a digit in front makes it an exponent, and `=1E309`,
+past the largest number there is, is `#NUM!` rather than Infinity (#37). `1E3` used to be read as
+the number 1 followed by the cell E3: a syntax error, or, inside a fill, a "cell" that got shifted,
+so `1E3` quietly became `1E4`.
+
 **Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
 position inside a block. `MROUND` is not in the engine. Arithmetic that overflows (`10^308*10`) still
 shows as Infinity rather than Excel's `#NUM!`; only `^` and `POWER` were fixed.
@@ -2853,13 +2859,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1472 cases across 85 files, via Vitest
+npm test      # 1478 cases across 85 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1472 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1478 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2953,10 +2959,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1472 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1478 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1472 passing tests could not catch](#-what-1472-passing-tests-could-not-catch), repeatable
+> [What 1478 passing tests could not catch](#-what-1478-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |

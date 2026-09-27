@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { AstNode } from "./ast";
-import { EvalResult, FormulaValue, isError, scalar, ERR_DIV0, ERR_NAME, ERR_REF, ERR_VALUE } from "./types";
+import { EvalResult, FormulaValue, isError, scalar, ERR_DIV0, ERR_NAME, ERR_NUM, ERR_REF, ERR_VALUE } from "./types";
 import { toNumber, toDisplayString } from "./coerce";
 import { FUNCTIONS, power } from "./functions";
 
@@ -14,7 +14,8 @@ export interface EvalContext {
 export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
   switch (node.type) {
     case "number":
-      return scalar(node.value);
+      // `1E309` is past the largest double and parses to Infinity; Excel has no such number either.
+      return scalar(Number.isFinite(node.value) ? node.value : ERR_NUM);
     case "string":
       return scalar(node.value);
     case "bool":

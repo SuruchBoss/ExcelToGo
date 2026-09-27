@@ -782,3 +782,24 @@ describe("gaps the mutation gate found", () => {
     expect(colToLetters(51)).toBe("AZ");
   });
 });
+
+describe("numbers written with an exponent (#37)", () => {
+  it("evaluates them as Excel does", () => {
+    expect(calc("1E3")).toBe(1000);
+    expect(calc("1e3+1")).toBe(1001);
+    expect(calc("2.5E-2*4")).toBe(0.1);
+    expect(calc("6E+2/3")).toBe(200);
+    expect(calc("-1E2")).toBe(-100);
+  });
+
+  it("answers #NUM! for one past the largest number, not Infinity", () => {
+    expect(code(calc("1E309"))).toBe("#NUM!");
+    expect(code(calc("1E309-1E309"))).toBe("#NUM!");
+    expect(calc("1E308")).toBe(1e308);
+  });
+
+  it("leaves a cell called E3 a cell", () => {
+    expect(calc("E3*2", [[], [], [0, 0, 0, 0, 21]])).toBe(42);
+  });
+});
+
