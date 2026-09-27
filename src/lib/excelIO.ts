@@ -34,6 +34,7 @@ import {
 import { nameKey, nameProblem, refToNode, type NameTable } from "./namedRanges";
 import { parseRangeRef, parseCellRef, rangeRefString, sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { MergeRange, parseMergeRef } from "./sheetMerges";
+import { shiftFormulaRefs } from "./formulaEngine/shift";
 import { CfRule, CfComparison, CfTest } from "./conditionalFormat";
 
 function hexToArgb(hex: string): string {
@@ -88,6 +89,9 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
   if ("formula" in v && typeof v.formula === "string") {
     return `=${v.formula}`;
   }
+  if ("sharedFormula" in v && typeof v.sharedFormula === "string") {
+    return `=${filledFormula(cell, v.sharedFormula)}`;
+  }
   if ("richText" in v && Array.isArray(v.richText)) {
     return v.richText.map((r) => r.text).join("");
   }
@@ -99,6 +103,31 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
     return result === undefined || result === null ? "" : String(result);
   }
   return "";
+}
+
+/**
+ * The formula of a cell Excel filled from another one (#44).
+ *
+ * A formula filled down or across is stored once, as a *shared formula*: the first cell holds the
+ * text and every other cell only names it. Read the way a plain formula is, those cells came in as
+ * the number they last showed, and the next export wrote the numbers.
+ *
+ * The text is the first cell's, moved by this cell's offset from it with the engine's own shift —
+ * the same one the fill handle uses. ExcelJS offers a translation too (`cell.formula`), but it
+ * rewrites anything shaped like an address, inside quotes included: `"Q1 "` filled down two rows
+ * became `"Q3 "`. Its translation is kept as the fallback for a formula the shift cannot read.
+ */
+function filledFormula(cell: ExcelJS.Cell, master: string): string {
+  const source = cell.worksheet.getCell(master).value;
+  const at = parseCellRef(master);
+  if (at && source && typeof source === "object" && "formula" in source && typeof source.formula === "string") {
+    try {
+      return shiftFormulaRefs(source.formula, Number(cell.row) - 1 - at.row, Number(cell.col) - 1 - at.col);
+    } catch {
+      // The tokenizer refused it; ExcelJS's reading is better than losing the formula.
+    }
+  }
+  return cell.formula;
 }
 
 /**
@@ -364,7 +393,7 @@ function listReader(worksheet: ExcelJS.Worksheet) {
 /** A cell as a dropdown option: what it shows, so a formula offers its result rather than its text. */
 function listValue(cell: ExcelJS.Cell): string {
   const v = cell.value;
-  if (v && typeof v === "object" && "formula" in v) {
+  if (v && typeof v === "object" && ("formula" in v || "sharedFormula" in v)) {
     const result = (v as { result?: unknown }).result;
     return result === undefined || result === null || typeof result === "object" ? "" : String(result);
   }
