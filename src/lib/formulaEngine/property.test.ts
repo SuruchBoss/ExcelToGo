@@ -299,3 +299,26 @@ describe("SUM against the obvious oracle", () => {
     }
   });
 });
+
+describe("a leading minus and ^, against Excel's rule", () => {
+  it("reads -a^b as (-a)^b and c-a^b as c-(a^b), for any small integers", () => {
+    // Stated as Excel's rule and checked against JavaScript's `**` with the brackets written out:
+    // a leading minus belongs to the base, a binary minus waits for the power. Small exponents
+    // keep every result exact.
+    for (let i = 0; i < CASES; i++) {
+      const r = rng(BASE_SEED + 800_000 + i);
+      const [a, b, c] = [int(r, 1, 9), int(r, 0, 5), int(r, -20, 20)];
+      const cases: [string, number][] = [
+        [`-${a}^${b}`, (-a) ** b],
+        [`${term(c)}-${a}^${b}`, c - a ** b],
+        [`${term(c)}*-${a}^${b}`, c * (-a) ** b],
+        [`--${a}^${b}`, a ** b],
+      ];
+      for (const [text, oracle] of cases) {
+        const got = calcValue(text);
+        if (got !== oracle) expect.fail(`seed ${BASE_SEED + 800_000 + i}: ${text} gave ${String(got)}, expected ${oracle}`);
+      }
+    }
+  });
+});
+

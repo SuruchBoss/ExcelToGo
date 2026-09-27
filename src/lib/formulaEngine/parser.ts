@@ -71,13 +71,35 @@ class Parser {
   }
 
   private parseTerm(): AstNode {
-    let left = this.parseUnary();
+    let left = this.parsePower();
     while (this.peek().type === "OP" && (this.peek().value === "*" || this.peek().value === "/")) {
       const op = this.next().value;
-      const right = this.parseUnary();
+      const right = this.parsePower();
       left = { type: "binop", op, left, right };
     }
     return left;
+  }
+
+  /**
+   * `^`, with a leading minus bound tighter than it, as Excel does.
+   *
+   * Excel reads `=-2^2` as `(-2)^2` = 4. This parser used to read it as `-(2^2)` = -4, the
+   * textbook order, which flipped the sign of a formula copied out of Excel with nothing on screen
+   * to say so (#25). So the operand on either side of `^` is a unary expression, and a binary minus
+   * stays looser than `^` — `0-2^2` is -4 — because that one is parsed a level up, in
+   * `parseAdditive`, before a `^` is ever looked for.
+   *
+   * Still right-associative: `2^3^2` is `2^(3^2)` = 512, which `parser.test.ts` pins. Excel chains
+   * `^` from the left and gets 64; that is a separate difference, not changed here.
+   */
+  private parsePower(): AstNode {
+    const base = this.parseUnary();
+    if (this.peek().type === "OP" && this.peek().value === "^") {
+      this.next();
+      const exp = this.parsePower();
+      return { type: "binop", op: "^", left: base, right: exp };
+    }
+    return base;
   }
 
   private parseUnary(): AstNode {
@@ -86,17 +108,7 @@ class Parser {
       const expr = this.parseUnary();
       return { type: "unary", op, expr };
     }
-    return this.parsePower();
-  }
-
-  private parsePower(): AstNode {
-    const base = this.parsePrimary();
-    if (this.peek().type === "OP" && this.peek().value === "^") {
-      this.next();
-      const exp = this.parseUnary();
-      return { type: "binop", op: "^", left: base, right: exp };
-    }
-    return base;
+    return this.parsePrimary();
   }
 
   private parsePrimary(): AstNode {

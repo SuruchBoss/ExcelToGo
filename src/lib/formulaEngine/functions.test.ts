@@ -803,3 +803,24 @@ describe("numbers written with an exponent (#37)", () => {
   });
 });
 
+describe("a leading minus binds tighter than ^, as in Excel (#25)", () => {
+  it("gives the six answers Excel gives", () => {
+    expect(calc("-2^2")).toBe(4);
+    expect(calc("0-2^2")).toBe(-4);
+    expect(calc("-A1^2", [[3]])).toBe(9);
+    expect(calc("2^-1")).toBe(0.5);
+    expect(calc("--2")).toBe(2);
+    expect(calc("-2*3")).toBe(-6);
+  });
+
+  it("keeps a binary minus, a bracket and a plus sign where they were", () => {
+    expect(calc("-3^2")).toBe(9);
+    expect(calc("-(2^2)")).toBe(-4);
+    expect(calc("1-2^2")).toBe(-3);
+    expect(calc("2*-3^2")).toBe(18);
+    expect(calc("+2^2")).toBe(4);
+    expect(calc("-2^-2")).toBe(0.25);
+    expect(calc("-2^3")).toBe(-8);
+  });
+});
+

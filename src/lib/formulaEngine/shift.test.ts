@@ -45,4 +45,10 @@ describe("shiftFormulaRefs", () => {
     expect(shiftFormulaRefs("1E3+A1", 1, 0)).toBe("1E3+A2");
     expect(shiftFormulaRefs("2.5e-4*B2", 0, 1)).toBe("2.5e-4*C2");
   });
+
+  it("leaves the text of a signed power exactly as written (#25)", () => {
+    // Fills rewrite the text token by token, so how the parser groups `-A1^2` cannot leak into it.
+    expect(shiftFormulaRefs("-A1^2+0-B1^2", 1, 0)).toBe("-A2^2+0-B2^2");
+  });
 });
+
