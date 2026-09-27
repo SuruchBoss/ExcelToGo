@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1513%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1521%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1513 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1521 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1513 passing tests could not catch
+### 🧪 What 1521 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1513 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1521 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -370,7 +370,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1513-case Vitest suite |
+| `npm test` | Run the 1521-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1134,9 +1134,12 @@ not update them), and a list given as a named range (`=Units`) is still not read
 
 **Known bugs, not fixed yet:** a **template's**
 dropdowns are written back without checking the 255-character limit, so a long list produces a file that
-breaks the spec. A hidden or protected sheet comes back out as an ordinary one. A template keeps only its
-`list` rules — `whole`/`decimal`/`textLength`/`date` on a protected sheet are dropped — and empty input rows
-past the first 20 are cut off. All of it has to be fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
+breaks the spec. ~~Empty input rows past the first 20 are cut off~~ — fixed
+([#43](https://github.com/SuruchBoss/ExcelToGo/issues/43), [#10](https://github.com/SuruchBoss/ExcelToGo/issues/10)): a sheet
+opens down to its last input cell, and the ERP's draft 0 gets `Items` 200, `Locations` 50 and `OpeningBalance` 200 rows as
+contracted. A hidden or protected sheet comes back out as an ordinary one. A template keeps only its
+`list` rules — `whole`/`decimal`/`textLength`/`date` on a protected sheet are dropped. All of it has to be
+fixed before the [PaynEat ERP import template](docs/payneat-erp.en.md).
 
 ### 🏷 Named ranges
 
@@ -1638,6 +1641,19 @@ multi-sheet file imports as separate tabs. The file's **look** comes too — col
 row heights, merged cells — see [It looks like the file you opened](#-it-looks-like-the-file-you-opened), and
 if the file was built as a form, [Templates from an Excel file](#-templates-from-an-excel-file).
 
+**The sheet is sized from the last row and column the file actually uses.** A blank separator row does
+not cost the rows after it, and the empty rows a form still needs count too — unlocked cells on a
+protected sheet, and cells under a validation rule — so they survive opening, saving and exporting. A
+rule on a *whole column* (`A:A`) means "every row", so it applies to every row the sheet has rather
+than stretching the sheet to a million.
+
+> **Ceiling:** an import opens at most **100,000 rows** and **2,600,000 cells per sheet** (so a wider
+> sheet gets proportionally fewer rows — 260 columns get 10,000). In memory a sheet is a full grid,
+> so the cost is rows × columns: measured, 100,000 × 26 builds and computes in under a second, while
+> 200,000 × 26 took nearly three seconds and about 780 MB. A longer file is opened as far as the
+> ceiling allows, and **the app says so at once** — which sheet, the row the file reaches, and how many
+> rows were opened. Nothing is cut silently.
+
 ### 🧩 Drag-and-drop formulas
 
 Search/filter by category (Math / Statistics / Logic / Text / Date / Lookup), then **drag** or **click** a
@@ -1971,7 +1987,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1513 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1521 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2873,13 +2889,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1513 cases across 89 files, via Vitest
+npm test      # 1521 cases across 90 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1513 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1521 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2973,10 +2989,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1513 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1521 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1513 passing tests could not catch](#-what-1513-passing-tests-could-not-catch), repeatable
+> [What 1521 passing tests could not catch](#-what-1521-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |

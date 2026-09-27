@@ -676,6 +676,8 @@ export interface Messages {
     busyExportingPdf: string;
     busyExportingCsv: string;
     importError: string;
+    /** A sheet that goes further down than an import opens: its name, the file's last row, and the rows opened. */
+    importClipped: (sheet: string, rowsInFile: number, rowsOpened: number) => string;
     csvEmpty: string;
   };
   /** Explanations for the keyword-based fallback AI suggester (used when no

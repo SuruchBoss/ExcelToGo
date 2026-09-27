@@ -140,7 +140,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1513 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1521 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -342,7 +342,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1513", label: "automated tests" },
+      { value: "1521", label: "automated tests" },
       { value: "299", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -870,6 +870,8 @@ export const en: Messages = {
     busyExportingPdf: "Building PDF...",
     busyExportingCsv: "Building CSV...",
     importError: "Couldn't import this file. Please check that it's a valid Excel (.xlsx) or CSV file.",
+    importClipped: (sheet, rowsInFile, rowsOpened) =>
+      `Sheet "${sheet}" goes down to row ${rowsInFile.toLocaleString("en-US")}, but only ${rowsOpened.toLocaleString("en-US")} rows can be opened — the rows past that were not imported (the original file is untouched).`,
     csvEmpty: "This sheet is empty, so there is nothing to export.",
   },
   aiHeuristic: {

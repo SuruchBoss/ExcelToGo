@@ -1663,6 +1663,13 @@ export const useSheetStore = create<SheetState>()(
             const imported = await importWorkbookFromFile(file);
             const sheets = imported.map((w) => newTab(w.name, w.sheet));
             set({ sheets, activeSheetId: sheets[0].id, ...say(getMessages().live.imported(sheets.length)) });
+            // A file longer than the sheet can open is opened as far as it goes — and said out loud,
+            // because rows missing without a word is the bug this replaced (#43).
+            const clipped = imported.filter((w) => w.rowsInFile !== undefined);
+            if (clipped.length > 0) {
+              const { importClipped } = getMessages().store;
+              alert(clipped.map((w) => importClipped(w.name, w.rowsInFile!, w.sheet.rows)).join("\n"));
+            }
           } catch (err) {
             console.error(err);
             alert(getMessages().store.importError);
