@@ -4,8 +4,8 @@
 import ExcelJS from "exceljs";
 import { beforeEach, describe, expect, it } from "vitest";
 import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
-import { computeSheet, createEmptySheet, setCellRaw, SheetModel } from "./sheet";
-import { resetComputeCache } from "./sheetCompute";
+import { computeSheet, createEmptySheet, setCellRaw, setRangeFormat, SheetModel } from "./sheet";
+import { computeStats, resetComputeCache } from "./sheetCompute";
 import { sortRange } from "./sheetSort";
 import { toCsv, trimGrid, valuesToCsvGrid } from "./csv";
 import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
@@ -246,5 +246,72 @@ describe("the .xlsx round trip", () => {
     expect(computed.values[0][0]).toBe("123");
     expect(computed.values[1][0]).toBe("=1+1");
     expect(computed.values[3][0]).toBe(2);
+  });
+});
+
+describe('the "text" number format', () => {
+  const asText = (sheet: SheetModel) => setRangeFormat(sheet, 0, 0, 0, 0, { numberFormat: "text" });
+  const asGeneral = (sheet: SheetModel) => setRangeFormat(sheet, 0, 0, 0, 0, { numberFormat: "general" });
+
+  it("keeps whatever is typed as text", () => {
+    expect(literalValue("123", "text")).toBe("123");
+    expect(literalValue("-3", "text")).toBe("-3");
+    // The apostrophe is still the marker, and is still hidden.
+    expect(literalValue("'123", "text")).toBe("123");
+    expect(literalValue("", "text")).toBeNull();
+    const computed = computeSheet(asText(sheetWith(["123"])));
+    expect(computed.values[0][0]).toBe("123");
+    expect(computed.display[0][0]).toBe("123");
+  });
+
+  it("changes the value the moment the format changes, in both directions, without a full recompute", () => {
+    let sheet = setCellRaw(sheetWith(["123"]), 0, 1, "=A1");
+    expect(computeSheet(sheet).values[0][1]).toBe(123);
+
+    sheet = asText(sheet);
+    const before = computeStats.incremental;
+    const text = computeSheet(sheet);
+    expect(computeStats.incremental).toBe(before + 1);
+    expect(text.values[0][0]).toBe("123");
+    // And a formula reading the cell hears about it, which a display-only restyle would not do.
+    expect(text.values[0][1]).toBe("123");
+
+    sheet = asGeneral(sheet);
+    const back = computeSheet(sheet);
+    expect(computeStats.incremental).toBe(before + 2);
+    expect(back.values[0][0]).toBe(123);
+    expect(back.values[0][1]).toBe(123);
+  });
+
+  it("still only re-renders when the format moves between number formats", () => {
+    let sheet = setCellRaw(sheetWith(["0.5"]), 0, 1, "=A1");
+    computeSheet(sheet);
+    sheet = setRangeFormat(sheet, 0, 0, 0, 0, { numberFormat: "percent" });
+    const computed = computeSheet(sheet);
+    expect(computed.values[0][0]).toBe(0.5);
+    expect(computed.display[0][0]).toBe("0.50%");
+  });
+
+  it("goes out to .xlsx as a string cell formatted @, and comes back formatted as text", async () => {
+    const sheet = asText(sheetWith(["123"]));
+    const blob = await exportWorkbookToXlsxBlob([{ name: "S", sheet, computed: computeSheet(sheet) }]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    expect(wb.worksheets[0].getCell("A1").value).toBe("123");
+    expect(wb.worksheets[0].getCell("A1").numFmt).toBe("@");
+
+    const [{ sheet: back }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "t.xlsx"));
+    expect(back.formats[0][0]?.numberFormat).toBe("text");
+    expect(computeSheet(back).values[0][0]).toBe("123");
+  });
+
+  it("reads a column Excel formatted as text, with numbers typed into it, as text", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("S");
+    ws.getCell("A1").value = "00123";
+    ws.getCell("A1").numFmt = "@";
+    const [{ sheet }] = await importWorkbookFromFile(new File([await wb.xlsx.writeBuffer()], "x.xlsx"));
+    expect(sheet.formats[0][0]?.numberFormat).toBe("text");
+    expect(computeSheet(sheet).display[0][0]).toBe("00123");
   });
 });

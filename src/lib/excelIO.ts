@@ -559,7 +559,7 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
       } else {
         // The engine's own reading, not a second copy of it: a file that decided differently from
         // the grid is how `0812345678` went out as the number 812345678 (#23).
-        cell.value = literalValue(raw) as string | number;
+        cell.value = literalValue(raw, sheet.formats[r]?.[c]?.numberFormat) as string | number;
       }
 
       const format = sheet.formats[r]?.[c];

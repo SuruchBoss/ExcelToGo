@@ -342,7 +342,7 @@ function run(
         }
       }
     } else {
-      result = literalValue(raw);
+      result = literalValue(raw, sheet.formats[r]?.[c]?.numberFormat);
     }
 
     computing.delete(key);
@@ -440,7 +440,8 @@ function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined
 interface Diff {
   /** Cells whose text changed: the seed of the dirty closure. */
   changed: number[];
-  /** Cells whose number format changed but whose value did not: display only. */
+  /** Cells whose number format changed but whose value did not: display only. A move into or
+   *  out of "text" is not one of these — it changes the value — and goes in `changed`. */
   restyled: number[];
 }
 
@@ -472,10 +473,15 @@ function diffSheets(prev: SheetModel, next: SheetModel): Diff | null {
       const a = prev.formats[r] ?? [];
       const b = next.formats[r] ?? [];
       for (let c = 0; c < next.cols; c++) {
-        if (a[c]?.numberFormat !== b[c]?.numberFormat) {
-          if (restyled.length >= MAX_INCREMENTAL_EDITS) return null;
-          restyled.push(packCell(r, c));
-        }
+        const before = a[c]?.numberFormat;
+        const after = b[c]?.numberFormat;
+        if (before === after) continue;
+        // Into or out of "text" changes what the cell *is* — `123` stops or starts being a number —
+        // so it is an edit, and everything reading the cell has to hear about it. Treated as a
+        // restyle it would only be re-rendered, and keep the value it had under the old format.
+        const edit = before === "text" || after === "text" ? changed : restyled;
+        if (edit.length >= MAX_INCREMENTAL_EDITS) return null;
+        edit.push(packCell(r, c));
       }
     }
   }
