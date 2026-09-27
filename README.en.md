@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1433%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1463%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1433 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1463 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1433 passing tests could not catch
+### 🧪 What 1463 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1433 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1463 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -260,6 +260,7 @@ the outcome under a double rule like a total.
   - [The app can break and you still get your file out](#-the-app-can-break-and-you-still-get-your-file-out)
   - [Copy / Cut / Paste](#️-copy--cut--paste)
   - [Cell formatting](#-cell-formatting)
+  - [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros)
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
@@ -369,7 +370,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1433-case Vitest suite |
+| `npm test` | Run the 1463-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -826,12 +827,48 @@ believe they had one.
 ### 🎨 Cell formatting
 
 Bold, text alignment (left/center/right), text color, number format (general / 2 decimal places / percent /
-currency ฿) — travels with the cell on copy/paste and survives Excel export too.
+currency ฿ / [text](#-phone-numbers-and-codes-keep-their-zeros)) — travels with the cell on copy/paste and survives Excel export too.
 
 <p align="center"><img src="public/screenshots/en/06-format-filter.png" width="820"></p>
 
 The formatting row **folds away** (the brush button at the end of the formula bar). On a 1366×768 laptop the
 three stacked bars ate 150px before a single grid row appeared; folded, that's 107px.
+
+### 🔢 Phone numbers and codes keep their zeros
+
+Type a phone number `0812345678`, a Thai ID card `1234567890123` or a product code `00123` and **you get what you
+typed** — on the grid, in `.xlsx`, CSV and PDF, when sorting, filtering, in a pivot and in a chart. The leading
+zero used to vanish silently from every one of those at once: every cell that could be read as a number was
+turned into one when the sheet computed, and the `.xlsx` writer carried its own copy of that logic. Both now
+share one rule (`src/lib/cellLiteral.ts`), in this order:
+
+| Rule | Example | Result |
+|---|---|---|
+| A leading apostrophe (as in Excel) | `'123` | the text `123` — the grid hides the `'`, the formula bar shows it |
+| A cell formatted as **Text** (number format menu · Excel's `@`) | `123` | text — for a whole column of codes |
+| An integer with a leading zero | `0812345678`, `00123` | text, automatically (`0` and `0.5` are still numbers) |
+| Twelve digits or more, nothing else | `1234567890123` | text, automatically (eleven digits or fewer, or with a point or sign, are numbers) |
+| Everything else | `-3`, `12.50`, `10000000000` | a number, as before |
+
+In an `.xlsx` export, number-looking text is a string cell with the `@` format, so Excel does not turn it back
+into a number when somebody edits the cell. On import, a string cell the rules would read as something else
+(`"123"`, or text starting with `=`) gets its `'` back, so the file makes the round trip unchanged. Formulas
+reading these cells behave like Excel's: `=A1+1` still computes, `=LEN(A1)` is 10, `=A1&""` is `"0812345678"`.
+
+**What changes, on purpose:** `007` is text now, so it sorts after every number, and charts and conditional
+formatting do not count it as a number. Sheets already saved in the browser need nothing done: the raw text was
+always stored as typed, so the zeros come back the moment they are opened.
+
+**Limits:**
+- **A CSV opened in Excel** — we write `0812345678` into the file as it is, but Excel double-click-opening a
+  CSV converts it to a number itself and drops the zero. That is out of our hands (CSV has nowhere to say what
+  type a field is); use `.xlsx`, or Excel's Data → From Text.
+- **What was already lost stays lost** — an `.xlsx` exported or imported before the fix holds `812345678` as a
+  number, with no zero to give back. Live data from a CSV source still converts to numbers too (#36).
+- **`=SUM(A1:A3)` over text still adds up number-looking text**, where Excel gives 0 — that is #38, separate
+  because it changes the totals of sheets that already exist.
+- "Text" is a cell format, so like every format it does not sync live while co-editing; an apostrophe is part of
+  the cell, so it does.
 
 ### 📊 Charts from the sheet
 
@@ -1924,7 +1961,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1433 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1463 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2194,6 +2231,9 @@ src/
     chartImage.ts            # A chart as a picture (SVG → PNG) for the .xlsx and the PDF (tested)
     gridGeometry.ts          # Row/column positions in pixels + where a new chart lands — shared with the
                               # grid so the two agree on exactly the same sizes (tested)
+    cellLiteral.ts           # Whether a non-formula cell is a number or text — the one place that decides,
+                              # shared by the engine and the .xlsx writer: a leading apostrophe, a
+                              # leading zero or twelve-plus digits make it text (tested)
     sheetCompute.ts          # Works out every cell's value, and works out the next one without redoing
                               # the rest — keeps a dependency graph (tested, with a benchmark)
     rowWindow.ts             # Which rows a scrolled grid actually has to put in the DOM, so a
@@ -2810,13 +2850,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1433 cases across 84 files, via Vitest
+npm test      # 1463 cases across 85 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1433 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1463 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2910,10 +2950,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1433 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1463 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1433 passing tests could not catch](#-what-1433-passing-tests-could-not-catch), repeatable
+> [What 1463 passing tests could not catch](#-what-1463-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2988,7 +3028,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live
-      session that needed it. Still open: automatic sync and version history
+      session that needed it. Still open: automatic sync (version history is done — see its own item below)
 - [ ] **Invite by user id, not by email address** (proposal) — today a share is matched against the
       email in the sign-in token, so it is only safe while the Supabase project enforces email
       confirmation (see ⚠️ under cloud save). Resolving the invitee to an `auth.uid()` once they have
@@ -3211,6 +3251,13 @@ What's not done yet, and why — to show this is a known gap, not something forg
   the other language's set. Found and fixed on the way: `SORT(…,-1)` sorting the wrong way, the English toolbar
   overflowing a 1366px laptop until the language toggle was cut off, and two live-data windows that never said
   they were dialogs
+- [x] **Leading zeros stay (#23)** — phone numbers, ID cards and codes are text from the moment the sheet
+      computes, by one rule the `.xlsx` writer shares (see
+      [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros))
+- [ ] **`SUM`/`AVERAGE`/`COUNT` skip text in a range, as Excel does (#38)** — today number-looking text is added in
+- [ ] **Live CSV data uses the same rule (#36)** — `literalValue` is exported and waiting to be called
+- [ ] **A CSV field starting with `'`** — on import the first `'` is read as Excel's "the rest is text" marker and
+      not shown. A file that means the apostrophe literally (a name like `'s-Hertogenbosch`) loses it for now
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 - [ ] **Working with PaynEat ERP** — agreed, not built (see [docs/payneat-erp.en.md](docs/payneat-erp.en.md)):
       the import template waits on cross-sheet dropdowns read from the right sheet, range references kept

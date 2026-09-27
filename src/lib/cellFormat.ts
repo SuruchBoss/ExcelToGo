@@ -1,7 +1,8 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-export type NumberFormat = "general" | "number2" | "percent" | "currency";
+/** "text" is Excel's `@`: whatever is typed stays exactly as typed, digits included (#23). */
+export type NumberFormat = "general" | "number2" | "percent" | "currency" | "text";
 export type CellAlign = "left" | "center" | "right";
 export type CellVAlign = "top" | "middle" | "bottom";
 
@@ -73,10 +74,12 @@ export const EXCEL_NUM_FMT: Record<NumberFormat, string | undefined> = {
   number2: "#,##0.00",
   percent: '0.00"%"',
   currency: '"฿"#,##0.00',
+  text: "@",
 };
 
 export function numberFormatFromExcelNumFmt(numFmt: string | undefined): NumberFormat {
   if (!numFmt || numFmt === "General") return "general";
+  if (numFmt === "@") return "text";
   if (numFmt.includes("%")) return "percent";
   if (numFmt.includes("฿") || numFmt.includes("$")) return "currency";
   if (numFmt.includes("0.00")) return "number2";

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { commentKey } from "./cellComments";
+import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { chartDataFrom } from "./charts";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
@@ -98,6 +99,19 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
     return result === undefined || result === null ? "" : String(result);
   }
   return "";
+}
+
+/**
+ * Whether the file stored this cell as text rather than as a number, a date or a formula.
+ *
+ * It matters because the cell's text alone cannot say: `"123"` and `123` are the same characters,
+ * and only the type tells a code that happens to be digits from an amount (#23).
+ */
+function isTextCell(cell: ExcelJS.Cell): boolean {
+  const v = cell.value;
+  if (typeof v === "string") return true;
+  if (!v || typeof v !== "object" || v instanceof Date || "formula" in v) return false;
+  return "richText" in v || ("text" in v && typeof v.text === "string");
 }
 
 /**
@@ -376,7 +390,7 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): SheetModel {
       const r = rowNumber - 1;
       const c = colNumber - 1;
       if (r < sheet.rows && c < sheet.cols) {
-        sheet.cells[r][c] = cellValueToRaw(cell);
+        sheet.cells[r][c] = isTextCell(cell) ? rawForText(cellValueToRaw(cell)) : cellValueToRaw(cell);
         const align = cell.alignment?.horizontal;
         const valign = cell.alignment?.vertical;
         const format = {
@@ -543,8 +557,9 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
       } else if (raw === "") {
         // leave blank
       } else {
-        const n = Number(raw);
-        cell.value = raw.trim() !== "" && !Number.isNaN(n) ? n : raw;
+        // The engine's own reading, not a second copy of it: a file that decided differently from
+        // the grid is how `0812345678` went out as the number 812345678 (#23).
+        cell.value = literalValue(raw, sheet.formats[r]?.[c]?.numberFormat) as string | number;
       }
 
       const format = sheet.formats[r]?.[c];
@@ -562,6 +577,12 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
       }
       if (format?.numberFormat && EXCEL_NUM_FMT[format.numberFormat]) {
         cell.numFmt = EXCEL_NUM_FMT[format.numberFormat]!;
+      }
+      // Text that would read as a number goes out marked as text ("@"), which is what stops Excel
+      // itself from turning it back into one the first time somebody edits the cell. After the
+      // number format above, because a number format means nothing to text and this must win.
+      if (typeof cell.value === "string" && looksNumeric(cell.value)) {
+        cell.numFmt = "@";
       }
       if (format?.fill) {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: hexToArgb(format.fill) } };

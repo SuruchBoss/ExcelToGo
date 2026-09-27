@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { parseFormula, FormulaSyntaxError } from "@/lib/formulaEngine/parser";
 import { evaluate } from "@/lib/formulaEngine/evaluator";
 import { colToLetters } from "@/lib/formulaEngine/address";
+import { literalValue } from "@/lib/cellLiteral";
 import { FormulaError, FormulaValue, isError } from "@/lib/formulaEngine/types";
 import { useT } from "@/i18n";
 
@@ -79,8 +80,7 @@ export default function LiveSheet() {
           return new FormulaError(e instanceof FormulaSyntaxError ? "#SYNTAX!" : "#ERROR!");
         }
       }
-      if (raw !== "" && !Number.isNaN(Number(raw))) return Number(raw);
-      return raw === "" ? null : raw;
+      return literalValue(raw);
     };
     return Array.from({ length: ROWS }, (_, r) => Array.from({ length: COLS }, (_, c) => getCell(r, c)));
   }, [rowsWithText]);
