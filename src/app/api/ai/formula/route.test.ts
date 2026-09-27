@@ -54,27 +54,34 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("with the public-demo switch on", () => {
-  beforeEach(() => {
-    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "1");
-  });
-
-  it("does not call Anthropic even though a key is configured", async () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-should-never-be-used");
+describe("the deployment's own key decides, and nothing else (#109)", () => {
+  it("does not call Anthropic when no key is configured, whatever else is set", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
     const { body } = await post(ask, "203.0.113.1");
     expect(anthropic.constructed).toBe(0);
     expect(anthropic.create).not.toHaveBeenCalled();
     expect(body.source).toBe("heuristic");
   });
 
-  it("still answers, because the fallback runs locally and costs nothing", async () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-should-never-be-used");
+  it("still answers without a key, because the fallback runs locally and costs nothing", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
     const { status, body } = await post(ask, "203.0.113.2");
-    // Not a 403: unlike live data, this feature degrades instead of switching off.
+    // Not a 403: this feature degrades instead of switching off.
     expect(status).toBe(200);
     // The heuristic's answer, which the mocked model would never give: proof of the path taken.
     expect(body.formula).toBe("=SUM(C2:C11)");
     expect(String(body.explanation).length).toBeGreaterThan(0);
+  });
+
+  it("an old NEXT_PUBLIC_DEMO_MODE no longer hides a configured key — it only switches server sources off", async () => {
+    // Pinned so the change is a decision, not an accident: the deployment order that goes with it
+    // (confirm no key is set on the public site before removing the old switch) is in the README.
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "1");
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-configured-by-the-operator");
+    const { body } = await post(ask, "203.0.113.7");
+    expect(anthropic.constructed).toBe(1);
+    expect(body.source).toBe("ai");
   });
 
   it("refuses a request with no question before it refuses anything else", async () => {
@@ -84,7 +91,7 @@ describe("with the public-demo switch on", () => {
   });
 });
 
-describe("with the demo switch off", () => {
+describe("with a key configured, or not", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "");
   });

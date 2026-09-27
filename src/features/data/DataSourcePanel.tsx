@@ -4,36 +4,50 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, BookOpen, Database, Plus, X } from "lucide-react";
+import { ArrowRight, Database, Globe, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { PublicDataSource } from "@/lib/dataSources/types";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { useLiveBlocks, useSheetStore } from "@/store/sheetStore";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { useT } from "@/i18n";
-import { DEMO_MODE } from "@/lib/demoMode";
 import SourceRow from "./SourceRow";
 import SourceSetupDialog from "./SourceSetupDialog";
+import BrowserSourceDialog from "./BrowserSourceDialog";
 import SourcesUnlock, { useSourcesToken } from "./SourcesUnlock";
+import { useServerSources } from "./useServerSources";
 import { valueLabel } from "./valueLabel";
 
 /** The side panel stays a short list: what's connected, and one button per source. Choosing what
- *  to insert and where happens in the picker dialog, which has room to show the actual data. */
+ *  to insert and where happens in the picker dialog, which has room to show the actual data.
+ *
+ *  Two kinds of source live here (#110, #109). **This browser's own** — an API the visitor's
+ *  machine can reach, fetched by the browser — are for everyone, always. **The server's** are
+ *  there only when the deployment set `SOURCES_ADMIN_TOKEN`; otherwise that half of the panel is
+ *  simply absent, with nothing saying it is switched off. */
 export default function DataSourcePanel() {
   const t = useT();
   const sources = useDataSourceStore((s) => s.sources);
+  const browserSources = useDataSourceStore((s) => s.browserSources);
   const data = useDataSourceStore((s) => s.data);
+  const resume = useDataSourceStore((s) => s.resume);
+  const setResume = useDataSourceStore((s) => s.setResume);
   const blocks = useLiveBlocks();
   const removeLiveBlock = useSheetStore((s) => s.removeLiveBlock);
   const openPicker = useSheetStore((s) => s.openDataPicker);
   const [setup, setSetup] = useState<{ open: boolean; source?: PublicDataSource }>({ open: false });
+  const [browserForm, setBrowserForm] = useState<{ open: boolean; id?: string }>({ open: false });
   const token = useSourcesToken();
-  // A public demo reads the three built-ins with no token and cannot change any of them, so the
-  // unlock box and every write control are not "disabled" here — they are absent, because there is
-  // nothing behind them to unlock or to save.
-  const unlocked = DEMO_MODE || Boolean(token);
+  const serverOffered = useServerSources();
+  const serverUnlocked = serverOffered && Boolean(token);
 
   const sourceName = (id: string) => sources.find((s) => s.id === id)?.name ?? id;
+  const shown = sources.filter((s) => s.local || serverUnlocked);
+  const editing = browserForm.id ? browserSources.find((b) => b.id === browserForm.id) : undefined;
+  const closeBrowserForm = () => {
+    setBrowserForm({ open: false });
+    setResume(null);
+  };
 
   return (
     <div className="flex h-full flex-col gap-2.5 overflow-hidden">
@@ -41,60 +55,41 @@ export default function DataSourcePanel() {
         <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
           <Database size={16} className="text-emerald-600" /> {t.data.title}
         </h2>
-        <p className="text-xs text-zinc-500">{t.data.subtitle}</p>
+        <p className="text-xs text-zinc-600">{t.data.subtitle}</p>
       </div>
 
-      {!DEMO_MODE && <SourcesUnlock />}
+      <button
+        onClick={() => setBrowserForm({ open: true })}
+        className="flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 text-[13px] font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:py-2"
+      >
+        <Globe size={15} aria-hidden /> {t.data.browser.add}
+      </button>
 
-      {/* On the demo this used to be one grey sentence saying "clone it and run it yourself", and
-          the person who wrote the app read past it looking for a button. So it is a box with a
-          question in bold — the one the reader arrived with — and a way to the answer. */}
-      {DEMO_MODE && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5">
-          <p className="text-[13px] font-semibold text-emerald-950">{t.data.ownTitle}</p>
-          <p className="mt-1 text-xs leading-relaxed text-zinc-700">{t.data.demoNote}</p>
-          <Link
-            href="/guide"
-            className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:py-1.5"
-          >
-            <BookOpen size={14} aria-hidden /> {t.data.guideCta} <ArrowRight size={13} aria-hidden />
-          </Link>
-        </div>
-      )}
+      {serverOffered && <SourcesUnlock />}
 
-      {!DEMO_MODE && !unlocked && (
-        <Link href="/guide" className="-mt-1 inline-flex items-center gap-1 self-start text-xs font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-950">
-          {t.data.guideLinkLocked} <ArrowRight size={12} aria-hidden />
-        </Link>
-      )}
-
-      {unlocked && (
       <div className="flex flex-col gap-2 overflow-y-auto pr-1">
-        {sources.length === 0 && <p className="p-4 text-center text-xs text-zinc-500">{t.data.empty}</p>}
-        {sources.map((src) => (
+        {shown.length === 0 && <p className="p-3 text-center text-xs text-zinc-600">{t.data.empty}</p>}
+        {shown.map((src) => (
           <SourceRow
             key={src.id}
             source={src}
             onUse={() => openPicker({ sourceId: src.id })}
-            onEdit={DEMO_MODE ? undefined : () => setSetup({ open: true, source: src })}
+            onEdit={src.local ? () => setBrowserForm({ open: true, id: src.id }) : () => setSetup({ open: true, source: src })}
           />
         ))}
       </div>
-      )}
 
-      {unlocked && !DEMO_MODE && (
+      {serverUnlocked && (
         <button
           onClick={() => setSetup({ open: true })}
-          className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-[13px] font-medium text-zinc-500 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
+          className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-[13px] font-medium text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
         >
           <Plus size={15} /> {t.data.addSource}
         </button>
       )}
-      {unlocked && !DEMO_MODE && (
-        <Link href="/guide" className="-mt-1 inline-flex items-center gap-1 self-center text-[11px] text-zinc-600 underline underline-offset-2 hover:text-emerald-800">
-          {t.data.guideLink}
-        </Link>
-      )}
+      <Link href="/guide" className="-mt-1 inline-flex items-center gap-1 self-center text-[11px] text-zinc-600 underline underline-offset-2 hover:text-emerald-800">
+        {t.data.guideLink} <ArrowRight size={11} aria-hidden />
+      </Link>
 
       <div className="mt-auto border-t border-zinc-100 pt-2.5">
         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">{t.data.inSheet}</p>
@@ -127,6 +122,15 @@ export default function DataSourcePanel() {
       </div>
 
       {setup.open && <SourceSetupDialog source={setup.source} onClose={() => setSetup({ open: false })} />}
+      {(browserForm.open || resume) && (
+        <BrowserSourceDialog
+          // A resumed test and an ordinary open are different forms; the key keeps them from sharing state.
+          key={resume ? "resume" : (browserForm.id ?? "new")}
+          source={resume?.id ? browserSources.find((b) => b.id === resume.id) : editing}
+          resume={resume ?? undefined}
+          onClose={closeBrowserForm}
+        />
+      )}
     </div>
   );
 }

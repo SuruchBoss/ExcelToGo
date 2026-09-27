@@ -44,6 +44,7 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { randomBytes } from "node:crypto";
+import { createServer } from "node:http";
 import { chromium } from "playwright";
 
 const ROOT = process.cwd();
@@ -66,6 +67,10 @@ const BUILD = !flag("no-build");
 const PORT = Number(process.env.SCREENSHOT_PORT || 3150);
 const ORIGIN = `http://localhost:${PORT}`;
 const TOKEN = randomBytes(12).toString("hex");
+/** A company API stand-in on another port, for the browser-source scenes (#110): it answers CORS for
+ *  the app, wants a bearer header, and has a path that answers without CORS, for the checklist. */
+const API_PORT = Number(process.env.SCREENSHOT_API_PORT || 4717);
+const API = `http://localhost:${API_PORT}`;
 const outDir = (lang) => path.join(ROOT, "public/screenshots", lang === "th" ? "" : lang);
 
 // ── The app's own words ─────────────────────────────────────────────────────────────────────────
@@ -246,6 +251,11 @@ const W = {
     aiQuestion: "หาค่าเฉลี่ยราคา",
     ordersSource: "ออเดอร์ทั้งหมด",
     limitedSource: "API ที่จำกัดจำนวนครั้ง",
+    salesSource: "ยอดขายสด",
+    summarySource: "สรุปวันนี้",
+    pagedSource: "รายการสั่งซื้อ (หลายหน้า)",
+    apiSource: "สต็อกคลังกลาง",
+    stock: [["RICE-5KG", "ข้าวหอมมะลิ 5 กก.", 128], ["OIL-1L", "น้ำมันพืช 1 ลิตร", 64], ["SUGAR-1KG", "น้ำตาลทราย 1 กก.", 90], ["FISH-SAUCE", "น้ำปลา 700 มล.", 45], ["EGG-30", "ไข่ไก่ แผง 30 ฟอง", 22], ["NOODLE", "เส้นหมี่ 500 ก.", 70]],
     branchMonths: [
       ["สาขา", "ม.ค.", "ก.พ.", "มี.ค."],
       ["กรุงเทพ", 182000, 205000, 246000],
@@ -289,6 +299,11 @@ const W = {
     aiQuestion: "Find the average price",
     ordersSource: "All orders",
     limitedSource: "Rate-limited API",
+    salesSource: "Live sales",
+    summarySource: "Today's summary",
+    pagedSource: "Orders (several pages)",
+    apiSource: "Central stock",
+    stock: [["RICE-5KG", "Jasmine rice 5 kg", 128], ["OIL-1L", "Vegetable oil 1 L", 64], ["SUGAR-1KG", "Sugar 1 kg", 90], ["FISH-SAUCE", "Fish sauce 700 ml", 45], ["EGG-30", "Eggs, tray of 30", 22], ["NOODLE", "Rice noodles 500 g", 70]],
     branchMonths: [
       ["Branch", "Jan", "Feb", "Mar"],
       ["Bangkok", 182000, 205000, 246000],
@@ -412,12 +427,75 @@ async function addSource(k, body) {
 }
 
 // ── Steps several scenes share ──────────────────────────────────────────────────────────────────
+/** The browser-source form, with the stand-in API's origin already allowed by the page's CSP. */
+async function openBrowserForm(k) {
+  await k.open("/app", {
+    width: 1100,
+    height: 900,
+    prepare: (page) =>
+      page.context().addCookies([{ name: "etg-api-origins", value: encodeURIComponent(API), url: ORIGIN, sameSite: "Strict", secure: true }]),
+  });
+  await k.button(k.t.toolbar.data).click();
+  await k.button(k.t.data.browser.add).click();
+  await k.page.getByRole("dialog").waitFor();
+}
+
+async function fillBrowserForm(k, url) {
+  const d = k.page.getByRole("dialog");
+  await d.getByRole("textbox").first().fill(W[k.lang].apiSource);
+  await d.getByPlaceholder(k.t.data.browser.urlPlaceholder).fill(k.lang === "en" ? `${url}?lang=en` : url);
+  await d.getByLabel(k.t.data.browser.headerName).fill("Authorization");
+  await d.getByLabel(k.t.data.browser.headerValue).fill("Bearer 3f9c2a7e41d8");
+  await d.getByPlaceholder("data.items").fill("items");
+}
+
+/** The stand-in API. Answers CORS for the app's origin only, and requires the bearer header. */
+function startStubApi() {
+  const server = createServer((req, res) => {
+    const url = new URL(req.url, API);
+    const lang = url.searchParams.get("lang") === "en" ? "en" : "th";
+    if (url.pathname === "/nocors") {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ items: [] }));
+      return;
+    }
+    res.setHeader("access-control-allow-origin", ORIGIN);
+    res.setHeader("access-control-allow-headers", "authorization");
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    if (!req.headers.authorization) {
+      res.statusCode = 401;
+      res.end("{}");
+      return;
+    }
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ items: W[lang].stock.map(([sku, name, qty]) => ({ sku, name, qty })) }));
+  });
+  server.listen(API_PORT);
+  return server;
+}
 async function startBlank(k) {
   await k.button(k.t.sampleNotice.startBlank).click();
   await k.settle(300);
 }
 
+/**
+ * The three sample feeds the app serves under `/api/demo/*`, added as server sources the way an
+ * operator would. The server used to seed them itself; it no longer does (#109), so a scene that
+ * wants a panel with sources in it adds them, and they go when the scene closes.
+ */
+async function addSampleSources(k) {
+  const q = k.lang === "en" ? "?lang=en" : "";
+  await addSource(k, { name: W[k.lang].salesSource, type: "rest", url: `/api/demo/sales${q}`, refreshSec: 5 });
+  await addSource(k, { name: W[k.lang].summarySource, type: "rest", url: `/api/demo/summary${q}`, refreshSec: 5 });
+  await addSource(k, { name: W[k.lang].pagedSource, type: "rest", url: `/api/demo/orders${q}`, maxRows: 200, refreshSec: 30 });
+}
+
 async function openData(k, { blank = false, ...view } = {}) {
+  await addSampleSources(k);
   await k.open("/app", { unlocked: true, ...view });
   if (blank) await startBlank(k);
   await k.button(k.t.toolbar.data).click();
@@ -1072,6 +1150,34 @@ const SCENES = [
     },
   },
   {
+    // Connecting an API from the browser (#110): the form after a test, rows × columns and the
+    // first five rows. The origin is already in the cookie, as it is after the one reload a new
+    // origin costs, so the picture is the state a person sees rather than the reload itself.
+    file: "47-browser-source.png",
+    async take(k) {
+      await openBrowserForm(k);
+      const d = k.page.getByRole("dialog");
+      await fillBrowserForm(k, `${API}/stock`);
+      await d.getByRole("button", { name: k.t.data.browser.test, exact: true }).click();
+      await d.getByText(k.t.data.browser.testOk(W[k.lang].stock.length, 3)).waitFor({ timeout: 15_000 });
+      await k.settle(600);
+      await k.shot(this.file);
+    },
+  },
+  {
+    // The same API without CORS: what the app can say when the browser will not say why.
+    file: "48-browser-error.png",
+    async take(k) {
+      await openBrowserForm(k);
+      const d = k.page.getByRole("dialog");
+      await fillBrowserForm(k, `${API}/nocors`);
+      await d.getByRole("button", { name: k.t.data.browser.test, exact: true }).click();
+      await d.getByText(k.t.data.browser.networkTitle).waitFor({ timeout: 15_000 });
+      await k.settle(600);
+      await k.shot(this.file);
+    },
+  },
+  {
     // The guide the app sends people to when they want their own API or database.
     file: "46-guide.png",
     async take(k) {
@@ -1135,6 +1241,7 @@ if (wanted.length === 0) throw new Error(`--only ${ONLY} matches no scene`);
 for (const lang of LANGS) mkdirSync(outDir(lang), { recursive: true });
 
 const M = await loadMessages();
+const stubApi = startStubApi();
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ["--font-render-hinting=none"] });
 const failed = [];
 
@@ -1174,6 +1281,7 @@ if (BUILD && wanted.every((s) => s.cloud)) {
 }
 
 await browser.close();
+stubApi.close();
 rmSync(FIXTURES, { recursive: true, force: true });
 if (failed.length) {
   console.log(`\n${failed.length} scene(s) failed: ${failed.join(", ")}`);
