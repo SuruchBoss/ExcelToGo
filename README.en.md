@@ -260,6 +260,7 @@ the outcome under a double rule like a total.
   - [The app can break and you still get your file out](#-the-app-can-break-and-you-still-get-your-file-out)
   - [Copy / Cut / Paste](#️-copy--cut--paste)
   - [Cell formatting](#-cell-formatting)
+  - [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros)
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
@@ -826,12 +827,48 @@ believe they had one.
 ### 🎨 Cell formatting
 
 Bold, text alignment (left/center/right), text color, number format (general / 2 decimal places / percent /
-currency ฿) — travels with the cell on copy/paste and survives Excel export too.
+currency ฿ / [text](#-phone-numbers-and-codes-keep-their-zeros)) — travels with the cell on copy/paste and survives Excel export too.
 
 <p align="center"><img src="public/screenshots/en/06-format-filter.png" width="820"></p>
 
 The formatting row **folds away** (the brush button at the end of the formula bar). On a 1366×768 laptop the
 three stacked bars ate 150px before a single grid row appeared; folded, that's 107px.
+
+### 🔢 Phone numbers and codes keep their zeros
+
+Type a phone number `0812345678`, a Thai ID card `1234567890123` or a product code `00123` and **you get what you
+typed** — on the grid, in `.xlsx`, CSV and PDF, when sorting, filtering, in a pivot and in a chart. The leading
+zero used to vanish silently from every one of those at once: every cell that could be read as a number was
+turned into one when the sheet computed, and the `.xlsx` writer carried its own copy of that logic. Both now
+share one rule (`src/lib/cellLiteral.ts`), in this order:
+
+| Rule | Example | Result |
+|---|---|---|
+| A leading apostrophe (as in Excel) | `'123` | the text `123` — the grid hides the `'`, the formula bar shows it |
+| A cell formatted as **Text** (number format menu · Excel's `@`) | `123` | text — for a whole column of codes |
+| An integer with a leading zero | `0812345678`, `00123` | text, automatically (`0` and `0.5` are still numbers) |
+| Twelve digits or more, nothing else | `1234567890123` | text, automatically (eleven digits or fewer, or with a point or sign, are numbers) |
+| Everything else | `-3`, `12.50`, `10000000000` | a number, as before |
+
+In an `.xlsx` export, number-looking text is a string cell with the `@` format, so Excel does not turn it back
+into a number when somebody edits the cell. On import, a string cell the rules would read as something else
+(`"123"`, or text starting with `=`) gets its `'` back, so the file makes the round trip unchanged. Formulas
+reading these cells behave like Excel's: `=A1+1` still computes, `=LEN(A1)` is 10, `=A1&""` is `"0812345678"`.
+
+**What changes, on purpose:** `007` is text now, so it sorts after every number, and charts and conditional
+formatting do not count it as a number. Sheets already saved in the browser need nothing done: the raw text was
+always stored as typed, so the zeros come back the moment they are opened.
+
+**Limits:**
+- **A CSV opened in Excel** — we write `0812345678` into the file as it is, but Excel double-click-opening a
+  CSV converts it to a number itself and drops the zero. That is out of our hands (CSV has nowhere to say what
+  type a field is); use `.xlsx`, or Excel's Data → From Text.
+- **What was already lost stays lost** — an `.xlsx` exported or imported before the fix holds `812345678` as a
+  number, with no zero to give back. Live data from a CSV source still converts to numbers too (#36).
+- **`=SUM(A1:A3)` over text still adds up number-looking text**, where Excel gives 0 — that is #38, separate
+  because it changes the totals of sheets that already exist.
+- "Text" is a cell format, so like every format it does not sync live while co-editing; an apostrophe is part of
+  the cell, so it does.
 
 ### 📊 Charts from the sheet
 
@@ -2991,7 +3028,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live
-      session that needed it. Still open: automatic sync and version history
+      session that needed it. Still open: automatic sync (version history is done — see its own item below)
 - [ ] **Invite by user id, not by email address** (proposal) — today a share is matched against the
       email in the sign-in token, so it is only safe while the Supabase project enforces email
       confirmation (see ⚠️ under cloud save). Resolving the invitee to an `auth.uid()` once they have
@@ -3214,6 +3251,13 @@ What's not done yet, and why — to show this is a known gap, not something forg
   the other language's set. Found and fixed on the way: `SORT(…,-1)` sorting the wrong way, the English toolbar
   overflowing a 1366px laptop until the language toggle was cut off, and two live-data windows that never said
   they were dialogs
+- [x] **Leading zeros stay (#23)** — phone numbers, ID cards and codes are text from the moment the sheet
+      computes, by one rule the `.xlsx` writer shares (see
+      [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros))
+- [ ] **`SUM`/`AVERAGE`/`COUNT` skip text in a range, as Excel does (#38)** — today number-looking text is added in
+- [ ] **Live CSV data uses the same rule (#36)** — `literalValue` is exported and waiting to be called
+- [ ] **A CSV field starting with `'`** — on import the first `'` is read as Excel's "the rest is text" marker and
+      not shown. A file that means the apostrophe literally (a name like `'s-Hertogenbosch`) loses it for now
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 - [ ] **Working with PaynEat ERP** — agreed, not built (see [docs/payneat-erp.en.md](docs/payneat-erp.en.md)):
       the import template waits on cross-sheet dropdowns read from the right sheet, range references kept
