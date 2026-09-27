@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { rowOffsets, rowWindow, scrollToShowRow } from "./rowWindow";
+import { rowOffsets, rowWindow, scrollToShowRow, UNMEASURED_VIEWPORT_PX } from "./rowWindow";
 
 const H = 32;
 const flat = (rows: number, hidden?: Set<number>) => rowOffsets(rows, () => H, hidden);
@@ -59,6 +59,18 @@ describe("row window", () => {
     const w = win(0, 0, 40);
     expect(w.start).toBe(0);
     expect(w.end).toBe(39);
+  });
+
+  it("renders a screenful before the first measurement, not the whole sheet (#67)", () => {
+    // Ten thousand rows unmeasured used to mean ten thousand `<tr>`: a multi-second freeze on every
+    // import and every reload of a big saved sheet, for a render nobody ever sees.
+    const rows = 10_000;
+    const unmeasured = win(0, 0, rows, 600);
+    const measured = win(0, UNMEASURED_VIEWPORT_PX, rows, 600);
+    expect(unmeasured).toEqual(measured);
+    expect(unmeasured.end + 1).toBeLessThan(rows / 100);
+    // The rows it leaves out still count: the spacer keeps the scrollbar the sheet's real height.
+    expect(unmeasured.topPad + (unmeasured.end + 1) * H + unmeasured.bottomPad).toBe(rows * H);
   });
 
   it("reaches back for a merge whose anchor is above the window", () => {

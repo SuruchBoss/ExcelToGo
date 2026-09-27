@@ -71,12 +71,24 @@ export interface RowWindowInput {
   merges?: MergeRange[];
 }
 
+/**
+ * How tall to assume the viewport is before it has been measured: a tall screen's worth.
+ *
+ * The first render of a big sheet happens before the grid's container can be measured. That render
+ * is replaced before the browser paints, as soon as the measurement lands — so what it contains is
+ * never seen, only paid for. It used to assume the whole sheet was on screen, which put every row of
+ * a ten-thousand-row sheet in the DOM once, on every import and every reload with it saved: 9,971
+ * `<tr>` and a 7.5-second task, measured (#67).
+ */
+export const UNMEASURED_VIEWPORT_PX = 1440;
+
 export function rowWindow({ rows, offsets, scrollTop, viewportHeight, overscan, merges }: RowWindowInput): RowWindow {
   if (rows <= 0) return { start: 0, end: -1, topPad: 0, bottomPad: 0 };
 
   // Before the first measurement the viewport is zero tall, which would render a single row and
-  // leave the grid looking empty until a scroll event arrived. Render from the top instead.
-  const height = viewportHeight > 0 ? viewportHeight : offsets[rows];
+  // leave the grid looking empty until a scroll event arrived. Render a screenful from the top
+  // instead — a screenful, not the sheet.
+  const height = viewportHeight > 0 ? viewportHeight : Math.min(offsets[rows], UNMEASURED_VIEWPORT_PX);
 
   const top = Math.max(0, scrollTop - overscan);
   const bottom = scrollTop + height + overscan;
