@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { commentKey } from "./cellComments";
+import { literalValue } from "./cellLiteral";
 import { chartDataFrom } from "./charts";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
@@ -543,8 +544,9 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
       } else if (raw === "") {
         // leave blank
       } else {
-        const n = Number(raw);
-        cell.value = raw.trim() !== "" && !Number.isNaN(n) ? n : raw;
+        // The engine's own reading, not a second copy of it: a file that decided differently from
+        // the grid is how `0812345678` went out as the number 812345678 (#23).
+        cell.value = literalValue(raw) as string | number;
       }
 
       const format = sheet.formats[r]?.[c];

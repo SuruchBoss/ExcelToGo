@@ -13,6 +13,7 @@ import {
 import { FormulaError, FormulaValue } from "./formulaEngine/types";
 import { toDisplayString } from "./formulaEngine/coerce";
 import { formatNumberForDisplay } from "./cellFormat";
+import { literalValue } from "./cellLiteral";
 
 /**
  * Recalculating a sheet, and doing it again after one cell changes without redoing the rest.
@@ -196,13 +197,6 @@ function displayOf(sheet: SheetModel, r: number, c: number, v: FormulaValue): st
   return typeof v === "number" && numberFormat && numberFormat !== "general"
     ? formatNumberForDisplay(v, numberFormat)
     : toDisplayString(v);
-}
-
-/** What a non-formula cell holds: a number if it reads as one, the text otherwise. */
-function literalValue(raw: string): FormulaValue {
-  if (raw === "") return null;
-  const n = Number(raw);
-  return raw.trim() !== "" && !Number.isNaN(n) ? n : raw;
 }
 
 function isFormula(raw: string): boolean {
