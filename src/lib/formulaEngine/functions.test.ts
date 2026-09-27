@@ -6,7 +6,8 @@ import { calc, gridContext } from "./testUtils";
 import { parseFormula } from "./parser";
 import { evaluate } from "./evaluator";
 import { colToLetters } from "./address";
-import { isError } from "./types";
+import { adjustFormulaForStructuralOp } from "./structuralShift";
+import { FormulaValue, isError } from "./types";
 
 const grid = [
   ["ชื่อ", "หมวด", "ราคา"],
@@ -50,8 +51,167 @@ describe("rounding and math functions", () => {
     expect(calc("INT(4.9)")).toBe(4);
   });
 
-  it("SQRT of a negative number is an error", () => {
-    expect(isError(calc("SQRT(-1)"))).toBe(true);
+  it("SQRT of a negative number is #NUM!, as in Excel", () => {
+    // "An error" was all this used to ask, and #VALUE! passed it. #VALUE! says the argument was the
+    // wrong kind of thing; -1 is a number, it just has no real square root.
+    expect(code(calc("SQRT(-1)"))).toBe("#NUM!");
+    expect(code(calc('SQRT("abc")'))).toBe("#VALUE!");
+    expect(calc("SQRT(0)")).toBe(0);
+  });
+});
+
+/** An error's code, or the value itself — so one `toBe` covers both. */
+const code = (v: FormulaValue) => (isError(v) ? v.code : v);
+
+/**
+ * Checked against Excel, both directions, not only the case in the report (#24).
+ *
+ * Every expected value below is what Excel shows for the same formula. The float cases are the
+ * ones where multiplying by a power of ten lands a hair off the half — 2.675 × 100 is
+ * 267.49999999999997 — and they are why rounding is done on the decimal digits.
+ */
+describe("ROUND, ROUNDUP and ROUNDDOWN agree with Excel", () => {
+  it("rounds a half away from zero, on both sides of it", () => {
+    expect(calc("ROUND(2.5,0)")).toBe(3);
+    expect(calc("ROUND(-2.5,0)")).toBe(-3);
+    expect(calc("ROUND(0.5,0)")).toBe(1);
+    expect(calc("ROUND(-0.5,0)")).toBe(-1);
+    expect(calc("ROUND(-1.5,0)")).toBe(-2);
+    expect(calc("ROUND(2.5)")).toBe(3);
+  });
+
+  it("leaves what is not a half where it belongs", () => {
+    expect(calc("ROUND(-2.4,0)")).toBe(-2);
+    expect(calc("ROUND(-2.6,0)")).toBe(-3);
+    expect(calc("ROUND(-1.2345,2)")).toBe(-1.23);
+    expect(calc("ROUND(3.14159,3)")).toBe(3.142);
+  });
+
+  it("does not answer -0 for a negative that rounds to nothing", () => {
+    // `toBe` tells 0 from -0, and so does a cell that prints "-0".
+    expect(calc("ROUND(-0.4,0)")).toBe(0);
+    expect(calc("ROUNDDOWN(-0.9,0)")).toBe(0);
+  });
+
+  it("rounds several decimals where the binary product falls short of the half", () => {
+    expect(calc("ROUND(2.675,2)")).toBe(2.68);
+    expect(calc("ROUND(-2.675,2)")).toBe(-2.68);
+    expect(calc("ROUND(1.005,2)")).toBe(1.01);
+    expect(calc("ROUND(0.1+0.2,1)")).toBe(0.3);
+  });
+
+  it("rounds to the left of the point for a negative count", () => {
+    expect(calc("ROUND(15,-1)")).toBe(20);
+    expect(calc("ROUND(-15,-1)")).toBe(-20);
+    expect(calc("ROUND(14,-1)")).toBe(10);
+    expect(calc("ROUND(1234.5678,-2)")).toBe(1200);
+    expect(calc("ROUND(123,-400)")).toBe(0);
+  });
+
+  it("truncates a fractional count, and survives one no double could hold", () => {
+    expect(calc("ROUND(1.25,1.9)")).toBe(1.3);
+    expect(calc("ROUND(1.5,400)")).toBe(1.5);
+  });
+
+  it("ROUNDUP goes away from zero, ROUNDDOWN towards it, on both signs", () => {
+    expect(calc("ROUNDUP(1.21,1)")).toBe(1.3);
+    expect(calc("ROUNDUP(-1.21,1)")).toBe(-1.3);
+    expect(calc("ROUNDDOWN(1.29,1)")).toBe(1.2);
+    expect(calc("ROUNDDOWN(-1.29,1)")).toBe(-1.2);
+    expect(calc("ROUNDUP(11,-1)")).toBe(20);
+    expect(calc("ROUNDDOWN(19,-1)")).toBe(10);
+  });
+
+  it("ROUNDUP and ROUNDDOWN leave an exact value alone, float noise and all", () => {
+    // 0.07 × 100 is 7.000000000000001, which ceil took to 8; 1.15 × 100 is 114.99999999999999.
+    expect(calc("ROUNDUP(0.07,2)")).toBe(0.07);
+    expect(calc("ROUNDDOWN(1.15,2)")).toBe(1.15);
+    expect(calc("ROUNDUP(2,0)")).toBe(2);
+  });
+
+  it("passes an argument's error through rather than rounding it", () => {
+    expect(code(calc('ROUND("abc",1)'))).toBe("#VALUE!");
+    expect(code(calc('ROUND(1.5,"abc")'))).toBe("#VALUE!");
+    expect(code(calc('ROUNDUP(1.5,"abc")'))).toBe("#VALUE!");
+  });
+});
+
+describe("POWER and ^ refuse what has no real answer (#26)", () => {
+  it("a negative base to a fractional power is #NUM!, not NaN in a cell", () => {
+    expect(code(calc("POWER(-8,1/3)"))).toBe("#NUM!");
+    expect(code(calc("(-8)^0.5"))).toBe("#NUM!");
+  });
+
+  it("an overflow is #NUM!, not Infinity", () => {
+    expect(code(calc("POWER(10,400)"))).toBe("#NUM!");
+    expect(code(calc("10^400"))).toBe("#NUM!");
+  });
+
+  it("0^0 is #NUM! and 0 to a negative power is #DIV/0!, as in Excel", () => {
+    expect(code(calc("POWER(0,0)"))).toBe("#NUM!");
+    expect(code(calc("0^0"))).toBe("#NUM!");
+    expect(code(calc("POWER(0,-1)"))).toBe("#DIV/0!");
+    expect(code(calc("0^-1"))).toBe("#DIV/0!");
+  });
+
+  it("still answers everything that has a real answer", () => {
+    expect(calc("POWER(-8,3)")).toBe(-512);
+    expect(calc("(-2)^2")).toBe(4);
+    expect(calc("2^-1")).toBe(0.5);
+    expect(calc("POWER(4,0.5)")).toBe(2);
+    expect(calc("POWER(0,2)")).toBe(0);
+    expect(calc("5^0")).toBe(1);
+  });
+});
+
+describe("AVERAGEIF skips what is not a number, like AVERAGEIFS (#27)", () => {
+  const sheet = [
+    ["ก", 10],
+    ["ก", null],
+    ["ก", 20],
+    ["ก", "n/a"],
+    ["ข", 99],
+  ];
+
+  it("averages the numbers that match, ignoring a blank and a text cell among them", () => {
+    expect(calc('AVERAGEIF(A1:A5,"ก",B1:B5)', sheet)).toBe(15);
+    expect(calc('AVERAGEIFS(B1:B5,A1:A5,"ก")', sheet)).toBe(15);
+  });
+
+  it("is #DIV/0! when every match is blank or text", () => {
+    const empty = [["ก", null], ["ก", "-"]];
+    expect(code(calc('AVERAGEIF(A1:A2,"ก",B1:B2)', empty))).toBe("#DIV/0!");
+  });
+});
+
+describe("LEFT, RIGHT and MID refuse a count Excel refuses (#28)", () => {
+  it("a negative count is #VALUE!, not a slice from the other end", () => {
+    expect(code(calc('LEFT("abc",-1)'))).toBe("#VALUE!");
+    expect(code(calc('RIGHT("abc",-1)'))).toBe("#VALUE!");
+  });
+
+  it("MID refuses a start before the first character and a negative length", () => {
+    expect(code(calc('MID("abc",0,1)'))).toBe("#VALUE!");
+    expect(code(calc('MID("abc",-1,2)'))).toBe("#VALUE!");
+    expect(code(calc('MID("abc",1,-1)'))).toBe("#VALUE!");
+  });
+
+  it("still accepts every edge Excel accepts", () => {
+    expect(calc('LEFT("abc",0)')).toBe("");
+    expect(calc('RIGHT("abc",0)')).toBe("");
+    expect(calc('LEFT("abc",10)')).toBe("abc");
+    expect(calc('RIGHT("abc",10)')).toBe("abc");
+    expect(calc('MID("abc",1,0)')).toBe("");
+    expect(calc('MID("abc",5,2)')).toBe("");
+    expect(calc('MID("abc",3,5)')).toBe("c");
+    expect(calc('LEFT("abc")')).toBe("a");
+    expect(calc('RIGHT("abc")')).toBe("c");
+  });
+
+  it("truncates a fractional count, as Excel does", () => {
+    expect(calc('LEFT("abcdef",2.9)')).toBe("ab");
+    expect(calc('RIGHT("abcdef",2.9)')).toBe("ef");
+    expect(calc('MID("abcdef",2.9,2.9)')).toBe("bc");
   });
 });
 
@@ -590,6 +750,30 @@ describe("gaps the mutation gate found", () => {
   it("a one-cell range in arithmetic stays a single value", () => {
     const result = evaluate(parseFormula("A1:A1+1"), gridContext([[4]]));
     expect(result).toEqual({ kind: "scalar", value: 5 });
+  });
+
+  it("MATCH's approximate search skips a blank rather than reading it as 0", () => {
+    // Read as 0, the blank sits below 5 and becomes the answer. Excel finds nothing at or below 5.
+    expect(code(calc("MATCH(5,A1:A3,1)", [[null], [10], [20]]))).toBe("#N/A");
+    expect(calc("MATCH(15,A1:A3,1)", [[null], [10], [20]])).toBe(2);
+  });
+
+  it("a number written as text still adds as a number", () => {
+    expect(calc('"5"+1')).toBe(6);
+    expect(calc("A1*2", [["7"]])).toBe(14);
+    expect(code(calc('"five"+1'))).toBe("#VALUE!");
+  });
+
+  it("a blank cell is FALSE as a condition, not TRUE and not an error", () => {
+    expect(calc('IF(A1,"y","n")', [[null]])).toBe("n");
+    expect(calc('IF(Z99,"y","n")')).toBe("n");
+  });
+
+  it("a row op shifts references qualified with the edited sheet's name, in any case, and no others", () => {
+    const scope = { opSheet: "Sales", formulaSheet: "Summary" };
+    expect(adjustFormulaForStructuralOp("Sales!A3", "row", 1, -1, scope)).toBe("Sales!A2");
+    expect(adjustFormulaForStructuralOp("sales!A3", "row", 1, -1, scope)).toBe("sales!A2");
+    expect(adjustFormulaForStructuralOp("Stock!A3", "row", 1, -1, scope)).toBe("Stock!A3");
   });
 
   it("column letters roll over at Z, not two short of it", () => {

@@ -60,9 +60,15 @@ Before every request — and again after **every redirect**, because a 302 is ho
 becomes an unchecked one — the destination is resolved and every address it resolves to is checked.
 Blocked: loopback, link-local (including `169.254.169.254`, the cloud metadata endpoint on AWS, GCP
 and Azure alike), RFC 1918 private ranges, carrier-grade NAT, multicast, and the reserved and
-documentation ranges. IPv6 link-local and unique-local go too, as do IPv4 addresses embedded in
-IPv6 in **any** of their spellings — `::ffff:169.254.169.254`, the hex form `::ffff:a9fe:a9fe` that
-a URL normalises it to, and the deprecated `::a9fe:a9fe`. Only `http` and `https` are allowed.
+documentation ranges (IPv4, and IPv6's `2001:db8::/32`). IPv6 link-local and unique-local go too.
+An IPv4 address carried inside an IPv6 one is unpacked and checked as the IPv4 address it is, for
+these forms: IPv4-mapped `::ffff:169.254.169.254` and the hex form `::ffff:a9fe:a9fe` a URL
+normalises it to, the deprecated IPv4-compatible `::a9fe:a9fe`, NAT64's well-known prefix
+`64:ff9b::a9fe:a9fe` (RFC 6052 — on an IPv6-only subnet the gateway really does turn that into
+169.254.169.254) and 6to4 `2002:a9fe:a9fe::` (RFC 3056). A public IPv4 address reached through
+NAT64 still works, since that is the only way an IPv6-only host reaches one. The local-use NAT64
+prefix `64:ff9b:1::/48` (RFC 8215) is refused outright: where its IPv4 sits depends on a prefix
+length the address does not state. Only `http` and `https` are allowed.
 
 A URL beginning with a single `/` is one of the app's own routes and is the one case the guard is
 skipped for — a demo source reaches `/api/demo/sales` even when the deployment's own origin is
@@ -188,8 +194,12 @@ to persist and nothing to correlate across visits. It also changes what is measu
 wearing a number's clothes.
 
 **No time of day, no IP, no user agent, no referrer, no cookie, no session.** A request carries the
-first four whether anyone wants them or not; what matters is that none are read, and the route's
-tests send all four and assert that what reaches storage is the event name alone. The day is
+first four whether anyone wants them or not; what matters is that none are kept, and the route's
+tests send all four and assert that what reaches storage is the event name alone. The user agent is
+the one that is *read*: the route drops a request whose user agent contains `HeadlessChrome` (the
+browser already declines to send when `navigator.webdriver` is set or its own user agent says the
+same), and the value goes out of scope with the request — not stored, not logged. A bot that
+disguises itself as a person is still counted; this filters only the ones that say what they are. The day is
 stamped by `current_date` in the database, because a date that arrives over the network is a field
 somebody eventually makes more precise, and an exact time plus a rare event is an identifier.
 
@@ -232,6 +242,21 @@ this app's server, so a deployment never sees its users' spreadsheets. Two thing
   unprotected table with a public key is readable by anyone who opens the page.
 - **Never put a service-role key in these variables.** It bypasses every policy, and being
   `NEXT_PUBLIC_` it would be handed to every visitor.
+- **Sharing is only as safe as your project's email confirmation.** A workbook is shared with an
+  *email address*, and `can_access_workbook()` (`0002_sharing_and_realtime.sql`) lets in whoever's
+  sign-in token carries that address. That is sound only while the project will not issue such a
+  token before the address has been proven. If "Confirm email" is off, anyone holding the public anon
+  key can sign up through Supabase's API — with a password, whatever the app's own magic-link screen
+  shows — as an address that was invited, and open the workbook. **Before you share anything, check
+  in the Supabase dashboard, under Authentication → Sign In / Providers → Email:**
+  - **Confirm email** is on (self-hosted: `GOTRUE_MAILER_AUTOCONFIRM=false`), so sign-up does not
+    return a session until the link in the email is clicked;
+  - **Secure email change** is on, so changing an account's address to an invited one needs the new
+    address confirmed too;
+  - any other sign-in provider you enable only hands over addresses it has verified itself.
+
+  This app cannot see those settings, so nothing in it can check them for you. Inviting by user id
+  instead of by address would remove the dependency; it is on the roadmap, not built.
 
 Running cloud save means running a database for whoever signs into your deployment, with the
 obligations that carries. That is the reason it is off by default rather than something this
@@ -244,7 +269,10 @@ project hosts for everyone.
 
 `/api/ai/formula` deliberately requires no token: the assistant is a feature of the app, not an
 admin tool. It is rate limited instead — **20 calls per minute per client address**, refused with
-`429` and a `Retry-After` — so an open endpoint cannot be looped against your Anthropic bill.
+`429` and a `Retry-After`. That slows a careless script or a stuck retry loop. **It does not protect
+your Anthropic bill**: the address it counts by is one a client can choose (below), so a script that
+sends a different one each time is never limited. What protects the bill is the next paragraph —
+not calling Anthropic at all on a public deployment.
 
 On a public demo the route does not reach Anthropic at all. `NEXT_PUBLIC_DEMO_MODE=1` makes it
 behave as if no key were configured — the local keyword matcher answers instead, which costs nothing
@@ -254,9 +282,10 @@ switch is on *with a key present*, so the protection does not depend on anyone r
 the key unset. Leaving it unset is still the better habit; two layers beat one.
 
 The counters are held in the serving process's memory. Two instances behind a load balancer count
-separately and a serverless cold start forgets everything, so this is a guard against casual abuse
-and runaway scripts, **not a billing control**; a real one needs shared storage, which this project
-does not have. The address comes from `x-forwarded-for`, which a client can forge, so it is used
+separately and a serverless cold start forgets everything, so this is a guard against casual abuse,
+**not a billing control**; a real one needs shared storage, which this project does not have. The
+address comes from `x-forwarded-for`, which a client can forge — rotating it gets a fresh allowance
+on every call, which is why the paragraph above does not claim more — so it is used
 for counting only and never for authorisation — and the limiter caps how many distinct keys it will
 hold, because otherwise a spray of forged addresses would exhaust memory and turn the limiter into
 the denial of service it exists to prevent.

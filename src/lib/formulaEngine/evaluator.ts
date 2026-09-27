@@ -4,7 +4,7 @@
 import { AstNode } from "./ast";
 import { EvalResult, FormulaValue, isError, scalar, ERR_DIV0, ERR_NAME, ERR_REF, ERR_VALUE } from "./types";
 import { toNumber, toDisplayString } from "./coerce";
-import { FUNCTIONS } from "./functions";
+import { FUNCTIONS, power } from "./functions";
 
 export interface EvalContext {
   /** `sheet` is the name written before a `!`, absent for a reference to the sheet being computed. */
@@ -163,7 +163,7 @@ function evalBinop(op: string, leftR: EvalResult, rightR: EvalResult): FormulaVa
     case "/":
       return rn === 0 ? ERR_DIV0 : ln / rn;
     case "^":
-      return Math.pow(ln, rn);
+      return power(ln, rn);
     default:
       return ERR_VALUE;
   }

@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1399%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1433%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1399 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1433 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1399 passing tests could not catch
+### 🧪 What 1433 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1399 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1433 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -369,7 +369,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1399-case Vitest suite |
+| `npm test` | Run the 1433-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -434,9 +434,10 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 >
 > **`ANTHROPIC_API_KEY` and public demos.** `/api/ai/formula` takes no authentication by design —
 > the assistant is part of the app, and making a visitor log in to ask a question would be absurd.
-> It is capped at **20 calls a minute per IP**, which stops a script in a loop, but the counters live
-> in the process's memory: separate instances count separately and a serverless cold start forgets
-> them. **That guards against casual abuse, it is not a billing control.**
+> It is capped at **20 calls a minute per IP**, which slows a careless script, but the IP is read from
+> `x-forwarded-for`, which a client can set to anything — a script that changes it on every call is
+> never limited — and the counters live in the process's memory: separate instances count separately
+> and a serverless cold start forgets them. **That guards against casual abuse, it is not a billing control.**
 >
 > The billing control is the same switch as above: **`NEXT_PUBLIC_DEMO_MODE=1` makes this route skip
 > Anthropic entirely**, even with a key configured, and fall back to local keyword matching — free,
@@ -600,14 +601,16 @@ The guards:
 | | |
 |---|---|
 | **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
-| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local and unique-local, and IPv4 embedded in IPv6 in **every spelling** |
+| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local, unique-local and documentation, and IPv4 carried inside IPv6 as `::ffff:`, `::`, NAT64 `64:ff9b::/96` or 6to4 `2002::/16` (unpacked and checked as IPv4) · local-use NAT64 `64:ff9b:1::/48` refused outright |
 | **A credential stays on its own origin** | The auth header goes only to the scheme, host and port the source was set up with · a redirect elsewhere is followed without it (and it is not put back) · a next-page link to another origin is not followed — the table stops there, marked partial |
 | **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear · a database connection string counts as one |
 | **A database query cannot write** | Every query runs in a read-only transaction, so the database itself refuses a write, and `sqlGuard` refuses again at save time · a database on a private address needs its host in `SOURCES_ALLOWED_DB_HOSTS` |
 
 The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
 rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
-metadata service straight through. The address is now unpacked and checked in every spelling.
+metadata service straight through. The address is now unpacked and checked. A later QA pass found it
+still missed NAT64 (`64:ff9b::a9fe:a9fe`) and 6to4 (`2002:a9fe:a9fe::1`) while the docs said "every
+spelling"; both are handled now, and the docs name the forms that are covered instead of saying "every".
 
 **Not fully closed:** the address is checked and then the connection is made, and in between the
 name could be re-resolved to something else. Closing that needs the connection pinned to the checked
@@ -944,6 +947,16 @@ by counting the chunks the browser actually requests, not assumed.
 Supabase project can open and edit the workbook. There is no read-only role, and saying so is better
 than implying one: a read-only share the app cannot enforce in the grid would be a promise made in
 the database and broken in the browser.
+
+> **⚠️ Sharing is only safe if your Supabase project enforces email confirmation.** Access is tied to
+> an *email address*, and the database trusts the address in the sign-in token. With confirmation
+> off, anyone holding the anon key (which is public) can sign up through Supabase's API as an invited
+> address — with a password, even though the app's own sign-in is a magic link — and open the
+> workbook. **Before sharing, open the Supabase dashboard → Authentication → Sign In / Providers →
+> Email and check** that **Confirm email** is on (self-hosted: `GOTRUE_MAILER_AUTOCONFIRM=false`),
+> that **Secure email change** is on (changing an account's address to an invited one needs
+> confirming too), and that any other provider you enable only hands over addresses it has verified.
+> The app cannot see these settings, so it cannot check them for you. Details in [SECURITY.md](SECURITY.md).
 
 **Version history works now** — every save over a workbook keeps the copy it replaced, the last
 twenty per workbook. The panel says *open*, not restore: looking at a version and deciding is a
@@ -1774,13 +1787,22 @@ purpose: *did this happen at all*, not *how many times* — a per-keystroke coun
 trace wearing a number's clothes.
 
 **No time of day, no IP, no user agent, no referrer, no cookie, no session.** A request carries the
-first four whether anyone wants them or not; what matters is that none are read, and the route's
-tests send all four and assert that what reaches storage is the event name alone. The day is
+first four whether anyone wants them or not; what matters is that none are kept, and the route's
+tests send all four and assert that what reaches storage is the event name alone. (The user agent is
+the one that is *read* — to turn bots away, below — and it goes when the request does.) The day is
 stamped by `current_date` in the database, because a date that travels over the wire is a field
 somebody eventually makes more precise, and an exact time plus a rare event is an identifier.
 
 **Do Not Track and Global Privacy Control are honoured**, because an app arguing that it does not
 take your data does not get to ignore the browser saying the same thing.
+
+**A browser that says a program is driving it is not counted.** In the first week in production,
+*every* figure came from one crawler's headless Chrome — the one number this feature exists to keep
+out. The browser does not send when `navigator.webdriver` is `true` or its user agent contains
+`HeadlessChrome`, and the route checks the request's user agent for the same word again, for a bot
+that never runs the page's script at all. **The limit, stated plainly:** a bot that goes to the
+trouble of looking like a person (a changed user agent, the webdriver flag switched off) is still
+counted. This filters the ones that say what they are; it does not claim to catch the rest.
 
 What is stored is `(day, event) → count`. The table has row-level security on and **no policy of
 any kind** — deliberately, so the key the server holds cannot read a row back; it may call
@@ -1902,7 +1924,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1399 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1433 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -1966,7 +1988,8 @@ flowchart LR
 
 ### State management
 
-`sheetStore` is the single source of truth for the whole app, wrapped in two middleware layers: `persist`
+`sheetStore` holds the document — the sheets, the selection and the grid's UI; the language, live data, cloud
+save and live editing each have a store of their own (see the structure listing). It is wrapped in two middleware layers: `persist`
 (autosave) wraps `temporal` from `zundo` (undo/redo) — each layer only "sees" part of the state, so selection or
 transient UI never leaks into the undo history or the saved file:
 
@@ -2072,6 +2095,12 @@ src/
                               # while). Neither persisted nor undoable: live data can always be re-fetched
     localeStore.ts           # Separate Zustand store for the selected UI language (th/en) — persisted the
                               # same way, but not tied to the sheet's undo/redo
+    cloudStore.ts            # Cloud save (your own Supabase) — the signed-in session, the workbook list,
+                              # save/open/delete, who it is shared with, and version history. Neither
+                              # persisted nor undoable: the real copy lives in the database
+    liveStore.ts             # The wiring for a live editing session — watch the document, put what changed
+                              # on the wire, apply what arrives (the rules live in lib/cloud/). Off until
+                              # someone turns it on, and only for a workbook already saved to the cloud
   i18n/                      # All UI text, split by language (no off-the-shelf i18n library)
     types.ts                 # The central `Messages` type — TypeScript enforces th.ts/en.ts key parity
     th.ts, en.ts              # The actual text dictionaries (buttons/labels/formula names+descriptions/alerts)
@@ -2431,8 +2460,18 @@ either when you mean the character itself (`"10~*20"` finds `10*20`). They work 
 family: `SUMIF`, `COUNTIF`, `AVERAGEIF`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`. Matching ignores case
 and covers the whole cell, so wrap a term in `*` on both sides for "contains".
 
+**Checked against Excel, both directions.** A QA pass found five basic functions giving quiet wrong
+answers, each now pinned by tests with Excel's own result beside it:
+`ROUND` rounds a half away from zero (`ROUND(-2.5,0)` is -3, not -2) and rounds on the decimal digits
+rather than a binary product (`ROUND(2.675,2)` is 2.68, `ROUNDDOWN(1.15,2)` is 1.15); `POWER`, `^` and
+`SQRT` answer `#NUM!` where there is no real answer or it overflows, instead of NaN or Infinity in a
+cell (`0^0` is `#NUM!` and `0^-1` is `#DIV/0!`, as in Excel); `AVERAGEIF` skips blank and text cells
+the way `AVERAGEIFS` already did; and `LEFT`/`RIGHT` with a negative count or `MID` starting before the
+first character is `#VALUE!` rather than a slice from the other end.
+
 **Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
-position inside a block.
+position inside a block. `MROUND` is not in the engine. Arithmetic that overflows (`10^308*10`) still
+shows as Infinity rather than Excel's `#NUM!`; only `^` and `POWER` were fixed.
 
 Full support for arithmetic/comparison/concatenation operators (`+ - * / ^ = <> < > <= >= &`) and Excel-style
 error values: `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`.
@@ -2605,11 +2644,11 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 269 security tests
+### 280 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
-| `urlGuard.test.ts` | 21 | Loopback, private ranges, cloud metadata, every IPv4-in-IPv6 spelling, link-local, multicast, non-http(s) schemes, hosts that don't resolve |
+| `urlGuard.test.ts` | 27 | Loopback, private ranges, cloud metadata, IPv4 inside IPv6 (`::ffff:`, `::`, NAT64, 6to4), IPv6 documentation, link-local, multicast, non-http(s) schemes, hosts that don't resolve |
 | `executeSource.test.ts` | 37 | Re-checking after a redirect, cutting redirect loops, the same-origin fast path, pagination, row bounds, the auth header kept to the source's own origin (cross-origin redirects, `https` → `http`, next-page links elsewhere) |
 | `secretBox.test.ts` | 10 | AES-256-GCM, distinct ciphertexts, tamper detection, refusing to encrypt with no key rather than storing plain text |
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
@@ -2623,8 +2662,8 @@ nothing but the anon key, which is the thing that used to work.
 | `server/dbGuard.test.ts` | 12 | Connection strings: both spellings of each kind, a password full of punctuation, unix sockets in both forms, private addresses refused, and an operator allow list that has to match the whole name |
 | `server/executeDbSource.test.ts` | 4 | The order of the refusals: a query that fails the guard is rejected before DNS is even asked |
 | `server/sourceRepo.test.ts` | 5 | What leaves the server: the connection string never does, only a description of it, and an unreadable one answers with dots rather than a guess |
-| `usage.test.ts` | 12 | A counter that must not become an exfiltration channel: off by default, DNT/GPC honoured, once per page load, no retry on failure, and a payload whose only key is `event` |
-| `api/usage/route.test.ts` | 11 | The side `curl` reaches: a name off the list is not recorded, every extra field is dropped, a megabyte body is cut, 204 either way so a prober learns nothing, and an IP, user agent, referrer and cookie all sent and none reaching storage |
+| `usage.test.ts` | 15 | A counter that must not become an exfiltration channel: off by default, DNT/GPC honoured, automated browsers (webdriver/HeadlessChrome) not counted, once per page load, no retry on failure, and a payload whose only key is `event` |
+| `api/usage/route.test.ts` | 24 | The side `curl` reaches: a name off the list is not recorded, a headless browser's user agent is not counted (read to decide, never kept), every extra field is dropped, a megabyte body is cut, 204 either way so a prober learns nothing, and an IP, user agent, referrer and cookie all sent and none reaching storage |
 | `cloud/policies.test.ts` | 29 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
 | `errorReport.test.ts` | 20 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
@@ -2771,13 +2810,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1399 cases across 84 files, via Vitest
+npm test      # 1433 cases across 84 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1399 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1433 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2871,10 +2910,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1399 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1433 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1399 passing tests could not catch](#-what-1399-passing-tests-could-not-catch), repeatable
+> [What 1433 passing tests could not catch](#-what-1433-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2889,7 +2928,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 92 | The whole function library across aggregate/rounding/logic/text/lookup, including INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `functions.test.ts` | 122 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
@@ -2902,7 +2941,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
 | `excelIO.test.ts` | 51 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form), cross-sheet dropdowns read from the sheet the rule names (quoted names, a hidden sheet, a missing one, and the PaynEat ERP draft-0 template) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
-| `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
+| `server/urlGuard.test.ts` | 27 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 (`::ffff:`, `::`, NAT64, 6to4), non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
 | `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
 | `cloud/cloud.test.ts` | 24 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |
@@ -2950,6 +2989,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live
       session that needed it. Still open: automatic sync and version history
+- [ ] **Invite by user id, not by email address** (proposal) — today a share is matched against the
+      email in the sign-in token, so it is only safe while the Supabase project enforces email
+      confirmation (see ⚠️ under cloud save). Resolving the invitee to an `auth.uid()` once they have
+      signed in, and matching on that, would remove the dependency on a setting this app cannot see.
+      Also worth a policy test pinning the behaviour for a confirmed vs an unconfirmed address
 - [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
       each other type, presence shows where each cursor is, the cell you have open is never
       overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed
