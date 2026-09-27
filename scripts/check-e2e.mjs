@@ -43,6 +43,13 @@ const label = {
   addRow: /^(แถว|Row)$/,
   addSheet: /^(เพิ่มชีตใหม่|Add a new sheet)$/,
   formulaBar: /^(พิมพ์ค่าหรือสูตร|Type a value or formula)/,
+  liveData: /^(ข้อมูลสด|Live data)$/,
+  menu: /^(เมนู|Menu)$/,
+  connectApi: /^(ต่อ API \/ ฐานข้อมูล|Connect an API \/ database)/,
+  tools: /^(เครื่องมือ|Tools)/,
+  cellTools: /^(เครื่องมือเซลล์|Cell tools)$/,
+  italic: /^(ตัวเอียง|Italic)$/,
+  chart: /^(กราฟ|Chart)$/,
 };
 
 const failures = [];
@@ -589,6 +596,39 @@ const FLOWS = [
       note(gone, "the alert goes away once a save lands again");
     },
   },
+  {
+    // The report this came from: on a phone, the person who wrote the app could not find where to
+    // connect an API. The panel switches were a scrolling row of unnamed icons, and the rest of the
+    // row was past the edge. A unit test cannot see a layout, so this is the one place that asks
+    // whether the way there is on screen and says what it is.
+    name: "on a phone, the way to live data is on screen and named, and cell tools are one press away",
+    width: 390,
+    async run(page) {
+      const tab = page.getByRole("button", { name: label.liveData });
+      note(await tab.isVisible(), "a tab named live data is on screen at 390px without scrolling");
+
+      await page.getByRole("button", { name: label.menu }).click();
+      const menu = page.getByRole("dialog", { name: label.menu });
+      await menu.waitFor({ timeout: 5000 });
+      await menu.getByRole("button", { name: label.connectApi }).click();
+      await page.locator("aside h2", { hasText: /ข้อมูลสด|Live data/ }).waitFor({ timeout: 5000 });
+      note(!(await menu.isVisible()), "the menu's connect line opens the live-data panel and gets out of the way");
+      await tab.click();
+
+      // Italic sits in the row itself, not the sheet: it is one of the five pressed every few minutes.
+      await cell(page, 1, 0).click();
+      await page.getByRole("button", { name: label.italic }).click();
+      const style = await cell(page, 1, 0).evaluate((td) => getComputedStyle(td.querySelector("span") ?? td).fontStyle);
+      note(style === "italic", `the italic button sets the cell in italic (font-style "${style}")`);
+
+      await page.getByRole("button", { name: label.tools }).click();
+      const sheet = page.getByRole("dialog", { name: label.cellTools });
+      await sheet.waitFor({ timeout: 5000 });
+      await sheet.getByRole("button", { name: label.chart }).click();
+      await page.locator("aside").first().waitFor({ state: "visible", timeout: 5000 });
+      note(!(await sheet.isVisible()), "a tool pressed in the sheet does its job and the sheet closes behind it");
+    },
+  },
 ];
 
 const tmp = await mkdtemp(join(tmpdir(), "exceltogo-e2e-"));
@@ -615,7 +655,7 @@ try {
 
   for (const flow of FLOWS) {
     console.log(`\n${flow.name}`);
-    const { ctx, page } = await freshPage(browser);
+    const { ctx, page } = await freshPage(browser, flow.width);
     const errors = [];
     page.on("pageerror", (err) => errors.push(String(err).split("\n")[0]));
     try {

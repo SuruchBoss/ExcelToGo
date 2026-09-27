@@ -47,12 +47,19 @@ export interface Messages {
     formulas: string;
     askAi: string;
     data: string;
+    /** The cloud tab's name where there is only room for one short word. */
+    cloudShort: string;
   };
   data: {
     title: string;
     subtitle: string;
     addSource: string;
     demoNote: string;
+    /** The question the demo box answers, and the ways to the in-app guide at /guide. */
+    ownTitle: string;
+    guideCta: string;
+    guideLinkLocked: string;
+    guideLink: string;
     empty: string;
     live: string;
     error: string;
@@ -477,17 +484,74 @@ export interface Messages {
     /** The same, when storage refused for another reason (private mode, a policy). */
     blocked: string;
   };
+  /**
+   * /guide — how to connect your own API or database, written for the person who will set it up.
+   * Code blocks live here too: their comments are in the reader's language, the commands are not.
+   */
+  guide: {
+    eyebrow: string;
+    title: string;
+    lead: string;
+    demoTitle: string;
+    demoBody: string[];
+    typesTitle: string;
+    typesLead: string;
+    typesHead: { type: string; needs: string; example: string };
+    types: { name: string; needs: string; example: string }[];
+    kitTitle: string;
+    kitLead: string;
+    steps: { title: string; body: string; code?: string; note?: string }[];
+    safetyTitle: string;
+    safety: { title: string; body: string }[];
+    cloudTitle: string;
+    cloudBody: string[];
+    cloudCode: string;
+    moreTitle: string;
+    moreReadme: string;
+    moreSecurity: string;
+    openApp: string;
+    copy: string;
+    copied: string;
+    copyFailed: string;
+    codeLabel: string;
+  };
+  /** The phone's tab bar and the menu sheet its last tab opens. */
+  menu: {
+    navLabel: string;
+    open: string;
+    title: string;
+    connect: string;
+    connectApi: string;
+    connectApiHint: string;
+    cloudHint: string;
+    guide: string;
+    guideHint: string;
+    file: string;
+    table: string;
+    addRow: string;
+    addColumn: string;
+  };
   formatBar: {
     /** Collapses the formatting row to give the grid back its vertical space. */
     hide: string;
     show: string;
     label: string;
     boldTitle: string;
+    italicTitle: string;
+    underlineTitle: string;
     alignTitle: { left: string; center: string; right: string };
     colorTitle: string;
     sortAscTitle: string;
     sortDescTitle: string;
     numberFormatTitle: string;
+    /** Below 640px: the button that raises the rest of the row as a sheet, and that sheet's name. */
+    tools: string;
+    toolsTitle: string;
+    /** Words for the two sort buttons, which the wide row shows as icons only. */
+    sortAscShort: string;
+    sortDescShort: string;
+    /** Headings inside the phone sheet. */
+    groups: { cells: string; sort: string; rules: string; summarise: string };
   };
   numberFormats: Record<NumberFormat, string>;
   /** The pivot panel, and the sheet it writes. */

@@ -573,6 +573,9 @@ export default function Landing() {
           <div className="flex-1" />
           {/* No lucide icon for LinkedIn — this version dropped its brand icons — and a plain text
               link avoids reproducing a trademarked mark for no gain. */}
+          <Link href="/guide" className="hover:text-ink">
+            {t.menu.guide}
+          </Link>
           <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-ink">
             {t.landing.contact.emailLabel}
           </a>

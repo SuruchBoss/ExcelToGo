@@ -74,7 +74,10 @@ export default function Home() {
   const closeSidebar = () => (hasPending ? cancelPending() : setSidebarMode("none"));
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-50">
+    // `dvh`, not `vh`: on a phone 100vh is the height with the browser's address bar hidden, so the
+    // sheet tabs sat under the bar whenever it was showing. The bottom padding is the tab bar's
+    // height — below 640px the panel switches are pinned there (see Toolbar).
+    <div className="flex h-dvh flex-col bg-zinc-50 max-sm:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
       <SkipLink />
       <LiveAnnouncer />
       {find.open && <FindPanel onClose={find.close} />}
@@ -94,18 +97,20 @@ export default function Home() {
         </main>
         {sidebarVisible && (
           <>
-            {/* On a phone the panel covers the screen instead of sitting beside the grid. Side by
-                side, a 320px panel left the grid showing nothing but its row numbers — the one
-                thing a spreadsheet must never hide. */}
+            {/* On a phone the panel is a sheet instead of sitting beside the grid. Side by side, a
+                320px panel left the grid showing nothing but its row numbers — the one thing a
+                spreadsheet must never hide. Below 640px the sheet stops short of the top, so the
+                first rows and the selected cell stay in view while a formula is chosen for it,
+                and it stops above the tab bar, so another panel is one press away. */}
             <div
               onClick={closeSidebar}
               aria-hidden
               className="fixed inset-0 z-30 bg-zinc-900/30 lg:hidden"
             />
-            <aside className="fixed inset-x-0 bottom-0 top-14 z-40 flex flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white p-3 shadow-2xl lg:static lg:inset-auto lg:z-auto lg:w-80 lg:shrink-0 lg:rounded-lg lg:shadow-none">
+            <aside className="fixed inset-x-0 bottom-0 top-14 z-40 max-sm:top-[30dvh] max-sm:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] flex flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white p-3 shadow-2xl lg:static lg:inset-auto lg:z-auto lg:w-80 lg:shrink-0 lg:rounded-lg lg:shadow-none">
               <button
                 onClick={closeSidebar}
-                className="mb-2 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-md px-3 text-sm font-medium text-zinc-600 hover:bg-zinc-100 lg:hidden"
+                className="-mt-1 mb-1 flex min-h-10 items-center justify-center gap-1.5 self-end rounded-md px-3 text-sm font-medium text-zinc-600 hover:bg-zinc-100 lg:hidden"
               >
                 <X size={16} /> {t.app.close}
               </button>

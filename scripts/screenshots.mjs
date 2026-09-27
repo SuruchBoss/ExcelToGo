@@ -1049,6 +1049,37 @@ const SCENES = [
     },
   },
   {
+    // A phone, the menu up: the line a person looking for "connect a database" is meant to find,
+    // named with the four kinds of source it leads to.
+    file: "44-mobile-menu.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await k.button(k.t.menu.open).click();
+      await k.page.getByRole("dialog", { name: k.t.menu.title }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // A phone, a block selected and the cell tools raised: every tool the wide row shows, by name.
+    file: "45-mobile-cell-tools.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await k.select(1, 0, 3, 1);
+      await k.button(k.t.formatBar.italicTitle).click();
+      await k.page.getByRole("button", { name: k.t.formatBar.tools }).click();
+      await k.page.getByRole("dialog", { name: k.t.formatBar.toolsTitle }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // The guide the app sends people to when they want their own API or database.
+    file: "46-guide.png",
+    async take(k) {
+      await k.open("/guide", { width: 1280, height: 1000 });
+      await k.shot(this.file);
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {

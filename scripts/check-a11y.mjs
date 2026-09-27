@@ -39,7 +39,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 const PORT = Number(process.env.A11Y_PORT || 3123);
 const ORIGIN = `http://localhost:${PORT}`;
-const PAGES = ["/", "/app"];
+const PAGES = ["/", "/app", "/guide"];
 /** The phone width the labels vanish at, and a desktop width where they don't. */
 const ALL_AXE_WIDTHS = [390, 1280];
 /** Narrowest phone still worth supporting, two tablet-ish sizes, two desktops. */
@@ -110,8 +110,20 @@ const SOURCES_TOKEN = randomBytes(12).toString("hex");
 const unlockedData = async (page) => {
   await page.evaluate((token) => sessionStorage.setItem("exceltogo.sources-token", token), SOURCES_TOKEN);
   await page.reload({ waitUntil: "networkidle" });
-  await page.locator('button[aria-label="ข้อมูล"]').first().click();
+  await page.locator('button[aria-label="ข้อมูลสด"]').first().click();
   await page.getByRole("button", { name: "ใส่ลงตาราง", exact: true }).first().waitFor({ timeout: 15_000 });
+};
+
+/**
+ * Makes a format-bar tool pressable. Below 640px most of that row lives in a sheet raised by its
+ * "tools" button (same elements, not copies), so a tool is hidden until the sheet is up. The
+ * sheet is part of what gets scanned, which is the point — a phone user reaches the popover
+ * through it.
+ */
+const reveal = async (page, selector) => {
+  if (await page.locator(selector).first().isVisible().catch(() => false)) return;
+  await page.locator('button[aria-controls="cell-tools"]').click();
+  await page.locator(selector).first().waitFor({ state: "visible", timeout: 5_000 });
 };
 
 /** Opens a side panel from the button that carries this exact accessible name, then waits for it. */
@@ -119,6 +131,7 @@ const panel = (name, opener) => ({
   name,
   path: "/app",
   async open(page) {
+    await reveal(page, opener);
     // These buttons toggle. On a wide screen one panel is already open — the formula palette is
     // the store's default — so a single click on it *closes* the sidebar instead of opening
     // anything. That is not hypothetical: "formula palette @1280" reported itself unopenable on
@@ -126,6 +139,7 @@ const panel = (name, opener) => ({
     const aside = page.locator("aside");
     await page.locator(opener).first().click();
     if (!(await aside.first().isVisible().catch(() => false))) {
+      await reveal(page, opener);
       await page.locator(opener).first().click();
     }
     // Every panel lives in that one <aside>; waiting for a heading inside it means waiting for the
@@ -166,7 +180,7 @@ const OPENED_STATES = [
   // is the one selector that means the same thing at both widths the gate runs at.
   panel("formula palette", 'button[aria-label="สูตร"]'),
   panel("AI assistant panel", 'button[aria-label="ถาม AI"]'),
-  panel("live data panel", 'button[aria-label="ข้อมูล"]'),
+  panel("live data panel", 'button[aria-label="ข้อมูลสด"]'),
   panel("conditional formatting panel", 'button[title="จัดรูปแบบตามเงื่อนไข"]'),
   panel("chart panel", 'button[title="กราฟ"]'),
   panel("pivot panel", 'button[title="สรุปข้อมูล (Pivot)"]'),
@@ -182,11 +196,8 @@ const OPENED_STATES = [
     name: "validation popover",
     path: "/app",
     async open(page) {
-      const bar = page.locator('button[title="จำกัดสิ่งที่กรอกได้ในช่องที่เลือก"]');
-      if (!(await bar.first().isVisible().catch(() => false))) {
-        await page.locator('button[title="แสดงแถบรูปแบบ"]').first().click();
-      }
-      await bar.first().click();
+      await reveal(page, 'button[title="จำกัดสิ่งที่กรอกได้ในช่องที่เลือก"]');
+      await page.locator('button[title="จำกัดสิ่งที่กรอกได้ในช่องที่เลือก"]').first().click();
       await page.locator('[role="dialog"]').first().waitFor({ state: "visible", timeout: 10_000 });
     },
   },
@@ -216,11 +227,8 @@ const OPENED_STATES = [
     name: "names popover",
     path: "/app",
     async open(page) {
-      const bar = page.locator('button[title="ตั้งชื่อให้ช่วงที่เลือก"]');
-      if (!(await bar.first().isVisible().catch(() => false))) {
-        await page.locator('button[title="แสดงแถบรูปแบบ"]').first().click();
-      }
-      await bar.first().click();
+      await reveal(page, 'button[title="ตั้งชื่อให้ช่วงที่เลือก"]');
+      await page.locator('button[title="ตั้งชื่อให้ช่วงที่เลือก"]').first().click();
       await page.locator('[role="dialog"]').first().waitFor({ state: "visible", timeout: 10_000 });
     },
   },
@@ -231,12 +239,29 @@ const OPENED_STATES = [
       // The comment box needs one cell selected, which is the app's own starting state; clicking
       // one first is what a person does and what keeps this from depending on that default.
       await page.locator('td[data-row="0"][data-col="0"]').click();
-      const button = page.locator('button[title="คอมเมนต์ในเซลล์"]');
-      if (!(await button.first().isVisible().catch(() => false))) {
-        await page.locator('button[title="แสดงแถบรูปแบบ"]').first().click();
-      }
-      await button.first().click();
+      await reveal(page, 'button[title="คอมเมนต์ในเซลล์"]');
+      await page.locator('button[title="คอมเมนต์ในเซลล์"]').first().click();
       await page.locator("textarea").first().waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  // Phone-only: neither exists from 640px up, where every one of these controls sits in a row.
+  // `widths` keeps them from being "could not open" failures at 1280 for the right reason.
+  {
+    name: "cell tools sheet",
+    path: "/app",
+    widths: [390],
+    async open(page) {
+      await page.locator('button[aria-controls="cell-tools"]').click();
+      await page.locator("#cell-tools[role=dialog]").waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    name: "phone menu",
+    path: "/app",
+    widths: [390],
+    async open(page) {
+      await page.getByRole("button", { name: "เมนู", exact: true }).click();
+      await page.getByRole("dialog", { name: "เมนู" }).waitFor({ state: "visible", timeout: 10_000 });
     },
   },
   {
@@ -317,7 +342,7 @@ try {
   }
 
   for (const state of OPENED_STATES) {
-    for (const width of AXE_WIDTHS) {
+    for (const width of AXE_WIDTHS.filter((w) => !state.widths || state.widths.includes(w))) {
       const ctx = await browser.newContext({ viewport: { width, height: 900 } });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + state.path, { waitUntil: "networkidle" });
@@ -359,7 +384,9 @@ if (failures.length > 0) {
   console.error(`\ncheck:a11y — ${failures.length} check(s) failed`);
   process.exit(1);
 }
-const total = PAGES.length * (AXE_WIDTHS.length + OVERFLOW_WIDTHS.length) + OPENED_STATES.length * AXE_WIDTHS.length;
+const total =
+  PAGES.length * (AXE_WIDTHS.length + OVERFLOW_WIDTHS.length) +
+  OPENED_STATES.reduce((n, s) => n + AXE_WIDTHS.filter((w) => !s.widths || s.widths.includes(w)).length, 0);
 // Says which half it was, so "36 checks passed" and "22 checks passed" are not confusable.
 const scope = requested ? ` at ${requested}px` : "";
 console.log(`\ncheck:a11y — ${total} checks passed${scope}`);
