@@ -92,9 +92,11 @@ function ipv6Groups(ip: string): number[] | null {
 const dotted = (a: number, b: number) => [a >> 8, a & 0xff, b >> 8, b & 0xff].join(".");
 
 /**
- * The IPv4 address an IPv6 address carries, for the four forms that carry one where it can be read.
+ * The IPv4 address an IPv6 address carries, for the five forms that carry one where it can be read.
  *
  * - IPv4-mapped `::ffff:a.b.c.d` and IPv4-compatible `::a.b.c.d` — the last 32 bits.
+ * - SIIT "IPv4-translated" `::ffff:0:a.b.c.d` (`::ffff:0:0/96`, RFC 6145) — the last 32 bits. The
+ *   same address as the mapped form one group over, and a translator treats it as the IPv4 one.
  * - NAT64 well-known prefix `64:ff9b::/96` (RFC 6052) — the last 32 bits. On an IPv6-only subnet
  *   the gateway turns this into a real IPv4 connection, so `64:ff9b::a9fe:a9fe` *is*
  *   169.254.169.254 to the host that sends it.
@@ -107,6 +109,9 @@ function embeddedIpv4(groups: number[]): string | null {
   if (groups[0] === 0x2002) return dotted(groups[1], groups[2]);
   const nat64 = groups[0] === 0x64 && groups[1] === 0xff9b && groups.slice(2, 6).every((g) => g === 0);
   if (nat64) return dotted(groups[6], groups[7]);
+
+  const translated = groups.slice(0, 4).every((g) => g === 0) && groups[4] === 0xffff && groups[5] === 0;
+  if (translated) return dotted(groups[6], groups[7]);
 
   const leadingZero = groups.slice(0, 5).every((g) => g === 0);
   if (!leadingZero) return null;
@@ -140,6 +145,9 @@ export function isBlockedAddress(address: string): boolean {
   // and a prefix that exists only for an operator's own network has no business in a source URL.
   if (first === 0x64 && groups[1] === 0xff9b && groups[2] === 1) return true;
   if (first === 0x2001 && groups[1] === 0x0db8) return true; // 2001:db8::/32 documentation
+  // 2001::/32, Teredo (RFC 4380). It carries an IPv4 address too, but obscured, and the protocol has
+  // been switched off almost everywhere — so the whole prefix is refused rather than decoded.
+  if (first === 0x2001 && groups[1] === 0) return true;
   if ((first & 0xffc0) === 0xfe80) return true; // fe80::/10 link-local
   if ((first & 0xfe00) === 0xfc00) return true; // fc00::/7 unique local
   if ((first & 0xff00) === 0xff00) return true; // ff00::/8 multicast

@@ -92,6 +92,41 @@ describe("which addresses the server refuses to reach", () => {
     expect(isBlockedAddress("2002:808:808::1")).toBe(false); // 8.8.8.8
   });
 
+  it("sees the IPv4 address inside an SIIT IPv4-translated address", () => {
+    // ::ffff:0:0/96 (RFC 6145): the mapped form one group over, and read the same way.
+    expect(isBlockedAddress("::ffff:0:a9fe:a9fe")).toBe(true); // 169.254.169.254
+    expect(isBlockedAddress("::ffff:0:7f00:1")).toBe(true); // 127.0.0.1
+    expect(isBlockedAddress("::ffff:0:a00:1")).toBe(true); // 10.0.0.1
+    expect(isBlockedAddress("::FFFF:0:169.254.169.254")).toBe(true); // dotted, upper case
+  });
+
+  it("judges a public IPv4 address the same in every form that carries one", () => {
+    // 8.8.8.8 is allowed as itself, so it is allowed inside each wrapper too — no form is stricter
+    // or looser than the address it carries.
+    for (const ip of ["8.8.8.8", "::ffff:808:808", "::ffff:0:808:808", "64:ff9b::808:808", "2002:808:808::1"]) {
+      expect(isBlockedAddress(ip), ip).toBe(false);
+    }
+    for (const ip of ["169.254.169.254", "::ffff:a9fe:a9fe", "::ffff:0:a9fe:a9fe", "64:ff9b::a9fe:a9fe", "2002:a9fe:a9fe::1"]) {
+      expect(isBlockedAddress(ip), ip).toBe(true);
+    }
+  });
+
+  it("does not read an address that only resembles the translated form", () => {
+    // A non-zero group before the ffff makes it an ordinary address, not a place to find an IPv4.
+    expect(isBlockedAddress("1::ffff:0:7f00:1")).toBe(false);
+    expect(isBlockedAddress("::1:ffff:0:7f00:1")).toBe(false);
+  });
+
+  it("refuses the whole Teredo prefix", () => {
+    // 2001::/32 (RFC 4380) carries an IPv4 address obscured, and is switched off almost everywhere.
+    expect(isBlockedAddress("2001::1")).toBe(true);
+    expect(isBlockedAddress("2001:0:a9fe:a9fe::1")).toBe(true);
+    expect(isBlockedAddress("2001:0:4136:e378:8000:63bf:3fff:fdd2")).toBe(true);
+    expect(isBlockedAddress("2001:0:ffff:ffff:ffff:ffff:ffff:ffff")).toBe(true);
+    // The rest of 2001::/16 is ordinary space and stays reachable.
+    expect(isBlockedAddress("2001:4860:4860::8888")).toBe(false);
+  });
+
   it("blocks the IPv6 documentation range, like the IPv4 ones", () => {
     expect(isBlockedAddress("2001:db8::1")).toBe(true);
     expect(isBlockedAddress("2001:0db8:ffff::1")).toBe(true);
@@ -160,6 +195,8 @@ describe("checking a URL before fetching it", () => {
     await expect(assertFetchable("http://[::ffff:169.254.169.254]/")).rejects.toThrow(/not a public address/);
     await expect(assertFetchable("http://[64:ff9b::169.254.169.254]/")).rejects.toThrow(/not a public address/);
     await expect(assertFetchable("http://[2002:a9fe:a9fe::1]/")).rejects.toThrow(/not a public address/);
+    await expect(assertFetchable("http://[::ffff:0:169.254.169.254]/")).rejects.toThrow(/not a public address/);
+    await expect(assertFetchable("http://[2001::a9fe:a9fe]/")).rejects.toThrow(/not a public address/);
   });
 
   it("lets a public IPv6 literal through", async () => {

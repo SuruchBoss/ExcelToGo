@@ -32,7 +32,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1463%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1467%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ and saying so when data came back incomplete. A range can be given a name (in Th
 what it means, and a cell can carry a rule about what may go in it, refused before it is written rather than
 flagged afterwards. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 1463 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 1467 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -97,7 +97,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 
 ---
 
-### 🧪 สิ่งที่เทสต์ 1463 เคสจับไม่ได้
+### 🧪 สิ่งที่เทสต์ 1467 เคสจับไม่ได้
 
 เทสต์ของผู้ช่วย AI ใช้ **mock ทั้งหมด** — มันตอบตามที่ผมคิดว่ามันจะตอบ พอเอา API key จริงมายิงคำถามธรรมดา
 14 ข้อ **6 คำตอบใช้ฟังก์ชันที่เอนจินนี้ไม่มี** (`TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR`)
@@ -107,7 +107,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 มันจึงตอบคำถาม *"ต่อชื่อทั้งหมดเป็นบรรทัดเดียว"* ด้วย `=SUM(A2:A20)` ซึ่งได้ `0` โดยไม่มีอะไรบอกว่าผิด
 **เปลี่ยน error ที่มองเห็น เป็นตัวเลขผิดที่มองไม่เห็น**
 
-**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1463 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
+**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1467 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
 ที่สองความกว้าง — ผมลองไล่คลิก build สาธารณะแบบคนที่เพิ่งเข้ามาครั้งแรกอยู่ชั่วโมงหนึ่ง แล้วเจอสามอย่าง
 ที่ไม่มีด่านไหนมองเห็น:
 
@@ -355,7 +355,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 1463 เคสด้วย Vitest |
+| `npm test` | รัน unit test 1467 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:screens` | ตัวเลขที่พิมพ์อยู่บนภาพหน้าจอยังตรงกับซอร์สไหม |
 | `npm run check:rls` | ยิงจริงสองบัญชีบน Supabase ของคุณ ว่าฐานข้อมูลปฏิเสธตามที่ policy เขียนไว้ไหม (ต้องตั้ง env) |
@@ -569,7 +569,7 @@ CSV/Google Sheets, header สำหรับยืนยันตัวตน (�
 | | |
 |---|---|
 | **ต้องมีโทเคน** | ไม่ตั้ง = ปิดทั้งหมด (403) · เทียบแบบ constant-time · เก็บใน `sessionStorage` ปิดเบราว์เซอร์แล้วถามใหม่ |
-| **ยิงเข้าวงในไม่ได้** | เช็ก**ทุก IP ที่ DNS ตอบกลับมา** และเช็กซ้ำ**ทุก redirect** — loopback, วงในตาม RFC 1918, `169.254.169.254` (metadata ของ AWS/GCP/Azure), IPv6 link-local/unique-local/documentation และ IPv4 ที่ซ่อนใน IPv6 ทั้งแบบ `::ffff:`, `::`, NAT64 `64:ff9b::/96` และ 6to4 `2002::/16` (แกะออกมาเช็กเป็น IPv4) · NAT64 แบบ local-use `64:ff9b:1::/48` ปฏิเสธทั้งช่วง |
+| **ยิงเข้าวงในไม่ได้** | เช็ก**ทุก IP ที่ DNS ตอบกลับมา** และเช็กซ้ำ**ทุก redirect** — loopback, วงในตาม RFC 1918, `169.254.169.254` (metadata ของ AWS/GCP/Azure), IPv6 link-local/unique-local/documentation และ IPv4 ที่ซ่อนใน IPv6 ทั้งแบบ `::ffff:`, `::`, SIIT `::ffff:0:0/96`, NAT64 `64:ff9b::/96` และ 6to4 `2002::/16` (แกะออกมาเช็กเป็น IPv4) · NAT64 แบบ local-use `64:ff9b:1::/48` และ Teredo `2001::/32` ปฏิเสธทั้งช่วง |
 | **credential ไปแค่ origin ของตัวเอง** | auth header ส่งไปเฉพาะ scheme + host + port ของ URL ที่ตั้ง source ไว้ · redirect ไปที่อื่นยังตามไปได้แต่ไม่มี header (และไม่ใส่กลับคืน) · ลิงก์หน้าถัดไปที่อยู่คนละ origin ไม่ถูกเรียกเลย ตารางหยุดตรงนั้นและบอกว่าเป็นข้อมูลบางส่วน |
 | **credential เข้ารหัสบนดิสก์** | AES-256-GCM ด้วย `SOURCES_SECRET_KEY` · ไม่ตั้งคีย์ = ไม่ยอมเก็บ credential เลย ดีกว่าเก็บเป็น plaintext · connection string ของฐานข้อมูลก็นับเป็น credential เหมือนกัน |
 | **คำสั่งฐานข้อมูลเขียนอะไรไม่ได้** | ทุก query รันในทรานแซกชันอ่านอย่างเดียว (ฐานข้อมูลเป็นคนปฏิเสธเอง) และ `sqlGuard` ปฏิเสธซ้ำตั้งแต่ตอนบันทึก · ฐานข้อมูลในวงภายในต้องใส่ชื่อไว้ใน `SOURCES_ALLOWED_DB_HOSTS` ก่อน |
@@ -1757,7 +1757,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1463 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1467 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -2421,11 +2421,11 @@ policy ของ realtime ถามคำถาม*เดียวกัน*ก�
 B อ่านและแก้ได้ แต่ยังยึดเป็นเจ้าของหรือลบไม่ได้ ปิดท้ายด้วยการลองเข้าห้องโดยถือแค่ anon key
 ซึ่งเป็นสิ่งที่เมื่อก่อน**ทำได้**
 
-### 280 เทสต์ด้านความปลอดภัย
+### 284 เทสต์ด้านความปลอดภัย
 
 | ไฟล์ | เทสต์ | ครอบอะไร |
 |---|---|---|
-| `urlGuard.test.ts` | 27 | loopback, private range, cloud metadata, IPv4-in-IPv6 (`::ffff:`, `::`, NAT64, 6to4), IPv6 documentation, link-local, multicast, scheme ที่ไม่ใช่ http(s), โฮสต์ที่ resolve ไม่ได้ |
+| `urlGuard.test.ts` | 31 | loopback, private range, cloud metadata, IPv4-in-IPv6 (`::ffff:`, `::`, SIIT, NAT64, 6to4, Teredo), IPv6 documentation, link-local, multicast, scheme ที่ไม่ใช่ http(s), โฮสต์ที่ resolve ไม่ได้ |
 | `executeSource.test.ts` | 37 | ตรวจซ้ำหลัง redirect, ตัดลูป redirect, fast path ของ origin เดียวกัน, การไล่หน้า, ขอบเขตแถว, auth header อยู่แค่ origin ของ source (redirect ข้าม origin, `https` → `http`, ลิงก์หน้าถัดไปที่อื่น) |
 | `secretBox.test.ts` | 10 | AES-256-GCM, ciphertext ไม่ซ้ำ, จับการแก้ไข ciphertext, ไม่มีคีย์แล้วไม่ยอมเข้ารหัสแทนที่จะเก็บ plain text |
 | `rateLimiter.test.ts` | 10 | ถึงเพดานแล้วปฏิเสธ, นับแยกราย key, `Retry-After` ที่ลดลงจริง, กันแมปโตไม่จำกัดเมื่อโดนยิง key มั่ว |
@@ -2534,13 +2534,13 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 1463 เคส ใน 85 ไฟล์ ด้วย Vitest
+npm test      # 1467 เคส ใน 85 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง
 
-**แต่ 1463 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
+**แต่ 1467 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
 ทุกตัวแทบทั้งหมด — ปุ่ม "+ แถว" บนแถบเครื่องมือเรียก `addRow` ที่ไม่ประกาศอะไรเลย ขณะที่ `insertRowAtSelection`
 ข้าง ๆ ประกาศถูกต้อง (ทั้งคู่เทสต์ผ่าน) · ผู้ช่วย AI ส่งช่วงที่รวมหัวคอลัมน์ไปด้วย เพราะตัวประกอบ context อ่าน
 `sheet.cells` ที่เป็นสูตรดิบแทนค่าที่คำนวณแล้ว (ทั้งคู่เทสต์ผ่าน) · ปุ่มใหม่หนึ่งปุ่มดันปุ่มสลับภาษาตกขอบจอไป 42px
@@ -2620,9 +2620,9 @@ seed ถูกปักไว้ ด่านที่แดงจึงแด�
 ในตารางแล้วสองข้อในflow ที่สามตกทันที (ครั้งแรกที่ลองปิดยังเขียวอยู่ เพราะ `case` ที่แทรกเข้าไปไปอยู่หลัง
 `case "ArrowRight"` เดิม กลายเป็นโค้ดตาย — การพิสูจน์ต้องเช็กด้วยว่าของที่ตั้งใจทำให้พังนั้นพังจริง)
 
-> **1463 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
+> **1467 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
 > มันจึงตอบตามที่คนเขียนเทสต์คิดว่ามันจะตอบ จำนวนเทสต์บอกได้แค่ว่าเราถามอะไรไปบ้าง ไม่ได้บอกว่าเราถาม
-> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1463 เคสจับไม่ได้](#-สิ่งที่เทสต์-1463-เคสจับไม่ได้)
+> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1467 เคสจับไม่ได้](#-สิ่งที่เทสต์-1467-เคสจับไม่ได้)
 > และรันซ้ำเองได้ด้วย `npm run check:ai`
 
 | ไฟล์ | เคส | ทดสอบอะไร |
@@ -2650,7 +2650,7 @@ seed ถูกปักไว้ ด่านที่แดงจึงแด�
 | `sheetTemplate.test.ts` | 14 | เซลล์ไหนล็อก/กรอกได้, ตัวเลือก dropdown แบบ inline และแบบอ้างช่วง, แปลงความกว้างคอลัมน์ |
 | `excelIO.test.ts` | 51 | สร้างไฟล์ .xlsx จริงแล้ววนครบรอบ: อ่านช่องกรอก/dropdown/ความกว้าง, ไฟล์ที่ไม่ protect ไม่ใช่แม่แบบ, export แล้ว import กลับได้เหมือนเดิม, และรูปแบบ (แถบสี/ขนาดตัวอักษร/เส้นขอบ/ความสูงแถว/merge) ครบรอบ รวมถึงกฎจัดรูปแบบตามเงื่อนไขทั้ง 5 แบบ และโน้ตของเซลล์ (ทั้งที่เขียนเป็นข้อความธรรมดาและ rich text ของ Excel), dropdown ข้ามชีตอ่านจากชีตที่กฎชี้ (ชื่อชีตมีเครื่องหมายคำพูด, ชีตซ่อน, ชีตที่ไม่มีอยู่, แม่แบบร่าง 0 ของ PaynEat ERP) |
 | `charts.test.ts` | 42 | อ่านช่วงเป็นชุดข้อมูล+ป้ายกำกับ (รวมกรณีคอลัมน์ซ้ายเป็นข้อความ), ช่องว่างเมื่อไม่ใช่ตัวเลข, แกนที่รวมศูนย์, การย้าย/ย่อขยาย/หนีบกรอบไว้ในชีต, คำอธิบายสีตามชนิดกราฟ, การเลื่อนตามแทรก/ลบ |
-| `server/urlGuard.test.ts` | 27 | ที่อยู่ที่ห้ามยิงถึง (loopback, วงใน, metadata ของคลาวด์, IPv6 link-local), IPv4 ที่ซ่อนใน IPv6 (`::ffff:`, `::`, NAT64, 6to4), scheme ที่ไม่ใช่ http, และ allowlist |
+| `server/urlGuard.test.ts` | 31 | ที่อยู่ที่ห้ามยิงถึง (loopback, วงใน, metadata ของคลาวด์, IPv6 link-local), IPv4 ที่ซ่อนใน IPv6 (`::ffff:`, `::`, SIIT, NAT64, 6to4, Teredo), scheme ที่ไม่ใช่ http, และ allowlist |
 | `server/sourcesAuth.test.ts` | 9 | ไม่ตั้งโทเคน = ปิดทั้งหมด, โทเคนถูก/ผิด/เป็นแค่บางส่วน, แยก "ปิดอยู่" ออกจาก "โทเคนผิด" |
 | `server/secretBox.test.ts` | 10 | เข้ารหัส/ถอดรหัส credential, ciphertext ไม่ซ้ำ, ตรวจจับการแก้ไข, ปฏิเสธเมื่อไม่มีคีย์, อ่านของเดิมที่เป็น plaintext ได้ |
 | `cloud/cloud.test.ts` | 24 | เปิด/ปิดตามตัวแปรแวดล้อม (รวมกรณีตั้งครึ่งเดียว), รูปแบบงานที่เก็บและการวนกลับผ่าน JSON, ปฏิเสธไฟล์จากเวอร์ชันใหม่กว่า, ตรวจจับการบันทึกทับจากอีกเครื่อง |
