@@ -254,7 +254,10 @@ project hosts for everyone.
 
 `/api/ai/formula` deliberately requires no token: the assistant is a feature of the app, not an
 admin tool. It is rate limited instead — **20 calls per minute per client address**, refused with
-`429` and a `Retry-After` — so an open endpoint cannot be looped against your Anthropic bill.
+`429` and a `Retry-After`. That slows a careless script or a stuck retry loop. **It does not protect
+your Anthropic bill**: the address it counts by is one a client can choose (below), so a script that
+sends a different one each time is never limited. What protects the bill is the next paragraph —
+not calling Anthropic at all on a public deployment.
 
 On a public demo the route does not reach Anthropic at all. `NEXT_PUBLIC_DEMO_MODE=1` makes it
 behave as if no key were configured — the local keyword matcher answers instead, which costs nothing
@@ -264,9 +267,10 @@ switch is on *with a key present*, so the protection does not depend on anyone r
 the key unset. Leaving it unset is still the better habit; two layers beat one.
 
 The counters are held in the serving process's memory. Two instances behind a load balancer count
-separately and a serverless cold start forgets everything, so this is a guard against casual abuse
-and runaway scripts, **not a billing control**; a real one needs shared storage, which this project
-does not have. The address comes from `x-forwarded-for`, which a client can forge, so it is used
+separately and a serverless cold start forgets everything, so this is a guard against casual abuse,
+**not a billing control**; a real one needs shared storage, which this project does not have. The
+address comes from `x-forwarded-for`, which a client can forge — rotating it gets a fresh allowance
+on every call, which is why the paragraph above does not claim more — so it is used
 for counting only and never for authorisation — and the limiter caps how many distinct keys it will
 hold, because otherwise a spray of forged addresses would exhaust memory and turn the limiter into
 the denial of service it exists to prevent.

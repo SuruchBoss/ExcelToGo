@@ -434,9 +434,10 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 >
 > **`ANTHROPIC_API_KEY` and public demos.** `/api/ai/formula` takes no authentication by design —
 > the assistant is part of the app, and making a visitor log in to ask a question would be absurd.
-> It is capped at **20 calls a minute per IP**, which stops a script in a loop, but the counters live
-> in the process's memory: separate instances count separately and a serverless cold start forgets
-> them. **That guards against casual abuse, it is not a billing control.**
+> It is capped at **20 calls a minute per IP**, which slows a careless script, but the IP is read from
+> `x-forwarded-for`, which a client can set to anything — a script that changes it on every call is
+> never limited — and the counters live in the process's memory: separate instances count separately
+> and a serverless cold start forgets them. **That guards against casual abuse, it is not a billing control.**
 >
 > The billing control is the same switch as above: **`NEXT_PUBLIC_DEMO_MODE=1` makes this route skip
 > Anthropic entirely**, even with a key configured, and fall back to local keyword matching — free,

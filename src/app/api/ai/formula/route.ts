@@ -11,9 +11,10 @@ export const runtime = "nodejs";
 
 /**
  * This route takes no token — the assistant is part of the app and making a visitor authenticate
- * to use it would be absurd — so a ceiling is the only thing standing between a script in a loop
- * and the operator's Anthropic bill. Twenty a minute is far more than a person clicking "ask AI"
- * will ever need and far less than a loop wants.
+ * to use it would be absurd — so it has a ceiling that slows a careless script in a loop. Twenty a
+ * minute is far more than a person clicking "ask AI" will ever need and far less than a loop wants.
+ * It is not what stands between this route and the operator's Anthropic bill: the address it counts
+ * by comes from a header the client chooses, so rotating it resets the count. Demo mode, below, is.
  *
  * Module scope, so the counters live as long as the server process. See rateLimiter.ts for what
  * that does and does not buy on a multi-instance or serverless deployment.
