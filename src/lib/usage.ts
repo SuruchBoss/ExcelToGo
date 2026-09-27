@@ -28,6 +28,13 @@
  *    that cannot be narrowed to a person even by whoever owns the database.
  * 5. **Do Not Track and Global Privacy Control are honoured**, because an app whose whole argument
  *    is "we do not take your data" does not get to ignore the browser saying the same thing.
+ *    **A browser that says it is being driven by a program is not counted either**
+ *    (`navigator.webdriver`, or `HeadlessChrome` in its user agent), and the route checks the
+ *    request's user agent again for the same two words. The first week in production counted
+ *    nothing but a crawler's headless Chrome, which is the one number this exists to keep out.
+ *    The route *reads* the user agent to decide and then forgets it — it is not stored or logged,
+ *    so point 4 still holds. A bot that takes the trouble to look like a person still counts:
+ *    this filters the ones that say what they are, and does not pretend to catch the rest.
  *
  * What this cannot tell you, stated so nobody reads more into a chart than is in it: how many
  * *people* (two visits from one person and one each from two are the same number), whether anyone
@@ -78,6 +85,29 @@ export function optedOut(nav: { doNotTrack?: string | null; globalPrivacyControl
 }
 
 /**
+ * A user agent that names itself as a headless browser.
+ *
+ * `HeadlessChrome/…` is what headless Chromium puts where the product token goes — the crawler that
+ * made up the first week of production counts sent exactly that. Shared with the route, which has
+ * only the request header to go on; one pattern, so the two cannot drift into disagreeing.
+ */
+export function headlessAgent(userAgent: string | null | undefined): boolean {
+  return typeof userAgent === "string" && /HeadlessChrome\//.test(userAgent);
+}
+
+/**
+ * The browser saying it is not a person, in either of the two ways it does.
+ *
+ * `navigator.webdriver` is the standard flag every WebDriver- or CDP-driven browser is required to
+ * set; the user agent catches the headless ones that are not being driven that way. Kept apart from
+ * {@link optedOut} because it is a different statement — "nobody is here", not "count me out".
+ */
+export function automated(nav: { webdriver?: boolean; userAgent?: string } | undefined): boolean {
+  if (!nav) return false;
+  return nav.webdriver === true || headlessAgent(nav.userAgent);
+}
+
+/**
  * Which events this page load has already counted.
  *
  * Module state rather than `sessionStorage`: writing it down would create exactly the identifier
@@ -93,7 +123,13 @@ export function resetUsage(): void {
 
 export interface UsageDeps {
   enabled?: boolean;
-  navigator?: { doNotTrack?: string | null; globalPrivacyControl?: boolean; sendBeacon?: (url: string, data?: BodyInit) => boolean };
+  navigator?: {
+    doNotTrack?: string | null;
+    globalPrivacyControl?: boolean;
+    webdriver?: boolean;
+    userAgent?: string;
+    sendBeacon?: (url: string, data?: BodyInit) => boolean;
+  };
   fetch?: typeof fetch;
 }
 
@@ -107,7 +143,7 @@ export interface UsageDeps {
 export function countUsage(event: UsageEvent, deps: UsageDeps = {}): boolean {
   const enabled = deps.enabled ?? isUsageEnabled();
   const nav = deps.navigator ?? (typeof navigator === "undefined" ? undefined : navigator);
-  if (!enabled || !isUsageEvent(event) || sent.has(event) || optedOut(nav)) return false;
+  if (!enabled || !isUsageEvent(event) || sent.has(event) || optedOut(nav) || automated(nav)) return false;
   // Marked before the send, not after: a failed post must not turn into a retry on the next
   // keystroke, because "how many times did this fail" is traffic nobody asked for either.
   sent.add(event);

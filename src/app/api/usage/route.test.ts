@@ -11,15 +11,16 @@ import { failureReason, recordUsage, usageFailureLine, usageLogLine } from "@/li
  * Counted as a security test. The browser's copy of the event list is a convenience; this is the
  * copy that has to hold.
  */
-const post = (body: unknown, raw?: string) =>
+const post = (body: unknown, raw?: string, userAgent = "Mozilla/5.0 (a real browser)") =>
   POST(
     new Request("https://app.test/api/usage", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        // Present on every real request whether anyone wants them or not. None are read.
+        // Present on every real request whether anyone wants them or not. None are kept, and only
+        // the user agent is read — to turn a headless browser away.
         "x-forwarded-for": "203.0.113.9",
-        "user-agent": "Mozilla/5.0 (a real browser)",
+        "user-agent": userAgent,
         referer: "https://somewhere.example/private-page?q=secret",
         cookie: "session=abc123",
       },
@@ -84,6 +85,34 @@ describe("what the endpoint accepts", () => {
     await post({ event: "file_exported", sheet: "เงินเดือน", cells: ["ก", "ข"], ip: "1.2.3.4" });
     expect(log).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledWith(usageLogLine("file_exported"));
+  });
+
+  it("records nothing from a headless browser, whatever its page script did", async () => {
+    // A crawler that skips the page's script, or posts with `curl` and a copied header, never meets
+    // the browser's check. The user agent below is the one the first week of production was made of.
+    enable();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const crawler =
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.7390.0 Safari/537.36";
+    const res = await post({ event: "landing_viewed" }, undefined, crawler);
+    // The same answer as a counted one: a bot learns nothing from the status either.
+    expect(res.status).toBe(204);
+    expect(await res.text()).toBe("");
+    expect(log).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("still records an ordinary browser, and puts nothing of its user agent anywhere", async () => {
+    enable();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const person =
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.0 Safari/537.36";
+    await post({ event: "landing_viewed" }, undefined, person);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith(usageLogLine("landing_viewed"));
+    // Read to decide, never written: the one line that goes out carries the event and no more.
+    expect(JSON.stringify(log.mock.calls)).not.toContain("Chrome");
   });
 
   it("does not read an unbounded body from an unauthenticated endpoint", async () => {

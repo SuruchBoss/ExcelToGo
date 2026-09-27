@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { isUsageEnabled, isUsageEvent } from "@/lib/usage";
+import { headlessAgent, isUsageEnabled, isUsageEvent } from "@/lib/usage";
 import { recordUsage } from "@/lib/server/usageSink";
 
 export const runtime = "nodejs";
@@ -10,8 +10,11 @@ export const runtime = "nodejs";
  * Takes one event name and counts it. Takes nothing else, on purpose.
  *
  * The request carries an IP, a user agent and a referrer whether anybody wants them or not — that
- * is what an HTTP request is. What matters is that none of them are read here, and that the only
- * thing that reaches storage is a name from a fixed list. Checking the list again, after the
+ * is what an HTTP request is. What matters is that none of them are kept, and that the only
+ * thing that reaches storage is a name from a fixed list. The user agent is the one that is *read*:
+ * once, to drop a request from a headless browser, and then it goes out of scope with the request —
+ * it is not stored, logged or passed on. The browser already declines to send from one; this is
+ * the copy a crawler that skips the page's script still has to get past. Checking the list again, after the
  * browser already checked it, is the point rather than belt and braces: the browser's copy is a
  * convenience, and this is the one a stranger with `curl` has to get past.
  *
@@ -21,6 +24,8 @@ export const runtime = "nodejs";
  */
 export async function POST(request: Request): Promise<Response> {
   if (!isUsageEnabled()) return new Response(null, { status: 204 });
+  // Same 204 as a counted one, for the same reason as below: a bot learns nothing from the answer.
+  if (headlessAgent(request.headers.get("user-agent"))) return new Response(null, { status: 204 });
 
   let event: unknown;
   try {

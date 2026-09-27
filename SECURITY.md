@@ -188,8 +188,12 @@ to persist and nothing to correlate across visits. It also changes what is measu
 wearing a number's clothes.
 
 **No time of day, no IP, no user agent, no referrer, no cookie, no session.** A request carries the
-first four whether anyone wants them or not; what matters is that none are read, and the route's
-tests send all four and assert that what reaches storage is the event name alone. The day is
+first four whether anyone wants them or not; what matters is that none are kept, and the route's
+tests send all four and assert that what reaches storage is the event name alone. The user agent is
+the one that is *read*: the route drops a request whose user agent contains `HeadlessChrome` (the
+browser already declines to send when `navigator.webdriver` is set or its own user agent says the
+same), and the value goes out of scope with the request — not stored, not logged. A bot that
+disguises itself as a person is still counted; this filters only the ones that say what they are. The day is
 stamped by `current_date` in the database, because a date that arrives over the network is a field
 somebody eventually makes more precise, and an exact time plus a rare event is an identifier.
 

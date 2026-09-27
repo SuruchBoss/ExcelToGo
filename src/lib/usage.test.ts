@@ -2,7 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { countUsage, isUsageEnabled, isUsageEvent, optedOut, resetUsage, USAGE_EVENTS, USAGE_PATH } from "./usage";
+import {
+  automated,
+  countUsage,
+  headlessAgent,
+  isUsageEnabled,
+  isUsageEvent,
+  optedOut,
+  resetUsage,
+  USAGE_EVENTS,
+  USAGE_PATH,
+} from "./usage";
 
 /**
  * A counter in an app whose whole argument is that it does not take your data.
@@ -47,6 +57,40 @@ describe("when nothing is sent at all", () => {
     expect(optedOut({ globalPrivacyControl: true })).toBe(true);
     expect(optedOut({ doNotTrack: "0" })).toBe(false);
     expect(optedOut(undefined)).toBe(false);
+  });
+
+  it("does not count a browser driven by a program", () => {
+    // Every figure in the first week of production was a crawler's headless Chrome. This is the
+    // exact user agent it sent (Vercel logs, 2026-09), not a made-up one.
+    const crawler =
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.7390.0 Safari/537.36";
+    const b = beacon();
+    expect(countUsage("landing_viewed", { enabled: true, navigator: { ...b.nav, webdriver: true } })).toBe(false);
+    resetUsage();
+    expect(countUsage("landing_viewed", { enabled: true, navigator: { ...b.nav, userAgent: crawler } })).toBe(false);
+    expect(b.sent).toHaveLength(0);
+  });
+
+  it("still counts an ordinary Chrome, which differs from the crawler by one word", () => {
+    const person =
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.0 Safari/537.36";
+    const b = beacon();
+    expect(countUsage("landing_viewed", { enabled: true, navigator: { ...b.nav, userAgent: person, webdriver: false } })).toBe(
+      true
+    );
+    expect(b.sent).toHaveLength(1);
+  });
+
+  it("reads the two signals exactly, not anything that looks a bit like them", () => {
+    expect(automated({ webdriver: true })).toBe(true);
+    expect(automated({ userAgent: "Mozilla/5.0 HeadlessChrome/120.0 Safari/537.36" })).toBe(true);
+    expect(automated({ webdriver: false, userAgent: "Mozilla/5.0 Chrome/120.0" })).toBe(false);
+    // `webdriver` is a boolean in every browser; a string is somebody's shim, not the flag.
+    expect(automated({ webdriver: "true" as unknown as boolean })).toBe(false);
+    expect(automated(undefined)).toBe(false);
+    expect(headlessAgent(null)).toBe(false);
+    expect(headlessAgent(undefined)).toBe(false);
+    expect(headlessAgent("")).toBe(false);
   });
 
   it("counts an event at most once per page load", () => {
