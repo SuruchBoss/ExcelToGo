@@ -948,6 +948,16 @@ Supabase project can open and edit the workbook. There is no read-only role, and
 than implying one: a read-only share the app cannot enforce in the grid would be a promise made in
 the database and broken in the browser.
 
+> **⚠️ Sharing is only safe if your Supabase project enforces email confirmation.** Access is tied to
+> an *email address*, and the database trusts the address in the sign-in token. With confirmation
+> off, anyone holding the anon key (which is public) can sign up through Supabase's API as an invited
+> address — with a password, even though the app's own sign-in is a magic link — and open the
+> workbook. **Before sharing, open the Supabase dashboard → Authentication → Sign In / Providers →
+> Email and check** that **Confirm email** is on (self-hosted: `GOTRUE_MAILER_AUTOCONFIRM=false`),
+> that **Secure email change** is on (changing an account's address to an invited one needs
+> confirming too), and that any other provider you enable only hands over addresses it has verified.
+> The app cannot see these settings, so it cannot check them for you. Details in [SECURITY.md](SECURITY.md).
+
 **Version history works now** — every save over a workbook keeps the copy it replaced, the last
 twenty per workbook. The panel says *open*, not restore: looking at a version and deciding is a
 different act from replacing today's work with it, and one button doing both would be the more
@@ -2962,6 +2972,11 @@ What's not done yet, and why — to show this is a known gap, not something forg
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live
       session that needed it. Still open: automatic sync and version history
+- [ ] **Invite by user id, not by email address** (proposal) — today a share is matched against the
+      email in the sign-in token, so it is only safe while the Supabase project enforces email
+      confirmation (see ⚠️ under cloud save). Resolving the invitee to an `auth.uid()` once they have
+      signed in, and matching on that, would remove the dependency on a setting this app cannot see.
+      Also worth a policy test pinning the behaviour for a confirmed vs an unconfirmed address
 - [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
       each other type, presence shows where each cursor is, the cell you have open is never
       overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed

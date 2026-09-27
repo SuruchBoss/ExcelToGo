@@ -242,6 +242,21 @@ this app's server, so a deployment never sees its users' spreadsheets. Two thing
   unprotected table with a public key is readable by anyone who opens the page.
 - **Never put a service-role key in these variables.** It bypasses every policy, and being
   `NEXT_PUBLIC_` it would be handed to every visitor.
+- **Sharing is only as safe as your project's email confirmation.** A workbook is shared with an
+  *email address*, and `can_access_workbook()` (`0002_sharing_and_realtime.sql`) lets in whoever's
+  sign-in token carries that address. That is sound only while the project will not issue such a
+  token before the address has been proven. If "Confirm email" is off, anyone holding the public anon
+  key can sign up through Supabase's API — with a password, whatever the app's own magic-link screen
+  shows — as an address that was invited, and open the workbook. **Before you share anything, check
+  in the Supabase dashboard, under Authentication → Sign In / Providers → Email:**
+  - **Confirm email** is on (self-hosted: `GOTRUE_MAILER_AUTOCONFIRM=false`), so sign-up does not
+    return a session until the link in the email is clicked;
+  - **Secure email change** is on, so changing an account's address to an invited one needs the new
+    address confirmed too;
+  - any other sign-in provider you enable only hands over addresses it has verified itself.
+
+  This app cannot see those settings, so nothing in it can check them for you. Inviting by user id
+  instead of by address would remove the dependency; it is on the roadmap, not built.
 
 Running cloud save means running a database for whoever signs into your deployment, with the
 obligations that carries. That is the reason it is off by default rather than something this
