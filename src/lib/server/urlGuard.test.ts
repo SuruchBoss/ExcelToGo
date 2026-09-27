@@ -50,6 +50,56 @@ describe("which addresses the server refuses to reach", () => {
     expect(isBlockedAddress("::7f00:1")).toBe(true); // 127.0.0.1
   });
 
+  it("sees the IPv4 address inside a NAT64 address", () => {
+    // 64:ff9b::/96 (RFC 6052). On an IPv6-only subnet the gateway turns this into a real IPv4
+    // connection, so these three are the metadata service, loopback and a private host.
+    expect(isBlockedAddress("64:ff9b::a9fe:a9fe")).toBe(true); // 169.254.169.254
+    expect(isBlockedAddress("64:ff9b::7f00:1")).toBe(true); // 127.0.0.1
+    expect(isBlockedAddress("64:ff9b::a00:1")).toBe(true); // 10.0.0.1
+    expect(isBlockedAddress("64:FF9B::C0A8:1")).toBe(true); // 192.168.0.1, upper case
+    // Through the URL parser too, which is the spelling a source actually arrives in.
+    expect(new URL("http://[64:ff9b::169.254.169.254]/").hostname).toBe("[64:ff9b::a9fe:a9fe]");
+  });
+
+  it("still lets NAT64 reach a public IPv4 address, which is what it is for", () => {
+    // Refusing the whole prefix would cut an IPv6-only host off from every IPv4-only API.
+    expect(isBlockedAddress("64:ff9b::808:808")).toBe(false); // 8.8.8.8
+    expect(isBlockedAddress("64:ff9b::5db8:d822")).toBe(false); // 93.184.216.34
+  });
+
+  it("does not read a NAT64 lookalike as NAT64", () => {
+    // Only the /96 carries its IPv4 in the last 32 bits. A non-zero group in between makes it an
+    // ordinary address — a public one here — and not a place to go looking for 127.0.0.1.
+    expect(isBlockedAddress("64:ff9b:0:0:1:0:7f00:1")).toBe(false);
+    expect(isBlockedAddress("64:ff9a::7f00:1")).toBe(false);
+    expect(isBlockedAddress("65:ff9b::7f00:1")).toBe(false);
+  });
+
+  it("refuses the local-use NAT64 prefix outright, since its IPv4 cannot be located", () => {
+    // 64:ff9b:1::/48 (RFC 8215): where the IPv4 sits depends on a prefix length the address does
+    // not state, so there is nothing reliable to decode — and it exists only inside an operator's
+    // own network.
+    expect(isBlockedAddress("64:ff9b:1::a9fe:a9fe")).toBe(true);
+    expect(isBlockedAddress("64:ff9b:1:a9fe:a9:fe00::")).toBe(true);
+    expect(isBlockedAddress("64:ff9b:1:ffff:ffff:ffff:ffff:ffff")).toBe(true);
+  });
+
+  it("sees the IPv4 address inside a 6to4 address", () => {
+    // 2002::/16 (RFC 3056) carries it in bits 16–47, straight after the prefix.
+    expect(isBlockedAddress("2002:a9fe:a9fe::1")).toBe(true); // 169.254.169.254
+    expect(isBlockedAddress("2002:7f00:1::")).toBe(true); // 127.0.0.1
+    expect(isBlockedAddress("2002:c0a8:101:1::1")).toBe(true); // 192.168.1.1
+    expect(isBlockedAddress("2002:808:808::1")).toBe(false); // 8.8.8.8
+  });
+
+  it("blocks the IPv6 documentation range, like the IPv4 ones", () => {
+    expect(isBlockedAddress("2001:db8::1")).toBe(true);
+    expect(isBlockedAddress("2001:0db8:ffff::1")).toBe(true);
+    // The neighbours either side are ordinary space.
+    expect(isBlockedAddress("2001:db7::1")).toBe(false);
+    expect(isBlockedAddress("2001:db9::1")).toBe(false);
+  });
+
   it("does not mistake an ordinary public address for a mapped one", () => {
     expect(isBlockedAddress("::ffff:808:808")).toBe(false); // 8.8.8.8
     expect(isBlockedAddress("2001:4860:4860::8888")).toBe(false);
@@ -108,6 +158,8 @@ describe("checking a URL before fetching it", () => {
     await expect(assertFetchable("http://[::1]:3000/")).rejects.toThrow(/not a public address/);
     await expect(assertFetchable("http://[fd00::1]/")).rejects.toThrow(/not a public address/);
     await expect(assertFetchable("http://[::ffff:169.254.169.254]/")).rejects.toThrow(/not a public address/);
+    await expect(assertFetchable("http://[64:ff9b::169.254.169.254]/")).rejects.toThrow(/not a public address/);
+    await expect(assertFetchable("http://[2002:a9fe:a9fe::1]/")).rejects.toThrow(/not a public address/);
   });
 
   it("lets a public IPv6 literal through", async () => {

@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1404%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1410%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1404 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1410 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1404 passing tests could not catch
+### 🧪 What 1410 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1404 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1410 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -369,7 +369,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1404-case Vitest suite |
+| `npm test` | Run the 1410-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -600,14 +600,16 @@ The guards:
 | | |
 |---|---|
 | **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
-| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local and unique-local, and IPv4 embedded in IPv6 in **every spelling** |
+| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local, unique-local and documentation, and IPv4 carried inside IPv6 as `::ffff:`, `::`, NAT64 `64:ff9b::/96` or 6to4 `2002::/16` (unpacked and checked as IPv4) · local-use NAT64 `64:ff9b:1::/48` refused outright |
 | **A credential stays on its own origin** | The auth header goes only to the scheme, host and port the source was set up with · a redirect elsewhere is followed without it (and it is not put back) · a next-page link to another origin is not followed — the table stops there, marked partial |
 | **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear · a database connection string counts as one |
 | **A database query cannot write** | Every query runs in a read-only transaction, so the database itself refuses a write, and `sqlGuard` refuses again at save time · a database on a private address needs its host in `SOURCES_ALLOWED_DB_HOSTS` |
 
 The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
 rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
-metadata service straight through. The address is now unpacked and checked in every spelling.
+metadata service straight through. The address is now unpacked and checked. A later QA pass found it
+still missed NAT64 (`64:ff9b::a9fe:a9fe`) and 6to4 (`2002:a9fe:a9fe::1`) while the docs said "every
+spelling"; both are handled now, and the docs name the forms that are covered instead of saying "every".
 
 **Not fully closed:** the address is checked and then the connection is made, and in between the
 name could be re-resolved to something else. Closing that needs the connection pinned to the checked
@@ -1911,7 +1913,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1404 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1410 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2614,11 +2616,11 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 274 security tests
+### 280 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
-| `urlGuard.test.ts` | 21 | Loopback, private ranges, cloud metadata, every IPv4-in-IPv6 spelling, link-local, multicast, non-http(s) schemes, hosts that don't resolve |
+| `urlGuard.test.ts` | 27 | Loopback, private ranges, cloud metadata, IPv4 inside IPv6 (`::ffff:`, `::`, NAT64, 6to4), IPv6 documentation, link-local, multicast, non-http(s) schemes, hosts that don't resolve |
 | `executeSource.test.ts` | 37 | Re-checking after a redirect, cutting redirect loops, the same-origin fast path, pagination, row bounds, the auth header kept to the source's own origin (cross-origin redirects, `https` → `http`, next-page links elsewhere) |
 | `secretBox.test.ts` | 10 | AES-256-GCM, distinct ciphertexts, tamper detection, refusing to encrypt with no key rather than storing plain text |
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
@@ -2780,13 +2782,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1404 cases across 84 files, via Vitest
+npm test      # 1410 cases across 84 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1404 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1410 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2880,10 +2882,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1404 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1410 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1404 passing tests could not catch](#-what-1404-passing-tests-could-not-catch), repeatable
+> [What 1410 passing tests could not catch](#-what-1410-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -2911,7 +2913,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
 | `excelIO.test.ts` | 51 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form), cross-sheet dropdowns read from the sheet the rule names (quoted names, a hidden sheet, a missing one, and the PaynEat ERP draft-0 template) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
-| `server/urlGuard.test.ts` | 21 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 in every spelling, non-http schemes, and the allowlist |
+| `server/urlGuard.test.ts` | 27 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 (`::ffff:`, `::`, NAT64, 6to4), non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
 | `server/secretBox.test.ts` | 10 | Encrypting and decrypting a credential, non-repeating ciphertext, tamper detection, refusing with no key, and reading pre-existing plaintext |
 | `cloud/cloud.test.ts` | 24 | On/off from the environment (a half-set deployment included), the stored shape and its JSON round trip, refusing a workbook from a newer version, and spotting another device's save |

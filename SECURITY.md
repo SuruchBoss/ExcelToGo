@@ -60,9 +60,15 @@ Before every request — and again after **every redirect**, because a 302 is ho
 becomes an unchecked one — the destination is resolved and every address it resolves to is checked.
 Blocked: loopback, link-local (including `169.254.169.254`, the cloud metadata endpoint on AWS, GCP
 and Azure alike), RFC 1918 private ranges, carrier-grade NAT, multicast, and the reserved and
-documentation ranges. IPv6 link-local and unique-local go too, as do IPv4 addresses embedded in
-IPv6 in **any** of their spellings — `::ffff:169.254.169.254`, the hex form `::ffff:a9fe:a9fe` that
-a URL normalises it to, and the deprecated `::a9fe:a9fe`. Only `http` and `https` are allowed.
+documentation ranges (IPv4, and IPv6's `2001:db8::/32`). IPv6 link-local and unique-local go too.
+An IPv4 address carried inside an IPv6 one is unpacked and checked as the IPv4 address it is, for
+these forms: IPv4-mapped `::ffff:169.254.169.254` and the hex form `::ffff:a9fe:a9fe` a URL
+normalises it to, the deprecated IPv4-compatible `::a9fe:a9fe`, NAT64's well-known prefix
+`64:ff9b::a9fe:a9fe` (RFC 6052 — on an IPv6-only subnet the gateway really does turn that into
+169.254.169.254) and 6to4 `2002:a9fe:a9fe::` (RFC 3056). A public IPv4 address reached through
+NAT64 still works, since that is the only way an IPv6-only host reaches one. The local-use NAT64
+prefix `64:ff9b:1::/48` (RFC 8215) is refused outright: where its IPv4 sits depends on a prefix
+length the address does not state. Only `http` and `https` are allowed.
 
 A URL beginning with a single `/` is one of the app's own routes and is the one case the guard is
 skipped for — a demo source reaches `/api/demo/sales` even when the deployment's own origin is

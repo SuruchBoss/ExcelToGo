@@ -72,7 +72,8 @@ describe("reading a connection string", () => {
 
 describe("which databases the server refuses to connect to", () => {
   it("refuses a literal private address, including the metadata one", async () => {
-    for (const host of ["169.254.169.254", "127.0.0.1", "10.0.0.5", "[::1]"]) {
+    // The IPv6 forms that carry an IPv4 address go through the same check the REST guard uses.
+    for (const host of ["169.254.169.254", "127.0.0.1", "10.0.0.5", "[::1]", "[64:ff9b::a9fe:a9fe]", "[2002:a00:5::1]"]) {
       await expect(assertConnectable(`postgres://u:p@${host}:5432/shop`)).rejects.toBeInstanceOf(BlockedUrlError);
     }
   });

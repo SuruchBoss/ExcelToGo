@@ -89,8 +89,25 @@ function ipv6Groups(ip: string): number[] | null {
   return out.length === 8 && out.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff) ? out : null;
 }
 
-/** The IPv4 address inside an IPv4-mapped or IPv4-compatible IPv6 address, if it is one. */
+const dotted = (a: number, b: number) => [a >> 8, a & 0xff, b >> 8, b & 0xff].join(".");
+
+/**
+ * The IPv4 address an IPv6 address carries, for the four forms that carry one where it can be read.
+ *
+ * - IPv4-mapped `::ffff:a.b.c.d` and IPv4-compatible `::a.b.c.d` — the last 32 bits.
+ * - NAT64 well-known prefix `64:ff9b::/96` (RFC 6052) — the last 32 bits. On an IPv6-only subnet
+ *   the gateway turns this into a real IPv4 connection, so `64:ff9b::a9fe:a9fe` *is*
+ *   169.254.169.254 to the host that sends it.
+ * - 6to4 `2002::/16` (RFC 3056) — bits 16–47, the two groups after the prefix.
+ *
+ * Decoded rather than refused outright so a public IPv4 address reached through NAT64 still works,
+ * which is the only way an IPv6-only host can reach one at all.
+ */
 function embeddedIpv4(groups: number[]): string | null {
+  if (groups[0] === 0x2002) return dotted(groups[1], groups[2]);
+  const nat64 = groups[0] === 0x64 && groups[1] === 0xff9b && groups.slice(2, 6).every((g) => g === 0);
+  if (nat64) return dotted(groups[6], groups[7]);
+
   const leadingZero = groups.slice(0, 5).every((g) => g === 0);
   if (!leadingZero) return null;
   const isMapped = groups[5] === 0xffff;
@@ -98,7 +115,7 @@ function embeddedIpv4(groups: number[]): string | null {
   if (!isMapped && !isCompatible) return null;
   const [a, b] = [groups[6], groups[7]];
   if (isCompatible && a === 0 && b <= 1) return null; // "::" and "::1" are handled on their own
-  return [a >> 8, a & 0xff, b >> 8, b & 0xff].join(".");
+  return dotted(a, b);
 }
 
 export function isBlockedAddress(address: string): boolean {
@@ -112,12 +129,17 @@ export function isBlockedAddress(address: string): boolean {
   const groups = ipv6Groups(ip);
   if (!groups) return true; // Couldn't read it — refuse rather than assume it is safe.
 
-  // An IPv4 address wearing an IPv6 hat, in any of its spellings. Missing this is the classic way
-  // one of these filters gets walked straight past.
+  // An IPv4 address wearing an IPv6 hat, in each of the forms listed on `embeddedIpv4`. Missing
+  // one is the classic way these filters get walked straight past.
   const embedded = embeddedIpv4(groups);
   if (embedded) return isBlockedAddress(embedded);
 
   const first = groups[0];
+  // 64:ff9b:1::/48, NAT64 for local use (RFC 8215). Where the IPv4 sits inside it depends on the
+  // prefix length the operator chose, which the address does not say — so it cannot be decoded,
+  // and a prefix that exists only for an operator's own network has no business in a source URL.
+  if (first === 0x64 && groups[1] === 0xff9b && groups[2] === 1) return true;
+  if (first === 0x2001 && groups[1] === 0x0db8) return true; // 2001:db8::/32 documentation
   if ((first & 0xffc0) === 0xfe80) return true; // fe80::/10 link-local
   if ((first & 0xfe00) === 0xfc00) return true; // fc00::/7 unique local
   if ((first & 0xff00) === 0xff00) return true; // ff00::/8 multicast
