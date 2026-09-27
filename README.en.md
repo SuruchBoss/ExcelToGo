@@ -1988,7 +1988,8 @@ flowchart LR
 
 ### State management
 
-`sheetStore` is the single source of truth for the whole app, wrapped in two middleware layers: `persist`
+`sheetStore` holds the document — the sheets, the selection and the grid's UI; the language, live data, cloud
+save and live editing each have a store of their own (see the structure listing). It is wrapped in two middleware layers: `persist`
 (autosave) wraps `temporal` from `zundo` (undo/redo) — each layer only "sees" part of the state, so selection or
 transient UI never leaks into the undo history or the saved file:
 
@@ -2094,6 +2095,12 @@ src/
                               # while). Neither persisted nor undoable: live data can always be re-fetched
     localeStore.ts           # Separate Zustand store for the selected UI language (th/en) — persisted the
                               # same way, but not tied to the sheet's undo/redo
+    cloudStore.ts            # Cloud save (your own Supabase) — the signed-in session, the workbook list,
+                              # save/open/delete, who it is shared with, and version history. Neither
+                              # persisted nor undoable: the real copy lives in the database
+    liveStore.ts             # The wiring for a live editing session — watch the document, put what changed
+                              # on the wire, apply what arrives (the rules live in lib/cloud/). Off until
+                              # someone turns it on, and only for a workbook already saved to the cloud
   i18n/                      # All UI text, split by language (no off-the-shelf i18n library)
     types.ts                 # The central `Messages` type — TypeScript enforces th.ts/en.ts key parity
     th.ts, en.ts              # The actual text dictionaries (buttons/labels/formula names+descriptions/alerts)

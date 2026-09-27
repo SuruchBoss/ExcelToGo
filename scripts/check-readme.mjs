@@ -140,18 +140,21 @@ for (const [file, text] of Object.entries(docs)) {
 if (!sawFileCount) fail("neither README states how many test files the suite has");
 notes.push(`${actualTestFiles} test files, matching the figure quoted in the docs`);
 
-// --- 4. Every lib module should appear in the project-structure listing ------------------------
-const libDir = path.join(ROOT, "src/lib");
-const libModules = fs
-  .readdirSync(libDir, { withFileTypes: true })
-  .filter((e) => e.isFile() && e.name.endsWith(".ts") && !e.name.endsWith(".test.ts"))
-  .map((e) => e.name);
-for (const mod of libModules) {
-  for (const [file, text] of Object.entries(docs)) {
-    if (!text.includes(mod)) fail(`${file}: src/lib/${mod} isn't mentioned — new module missing from the structure listing?`);
+// --- 4. Every lib and store module should appear in the project-structure listing --------------
+// `src/store` was left out when this was written, and two stores (cloud save, live editing) went
+// undocumented in both languages with the gate green — the same drift, one directory over.
+for (const dir of ["src/lib", "src/store"]) {
+  const modules = fs
+    .readdirSync(path.join(ROOT, dir), { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".ts") && !e.name.endsWith(".test.ts"))
+    .map((e) => e.name);
+  for (const mod of modules) {
+    for (const [file, text] of Object.entries(docs)) {
+      if (!text.includes(mod)) fail(`${file}: ${dir}/${mod} isn't mentioned — new module missing from the structure listing?`);
+    }
   }
+  notes.push(`${modules.length} ${dir.slice(4)} modules, all documented`);
 }
-notes.push(`${libModules.length} lib modules, all documented`);
 
 // --- 5. The two languages must describe the same set of features ------------------------------
 const featureCount = (text, start, end) => {
