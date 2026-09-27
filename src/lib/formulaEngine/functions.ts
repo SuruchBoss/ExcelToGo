@@ -334,6 +334,54 @@ const ARRAY_FUNCTIONS: Record<string, FnImpl> = {
   },
 };
 
+/**
+ * `x × 10^k`, done on the decimal digits rather than by multiplying.
+ *
+ * `2.675 * 100` is `267.49999999999997` in binary floating point, so rounding the product gives
+ * 2.67 where Excel — and anyone reading the cell — says 2.68. Moving the exponent in the number's
+ * own shortest spelling (`"2.675e2"`) lands on 267.5 exactly, because that spelling is the decimal
+ * the cell shows.
+ */
+function shiftDecimal(x: number, k: number): number {
+  const [mantissa, exponent = "0"] = String(x).split("e");
+  return Number(`${mantissa}e${Number(exponent) + k}`);
+}
+
+/**
+ * ROUND, ROUNDUP and ROUNDDOWN, which differ only in what happens to the magnitude.
+ *
+ * All three work on the absolute value and put the sign back, which is what makes ROUND go *half
+ * away from zero* the way Excel does: `Math.round` alone rounds -2.5 up to -2. Digits are truncated
+ * like Excel's (`ROUND(x, 1.9)` is `ROUND(x, 1)`), and a negative count rounds to the left of the
+ * point: `ROUND(15, -1)` is 20.
+ */
+function roundWith(args: EvalResult[], mode: (magnitude: number) => number): FormulaValue {
+  const n = toNumber(scalarOf(args[0]));
+  const d = args[1] ? toNumber(scalarOf(args[1])) : 0;
+  if (isError(n)) return n;
+  if (isError(d)) return d;
+  const digits = Math.trunc(d);
+  const shifted = shiftDecimal(Math.abs(n), digits);
+  // Asking for more digits than a double holds: the number already has none left to round.
+  if (!Number.isFinite(shifted)) return n;
+  const rounded = shiftDecimal(mode(shifted), -digits);
+  return n < 0 && rounded !== 0 ? -rounded : rounded;
+}
+
+/**
+ * `POWER` and the `^` operator, which must agree.
+ *
+ * `Math.pow` answers the cases Excel refuses with NaN or Infinity, and a NaN in a cell shows as a
+ * number nobody can use — `(-8)^0.5` has no real answer, so it is `#NUM!`, as is an overflow. Excel
+ * also calls `0^0` `#NUM!` (where JavaScript says 1) and `0` to a negative power `#DIV/0!`.
+ */
+export function power(base: number, exp: number): number | FormulaError {
+  if (base === 0 && exp === 0) return ERR_NUM;
+  if (base === 0 && exp < 0) return ERR_DIV0;
+  const result = Math.pow(base, exp);
+  return Number.isFinite(result) ? result : ERR_NUM;
+}
+
 export const FUNCTIONS: Record<string, FnImpl> = {
   SUM: (args) => {
     const nums = flattenNumbers(args);
@@ -391,28 +439,9 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     if (isError(nums)) return nums;
     return nums.reduce((a, b) => a * b, 1);
   },
-  ROUND: (args) => {
-    const n = toNumber(scalarOf(args[0]));
-    const d = args[1] ? toNumber(scalarOf(args[1])) : 0;
-    if (isError(n)) return n;
-    if (isError(d)) return d;
-    const factor = Math.pow(10, d);
-    return Math.round(n * factor) / factor;
-  },
-  ROUNDUP: (args) => {
-    const n = toNumber(scalarOf(args[0]));
-    const d = args[1] ? toNumber(scalarOf(args[1])) : 0;
-    if (isError(n) || isError(d)) return isError(n) ? n : (d as FormulaError);
-    const factor = Math.pow(10, d);
-    return (n >= 0 ? Math.ceil(n * factor) : Math.floor(n * factor)) / factor;
-  },
-  ROUNDDOWN: (args) => {
-    const n = toNumber(scalarOf(args[0]));
-    const d = args[1] ? toNumber(scalarOf(args[1])) : 0;
-    if (isError(n) || isError(d)) return isError(n) ? n : (d as FormulaError);
-    const factor = Math.pow(10, d);
-    return (n >= 0 ? Math.floor(n * factor) : Math.ceil(n * factor)) / factor;
-  },
+  ROUND: (args) => roundWith(args, Math.round),
+  ROUNDUP: (args) => roundWith(args, Math.ceil),
+  ROUNDDOWN: (args) => roundWith(args, Math.floor),
   ABS: (args) => {
     const n = toNumber(scalarOf(args[0]));
     return isError(n) ? n : Math.abs(n);
@@ -420,7 +449,8 @@ export const FUNCTIONS: Record<string, FnImpl> = {
   SQRT: (args) => {
     const n = toNumber(scalarOf(args[0]));
     if (isError(n)) return n;
-    if (n < 0) return ERR_VALUE;
+    // #NUM!, not #VALUE!: the argument is a number, just one with no real square root.
+    if (n < 0) return ERR_NUM;
     return Math.sqrt(n);
   },
   POWER: (args) => {
@@ -428,7 +458,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const exp = toNumber(scalarOf(args[1]));
     if (isError(base)) return base;
     if (isError(exp)) return exp;
-    return Math.pow(base, exp);
+    return power(base, exp);
   },
   MOD: (args) => {
     const a = toNumber(scalarOf(args[0]));
@@ -586,13 +616,18 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const s = toDisplayString(scalarOf(args[0]));
     const n = args[1] ? toNumber(scalarOf(args[1])) : 1;
     if (isError(n)) return n;
-    return s.slice(0, n);
+    // A negative count is Excel's #VALUE!. `slice` would read it as "from the end" and hand back
+    // a string that looks like an answer.
+    if (n < 0) return ERR_VALUE;
+    return s.slice(0, Math.trunc(n));
   },
   RIGHT: (args) => {
     const s = toDisplayString(scalarOf(args[0]));
     const n = args[1] ? toNumber(scalarOf(args[1])) : 1;
     if (isError(n)) return n;
-    return n === 0 ? "" : s.slice(-n);
+    if (n < 0) return ERR_VALUE;
+    const count = Math.trunc(n);
+    return count === 0 ? "" : s.slice(-count);
   },
   MID: (args) => {
     const s = toDisplayString(scalarOf(args[0]));
@@ -600,7 +635,10 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const len = toNumber(scalarOf(args[2]));
     if (isError(start)) return start;
     if (isError(len)) return len;
-    return s.slice(start - 1, start - 1 + len);
+    // Excel counts from 1 and refuses a start before it, or a negative length, with #VALUE!.
+    if (start < 1 || len < 0) return ERR_VALUE;
+    const from = Math.trunc(start) - 1;
+    return s.slice(from, from + Math.trunc(len));
   },
   TEXT: (args) => {
     const v = scalarOf(args[0]);
@@ -704,7 +742,11 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     for (let r = 0; r < range.length; r++) {
       for (let c = 0; c < range[r].length; c++) {
         if (matchCriteria(range[r][c], criteria)) {
-          const n = toNumber(avgRange[r]?.[c] ?? 0);
+          const v = avgRange[r]?.[c] ?? null;
+          // Skipped, not counted as zero — the same rule AVERAGEIFS already had. Reading a blank
+          // as 0 dragged the average down: 10 here where AVERAGEIFS said 15 on the same cells.
+          if (isBlank(v) || typeof v === "string") continue;
+          const n = toNumber(v);
           if (!isError(n)) {
             total += n;
             count++;
