@@ -1967,6 +1967,12 @@ set in the same family as the body text rather than in the system's default mono
 <p align="center"><img src="public/screenshots/en/27-landing-stats.png" width="820"></p>
 <p align="center"><sub>The inverted "Under the hood" band and the <b>Where this stops on purpose</b> section — the front page says where the app stops, and sends the rest of the limits here.</sub></p>
 
+**How to get in touch sits at the foot of the page, beside the button that opens the app** (`/#contact`) —
+email and LinkedIn written as two lines of the ledger like everything above them. The address is
+**printed in full** rather than hidden behind a "Contact" button, with a copy button beside it, because
+on webmail a `mailto:` link does nothing at all; the copy result is announced in a live region. The
+footer gains an email link next to LinkedIn and GitHub as well.
+
 ### 🌐 Bilingual (Thai / English)
 
 Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 37 formula
@@ -3357,6 +3363,7 @@ Built by **Suruch Boss**
 
 - GitHub — [github.com/SuruchBoss](https://github.com/SuruchBoss)
 - LinkedIn — [linkedin.com/in/suruchboss](https://www.linkedin.com/in/suruchboss)
+- Email — [bossxiii@gmail.com](mailto:bossxiii@gmail.com)
 
 If this project is useful to you, or you'd like to talk about work, do get in touch.
 

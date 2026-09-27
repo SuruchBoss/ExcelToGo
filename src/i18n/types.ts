@@ -232,6 +232,17 @@ export interface Messages {
     limitsMoreCta: string;
     closingTitle: string;
     closingBody: string;
+    /** The contact block beside the closing call to action. The addresses themselves are not
+     *  translated — they live in the landing page — only the words around them are. */
+    contact: {
+      title: string;
+      lead: string;
+      emailLabel: string;
+      linkedinLabel: string;
+      copy: string;
+      copied: string;
+      copyFailed: string;
+    };
     footerNote: string;
     /** Author credit in the landing page footer. The licence only requires attribution in the
      *  source tree, so this is where a person actually using the app can find who made it. */

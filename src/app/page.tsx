@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import LanguageToggle from "@/features/toolbar/LanguageToggle";
@@ -35,6 +35,7 @@ import { countUsage } from "@/lib/usage";
 const REPO_URL = "https://github.com/SuruchBoss/ExcelToGo";
 const AUTHOR_URL = "https://github.com/SuruchBoss";
 const LINKEDIN_URL = "https://www.linkedin.com/in/suruchboss";
+const CONTACT_EMAIL = "bossxiii@gmail.com";
 
 /**
  * The exhibit and the anchor for each problem in `t.landing.pains`, paired by index — reorder one,
@@ -111,6 +112,79 @@ function SectionHead({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * How to reach the author, written as two lines of the ledger: a mono label, the address in full,
+ * and the action at the end of the row. The address is printed rather than hidden behind a
+ * "Contact me" button because a reader who has no mail client set up — most people on webmail —
+ * gets nothing from a `mailto:` link, and can still copy what they can see. Hence the copy button
+ * too, which says what happened in a live region rather than trusting the click to be enough.
+ */
+function Contact() {
+  const t = useT();
+  const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
+  const reset = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(reset.current), []);
+
+  const copyEmail = async () => {
+    clearTimeout(reset.current);
+    try {
+      await navigator.clipboard.writeText(CONTACT_EMAIL);
+      setCopy("copied");
+    } catch {
+      setCopy("failed");
+    }
+    reset.current = setTimeout(() => setCopy("idle"), 2500);
+  };
+
+  const row = "grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-3 border-b border-ink/15 sm:grid-cols-[6.5rem_minmax(0,1fr)_auto]";
+  const label = "font-mono text-[11px] font-medium text-ledger";
+  const link =
+    "flex min-h-11 min-w-0 items-center gap-2 py-3 text-[15px] font-medium text-ink underline-offset-4 transition-colors hover:text-ledger-ink hover:underline";
+
+  return (
+    <section id="contact" aria-labelledby="contact-title" className="min-w-0 scroll-mt-20">
+      <h2 id="contact-title" className="flex items-center gap-2.5 font-mono text-[11.5px] font-medium text-ledger">
+        <span className="h-[7px] w-[7px] shrink-0 bg-ledger" aria-hidden />
+        {t.landing.contact.title}
+      </h2>
+      <p className="mt-3 max-w-md text-[14.5px] leading-relaxed text-ink/70">{t.landing.contact.lead}</p>
+
+      <ul className="mt-5 border-t-2 border-ink">
+        <li className={row}>
+          <span className={label}>{t.landing.contact.emailLabel}</span>
+          <a href={`mailto:${CONTACT_EMAIL}`} className={link}>
+            <span className="min-w-0 break-all">{CONTACT_EMAIL}</span>
+          </a>
+          {/* Under the address on a phone, where a third column would squeeze it onto two lines. */}
+          <div className="col-start-2 -mt-1 pb-3 sm:col-start-3 sm:mt-0 sm:pb-0">
+            <button
+              type="button"
+              onClick={copyEmail}
+              className="min-h-11 border border-ink/25 bg-paper px-3 font-mono text-[11.5px] text-ink transition-colors hover:border-ink sm:min-h-0 sm:py-1.5"
+            >
+              {t.landing.contact.copy}
+            </button>
+          </div>
+        </li>
+        <li className={row}>
+          <span className={label}>{t.landing.contact.linkedinLabel}</span>
+          <a href={LINKEDIN_URL} target="_blank" rel="noreferrer" className={`${link} sm:col-span-2`}>
+            <span className="min-w-0 break-all">linkedin.com/in/suruchboss</span>
+            <span aria-hidden className="shrink-0 font-mono text-[13px] text-ash">
+              ↗
+            </span>
+          </a>
+        </li>
+      </ul>
+      {/* Always in the DOM, so the announcement is heard: a live region that appears with its text
+          already inside is one most screen readers never read. */}
+      <p role="status" className="mt-2 min-h-5 font-mono text-[11.5px] text-ledger-ink">
+        {copy === "copied" ? `${t.landing.contact.copied} — ${CONTACT_EMAIL}` : copy === "failed" ? t.landing.contact.copyFailed : ""}
+      </p>
+    </section>
   );
 }
 
@@ -466,14 +540,20 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Closing ──────────────────────────────────────────────────────────────────────────── */}
+      {/* ── Closing ──────────────────────────────────────────────────────────────────────────────
+          The last thing on the page is the two things a reader can do next: try it, or ask. They
+          sit side by side on a wide screen, and one under the other on a phone, with the try
+          first — it is the one that needs nothing from the author. */}
       <section className="border-b border-rule bg-band">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-8 sm:py-20">
-          <h2 className="max-w-[16ch] text-[1.7rem] font-semibold leading-[1.3] tracking-[-0.015em] text-ink sm:text-[2.2rem]">
-            {t.landing.closingTitle}
-          </h2>
-          <p className="mt-4 max-w-xl text-[15px] leading-[1.75] text-ink/65">{t.landing.closingBody}</p>
-          <div className="mt-8">{cta}</div>
+        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-8 sm:py-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-16">
+          <div className="min-w-0">
+            <h2 className="max-w-[16ch] text-[1.7rem] font-semibold leading-[1.3] tracking-[-0.015em] text-ink sm:text-[2.2rem]">
+              {t.landing.closingTitle}
+            </h2>
+            <p className="mt-4 max-w-xl text-[15px] leading-[1.75] text-ink/65">{t.landing.closingBody}</p>
+            <div className="mt-8">{cta}</div>
+          </div>
+          <Contact />
         </div>
       </section>
       </main>
@@ -493,6 +573,9 @@ export default function Landing() {
           <div className="flex-1" />
           {/* No lucide icon for LinkedIn — this version dropped its brand icons — and a plain text
               link avoids reproducing a trademarked mark for no gain. */}
+          <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-ink">
+            {t.landing.contact.emailLabel}
+          </a>
           <a href={LINKEDIN_URL} target="_blank" rel="noreferrer" className="hover:text-ink">
             LinkedIn
           </a>

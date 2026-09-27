@@ -1755,6 +1755,10 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 <p align="center"><img src="public/screenshots/27-landing-stats.png" width="820"></p>
 <p align="center"><sub>แถบเข้ม "เบื้องหลัง" และหัวข้อ <b>ขอบเขตที่ตั้งใจ</b> — บอกบนหน้าแรกว่าหยุดตรงไหน แล้วส่งข้อจำกัดที่เหลือมาที่ README</sub></p>
 
+**ช่องทางติดต่ออยู่ท้ายหน้า ข้างปุ่มเปิดแอป** (`/#contact`) — อีเมลกับ LinkedIn เขียนเป็นสองบรรทัดของบัญชีเหมือนส่วนอื่น
+อีเมล**พิมพ์ไว้ให้เห็นเต็มๆ** แทนที่จะซ่อนหลังปุ่ม "ติดต่อ" พร้อมปุ่มคัดลอก เพราะคนที่ใช้เว็บเมลกดลิงก์ `mailto:` แล้วไม่มีอะไรเกิดขึ้น
+ผลการคัดลอกประกาศผ่าน live region ส่วน footer ก็มีลิงก์อีเมลเพิ่มข้าง LinkedIn กับ GitHub
+
 ### 🌐 สองภาษา (ไทย / English)
 
 กดปุ่ม **EN**/**ไทย** มุมขวาบนเพื่อสลับ UI ทั้งแอปทันที — เมนู ปุ่ม ชื่อ/คำอธิบายสูตรทั้ง 37 ตัว ข้อความแจ้งเตือน
@@ -2966,6 +2970,7 @@ CI: `npm run verify` รวมทุกอย่างไว้แล้ว — 
 
 - GitHub — [github.com/SuruchBoss](https://github.com/SuruchBoss)
 - LinkedIn — [linkedin.com/in/suruchboss](https://www.linkedin.com/in/suruchboss)
+- อีเมล — [bossxiii@gmail.com](mailto:bossxiii@gmail.com)
 
 สนใจโปรเจกต์นี้ อยากคุยเรื่องงาน หรือมีคำถาม ทักมาได้เลยครับ
 
