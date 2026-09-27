@@ -149,6 +149,29 @@ port. It is sent to that origin and nowhere else:
 A source reached through the app's own path (the built-in demo sources) carries no credential and
 is unaffected.
 
+### 2d. One refresh has a size and a time it cannot exceed
+
+Reliability as much as security — reaching this needs the operator token, or control of an API the
+operator chose — but a URL that turns out to point at a 2 GB export should cost a failed refresh,
+not the server's memory. All four numbers live in `src/lib/dataSources/fetchLimits.ts`.
+
+- **About 49 MB of body per refresh, across every page, counted after decompression.** One kilobyte
+  per row at the 50,000-row ceiling the form offers; measured before choosing it, 50,000 rows are
+  8.1 MB for the demo's orders and 34.9 MB for twenty fields of mostly Thai text. The body is read as
+  a stream and the read stops the moment it passes the budget, rather than after `res.text()` has
+  taken the lot; a `content-length` over the budget is refused before a byte is read. Counted after
+  decompression because `fetch` inflates gzip and brotli before this code sees anything, and 53 KB
+  on the wire was measured turning into 40 MB of text.
+- **15 seconds per request, from sending it to the body's last byte.** The timer used to be
+  cleared the moment the headers arrived, so a server that answered at once and then sent a byte a
+  second held a refresh open for as long as it liked.
+- **45 seconds across every redirect and page of one refresh**, enforced inside each request as
+  well as between pages.
+
+Hitting either on the first page fails the refresh with a code the data panel turns into a
+sentence in the reader's language; hitting either on a later page keeps the rows already fetched
+and marks the table partial, the same as the 20-page ceiling does.
+
 ### 3. Source credentials are encrypted at rest
 
 An auth header attached to a source is encrypted with AES-256-GCM under `SOURCES_SECRET_KEY` before

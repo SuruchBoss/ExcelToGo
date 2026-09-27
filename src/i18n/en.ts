@@ -61,6 +61,9 @@ export const en: Messages = {
     partialHint: "This source has more data — raise the row limit in the source's settings",
     rateLimited: "This source asked to be called less often",
     retryIn: (s) => (s >= 60 ? `retrying in ${Math.ceil(s / 60)} min` : `retrying in ${s}s`),
+    tooLarge: (mb) =>
+      `The response was larger than ${mb} MB, so it stopped there — lower "rows to fetch", or point it at a smaller endpoint.`,
+    timedOut: (s) => `The source took longer than ${s}s to answer, so the refresh gave up — it will try again next time.`,
     retryNow: "Try now",
     pages: (pages) => `${pages} pages`,
     aggregate: { first: "", sum: "Total", avg: "Average", count: "Row count" },
@@ -137,7 +140,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1483 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1496 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -339,8 +342,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1483", label: "automated tests" },
-      { value: "289", label: "security tests" },
+      { value: "1496", label: "automated tests" },
+      { value: "299", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",

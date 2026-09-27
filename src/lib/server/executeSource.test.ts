@@ -8,9 +8,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // mocked away here would be untested on the path that actually uses it.
 vi.mock("dns", () => ({ promises: { lookup: async () => [{ address: "93.184.216.34", family: 4 }] } }));
 
+// The byte budget, scaled down so a test can cross it without allocating fifty megabytes. Only the
+// number changes; the reading, counting and stopping are the production code. The real value is
+// checked on its own below, against the rows it has to fit.
+const TEST_BUDGET = 64 * 1024;
+vi.mock("@/lib/dataSources/fetchLimits", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/dataSources/fetchLimits")>()),
+  MAX_RESPONSE_BYTES: 64 * 1024,
+}));
+
 import { MAX_PAGES } from "@/lib/dataSources/paginate";
 import { RateLimitError } from "@/lib/dataSources/rateLimit";
 import { executeSource } from "./executeSource";
+import { SourceLimitError } from "@/lib/dataSources/fetchLimits";
+import { createServer } from "node:http";
+import { gzipSync } from "node:zlib";
+import type { AddressInfo } from "node:net";
 
 const ORIGIN = "https://app.test";
 
@@ -21,6 +34,17 @@ interface Stub {
   headers?: Record<string, string>;
 }
 
+/**
+ * A real `Response`, body stream and all — the fetcher reads bodies as streams now, to count their
+ * bytes, so an object with only a `text()` method would not be the thing it meets in production.
+ */
+function reply(stub: Stub, headers: Headers): Response {
+  return new Response(typeof stub.body === "string" ? stub.body : JSON.stringify(stub.body), {
+    status: stub.status ?? 200,
+    headers,
+  });
+}
+
 /** Serves canned responses by URL and records the order they were asked for. */
 function stubFetch(routes: Record<string, Stub>) {
   const calls: string[] = [];
@@ -29,13 +53,7 @@ function stubFetch(routes: Record<string, Stub>) {
     const stub = routes[url];
     if (!stub) throw new Error(`unexpected fetch: ${url}`);
     const headers = new Headers({ ...(stub.link ? { link: stub.link } : {}), ...(stub.headers ?? {}) });
-    return {
-      ok: (stub.status ?? 200) < 400,
-      status: stub.status ?? 200,
-      statusText: "",
-      headers,
-      text: async () => (typeof stub.body === "string" ? stub.body : JSON.stringify(stub.body)),
-    } as unknown as Response;
+    return reply(stub, headers);
   });
   return calls;
 }
@@ -180,13 +198,7 @@ describe("executeSource pagination", () => {
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
       seen.push(init.headers as Record<string, string>);
       const last = url.includes("page=2");
-      return {
-        ok: true,
-        status: 200,
-        statusText: "",
-        headers: new Headers(),
-        text: async () => JSON.stringify({ items: rows(1, 2), next: last ? null : "https://api.test/a?page=2" }),
-      } as unknown as Response;
+      return new Response(JSON.stringify({ items: rows(1, 2), next: last ? null : "https://api.test/a?page=2" }));
     });
     await executeSource(
       { type: "rest", url: "https://api.test/a", authHeader: { name: "Authorization", value: "Bearer s3cret" } },
@@ -374,13 +386,7 @@ describe("where a source's credential is sent", () => {
       const stub = routes[url];
       if (!stub) throw new Error(`unexpected fetch: ${url}`);
       const headers = new Headers({ ...(stub.link ? { link: stub.link } : {}), ...(stub.headers ?? {}) });
-      return {
-        ok: (stub.status ?? 200) < 400,
-        status: stub.status ?? 200,
-        statusText: "",
-        headers,
-        text: async () => (typeof stub.body === "string" ? stub.body : JSON.stringify(stub.body)),
-      } as unknown as Response;
+      return reply(stub, headers);
     });
     return sent;
   }
@@ -446,3 +452,206 @@ describe("where a source's credential is sent", () => {
     expect(table.truncated).toBe(true);
   });
 });
+
+const encoder = new TextEncoder();
+const codeOf = (err: unknown) => (err instanceof SourceLimitError ? err.code : String(err));
+
+/**
+ * A body that arrives as a stream, the way a real one does, and stops when the request is aborted
+ * — which is what `fetch` does to a body when its signal fires. `chunks` are sent `everyMs` apart;
+ * `pulled` counts what the far end actually handed over.
+ */
+function streamed(signal: AbortSignal | null | undefined, chunks: () => string | null, everyMs: number) {
+  const seen = { bytes: 0, cancelled: false };
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const send = () => {
+        const next = chunks();
+        if (next === null) {
+          clearInterval(timer);
+          controller.close();
+          return;
+        }
+        const bytes = encoder.encode(next);
+        seen.bytes += bytes.byteLength;
+        controller.enqueue(bytes);
+      };
+      const timer = setInterval(send, everyMs);
+      if (everyMs === 0) {
+        clearInterval(timer);
+        // No pacing: send until closed or cancelled, yielding between chunks.
+        (async () => {
+          while (!seen.cancelled) {
+            const next = chunks();
+            if (next === null) return controller.close();
+            const bytes = encoder.encode(next);
+            seen.bytes += bytes.byteLength;
+            controller.enqueue(bytes);
+            await new Promise((r) => setImmediate(r));
+          }
+        })();
+      }
+      signal?.addEventListener("abort", () => {
+        clearInterval(timer);
+        controller.error(new DOMException("The operation was aborted.", "AbortError"));
+      });
+    },
+    cancel() {
+      seen.cancelled = true;
+    },
+  });
+  return { body, seen };
+}
+
+/** A whole body that arrives `ms` after the headers, in one piece, and then ends. */
+function arrivesAfter(signal: AbortSignal | null | undefined, text: string, ms: number) {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      const timer = setTimeout(() => {
+        controller.enqueue(encoder.encode(text));
+        controller.close();
+      }, ms);
+      signal?.addEventListener("abort", () => {
+        clearTimeout(timer);
+        controller.error(new DOMException("The operation was aborted.", "AbortError"));
+      });
+    },
+  });
+}
+
+describe("how much of a response is read (#18)", () => {
+  it("fits the row ceiling it exists to protect", async () => {
+    // Measured: 50,000 rows are 8.1 MB for the demo's orders and 34.9 MB for twenty fields of
+    // mostly Thai text. The real budget has to hold the second with room to spare.
+    const real = await vi.importActual<typeof import("@/lib/dataSources/fetchLimits")>("@/lib/dataSources/fetchLimits");
+    expect(real.MAX_RESPONSE_BYTES).toBe(real.MAX_ROWS_CEILING * 1024);
+    expect(real.MAX_RESPONSE_BYTES).toBeGreaterThan(34.9 * 1024 * 1024 * 1.3);
+  });
+
+  it("refuses a body over the budget with a code the panel can explain, not a bare failure", async () => {
+    stubFetch({ "https://api.test/big": { body: JSON.stringify({ items: rows(1, 1), pad: "x".repeat(TEST_BUDGET) }) } });
+    const err = await executeSource({ type: "rest", url: "https://api.test/big" }, ORIGIN).catch((e) => e);
+    expect(err).toBeInstanceOf(SourceLimitError);
+    expect(codeOf(err)).toBe("response_too_large");
+  });
+
+  it("stops reading at the budget rather than after the whole body", async () => {
+    let fed = { bytes: 0, cancelled: false };
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      // An endless body: reading it all would never finish, so finishing is the proof.
+      const { body, seen } = streamed(init.signal, () => "x".repeat(8 * 1024), 0);
+      fed = seen;
+      return new Response(body, { status: 200 });
+    });
+    const err = await executeSource({ type: "rest", url: "https://api.test/endless" }, ORIGIN).catch((e) => e);
+    expect(codeOf(err)).toBe("response_too_large");
+    expect(fed.cancelled).toBe(true);
+    expect(fed.bytes).toBeLessThan(TEST_BUDGET + 3 * 8 * 1024);
+  });
+
+  it("refuses a declared content-length over the budget before reading any of it", async () => {
+    let fed = { bytes: 0, cancelled: false };
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const { body, seen } = streamed(init.signal, () => "x", 60_000);
+      fed = seen;
+      return new Response(body, { status: 200, headers: { "content-length": String(TEST_BUDGET * 10) } });
+    });
+    const err = await executeSource({ type: "rest", url: "https://api.test/declared" }, ORIGIN).catch((e) => e);
+    expect(codeOf(err)).toBe("response_too_large");
+    expect(fed.bytes).toBe(0);
+    expect(fed.cancelled).toBe(true);
+  });
+
+  it("counts what the body inflates to, not what crossed the wire", async () => {
+    // A real server and the real fetch: gzip is undone inside fetch, before this code sees a byte,
+    // so a reply a few hundred bytes long on the wire is the whole budget several times over in
+    // memory. App-relative, so the loopback address is this deployment rather than a warning sign.
+    const json = JSON.stringify({ items: rows(1, 1), pad: "x".repeat(TEST_BUDGET * 4) });
+    const wire = gzipSync(json);
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "application/json", "content-encoding": "gzip" });
+      res.end(wire);
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      expect(wire.byteLength).toBeLessThan(TEST_BUDGET / 50);
+      const err = await executeSource({ type: "rest", url: "/bomb" }, origin).catch((e) => e);
+      expect(codeOf(err)).toBe("response_too_large");
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  it("spends one budget across every page, keeping the pages that fitted", async () => {
+    // Each page is under the budget alone; the second one is not under what is left. Twenty pages
+    // each just under a per-page cap would otherwise be twenty times the memory it was meant to allow.
+    const pad = "x".repeat(Math.floor(TEST_BUDGET * 0.6));
+    stubFetch({
+      "https://api.test/p": { body: { items: rows(1, 2), pad, next: "https://api.test/p?page=2" } },
+      "https://api.test/p?page=2": { body: { items: rows(3, 2), pad, next: null } },
+    });
+    const table = await executeSource({ type: "rest", url: "https://api.test/p", maxRows: 100 }, ORIGIN);
+    expect(table.rows).toHaveLength(2);
+    expect(table.truncated).toBe(true);
+  });
+
+  it("still reads a body under the budget in full", async () => {
+    stubFetch({ "https://api.test/ok": { body: { items: rows(1, 3), pad: "x".repeat(TEST_BUDGET / 2) } } });
+    const table = await executeSource({ type: "rest", url: "https://api.test/ok" }, ORIGIN);
+    expect(table.rows).toHaveLength(3);
+  });
+});
+
+describe("how long a response may take (#19)", () => {
+  afterEach(() => vi.useRealTimers());
+
+  /** Settles to "open" if the promise has not finished by the time it is asked. */
+  const stateOf = (p: Promise<string>) => Promise.race([p, Promise.resolve("open")]);
+
+  it("times out a body that trickles, not only a reply that never starts", async () => {
+    // Headers at once, then a byte a second forever: the old timer was cleared the moment the
+    // headers arrived, and the body read had no limit at all.
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const { body } = streamed(init.signal, () => " ", 1_000);
+      return new Response(body, { status: 200 });
+    });
+    const outcome = executeSource({ type: "rest", url: "https://api.test/slow" }, ORIGIN).then(
+      () => "resolved",
+      (e) => codeOf(e)
+    );
+    await vi.advanceTimersByTimeAsync(14_000);
+    expect(await stateOf(outcome)).toBe("open");
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(await stateOf(outcome)).toBe("timed_out");
+  });
+
+  it("holds every page of one refresh to the total budget, keeping what arrived in time", async () => {
+    // Each page takes ten seconds, well inside the per-request limit. The fifth would finish at
+    // fifty — past the forty-five the whole refresh is allowed — so it is cut off and the four
+    // before it are kept, marked partial.
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      const n = Number(new URL(url).searchParams.get("page") ?? 1);
+      const text = JSON.stringify({ items: rows(n * 10, 2), next: `https://api.test/s?page=${n + 1}` });
+      return new Response(arrivesAfter(init.signal, text, 10_000), { status: 200 });
+    });
+    const outcome = executeSource({ type: "rest", url: "https://api.test/s", maxRows: 1000 }, ORIGIN).catch((e) => e);
+    await vi.advanceTimersByTimeAsync(60_000);
+    const table = await outcome;
+    expect(table.truncated).toBe(true);
+    expect(table.rows).toHaveLength(8);
+  });
+
+  it("does not time out a reply that finishes in time", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      return new Response(arrivesAfter(init.signal, JSON.stringify({ items: rows(1, 2) }), 14_000), { status: 200 });
+    });
+    const outcome = executeSource({ type: "rest", url: "https://api.test/fine" }, ORIGIN).catch((e) => e);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect((await outcome).rows).toHaveLength(2);
+  });
+});
+

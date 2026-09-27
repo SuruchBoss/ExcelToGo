@@ -86,6 +86,9 @@ export interface Messages {
     /** Shown instead of a raw "HTTP 429" when a source asks to be called less often. */
     rateLimited: string;
     retryIn: (seconds: number) => string;
+    /** A refresh stopped on purpose — shown instead of the server's code for it. */
+    tooLarge: (megabytes: number) => string;
+    timedOut: (seconds: number) => string;
     retryNow: string;
     pages: (pages: number) => string;
     aggregate: { first: string; sum: string; avg: string; count: string };

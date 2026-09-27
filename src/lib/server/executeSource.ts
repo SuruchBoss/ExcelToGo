@@ -5,6 +5,14 @@ import { csvToTable, extractRecords, getByPath, jsonToTable, tableFromRecords } 
 import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "@/lib/dataSources/paginate";
 import { RateLimitError, readRateLimit } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, isDbType, TableData } from "@/lib/dataSources/types";
+import {
+  MAX_RESPONSE_BYTES,
+  REQUEST_TIMEOUT_MS,
+  SOURCE_TIMED_OUT,
+  SOURCE_TOO_LARGE,
+  SourceLimitError,
+  TOTAL_BUDGET_MS,
+} from "@/lib/dataSources/fetchLimits";
 import { executeDbSource } from "./executeDbSource";
 import { assertFetchable } from "./urlGuard";
 
@@ -13,14 +21,54 @@ export type SourceInput = Pick<
   "type" | "url" | "method" | "authHeader" | "jsonPath" | "maxRows" | "connection" | "query"
 >;
 
-/** Per request. A slow page shouldn't be able to hold a refresh open indefinitely. */
-const REQUEST_TIMEOUT_MS = 15_000;
-/** Across every page of one refresh, so a source with many pages still finishes in bounded time. */
-const TOTAL_BUDGET_MS = 45_000;
 /** Redirect hops followed per request, each one re-checked. */
 const MAX_REDIRECTS = 5;
 
 type FetchedPage = { body: unknown; linkHeader: string | null; records: number };
+
+/**
+ * What one refresh may still spend. Shared by every request it makes — the redirects and the pages
+ * — so the limits bound the refresh, not each request separately: twenty pages each just under a
+ * per-page cap would otherwise add up to twenty times the memory the cap was meant to allow.
+ */
+interface Budget {
+  /** `Date.now()` past which nothing more is sent or read. */
+  deadline: number;
+  /** Decompressed body bytes still allowed. */
+  bytesLeft: number;
+}
+
+/**
+ * The body, read as a stream and stopped the moment it passes the budget.
+ *
+ * `res.text()` has no limit: it reads whatever arrives, and `fetch` has already inflated gzip and
+ * brotli by then, so a small reply on the wire can be an enormous string in memory. Counting the
+ * chunks as they come means a body that is too big costs at most the budget plus one chunk.
+ * A declared `content-length` over the budget is refused before a byte is read.
+ */
+async function readBody(res: Response, budget: Budget): Promise<string> {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > budget.bytesLeft) {
+    await res.body?.cancel().catch(() => {});
+    throw new SourceLimitError(SOURCE_TOO_LARGE);
+  }
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const parts: string[] = [];
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    budget.bytesLeft -= value.byteLength;
+    if (budget.bytesLeft < 0) {
+      await reader.cancel().catch(() => {});
+      throw new SourceLimitError(SOURCE_TOO_LARGE);
+    }
+    parts.push(decoder.decode(value, { stream: true }));
+  }
+  parts.push(decoder.decode());
+  return parts.join("");
+}
 
 /**
  * One request, with the destination checked before it is made and again after every redirect.
@@ -44,7 +92,8 @@ async function fetchPage(
   url: string,
   src: SourceInput,
   sameOrigin: boolean,
-  credentialOrigin: string
+  credentialOrigin: string,
+  budget: Budget
 ): Promise<{ text: string; linkHeader: string | null }> {
   const accept = { Accept: "application/json, text/csv, text/plain;q=0.9, */*;q=0.8" };
   const secret = src.authHeader?.value;
@@ -58,8 +107,14 @@ async function fetchPage(
     if (new URL(target).origin !== credentialOrigin) carryCredential = false;
     const headers = carryCredential ? { ...accept, ...credential } : accept;
 
+    // The timer stays armed until the body has been read, not only until the headers arrive: a
+    // server that answers at once and then sends one byte a second held a refresh open for as long
+    // as it liked, because `fetch` resolving was the moment the old timer was cleared. It is also
+    // never longer than what is left of the whole refresh's budget.
+    const remaining = budget.deadline - Date.now();
+    if (remaining <= 0) throw new SourceLimitError(SOURCE_TIMED_OUT);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), Math.min(REQUEST_TIMEOUT_MS, remaining));
     try {
       res = await fetch(target, {
         method: src.method ?? "GET",
@@ -68,24 +123,31 @@ async function fetchPage(
         cache: "no-store",
         redirect: "manual",
       });
+
+      const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+      if (location) {
+        // A redirect's own body is never read; letting it go frees the connection now.
+        await res.body?.cancel().catch(() => {});
+        if (hop === MAX_REDIRECTS) throw new Error("Too many redirects");
+        target = new URL(location, target).toString();
+        // Past the first hop the destination is chosen by the far end, so it is checked even when
+        // the source started out as one of this app's own endpoints.
+        sameOrigin = false;
+        continue;
+      }
+
+      const limited = readRateLimit(res.status, res.headers);
+      if (limited) throw new RateLimitError(limited);
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
+      return { text: await readBody(res, budget), linkHeader: res.headers.get("link") };
+    } catch (err) {
+      if (controller.signal.aborted) throw new SourceLimitError(SOURCE_TIMED_OUT);
+      throw err;
     } finally {
       clearTimeout(timeout);
     }
-
-    const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
-    if (!location) break;
-    if (hop === MAX_REDIRECTS) throw new Error("Too many redirects");
-    target = new URL(location, target).toString();
-    // Past the first hop the destination is chosen by the far end, so it is checked even when the
-    // source started out as one of this app's own endpoints.
-    sameOrigin = false;
   }
-
-  if (!res) throw new Error("No response");
-  const limited = readRateLimit(res.status, res.headers);
-  if (limited) throw new RateLimitError(limited);
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
-  return { text: await res.text(), linkHeader: res.headers.get("link") };
+  throw new Error("No response");
 }
 
 function parseBody(text: string): { json: unknown } | { csv: string } {
@@ -131,7 +193,8 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
   const startUrl = resolved.toString();
   // The origin the source's credential belongs to: its own URL's, never wherever a response points.
   const credentialOrigin = resolved.origin;
-  const first = await fetchPage(startUrl, src, sameOrigin, credentialOrigin);
+  const budget: Budget = { deadline: Date.now() + TOTAL_BUDGET_MS, bytesLeft: MAX_RESPONSE_BYTES };
+  const first = await fetchPage(startUrl, src, sameOrigin, credentialOrigin, budget);
   const fetchedAt = new Date().toISOString();
 
   const parsed = parseBody(first.text);
@@ -147,7 +210,6 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
   // No list to page through (a KPI object, a bare value), or paging switched off.
   if (!records || maxRows <= 0) return jsonToTable(scoped, fetchedAt);
 
-  const deadline = Date.now() + TOTAL_BUDGET_MS;
   const firstPageRecords = records.length;
   const seen = new Set<string>([startUrl]);
   const all = [...records];
@@ -176,7 +238,7 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
       truncated = true;
       break;
     }
-    if (all.length >= maxRows || pageCount >= MAX_PAGES || Date.now() > deadline || seen.has(nxt.url)) {
+    if (all.length >= maxRows || pageCount >= MAX_PAGES || Date.now() > budget.deadline || seen.has(nxt.url)) {
       truncated = true; // There is more data; we're choosing to stop.
       break;
     }
@@ -186,11 +248,13 @@ export async function executeSource(src: SourceInput, origin: string): Promise<T
     let next: { text: string; linkHeader: string | null };
     try {
       // Paging URLs come from the response body, so they are never treated as same-origin.
-      next = await fetchPage(currentUrl, src, false, credentialOrigin);
+      next = await fetchPage(currentUrl, src, false, credentialOrigin, budget);
     } catch (err) {
       // A rate limit partway through is the one failure worth carrying forward rather than just
       // swallowing: the rows already collected are still good, but the caller has to know to wait
-      // or the next poll walks straight back into the same limit.
+      // or the next poll walks straight back into the same limit. Running out of time or bytes on
+      // a later page is the same as running out of pages — what was collected is kept, marked
+      // partial.
       if (err instanceof RateLimitError) retryAfterSec = err.retryAfterSec;
       truncated = true;
       break;

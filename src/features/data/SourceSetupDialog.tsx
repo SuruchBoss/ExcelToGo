@@ -11,6 +11,7 @@ import { isDbType, PublicDataSource, TableData } from "@/lib/dataSources/types";
 import { sqlProblem } from "@/lib/dataSources/sqlGuard";
 import { SourceDraft, useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
+import { sourceErrorText } from "./sourceError";
 
 interface Props {
   /** Undefined = creating a new source. */
@@ -272,7 +273,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
                   ]
                     .filter(Boolean)
                     .join(" · ")
-                : `${t.data.setup.testFailed}: ${testResult.error}`}
+                : `${t.data.setup.testFailed}: ${sourceErrorText(testResult.error, t.data)}`}
               {testResult.ok && testResult.table.truncated && (
                 <p className="mt-1 font-medium text-amber-700">⚠ {t.data.setup.testTruncated}</p>
               )}
