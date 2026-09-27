@@ -219,11 +219,21 @@ have caught it did not: Supabase's database linter reported four functions with 
 `search_path`. All four are in `0001`–`0002`, none is `security definer` — three triggers and one
 `immutable` helper — which is exactly why `policies.test.ts` passed over them; it only asked about
 definers. `0005_pin_search_paths.sql` pins them, and the test now asks it of **every** function in
-the migrations rather than only the ones where it is most dangerous. Two warnings remain and are
-understood: `bump_usage` being callable by `anon` is the whole design of the counter, and
-`can_access_workbook` / `owns_workbook` are called *from inside the policies*, so the roles those
-policies apply to must hold `execute` on them — revoking it would not harden the database, it
-would turn row-level security off for everyone it protects.
+the migrations rather than only the ones where it is most dangerous.
+
+**The security advisor's other warning, and `0007`.** It lists every `security definer` function
+`anon` can call through `/rest/v1/rpc/…`. None was a hole — `can_access_workbook` / `owns_workbook`
+answer from the caller's own token, so a signed-out caller always got `false`, and
+`snapshot_workbook` is a trigger — but nothing needed the grant either, so
+`0007_revoke_unneeded_execute.sql` takes it away: the trigger is callable by nobody (Postgres does
+not check EXECUTE when a trigger fires), and the two access checks keep EXECUTE for
+`authenticated` only, because the policies call them with the caller's rights. That order matters:
+six policies had been written without a `to` clause, which means `to public`, and with those left
+as they were the revoke would have turned a signed-out request's empty answer into "permission
+denied for function". So `0007` scopes them to `authenticated` first. Replayed on a real Postgres
+16 before it was written down here: signed out still reads zero rows without an error, a signed-in
+owner and a member still read, write and leave versions behind. `bump_usage` stays callable by
+`anon` — that is the whole design of the counter.
 
 **What it cannot tell you**, said here so nobody reads more into a number than is in it: how many
 *people* (two visits from one person and one each from two are the same number), whether anyone

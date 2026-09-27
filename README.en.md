@@ -36,7 +36,7 @@ Runs in your browser; your data stays on your machine.
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1467%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1472%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -56,7 +56,7 @@ endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and no
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1467 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1472 automated tests.
 
 ---
 
@@ -100,7 +100,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1467 passing tests could not catch
+### 🧪 What 1472 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,7 +111,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1467 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1472 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -370,7 +370,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1467-case Vitest suite |
+| `npm test` | Run the 1472-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -955,7 +955,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 ![Cloud save](public/screenshots/en/23-cloud-save.png)
 
-Run both migrations against your project once first —
+Run every migration, in order, against your project once first —
 [`0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) creates the table and the
 **row-level security** policies that keep one account's workbooks away from another's, and
 [`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql) adds sharing
@@ -967,6 +967,9 @@ after these files were applied to a real project, because the test only asked it
 definer` functions and these four are not. It asks it of every function now.
 [`0006_usage_landing_viewed.sql`](supabase/migrations/0006_usage_landing_viewed.sql) adds `landing_viewed`
 to the usage counter's list, and a test checks that the list in SQL matches the app's, event for event.
+[`0007_revoke_unneeded_execute.sql`](supabase/migrations/0007_revoke_unneeded_execute.sql) takes EXECUTE on the
+policies' helper functions away from signed-out callers — after scoping six policies to `authenticated`, so a
+signed-out request still gets an empty answer rather than an error.
 
 - **The browser talks to your Supabase directly**, never through this app's server, so whoever
   deploys it never sees their users' spreadsheets.
@@ -1961,7 +1964,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1467 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1472 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2684,7 +2687,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 284 security tests
+### 289 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2704,7 +2707,7 @@ nothing but the anon key, which is the thing that used to work.
 | `server/sourceRepo.test.ts` | 5 | What leaves the server: the connection string never does, only a description of it, and an unreadable one answers with dots rather than a guess |
 | `usage.test.ts` | 15 | A counter that must not become an exfiltration channel: off by default, DNT/GPC honoured, automated browsers (webdriver/HeadlessChrome) not counted, once per page load, no retry on failure, and a payload whose only key is `event` |
 | `api/usage/route.test.ts` | 24 | The side `curl` reaches: a name off the list is not recorded, a headless browser's user agent is not counted (read to decide, never kept), every extra field is dropped, a megabyte body is cut, 204 either way so a prober learns nothing, and an IP, user agent, referrer and cookie all sent and none reaching storage |
-| `cloud/policies.test.ts` | 29 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
+| `cloud/policies.test.ts` | 34 | The row-level security policies read as text: RLS switched on at all, four verbs spelled out, `with check` on update plus the trigger pinning the owner, the channel asking the same question the workbook asks, and nothing that says `using (true)` or is granted to `anon` |
 | `errorReport.test.ts` | 20 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
@@ -2850,13 +2853,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1467 cases across 85 files, via Vitest
+npm test      # 1472 cases across 85 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1467 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1472 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -2950,10 +2953,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1467 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1472 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1467 passing tests could not catch](#-what-1467-passing-tests-could-not-catch), repeatable
+> [What 1472 passing tests could not catch](#-what-1472-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |

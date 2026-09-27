@@ -32,7 +32,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_ลองใช้เลย-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1467%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1472%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,7 +52,7 @@ and saying so when data came back incomplete. A range can be given a name (in Th
 what it means, and a cell can carry a rule about what may go in it, refused before it is written rather than
 flagged afterwards. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 1467 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 1472 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -97,7 +97,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 
 ---
 
-### 🧪 สิ่งที่เทสต์ 1467 เคสจับไม่ได้
+### 🧪 สิ่งที่เทสต์ 1472 เคสจับไม่ได้
 
 เทสต์ของผู้ช่วย AI ใช้ **mock ทั้งหมด** — มันตอบตามที่ผมคิดว่ามันจะตอบ พอเอา API key จริงมายิงคำถามธรรมดา
 14 ข้อ **6 คำตอบใช้ฟังก์ชันที่เอนจินนี้ไม่มี** (`TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR`)
@@ -107,7 +107,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 มันจึงตอบคำถาม *"ต่อชื่อทั้งหมดเป็นบรรทัดเดียว"* ด้วย `=SUM(A2:A20)` ซึ่งได้ `0` โดยไม่มีอะไรบอกว่าผิด
 **เปลี่ยน error ที่มองเห็น เป็นตัวเลขผิดที่มองไม่เห็น**
 
-**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1467 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
+**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1472 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
 ที่สองความกว้าง — ผมลองไล่คลิก build สาธารณะแบบคนที่เพิ่งเข้ามาครั้งแรกอยู่ชั่วโมงหนึ่ง แล้วเจอสามอย่าง
 ที่ไม่มีด่านไหนมองเห็น:
 
@@ -355,7 +355,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 1467 เคสด้วย Vitest |
+| `npm test` | รัน unit test 1472 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:screens` | ตัวเลขที่พิมพ์อยู่บนภาพหน้าจอยังตรงกับซอร์สไหม |
 | `npm run check:rls` | ยิงจริงสองบัญชีบน Supabase ของคุณ ว่าฐานข้อมูลปฏิเสธตามที่ policy เขียนไว้ไหม (ต้องตั้ง env) |
@@ -860,7 +860,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 ![บันทึกบนคลาวด์](public/screenshots/23-cloud-save.png)
 
-ก่อนใช้ ต้องรัน migration ทั้งสองไฟล์กับโปรเจกต์ของคุณครั้งเดียว —
+ก่อนใช้ ต้องรัน migration ทุกไฟล์ตามลำดับกับโปรเจกต์ของคุณครั้งเดียว —
 [`0001_workbooks.sql`](supabase/migrations/0001_workbooks.sql) สร้างตารางและ **row-level security** ที่กันไม่ให้
 บัญชีหนึ่งเห็นงานของอีกบัญชี ส่วน [`0002_sharing_and_realtime.sql`](supabase/migrations/0002_sharing_and_realtime.sql)
 เพิ่มการแชร์ และ**ออกสิทธิ์ให้ช่องแก้สด** ส่วน [`0003_versions.sql`](supabase/migrations/0003_versions.sql)
@@ -869,7 +869,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 สี่ตัวที่ตกหล่นไป (เจอจาก database linter ของ Supabase เอง หลังเอาไฟล์พวกนี้ไปรันกับโปรเจกต์จริง — เทสต์เดิม
 ถามแต่ฟังก์ชัน `security definer` ตอนนี้ถามทุกตัว) ส่วน
 [`0006_usage_landing_viewed.sql`](supabase/migrations/0006_usage_landing_viewed.sql) เพิ่ม `landing_viewed`
-เข้ารายการของตัวนับการใช้งาน (เทสต์เช็กว่ารายการใน SQL ตรงกับของแอปทุกตัว)
+เข้ารายการของตัวนับการใช้งาน (เทสต์เช็กว่ารายการใน SQL ตรงกับของแอปทุกตัว) และ
+[`0007_revoke_unneeded_execute.sql`](supabase/migrations/0007_revoke_unneeded_execute.sql) ถอนสิทธิ์เรียกฟังก์ชันช่วยของ
+policy จากคนที่ไม่ได้ล็อกอิน (ก่อนถอน ปรับ policy หกตัวให้ใช้กับ `authenticated` เท่านั้น เพื่อให้คำขอที่ไม่ได้ล็อกอินยังได้ผลว่าง ไม่ใช่ error)
 
 - **เบราว์เซอร์คุยกับ Supabase ของคุณโดยตรง** ไม่ผ่านเซิร์ฟเวอร์ของแอปนี้ คนที่เอาไป deploy จึงไม่เคยเห็นข้อมูลผู้ใช้
 - **ล็อกอินด้วยลิงก์ทางอีเมล** ไม่มีรหัสผ่านให้ต้องเก็บหรือตรวจ
@@ -1757,7 +1759,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1467 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1472 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -2421,7 +2423,7 @@ policy ของ realtime ถามคำถาม*เดียวกัน*ก�
 B อ่านและแก้ได้ แต่ยังยึดเป็นเจ้าของหรือลบไม่ได้ ปิดท้ายด้วยการลองเข้าห้องโดยถือแค่ anon key
 ซึ่งเป็นสิ่งที่เมื่อก่อน**ทำได้**
 
-### 284 เทสต์ด้านความปลอดภัย
+### 289 เทสต์ด้านความปลอดภัย
 
 | ไฟล์ | เทสต์ | ครอบอะไร |
 |---|---|---|
@@ -2442,7 +2444,7 @@ B อ่านและแก้ได้ แต่ยังยึดเป็�
 | `sourceRepo.test.ts` | 5 | connection string ไม่เคยออกจากเซิร์ฟเวอร์ ออกไปแค่คำอธิบาย และอ่านไม่ออกเมื่อไรก็ตอบเป็นจุด ไม่ใช่เดา |
 | `usage.test.ts` | 15 | ตัวนับที่ต้องไม่กลายเป็นช่องทางส่งข้อมูลออก: ปิดไว้เป็นค่าตั้งต้น, เคารพ DNT/GPC, ไม่นับเบราว์เซอร์อัตโนมัติ (webdriver/HeadlessChrome), นับครั้งเดียวต่อการโหลด, ไม่ยิงซ้ำเมื่อพลาด และ payload มีคีย์เดียวชื่อ `event` |
 | `api/usage/route.test.ts` | 24 | ฝั่งที่ `curl` เจอ: ชื่อนอกรายการไม่ถูกบันทึก, UA ของ headless browser ไม่ถูกนับ (อ่านเพื่อตัดสินแต่ไม่เก็บ), ฟิลด์แถมทุกตัวถูกทิ้ง, body ยาวเป็นเมกะไบต์ถูกตัด, ตอบ 204 เท่ากันทั้งสองทางเพื่อไม่บอกว่ามีเหตุการณ์อะไรบ้าง และ IP/UA/referrer/cookie ที่ส่งมาครบไม่มีอันไหนไปถึงที่เก็บ |
-| `cloud/policies.test.ts` | 29 | อ่าน policy ของ row-level security เป็นข้อความ — RLS เปิดจริงไหม, `with check` ครบไหม, ไม่มีอันไหน `using (true)` หรือให้ `anon` |
+| `cloud/policies.test.ts` | 34 | อ่าน policy ของ row-level security เป็นข้อความ — RLS เปิดจริงไหม, `with check` ครบไหม, ไม่มีอันไหน `using (true)` หรือให้ `anon` |
 | `errorReport.test.ts` | 20 | รายงาน crash: ปิดไว้ถ้าไม่ตั้งค่า, ฟิลด์ตายตัว, และล้าง key/token/อีเมล/ข้อความไทยออกจาก stack |
 
 รันแยกได้: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
@@ -2534,13 +2536,13 @@ host มี `ANTHROPIC_API_KEY` ตั้งอยู่ก็ตาม แล�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 1467 เคส ใน 85 ไฟล์ ด้วย Vitest
+npm test      # 1472 เคส ใน 85 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง
 
-**แต่ 1467 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
+**แต่ 1472 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
 ทุกตัวแทบทั้งหมด — ปุ่ม "+ แถว" บนแถบเครื่องมือเรียก `addRow` ที่ไม่ประกาศอะไรเลย ขณะที่ `insertRowAtSelection`
 ข้าง ๆ ประกาศถูกต้อง (ทั้งคู่เทสต์ผ่าน) · ผู้ช่วย AI ส่งช่วงที่รวมหัวคอลัมน์ไปด้วย เพราะตัวประกอบ context อ่าน
 `sheet.cells` ที่เป็นสูตรดิบแทนค่าที่คำนวณแล้ว (ทั้งคู่เทสต์ผ่าน) · ปุ่มใหม่หนึ่งปุ่มดันปุ่มสลับภาษาตกขอบจอไป 42px
@@ -2620,9 +2622,9 @@ seed ถูกปักไว้ ด่านที่แดงจึงแด�
 ในตารางแล้วสองข้อในflow ที่สามตกทันที (ครั้งแรกที่ลองปิดยังเขียวอยู่ เพราะ `case` ที่แทรกเข้าไปไปอยู่หลัง
 `case "ArrowRight"` เดิม กลายเป็นโค้ดตาย — การพิสูจน์ต้องเช็กด้วยว่าของที่ตั้งใจทำให้พังนั้นพังจริง)
 
-> **1467 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
+> **1472 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
 > มันจึงตอบตามที่คนเขียนเทสต์คิดว่ามันจะตอบ จำนวนเทสต์บอกได้แค่ว่าเราถามอะไรไปบ้าง ไม่ได้บอกว่าเราถาม
-> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1467 เคสจับไม่ได้](#-สิ่งที่เทสต์-1467-เคสจับไม่ได้)
+> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1472 เคสจับไม่ได้](#-สิ่งที่เทสต์-1472-เคสจับไม่ได้)
 > และรันซ้ำเองได้ด้วย `npm run check:ai`
 
 | ไฟล์ | เคส | ทดสอบอะไร |
@@ -2663,7 +2665,7 @@ seed ถูกปักไว้ ด่านที่แดงจึงแด�
 | `server/dbGuard.test.ts` | 12 | connection string: สองสะกดของแต่ละชนิด, รหัสผ่านที่มีอักขระพิเศษ, unix socket ทั้งสองรูปแบบ, ที่อยู่ภายในถูกปฏิเสธ และ allowlist ของ operator ที่ต้องตรงทั้งชื่อ |
 | `server/executeDbSource.test.ts` | 4 | ลำดับของการปฏิเสธ: คำสั่งที่ไม่ผ่านต้องถูกปัดตกก่อน DNS จะถูกถามด้วยซ้ำ |
 | `server/sourceRepo.test.ts` | 5 | สิ่งที่ออกจากเซิร์ฟเวอร์: connection string ไม่เคยออกไป ออกไปแค่คำอธิบาย และอ่านไม่ออกเมื่อไรก็ตอบเป็นจุดแทนการเดา |
-| `cloud/policies.test.ts` | 29 | อ่าน policy ของ row-level security เป็นข้อความ: RLS เปิดอยู่จริงไหม, เขียนครบสี่ verb ไหม, update มี `with check` และ trigger ปักหมุดเจ้าของไหม, policy ของช่องสัญญาณถามคำถามเดียวกับ workbook ไหม และไม่มีอันไหนเขียน `using (true)` หรือให้ `anon` |
+| `cloud/policies.test.ts` | 34 | อ่าน policy ของ row-level security เป็นข้อความ: RLS เปิดอยู่จริงไหม, เขียนครบสี่ verb ไหม, update มี `with check` และ trigger ปักหมุดเจ้าของไหม, policy ของช่องสัญญาณถามคำถามเดียวกับ workbook ไหม และไม่มีอันไหนเขียน `using (true)` หรือให้ `anon` |
 | `errorReport.test.ts` | 20 | ตัวรายงาน crash ในแอปที่สัญญาว่าไฟล์ไม่ออกจากเบราว์เซอร์: ปิดไว้ถ้าไม่ตั้งค่า, ฟิลด์ตายตัว, มีเพดานความยาว, ไม่ส่ง query string และล้าง key/token/อีเมล/ข้อความไทยออกจาก stack — โดยที่ stack ภาษาอังกฤษธรรมดายังอ่านได้ |
 | `cloud/liveMessage.test.ts` | 7 | ตรวจข้อความที่มาจากเบราว์เซอร์อื่นก่อนใช้ (นับเป็นเทสต์ความปลอดภัยด้วย) |
 | `cloud/liveRoom.test.ts` | 21 | ห้องหนึ่งห้องกับ transport ปลอม: echo ของตัวเองไม่เข้า undo, คิวที่รอจนปิดช่อง (เก็บเฉพาะตัวที่ชนะ), แก้ของเราชนะแล้วของเขาไม่ทับ, ออกจากห้องแล้วเงียบจริง |
