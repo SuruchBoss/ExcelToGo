@@ -340,10 +340,10 @@ cd ExcelToGo
 
 ### Step 1 — Install and run
 
-**Requires:** [Node.js](https://nodejs.org) **20.19+ or 22.12+** (22 or 24 recommended) and npm. That floor
-comes from Vite 7, which the test suite runs on: it needs `require(esm)`, which lands in exactly those two
-versions — higher than Next 16's own `>=20.9`. It's declared in `package.json`'s `engines`, and CI runs both
-floors for real
+**Requires:** [Node.js](https://nodejs.org) **22.12+ or 24** and npm. The 22.12 floor comes from Vite 7,
+which the test suite runs on and which needs `require(esm)`; `@supabase/supabase-js` wants Node 22 anyway.
+`package.json` declares `^22.12.0 || ^24.0.0` in `engines`, exactly the two versions CI runs. **Node 20 is no
+longer supported**: it went out of support (no more security fixes) on 2026-04-30
 
 ```bash
 npm install
@@ -2001,7 +2001,7 @@ architecture behind it.
 
 ### Tooling
 
-- **Node.js 20.19+ or 22.12+** (22 or 24 recommended) and npm — the floor the test suite's Vite 7 needs
+- **Node.js 22.12+ or 24** and npm — the floor the test suite's Vite 7 needs · Node 20 is past end of life and not supported
 - **ESLint 9** (`eslint-config-next`), including React 19-specific rules (`react-hooks/set-state-in-effect`, `react-hooks/refs`)
 - **Vitest 3** for unit tests
 - No database or separate backend — everything runs in one Next.js app
@@ -2315,7 +2315,7 @@ src/
   types/
     sheet-ui.ts               # Types for the grid's selection state
 .github/workflows/
-  ci.yml                     # CI: lint → check:readme → test → check:mutants → build on every push/PR, Node 20.19/22.12/24
+  ci.yml                     # CI: lint → check:readme → test → check:mutants → build on every push/PR, Node 22.12/24
                              #     plus an accessibility job: axe at two widths in a real browser
 scripts/
   check-readme.mjs           # Pre-push README check (dependency-free) — see AGENTS.md for the rule
@@ -3069,14 +3069,20 @@ whole project, including the two languages' `Messages` parity). **It has to be g
 full rule lives in `AGENTS.md`.
 
 **GitHub Actions** (`.github/workflows/ci.yml`) runs those same five gates on every push and pull request,
-across **Node 20.19, 22.12 and 24** — the first two being both floors `engines` declares, so the claim is
-tested rather than asserted. They run as separate steps so the run summary names the gate that failed instead
+across **Node 22.12 and 24** — exactly what `engines` declares, so the 22.12 floor is tested rather than
+asserted. They run as separate steps so the run summary names the gate that failed instead
 of showing one opaque red cross.
 
 Testing the real floor caught the same class of bug twice, and both times it was "the documented minimum
 doesn't actually work": first `check:readme` died on `import.meta.dirname` (Node 20.11+), then `npm test` died
 instantly because Vite 7 is ESM-only and needs `require(esm)`, which exists only from 20.19/22.12. This
-project's true floor comes from Vite, not Next — which is only knowable by running CI on it.
+project's true floor comes from Vite, not Next — which is only knowable by running CI on it. The 20 line has
+since been dropped as past end of life ([#68](https://github.com/SuruchBoss/ExcelToGo/issues/68)), leaving 22.12
+as the one floor.
+
+**On Vercel:** Vercel reads `engines` and picks the newest major inside the range, so it builds on **24.x** —
+and because the range does not reach the next major, Vercel will not quietly move to it. A new Node major goes
+into CI and `engines` together.
 
 ---
 
@@ -3085,7 +3091,7 @@ project's true floor comes from Vite, not Next — which is only knowable by run
 What's not done yet, and why — to show this is a known gap, not something forgotten:
 
 - [x] **Automated CI (GitHub Actions)** — done: lint → check:readme → test → build on every push and PR,
-      across Node 20.19, 22.12 and 24
+      across Node 22.12 and 24
 - [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live

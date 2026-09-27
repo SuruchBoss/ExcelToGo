@@ -21,11 +21,11 @@ node scripts/license-headers.mjs  # หัวไฟล์ลิขสิทธ�
 the four gates that have caught every remaining bug in this project. The full one still has to be
 green before pushing.
 
-GitHub Actions รันสิบด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 20.19 / 22.12 / 24;
+GitHub Actions รันสิบด่านเดียวกันนี้ทุก push และทุก PR (`.github/workflows/ci.yml`, Node 22.12 / 24;
 ด่าน a11y กับ e2e แยกเป็น job ของตัวเองเพราะต้องใช้เบราว์เซอร์ และ **a11y ยังแยกอีกเป็นสอง job ตามความกว้าง**
 เพราะมันเคยเป็น job ที่ยาวที่สุด ทั้ง run จึงรอมันอยู่ job เดียว — `A11Y_WIDTH=390` หรือ `1280` เลือกครึ่งเดียว
 ถ้าไม่ตั้งจะรันทั้งหมด ซึ่งเป็นสิ่งที่คนรันมือควรได้) — รันเองก่อนยังคงเร็วกว่ารอ CI บอกว่าพัง
-GitHub Actions runs the same ten gates on every push and PR (Node 20.19 / 22.12 / 24; the a11y and e2e gates
+GitHub Actions runs the same ten gates on every push and PR (Node 22.12 / 24; the a11y and e2e gates
 are jobs of their own because they need a browser, and **a11y is two jobs split by width** because it was the
 longest one and so the only thing the run waited on — `A11Y_WIDTH=390` or `1280` picks a half, unset runs
 everything, which is what someone running it by hand should get) — running them yourself
