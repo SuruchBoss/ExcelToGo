@@ -199,6 +199,15 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
   runs an upstream the operator picked — not to the public. #18/#19 were filed as Medium and moved to Low for
   exactly that reason; a finding shaped like that is reliability, and an ordinary issue is fine.
 
+### สำหรับ session ที่เป็น PO / For a session acting as Product Owner
+
+- **อ่าน [`docs/PO_LESSONS.md`](docs/PO_LESSONS.md) ก่อนเริ่มงานทุกครั้ง** — บันทึกความผิดพลาดจริงของ PO และกฎที่เกิดจากมัน
+  ข้อที่สำคัญที่สุด: **"พร้อม" แปลว่าลองงานหลักของ owner บน production ในฐานะผู้ใช้แล้ว ไม่ใช่เทสต์เขียว** · วันแรกที่เปิดให้คนนอกใช้
+  ด่านทั้งสิบเขียวครบ ขณะที่ฟีเจอร์ที่เป็นเหตุผลของแอป (ต่อ API/ข้อมูลของตัวเอง) ถูกปิดอยู่บน production
+  Read `docs/PO_LESSONS.md` before starting. Its first rule: "ready" means the owner's core jobs were tried on
+  production as a user, not that the gates are green — on launch day every gate was green while the feature the
+  app exists for was switched off in production.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
