@@ -46,12 +46,12 @@ formula palette, AI, live data, conditional formatting, charts, pivots, find/rep
 dialog, the validation, names and comment popovers, the alert shown when a save is refused, and the two live-data dialogs (the picker and adding a source), 42 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 13 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
-เดินด้วยคีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 14 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+เดินด้วยคีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, ตัดข้ามชีต, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
 ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) และบันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้ เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 13 flows — type a formula and watch the value
-move, export `.xlsx` and import it back, keyboard only, undo, editing after undoing a new sheet, whether a change away from the cursor is
+`npm run check:e2e` drives the real app in a browser through 14 flows — type a formula and watch the value
+move, export `.xlsx` and import it back, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up), and a refused save that is announced while export still works. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.

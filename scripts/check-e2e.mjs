@@ -251,6 +251,38 @@ const FLOWS = [
     },
   },
   {
+    name: "a cut on one sheet pasted on another clears the source, not the destination (#41)",
+    async run(page) {
+      await typeInCell(page, 0, 0, "move-me-1");
+      await typeInCell(page, 1, 0, "move-me-2");
+      await page.getByTitle(label.addSheet).click();
+      await typeInCell(page, 0, 0, "KEEP-A1");
+      await typeInCell(page, 0, 1, "KEEP-B1");
+      await typeInCell(page, 1, 0, "KEEP-A2");
+
+      // Back to the first sheet, cut A1:A2 with the keyboard, paste at D1 on the second.
+      await page.getByText("Sheet1", { exact: true }).click();
+      await cell(page, 0, 0).click();
+      await cell(page, 1, 0).click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Control+x");
+      await page.getByText("Sheet2", { exact: true }).click();
+      await cell(page, 0, 3).click();
+      await page.keyboard.press("Control+v");
+
+      const at = async (r, c) => (await cell(page, r, c).innerText()).trim();
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="3"]')?.innerText.trim() === "move-me-1", null, {
+        timeout: 5000,
+      });
+      const kept = [await at(0, 0), await at(0, 1), await at(1, 0)];
+      note(kept.join() === "KEEP-A1,KEEP-B1,KEEP-A2", `the destination's own cells survive (A1,B1,A2: ${kept.join(", ")})`);
+      note((await at(1, 3)) === "move-me-2", "the block lands at D1:D2");
+
+      await page.getByText("Sheet1", { exact: true }).click();
+      const source = [await at(0, 0), await at(1, 0)];
+      note(source.join() === ",", `the source sheet's A1:A2 is cleared (showed "${source.join('", "')}")`);
+    },
+  },
+  {
     name: "the AI assistant puts a working formula in the cell",
     async run(page) {
       // The only part of the app that talks to a server, and the part with the worst record: its

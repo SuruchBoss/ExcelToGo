@@ -57,6 +57,7 @@ export default function SpreadsheetGrid() {
   const fillSelectionFromAnchor = useSheetStore((s) => s.fillSelectionFromAnchor);
   const fillFrom = useSheetStore((s) => s.fillFrom);
   const clipboard = useSheetStore((s) => s.clipboard);
+  const activeSheetId = useSheetStore((s) => s.activeSheetId);
   const clearClipboard = useSheetStore((s) => s.clearClipboard);
   const deleteSelectedRow = useSheetStore((s) => s.deleteSelectedRow);
   const deleteSelectedColumn = useSheetStore((s) => s.deleteSelectedColumn);
@@ -859,7 +860,9 @@ export default function SpreadsheetGrid() {
     row >= selection.startRow && row <= selection.endRow && col >= selection.startCol && col <= selection.endCol;
   const isActive = (row: number, col: number) => row === selection.anchorRow && col === selection.anchorCol;
   const isInClipboard = (row: number, col: number) => {
-    if (!clipboard) return false;
+    // Marked on the sheet it came from only: the same cells on another tab are not what a paste
+    // would move, and a cut outline there reads as "these will be cleared".
+    if (!clipboard || clipboard.sheetId !== activeSheetId) return false;
     const endRow = clipboard.startRow + clipboard.rows.length - 1;
     const endCol = clipboard.startCol + (clipboard.rows[0]?.length ?? 0) - 1;
     return row >= clipboard.startRow && row <= endRow && col >= clipboard.startCol && col <= endCol;

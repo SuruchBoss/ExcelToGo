@@ -196,6 +196,9 @@ function selectionToAddress(sel: SelectionRect): string {
 
 interface ClipboardState extends ClipboardBlock {
   cut: boolean;
+  /** The tab it was copied or cut from. A cut clears *that* sheet — not whichever one is open when
+   *  the paste happens, which is how a cut across sheets used to wipe the destination (#41). */
+  sheetId: string;
 }
 
 interface SheetState {
@@ -1060,7 +1063,10 @@ export const useSheetStore = create<SheetState>()(
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-          set({ clipboard: { ...block, cut: false }, ...say(getMessages().live.copied(rangeLabel(selection))) });
+          set({
+            clipboard: { ...block, cut: false, sheetId: activeTab(s).id },
+            ...say(getMessages().live.copied(rangeLabel(selection))),
+          });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
@@ -1069,7 +1075,10 @@ export const useSheetStore = create<SheetState>()(
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
-          set({ clipboard: { ...block, cut: true }, ...say(getMessages().live.cut(rangeLabel(selection))) });
+          set({
+            clipboard: { ...block, cut: true, sheetId: activeTab(s).id },
+            ...say(getMessages().live.cut(rangeLabel(selection))),
+          });
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
@@ -1091,25 +1100,40 @@ export const useSheetStore = create<SheetState>()(
             if (clipboard) {
               let next = pasteClipboardBlock(sheet, clipboard, targetRow, targetCol);
               let clearedClipboard: ClipboardState | null = clipboard;
+              let sheets = withActiveSheet(s, () => next);
               if (clipboard.cut) {
                 const height = clipboard.rows.length;
                 const width = clipboard.rows[0]?.length ?? 0;
                 const srcEndRow = clipboard.startRow + height - 1;
                 const srcEndCol = clipboard.startCol + width - 1;
-                const destOverlapsSource =
-                  targetRow <= srcEndRow &&
-                  targetRow + height - 1 >= clipboard.startRow &&
-                  targetCol <= srcEndCol &&
-                  targetCol + width - 1 >= clipboard.startCol;
-                // Moving to a spot that overlaps the original block would otherwise wipe out
-                // the very cells pasteClipboardBlock just wrote there.
-                if (!destOverlapsSource) {
-                  next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+                const destId = activeTab(s).id;
+                if (clipboard.sheetId === destId) {
+                  const destOverlapsSource =
+                    targetRow <= srcEndRow &&
+                    targetRow + height - 1 >= clipboard.startRow &&
+                    targetCol <= srcEndCol &&
+                    targetCol + width - 1 >= clipboard.startCol;
+                  // Moving to a spot that overlaps the original block would otherwise wipe out
+                  // the very cells pasteClipboardBlock just wrote there.
+                  if (!destOverlapsSource) {
+                    next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+                    sheets = withActiveSheet(s, () => next);
+                  }
+                } else {
+                  // Cleared on the sheet it was cut from. If that sheet has been deleted since,
+                  // there is nothing left to clear, and this is a copy: nothing on the sheet being
+                  // pasted into is touched beyond the block itself. Both sheets change in one
+                  // update, so one undo puts both back.
+                  sheets = sheets.map((t) =>
+                    t.id === clipboard.sheetId
+                      ? { ...t, sheet: clearRange(t.sheet, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol) }
+                      : t
+                  );
                 }
                 clearedClipboard = null;
               }
               return {
-                sheets: withActiveSheet(s, () => next),
+                sheets,
                 clipboard: clearedClipboard,
                 ...say(
                   getMessages().live.pasted(
