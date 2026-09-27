@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { th } from "@/i18n/th";
 import { en } from "@/i18n/en";
-import { sourceErrorText } from "./sourceError";
+import { partialHintText, sourceErrorText } from "./sourceError";
 
 /**
  * The server stops a refresh on purpose in two ways and says so with a code; the panel says it in
@@ -25,5 +25,12 @@ describe("what a stopped refresh says to the person reading it", () => {
   it("passes every other message through as the server wrote it", () => {
     expect(sourceErrorText("HTTP 404 Not Found", en.data)).toBe("HTTP 404 Not Found");
     expect(sourceErrorText("Response is not valid JSON", th.data)).toBe("Response is not valid JSON");
+  });
+
+  it("a table cut for size says what would help, not 'raise the row limit' (#80)", () => {
+    expect(partialHintText({ sizeLimited: true }, en.data)).toContain("4 MB");
+    expect(partialHintText({ sizeLimited: true }, th.data)).toContain("4 MB");
+    expect(partialHintText({ sizeLimited: true }, en.data)).not.toBe(en.data.partialHint);
+    expect(partialHintText({}, th.data)).toBe(th.data.partialHint);
   });
 });

@@ -61,6 +61,10 @@ export interface TableData {
    *  rows are only part of the data. Surfaced in the UI: a silent partial table is worse than a
    *  small one the user knows is partial. */
   truncated?: boolean;
+  /** Set with `truncated` when what cut the table short was its size on the way to the browser
+   *  (`MAX_DELIVERED_BYTES`), not the row limit — so the hint says "fewer columns", not "raise the
+   *  row limit", which would not help. */
+  sizeLimited?: boolean;
   /** Set when the source rate-limited us partway through the pages. The rows collected so far are
    *  still worth returning, but the caller must wait this long before refreshing again — otherwise
    *  the next poll walks straight back into the same limit. */

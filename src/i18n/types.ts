@@ -83,6 +83,8 @@ export interface Messages {
     /** Shown wherever a paginated source's table is only part of the data. */
     partial: (rows: number) => string;
     partialHint: string;
+    /** Why a table cut for size is partial: it met the most one refresh sends to the browser, in MB. */
+    partialSizeHint: (megabytes: number) => string;
     /** Shown instead of a raw "HTTP 429" when a source asks to be called less often. */
     rateLimited: string;
     retryIn: (seconds: number) => string;

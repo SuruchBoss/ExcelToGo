@@ -153,7 +153,7 @@ is unaffected.
 
 Reliability as much as security — reaching this needs the operator token, or control of an API the
 operator chose — but a URL that turns out to point at a 2 GB export should cost a failed refresh,
-not the server's memory. All four numbers live in `src/lib/dataSources/fetchLimits.ts`.
+not the server's memory. All five numbers live in `src/lib/dataSources/fetchLimits.ts`.
 
 - **About 49 MB of body per refresh, across every page, counted after decompression.** One kilobyte
   per row at the 50,000-row ceiling the form offers; measured before choosing it, 50,000 rows are
@@ -167,6 +167,9 @@ not the server's memory. All four numbers live in `src/lib/dataSources/fetchLimi
   second held a refresh open for as long as it liked.
 - **45 seconds across every redirect and page of one refresh**, enforced inside each request as
   well as between pages.
+- **4 MB of table sent on to the browser per refresh.** Vercel refuses a function response over
+  4.5 MB, so a bigger table is cut to the rows that fit and marked partial for its size instead of
+  failing as a 413; the same number applies self-hosted, so a source behaves alike on both.
 
 Hitting either on the first page fails the refresh with a code the data panel turns into a
 sentence in the reader's language; hitting either on a later page keeps the rows already fetched

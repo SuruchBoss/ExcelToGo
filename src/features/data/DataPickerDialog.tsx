@@ -13,6 +13,7 @@ import { useDataSourceStore } from "@/store/dataSourceStore";
 import { selectActiveSelection, selectActiveSheet, useLiveBlocks, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import { formatValue, valueLabel } from "./valueLabel";
+import { partialHintText } from "./sourceError";
 
 interface Props {
   source: PublicDataSource;
@@ -107,7 +108,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
           {table.truncated && (
             <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               <p className="font-semibold">⚠ {t.data.partial(table.rows.length)}</p>
-              <p className="mt-0.5 text-amber-700">{t.data.partialHint}</p>
+              <p className="mt-0.5 text-amber-700">{partialHintText(table, t.data)}</p>
             </div>
           )}
 

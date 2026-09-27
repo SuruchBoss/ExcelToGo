@@ -11,7 +11,7 @@ import { isDbType, PublicDataSource, TableData } from "@/lib/dataSources/types";
 import { sqlProblem } from "@/lib/dataSources/sqlGuard";
 import { SourceDraft, useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
-import { sourceErrorText } from "./sourceError";
+import { partialHintText, sourceErrorText } from "./sourceError";
 
 interface Props {
   /** Undefined = creating a new source. */
@@ -275,7 +275,9 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
                     .join(" · ")
                 : `${t.data.setup.testFailed}: ${sourceErrorText(testResult.error, t.data)}`}
               {testResult.ok && testResult.table.truncated && (
-                <p className="mt-1 font-medium text-amber-700">⚠ {t.data.setup.testTruncated}</p>
+                <p className="mt-1 font-medium text-amber-700">
+                  ⚠ {testResult.table.sizeLimited ? partialHintText(testResult.table, t.data) : t.data.setup.testTruncated}
+                </p>
               )}
               {testResult.ok && testResult.table.columns.length > 0 && (
                 <p className="mt-1 truncate text-[11px] text-emerald-600">{testResult.table.columns.map((c) => c.label).join(" · ")}</p>

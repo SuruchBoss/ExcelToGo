@@ -22,6 +22,18 @@ export const MAX_ROWS_CEILING = 50_000;
  */
 export const MAX_RESPONSE_BYTES = MAX_ROWS_CEILING * 1024;
 
+/**
+ * Bytes of JSON one refresh sends on to the browser — the table the route answers with.
+ *
+ * Vercel refuses a function response over 4.5 MB, so a table the server had fetched without trouble
+ * reached the browser as a bare 413 (#80). 4 MiB leaves room for headers under that on Vercel, and
+ * holds the same everywhere else so a source behaves alike on both: past it the table is cut to the
+ * rows that fit and marked as partial, never refused. Measured on the route's own output (rows go
+ * out as arrays, without the upstream's keys): the demo's orders are ~100 bytes a row, so about
+ * 41,800 rows fit; twenty fields of mostly Thai text are ~560 bytes a row, about 7,700.
+ */
+export const MAX_DELIVERED_BYTES = 4 * 1024 * 1024;
+
 /** Per request, from sending it to the last byte of its body — not only until the headers arrive. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
