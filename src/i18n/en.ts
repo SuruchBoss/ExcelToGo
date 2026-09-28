@@ -426,7 +426,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1650", label: "automated tests" },
+      { value: "1671", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -704,6 +704,13 @@ export const en: Messages = {
   startNotice: {
     text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
     openSample: "Try it with sample data",
+  },
+  sortWarning: {
+    title: "Formulas here point at other rows",
+    body: (formulas) =>
+      `${formulas === 1 ? "One formula" : `${formulas} formulas`} in the rows being sorted ${formulas === 1 ? "points" : "point"} at a row other than ${formulas === 1 ? "its" : "their"} own (a running total, or a total caught in the range). After the sort ${formulas === 1 ? "it" : "they"} would work from different rows' numbers — formulas that only use their own row move with it correctly. Undo always takes a sort back.`,
+    sortAnyway: "Sort anyway",
+    cancel: "Cancel",
   },
   newFile: {
     button: "New file",

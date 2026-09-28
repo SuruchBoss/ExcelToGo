@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { FormulaValue } from "./formulaEngine/types";
+import { moveOwnRowRefs, rowReferences } from "./formulaEngine/shift";
 import { cloneSheet, ComputedSheet, SheetModel } from "./sheet";
 
 function compareCellValues(a: FormulaValue, b: FormulaValue): number {
@@ -58,12 +59,17 @@ export function detectSortRange(sheet: SheetModel, computed: ComputedSheet, sele
 }
 
 /**
- * Reorders rows within `range` by the values in `sortCol` (computed values, so a formula
- * column sorts by its result). Only the cells inside the range's column span move — like
- * Excel, sorting a range that doesn't cover every column leaves the other columns' rows where
- * they were. Blank cells always sort to the end. Formula *text* isn't rewritten to follow its
- * row (Excel doesn't do this either), so a relative formula may now compute something
- * different — sorting a range with such formulas in it isn't generally safe, same as Excel.
+ * Reorders rows within `range` by the values in `sortCol` (computed values, so a formula column
+ * sorts by its result). Only the cells inside the range's column span move — like Excel, sorting a
+ * range that doesn't cover every column leaves the other columns' rows where they were. Blank cells
+ * always sort to the end.
+ *
+ * A formula moves with its row and its relative references move with it (#48): `=C2*D2` sorted to
+ * row 5 is `=C5*D5`, so every row still multiplies its own price by its own quantity. References to
+ * rows outside the range and to other sheets stay put — they did not move (see `moveOwnRowRefs`).
+ * This used to move the text unchanged, and each row's total quietly read another row's numbers
+ * while the grand total still added up. Formulas that point at *other* rows cannot come through a
+ * sort right in any spreadsheet; `sortRisks` finds them so the app can say so first.
  */
 export function sortRange(sheet: SheetModel, computed: ComputedSheet, range: SortRange, sortCol: number, ascending: boolean): SheetModel {
   const { startRow, endRow, startCol, endCol } = range;
@@ -89,9 +95,35 @@ export function sortRange(sheet: SheetModel, computed: ComputedSheet, range: Sor
   for (let i = 0; i < rowOrder.length; i++) {
     const destRow = startRow + i;
     for (let c = startCol; c <= endCol; c++) {
-      next.cells[destRow][c] = snapshotCells[i][c - startCol];
+      const raw = snapshotCells[i][c - startCol];
+      const moved = destRow - rowOrder[i];
+      next.cells[destRow][c] = moved !== 0 && raw.startsWith("=") && raw.length > 1 ? `=${moveOwnRowRefs(raw.slice(1), rowOrder[i], moved)}` : raw;
       next.formats[destRow][c] = snapshotFormats[i][c - startCol];
     }
   }
   return next;
+}
+
+/**
+ * The formulas in `range` that a sort would break, as `[row, col]` (#48): any that point at another
+ * row inside the range (a running total, a grand total caught in the range), or fix a row inside it
+ * with `$`, which stays behind while the row moves. Rows outside the range and other sheets do not
+ * move, so a formula pointing there is safe. Excel sorts these without
+ * a word; the app asks first, because a wrong number with no error is the worst thing it can show.
+ */
+export function sortRisks(sheet: SheetModel, range: SortRange): [number, number][] {
+  const out: [number, number][] = [];
+  for (let r = range.startRow; r <= range.endRow; r++) {
+    for (let c = range.startCol; c <= range.endCol; c++) {
+      const raw = sheet.cells[r]?.[c] ?? "";
+      if (!raw.startsWith("=") || raw.length < 2) continue;
+      // Only rows inside the range move. A reference to one of them that is not this formula's own
+      // row (or is its own row fixed with $, which stays behind) ends up reading a different row.
+      const risky = rowReferences(raw.slice(1)).some(
+        (ref) => ref.row >= range.startRow && ref.row <= range.endRow && (ref.absolute || ref.row !== r)
+      );
+      if (risky) out.push([r, c]);
+    }
+  }
+  return out;
 }
