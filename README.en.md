@@ -1,4 +1,4 @@
-# 📊 ExcelToGo — describe what you want, get an Excel formula that works
+# 📊 ExcelToGo — describe what you want, get a suggested Excel formula
 
 **Language:** [ไทย](README.md) · English
 
@@ -8,12 +8,14 @@ Runs in your browser; your data stays on your machine.
 This site is the real app — free, no sign-up, not a trial — and you can [connect your own API from the browser](#from-your-browser-restcsv--works-on-this-site)
 right here, with the URL, the header and the data never passing through our server.
 
-> **Type "total sales for the northern branch" and get an Excel formula back**, with a sentence
+> **Type "total sales for the northern branch" and get a suggested Excel formula back**, with a sentence
 > saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes
 > first. Or skip the typing: **pick from 37 ready-made formulas** and drag across the cells instead
-> of typing addresses. It works out of the box with nothing to configure (a local keyword matcher,
-> free), or paste your own Anthropic API key and the question goes to the real Claude — from your
-> browser straight to Anthropic, never through this app's server.
+> of typing addresses.
+>
+> **Try it without a key: the app guesses a formula from keywords and always says it's a guess — check
+> before you use it.** Add your own Anthropic API key for real AI answers from Claude — the key stays in
+> your browser, and the question goes straight to Anthropic, never through this app's server.
 >
 > All of that happens on a `.xlsx` that **still looks like itself when it opens** (colour bands,
 > merged cells, borders, row heights), computed by a **hand-written formula engine** (no
@@ -42,10 +44,10 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
-Describe what you want in plain Thai or English and get a working Excel formula back, with a sentence
-explaining it; one click puts it in the cell. Out of the box that runs on a local keyword matcher — free,
-nothing to configure — and pasting your own Anthropic API key sends the question to the real Claude, from your
-browser straight to Anthropic, never through this app's server.
+Describe what you want in plain Thai or English and get a suggested Excel formula back, with a sentence
+explaining it; one click puts it in the cell. Without a key that is a local keyword guess — free, marked as a
+guess every time, to be checked before use — and pasting your own Anthropic API key sends the question to the
+real Claude, from your browser straight to Anthropic, never through this app's server.
 
 Beyond the assistant, a Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
 of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
@@ -1572,7 +1574,8 @@ mock-up.
 | `Ctrl+Space` / `Shift+Space` | The whole column / the whole row the selection touches; both together, the sheet |
 | **Freeze panes** (format bar) | Everything above and left of the cursor stays put while the rest scrolls. The split lives on the sheet, so it survives a reload, goes into undo, follows a row inserted above it, and travels in the `.xlsx` both ways |
 | `Ctrl+Enter` | Put the cell the cursor is on into everything selected, in one undo step — references shift as they would in a drag-fill, because a formula that kept pointing at the anchor's row would fill a column with the same wrong number |
-| `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | Right/left · down/up — **Tab along a row and Enter comes back under the column you started in**, as in Excel, so a table is typed row by row without walking back to the left |
+| `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | Right/left · down/up — **Tab along a row and Enter comes back under the column you started in**, as in Excel, so a table is typed row by row without walking back to the left · **Tab at the last column adds a column** rather than staying put and typing over what was just entered (on a template that cannot grow, it behaves as Enter) |
+| A toolbar button | **Pressing it leaves the cursor on the grid** — arrows and Delete work straight away, with no click back into a cell (the buttons are still reachable with Tab) |
 | `Shift+F10` / the Menu key | The [cell menu](#️-right-click-on-a-cell) for anyone who cannot right-click, opened at the selected cell |
 | `F2` · `Delete` · `Escape` | Edit in place · clear the selection · cancel |
 
@@ -2457,6 +2460,14 @@ the contact. Now:
   reaching the contact on a phone went from 13.4 screens to 6.3
 - Not a line of it was cut; it is one press away for whoever wants it
 
+**The hero only says what a visitor actually gets** (QA round 2). The test count left the line above the headline
+and lives only in the "under the hood" band at the end, because it is a developer's figure (UX-11) — `check:readme`
+fails if a count creeps back into the hero. And **the AI's limit sits beside its promise** (#125): the public site
+has no server key, so a visitor without their own gets the keyword guess, and all three blind testers used its wrong
+formulas. A line under the pitch now says so plainly — "Try it without a key: the app guesses a formula from
+keywords and always says it's a guess — check before you use it" — and the `<title>`, meta description, link
+preview card and social image are trimmed to what is true ("a suggested formula").
+
 <p align="center"><img src="public/screenshots/en/38-landing-problems.png" width="900"></p>
 
 The page is laid out as **ledger paper** rather than as a stack of rounded cards: hairline rules instead
@@ -2487,7 +2498,7 @@ names/descriptions, alert text, and AI replies (both the keyword heuristic and r
 selected language. The choice is remembered per browser · **On a first visit the language follows the
 browser** (Thai anywhere in the browser's language list → Thai, otherwise English). Everyone used to land in
 Thai, so a reader who could not read it had to find the EN button on a page they could not read · `<html lang>`
-and the tab title follow too, so a screen reader reads in the right language. See [Bilingual UI (i18n)](#-bilingual-ui-i18n) for the
+and the tab title follow too, so a screen reader reads in the right language (the title used to stay Thai on an English browser, because React wrote the metadata title back after load — a guard now puts it back; found by QA round 2). See [Bilingual UI (i18n)](#-bilingual-ui-i18n) for the
 architecture behind it.
 
 <p align="center"><img src="public/screenshots/en/07-language-switch.png" width="820" alt="The same sample sheet after one click on TH: every label in Thai"></p>
@@ -2753,6 +2764,7 @@ src/
     toolbar/MobileMenu.tsx          # The phone menu: connect an API/database, cloud, the guide, files, rows/columns · a dropdown panel at 1024–1365px
     toolbar/ImportChoiceDialog.tsx  # Asks before a file opens on top of work: add as sheets / replace / cancel
     toolbar/FillColorPopover.tsx    # Seven fill swatches and no fill
+    toolbar/keepGridFocus.ts        # A toolbar button pressed without taking focus from the grid
     toolbar/useKeyboardOpen.ts      # Whether the on-screen keyboard is up (visualViewport), to hide what it would cover
     toolbar/FormatBar.tsx           # The cell-formatting bar + sort buttons · on a phone the rest is a cell tools sheet
     toolbar/LanguageToggle.tsx      # The UI language switch button
@@ -3995,7 +4007,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **A right-click menu on cells on a desktop** — done, and `Shift+F10` opens it from the keyboard (see [Right-click on a cell](#️-right-click-on-a-cell)). Still open: comments and formatting in the menu
 - [x] **Keep the phone keyboard up after Enter** — done: Enter goes into the next cell ready to type (see
       [Works on a phone](#-works-on-a-phone)) · tested in Chromium with touch emulated; still to try on real iOS and Android
-- [x] **The connect-an-API and source settings dialogs close on `Escape` now** — through `useDialogKeys`, the same
+- [x] **The connect-an-API, source settings and data picker (#122) dialogs close on `Escape` now** — through `useDialogKeys`, the same
       hook as the import dialog: Escape closes · Tab stays inside · focus goes in on open and back to the button on close
 - [x] **Fills in the PDF export** — done, with text colour. Still open: bold and italic in the PDF
 - [ ] **Pasting the system clipboard** from the phone command row

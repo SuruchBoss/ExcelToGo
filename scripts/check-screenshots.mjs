@@ -62,8 +62,8 @@ const SHOWS = {
   "22-cell-comment.png": [],
   "23-cloud-save.png": [],
   "24-sources-locked.png": [],
-  // The hero: the eyebrow prints the test count, the paragraph under it the palette's size.
-  "25-landing.png": ["tests", "paletteFormulas"],
+  // The hero: the paragraph prints the palette's size. The test count left the hero (UX-11).
+  "25-landing.png": ["paletteFormulas"],
   "26-insert-row.png": [],
   // The stat strip. All four figures, which is why this is the one that went wrong twice.
   "27-landing-stats.png": ["paletteFormulas", "engineFunctions", "tests", "securityTests"],

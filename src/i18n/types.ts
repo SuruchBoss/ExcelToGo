@@ -239,6 +239,8 @@ export interface Messages {
     subheadline: string;
     ctaPrimary: string;
     ctaSecondary: string;
+    /** The AI promise's limit, beside the promise (#125): no key means a keyword guess. */
+    aiNote: string;
     ctaNote: string;
     /** Three answers a first visit is looking for — free? private? on my phone? — under the buttons. */
     benefits: string[];

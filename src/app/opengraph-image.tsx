@@ -12,7 +12,7 @@ import { ImageResponse } from "next/og";
  * mean fetching font bytes at build time. The preview is branding, not content, so Latin is enough;
  * the app itself is fully bilingual.
  */
-export const alt = "ExcelToGo — describe what you want, get an Excel formula that works";
+export const alt = "ExcelToGo — describe what you want, get a suggested Excel formula";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -63,11 +63,11 @@ export default function OgImage() {
             maxWidth: 1040,
           }}
         >
-          Describe what you want. Get an Excel formula that works
+          Describe what you want. Get a suggested Excel formula
         </div>
 
         <div style={{ fontSize: 28, color: ASH, marginTop: 22, maxWidth: 940, lineHeight: 1.4 }}>
-          No syntax to memorise. No sign-up, and the file never leaves your browser.
+          A keyword guess without a key, marked as one · real AI with your own key. No sign-up.
         </div>
 
         <div style={{ flex: 1 }} />

@@ -62,6 +62,7 @@ export default function SpreadsheetGrid() {
   const toggleItalic = useSheetStore((s) => s.toggleItalic);
   const toggleUnderline = useSheetStore((s) => s.toggleUnderline);
   const setColumnWidth = useSheetStore((s) => s.setColumnWidth);
+  const addColumn = useSheetStore((s) => s.addColumn);
   const copySelection = useSheetStore((s) => s.copySelection);
   const cutSelection = useSheetStore((s) => s.cutSelection);
   const pasteAtSelection = useSheetStore((s) => s.pasteAtSelection);
@@ -419,6 +420,28 @@ export default function SpreadsheetGrid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on a newly selected block, not on every refresh that resizes it
   }, [placedBlockId]);
 
+  /**
+   * One Tab from (row, col). At the last column it used to stay put, so the next keystroke typed over
+   * the value just entered (#102). Now the sheet grows a column, the way Excel always has one more;
+   * where it cannot grow (a locked template), Tab behaves as Enter does — back under the column the
+   * row started in — rather than landing on the cell it just left.
+   */
+  const tabFrom = (row: number, col: number, back: boolean) => {
+    if (!back && col === sheet.cols - 1) {
+      addColumn();
+      const grown = selectActiveSheet(useSheetStore.getState()).cols > sheet.cols;
+      if (!grown) {
+        const to = afterEnter(tabRun.current, row, col, false, sheet.rows);
+        tabRun.current = null;
+        setSelection(singleCellSelection(to.row, to.col));
+        return;
+      }
+    }
+    const toCol = Math.max(col + (back ? -1 : 1), 0);
+    tabRun.current = afterTab(tabRun.current, row, col, toCol);
+    setSelection(singleCellSelection(row, toCol));
+  };
+
   const canEdit = useCallback(
     (row: number, col: number) => !boundCells.has(`${row},${col}`) && !isTemplateLocked(sheet.template, row, col),
     [boundCells, sheet.template]
@@ -572,13 +595,10 @@ export default function SpreadsheetGrid() {
       case "ArrowRight":
         step(0, 1);
         break;
-      case "Tab": {
-        const toCol = Math.min(Math.max(col + (e.shiftKey ? -1 : 1), 0), sheet.cols - 1);
-        tabRun.current = afterTab(tabRun.current, row, col, toCol);
-        setSelection(singleCellSelection(row, toCol));
+      case "Tab":
+        tabFrom(row, col, e.shiftKey);
         e.preventDefault();
         break;
-      }
       case "Home":
         // Home to the start of the row, Ctrl+Home to the start of the sheet.
         go(jump ? 0 : fromRow, 0);
@@ -983,9 +1003,7 @@ export default function SpreadsheetGrid() {
                         } else if (e.key === "Tab") {
                           e.preventDefault();
                           commitEdit();
-                          const toCol = Math.min(Math.max(c + (e.shiftKey ? -1 : 1), 0), sheet.cols - 1);
-                          tabRun.current = afterTab(tabRun.current, r, c, toCol);
-                          setSelection(singleCellSelection(r, toCol));
+                          tabFrom(r, c, e.shiftKey);
                         }
                       }}
                     />
