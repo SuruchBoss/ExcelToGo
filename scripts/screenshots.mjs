@@ -1344,6 +1344,21 @@ const SCENES = [
     },
   },
   {
+    // #47: the sample being edited in one tab, and a second tab opened on it asking first. Opened
+    // with window.open, as a person's second tab would be; it also carries this run's session over,
+    // so the second tab does not start from an emptied browser.
+    file: "59-other-tab.png",
+    async take(k) {
+      await k.open("/app");
+      await k.type(1, 2, "70");
+      const [second] = await Promise.all([k.ctx.waitForEvent("page"), k.page.evaluate(() => window.open("/app"))]);
+      await second.waitForLoadState("networkidle");
+      await second.getByRole("alertdialog", { name: k.t.otherTab.title }).waitFor();
+      k.page = second;
+      await k.shot(this.file);
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {

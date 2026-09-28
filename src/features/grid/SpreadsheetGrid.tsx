@@ -44,6 +44,7 @@ import ChartOverlay from "./ChartOverlay";
 import SelectionHandle from "./SelectionHandle";
 import FillHandle from "./FillHandle";
 import { dateFit } from "./dateFit";
+import { isEditingTab, noteRefusedEdit } from "@/store/tabStore";
 import { dateKindAt } from "@/lib/dateCells";
 import { afterEnter, afterTab, type TabRun } from "./tabReturn";
 import CellContextMenu from "./CellContextMenu";
@@ -450,6 +451,8 @@ export default function SpreadsheetGrid() {
   const startEdit = useCallback(
     (row: number, col: number, initialValue?: string) => {
       if (!canEdit(row, col)) return;
+      // A tab that is only looking (#47) says so rather than opening an editor it cannot save.
+      if (!isEditingTab()) return noteRefusedEdit();
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
     [rawAt, canEdit, setEditing]

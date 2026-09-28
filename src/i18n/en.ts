@@ -426,7 +426,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1677", label: "automated tests" },
+      { value: "1688", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -711,6 +711,15 @@ export const en: Messages = {
       `${formulas === 1 ? "One formula" : `${formulas} formulas`} in the rows being sorted ${formulas === 1 ? "points" : "point"} at a row other than ${formulas === 1 ? "its" : "their"} own (a running total, or a total caught in the range). After the sort ${formulas === 1 ? "it" : "they"} would work from different rows' numbers — formulas that only use their own row move with it correctly. Undo always takes a sort back.`,
     sortAnyway: "Sort anyway",
     cancel: "Cancel",
+  },
+  otherTab: {
+    title: "This workbook is open in another tab",
+    body: "One tab edits at a time, so neither can save over the other's work. Use this tab instead and the other tab turns view-only, with everything done there already saved. View only shows the latest work here without changing it.",
+    useHere: "Use this tab instead",
+    viewOnly: "View only",
+    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here.",
+    handedOff: "This tab is view-only now: the workbook was opened for editing in another tab. Everything done here was saved.",
+    refused: "Nothing can be changed in this tab. Use this tab instead to edit here.",
   },
   newFile: {
     button: "New file",

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { create, useStore } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { create, useStore, type StateCreator } from "zustand";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { temporal } from "zundo";
 import {
   addColumn,
@@ -49,6 +49,7 @@ import {
 } from "@/lib/sheet";
 import { fromStorage, PackedSheet, toStorage, withLegacyPercent } from "@/lib/sheetCodec";
 import { guardedStorage } from "@/lib/saveHealth";
+import { isEditingTab, noteRefusedEdit } from "./tabStore";
 import { autoChartAnchor, MAX_COL_WIDTH, MIN_COL_WIDTH } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, headerRow } from "@/lib/aiRange";
@@ -739,10 +740,45 @@ function withShiftedValidation(sheet: SheetModel, axis: Axis, index: number, del
   return next;
 }
 
+/**
+ * Saves only from the tab that is editing (#47). Another tab open on the same workbook would write
+ * its whole copy over this key — which is how a second tab used to throw away the first one's work.
+ */
+function editingTabOnly(storage: StateStorage): StateStorage {
+  return {
+    getItem: (name) => storage.getItem(name),
+    setItem: (name, value) => (isEditingTab() ? storage.setItem(name, value) : undefined),
+    removeItem: (name) => (isEditingTab() ? storage.removeItem(name) : undefined),
+  };
+}
+
+type SheetCreator = StateCreator<SheetState, [["zustand/persist", unknown], ["temporal", unknown]], []>;
+type SheetUpdate = Partial<SheetState> | ((s: SheetState) => Partial<SheetState>);
+
+/**
+ * Refuses a change to the workbook on a tab that is only looking (#47): everything else — the
+ * selection, a panel, the sheet tab on screen — still moves. Every action goes through here, so a
+ * toolbar button that is not disabled still cannot edit a copy that would never be saved.
+ */
+function editsOnlyWhileEditing(creator: SheetCreator): SheetCreator {
+  return (set, get, api) => {
+    const guarded = ((partial: SheetUpdate, replace?: boolean) => {
+      if (isEditingTab()) return (set as (p: SheetUpdate, r?: boolean) => void)(partial, replace);
+      const next = typeof partial === "function" ? partial(get()) : partial;
+      if (!("sheets" in next) || next.sheets === get().sheets) return set(next);
+      const others = { ...next };
+      delete others.sheets;
+      noteRefusedEdit();
+      set(others);
+    }) as typeof set;
+    return creator(guarded, get, api);
+  };
+}
+
 export const useSheetStore = create<SheetState>()(
   persist(
     temporal(
-      (set, get) => ({
+      editsOnlyWhileEditing((set, get) => ({
         sheets: [initialTab],
         activeSheetId: initialTab.id,
         selectionBySheetId: {},
@@ -1918,7 +1954,7 @@ export const useSheetStore = create<SheetState>()(
             set({ busy: null });
           }
         },
-      }),
+      })),
       {
         limit: 100,
         partialize: (s): TemporalSlice => ({ sheets: s.sheets }),
@@ -1941,7 +1977,7 @@ export const useSheetStore = create<SheetState>()(
       },
       // Guarded: a save that does not fit the quota becomes a status the app shows, not an
       // exception thrown out of whatever action happened to trigger it. See `saveHealth.ts`.
-      storage: createJSONStorage(() => guardedStorage(localStorage)),
+      storage: createJSONStorage(() => editingTabOnly(guardedStorage(localStorage))),
       // Packed on the way out, dense in memory. The model is a full grid because that is what
       // makes a lookup an array index; written out verbatim it was 4 MB for a 20,000-row sheet
       // holding one value, against a ~5 MB quota — a ceiling set by the sheet's dimensions rather

@@ -81,6 +81,7 @@ const connectSrcOf = (header) => header.split(";").map((d) => d.trim()).find((d)
 
 /** Every visible label exists in both languages, and the default depends on what is in storage. */
 const label = {
+  useHere: /^(ใช้แท็บนี้แทน|Use this tab instead)$/,
   exportExcel: /^(ส่งออก Excel|Export Excel)$/,
   importFile: /^(นำเข้าไฟล์|Import file)$/,
   addRow: /^(แถว|Row)$/,
@@ -839,6 +840,51 @@ const FLOWS = [
     },
   })),
   {
+    // #47: two tabs on one workbook used to save over each other in silence. Now the second one
+    // asks, and taking over turns the first view-only — with a cell still being typed in the first
+    // tab committed and saved on the way, so nothing either tab did is lost.
+    name: "a second tab asks first, taking over turns the first view-only, and no edit is lost",
+    async run(page) {
+      await typeInCell(page, 0, 0, "first-tab");
+      await cell(page, 1, 0).click();
+      await page.keyboard.type("half-typed"); // the editor is still open when the other tab takes over
+
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const ask = second.getByRole("alertdialog", { name: /^(ไฟล์นี้เปิดอยู่ในอีกแท็บ|This workbook is open in another tab)$/ });
+      await ask.waitFor({ timeout: 5000 });
+      note(true, "the second tab says the workbook is open in another tab");
+      const focused = await second.evaluate(() => document.activeElement?.textContent?.trim());
+      note(/^(ดูอย่างเดียว|View only)$/.test(focused ?? ""), `"View only", which changes nothing anywhere, has the focus ("${focused}")`);
+
+      await ask.getByRole("button", { name: label.useHere }).click();
+      await page.getByRole("status").filter({ hasText: /แท็บนี้ดูอย่างเดียวแล้ว|This tab is view-only now/ }).waitFor({ timeout: 5000 });
+      note(true, "the first tab says it is view-only now");
+
+      await second.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "half-typed", null, { timeout: 5000 }).catch(() => {});
+      const got = await Promise.all([0, 1].map(async (r) => (await cell(second, r, 0).innerText()).trim()));
+      note(got.join() === "first-tab,half-typed", `the tab taking over has both edits, the half-typed one too (${got.join(", ")})`);
+
+      await typeInCell(page, 2, 0, "typed-in-first");
+      const refused = (await cell(page, 2, 0).innerText()).trim();
+      const said = await page.getByRole("status").filter({ hasText: /แก้ในแท็บนี้ไม่ได้|Nothing can be changed in this tab/ }).count();
+      note(refused === "" && said === 1, `typing in the view-only tab changes nothing and says why (A3 "${refused}")`);
+
+      await typeInCell(second, 2, 0, "typed-in-second");
+      await page.waitForFunction(() => document.querySelector('td[data-row="2"][data-col="0"]')?.innerText.trim() === "typed-in-second", null, { timeout: 5000 }).catch(() => {});
+      const mirrored = (await cell(page, 2, 0).innerText()).trim();
+      note(mirrored === "typed-in-second", `the view-only tab shows what the other tab saves (A3 "${mirrored}")`);
+
+      // Nobody is editing once the second tab closes, so a third one simply edits.
+      await second.close();
+      const third = await page.context().newPage();
+      await third.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const kept = await Promise.all([0, 1, 2].map(async (r) => (await cell(third, r, 0).innerText()).trim()));
+      note(kept.join() === "first-tab,half-typed,typed-in-second", `reopened, the workbook has every edit from both tabs (${kept.join(", ")})`);
+      await third.close();
+    },
+  },
+  {
     // A Thai sheet name has to arrive as a Thai file name. It also guards this gate: Chromium under
     // a POSIX locale names such a file "download", which is how QA's round 2 filed a bug that was
     // not there. Should the browser ever launch without browserEnv() again, this goes red.
@@ -914,6 +960,8 @@ const FLOWS = [
       // failed" beside "loading…", which is what it used to say.
       const tab = await page.context().newPage();
       await tab.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      // The first tab is still open, so this one asks first (#47); working here means taking over.
+      await tab.getByRole("alertdialog").getByRole("button", { name: label.useHere }).click();
       await tab.getByRole("button", { name: label.liveData }).first().click();
       const card = tab.locator("div.relative.rounded-lg").filter({ hasText: "Stock" });
       await card.getByRole("button", { name: label.enterSecret }).waitFor({ timeout: 15_000 });

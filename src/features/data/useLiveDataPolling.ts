@@ -6,6 +6,7 @@
 import { useEffect } from "react";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { useSheetStore } from "@/store/sheetStore";
+import { isEditingTab } from "@/store/tabStore";
 import { readSourcesToken } from "@/lib/dataSources/sourcesToken";
 import { useLocaleStore } from "@/store/localeStore";
 import { pendingOrigin, takePending } from "./allowOrigin";
@@ -54,10 +55,13 @@ export function useLiveDataPolling() {
   }, [locale]);
 
   useEffect(() => {
+    // Only the tab that edits the workbook fetches (#47): its writes are saved, and a tab that is
+    // only looking shows them from there. Checked on every tick, so the tab that takes over starts.
     const { refresh } = useDataSourceStore.getState();
+    const tick = (id: string) => void (isEditingTab() && refresh(id));
     const timers = sources.map((src) => {
-      void refresh(src.id);
-      return setInterval(() => void refresh(src.id), Math.max(2, src.refreshSec) * 1000);
+      tick(src.id);
+      return setInterval(() => tick(src.id), Math.max(2, src.refreshSec) * 1000);
     });
     return () => timers.forEach(clearInterval);
   }, [sources]);
