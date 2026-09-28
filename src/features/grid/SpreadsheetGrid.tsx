@@ -45,7 +45,8 @@ import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gri
 import ChartOverlay from "./ChartOverlay";
 import SelectionHandle, { useCoarsePointer } from "./SelectionHandle";
 import FillHandle from "./FillHandle";
-import { dateFits } from "./dateFit";
+import { dateFit, useFontsLoaded } from "./dateFit";
+import { isEditingTab, noteRefusedEdit } from "@/store/tabStore";
 import { dateKindAt } from "@/lib/dateCells";
 import { afterEnter, afterTab, type TabRun } from "./tabReturn";
 import CellContextMenu from "./CellContextMenu";
@@ -101,6 +102,8 @@ export default function SpreadsheetGrid() {
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
   const merges = useMemo(() => mergeLookup(sheet.merges), [sheet.merges]);
+  // A date is fitted to its column in the page's font; drawn again once that font has arrived (#136).
+  useFontsLoaded();
 
   // ── Only the rows on screen go in the DOM ──────────────────────────────────────────────────
   //
@@ -535,6 +538,8 @@ export default function SpreadsheetGrid() {
   const startEdit = useCallback(
     (row: number, col: number, initialValue?: string) => {
       if (!canEdit(row, col)) return;
+      // A tab that is only looking (#47) says so rather than opening an editor it cannot save.
+      if (!isEditingTab()) return noteRefusedEdit();
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
     [rawAt, canEdit, setEditing]
@@ -877,16 +882,20 @@ export default function SpreadsheetGrid() {
               // no code — the raw text stops being empty and the anchor refuses on the next pass.
               const spilledFrom = spill.get(packCell(r, c));
               const isSpilled = spilledFrom !== undefined && spilledFrom !== packCell(r, c);
-              // A date that does not fit is `###`, never a cut-off date (#45).
-              const tooNarrow =
-                !merge &&
-                typeof value === "number" &&
-                dateKindAt(sheet, r, c) !== null &&
-                !dateFits(
-                  display[r]?.[c] ?? "",
-                  sheet.colWidths?.[c] ?? COL_WIDTH,
-                  14 * ((format?.fontSize ?? DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE)
-                );
+              // A date is never cut off (#45): drawn smaller where Excel would show it (#136), and
+              // `###` only where Excel would show `###` too.
+              const dateScale =
+                !merge && typeof value === "number" && dateKindAt(sheet, r, c) !== null
+                  ? dateFit(
+                      display[r]?.[c] ?? "",
+                      sheet.colWidths?.[c] ?? COL_WIDTH,
+                      14 * ((format?.fontSize ?? DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE),
+                      format?.fontSize ?? DEFAULT_FONT_SIZE,
+                      { bold: Boolean(format?.bold || cf?.bold), italic: Boolean(format?.italic) }
+                    )
+                  : 1;
+              const tooNarrow = dateScale === null;
+              const squeezed = dateScale !== null && dateScale < 1 ? dateScale : null;
               return (
                 <td
                   key={c}
@@ -949,7 +958,8 @@ export default function SpreadsheetGrid() {
                     }
                   }}
                   className={clsx(
-                    "relative border-b border-r border-zinc-200 px-2 text-sm outline-none",
+                    "relative border-b border-r border-zinc-200 text-sm outline-none",
+                    squeezed ? "px-0.5" : "px-2",
                     // A live block reads as one object: tinted fill, a green outline on its edges,
                     // and its header row set apart from the values below it.
                     block && "bg-emerald-50/70",
@@ -1139,7 +1149,10 @@ export default function SpreadsheetGrid() {
                           fontWeight: format?.bold || cf?.bold ? 700 : undefined,
                           fontStyle: format?.italic ? "italic" : undefined,
                           textDecoration: format?.underline ? "underline" : undefined,
-                          fontSize: format?.fontSize ? `${format.fontSize / DEFAULT_FONT_SIZE}em` : undefined,
+                          fontSize:
+                            format?.fontSize || squeezed
+                              ? `${((format?.fontSize ?? DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE) * (squeezed ?? 1)}em`
+                              : undefined,
                           lineHeight: 1.25,
                           color: isErr ? undefined : cf?.color ?? format?.color,
                           textAlign: format?.align,

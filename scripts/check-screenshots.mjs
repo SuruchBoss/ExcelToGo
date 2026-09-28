@@ -108,7 +108,8 @@ const SHOWS = {
   "58-new-file.png": [],
   "59-back-to-selection.png": [],
   "60-pointing-bar.png": [],
-  "61-picking-bar.png": [],
+  "61-other-tab.png": [],
+  "62-picking-bar.png": [],
   "demo.gif": [],
 };
 

@@ -37,6 +37,7 @@
  *
  * After retaking, look at every image, then `npm run check:screens -- --bless`.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1395,7 +1396,7 @@ const SCENES = [
   },
   {
     // ⌖ on a phone (#138): the SUM form folded into a bar while C2:C10 is picked on the grid.
-    file: "61-picking-bar.png",
+    file: "62-picking-bar.png",
     async take(k) {
       await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
       await fingerTap(k, 11, 2);
@@ -1405,6 +1406,21 @@ const SCENES = [
       await fingerTap(k, 1, 2);
       await fingerDrag(k, 9, 2);
       await k.page.getByRole("region", { name: k.t.paramPanel.pickingBarLabel }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // #47: the sample being edited in one tab, and a second tab opened on it asking first. Opened
+    // with window.open, as a person's second tab would be; it also carries this run's session over,
+    // so the second tab does not start from an emptied browser.
+    file: "61-other-tab.png",
+    async take(k) {
+      await k.open("/app");
+      await k.type(1, 2, "70");
+      const [second] = await Promise.all([k.ctx.waitForEvent("page"), k.page.evaluate(() => window.open("/app"))]);
+      await second.waitForLoadState("networkidle");
+      await second.getByRole("alertdialog", { name: k.t.otherTab.title }).waitFor();
+      k.page = second;
       await k.shot(this.file);
     },
   },
@@ -1466,7 +1482,7 @@ for (const lang of LANGS) mkdirSync(outDir(lang), { recursive: true });
 
 const M = await loadMessages();
 const stubApi = startStubApi();
-const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ["--font-render-hinting=none"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, env: browserEnv(), args: ["--font-render-hinting=none"] });
 const failed = [];
 
 for (const cloud of [true, false]) {

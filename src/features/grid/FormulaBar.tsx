@@ -6,6 +6,7 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Paintbrush } from "lucide-react";
 import { selectActiveSelection, selectActiveSheet, useBoundCells, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
+import { useTabStore } from "@/store/tabStore";
 import { singleCellSelection } from "@/types/sheet-ui";
 import { useT } from "@/i18n";
 import { precedentsOf } from "@/lib/precedents";
@@ -41,6 +42,8 @@ export default function FormulaBar() {
   const raw = sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "";
   const inputRef = useRef<HTMLInputElement>(null);
   const bound = useBoundCells().has(`${selection.anchorRow},${selection.anchorCol}`);
+  // A tab that is only looking (#47): the bar still shows the formula, it just cannot change it.
+  const looking = useTabStore((s) => s.role === "asking" || s.role === "viewer" || s.role === "handedOff");
   const cellKey = formulaBarCellKey(activeSheetId, selection.anchorRow, selection.anchorCol);
   const [draft, setDraft] = useState<FormulaBarDraft | null>(null);
   // The same draft, readable synchronously: a click elsewhere commits from the window's mousedown
@@ -154,7 +157,7 @@ export default function FormulaBar() {
           }
         }}
         placeholder={t.formulaBar.placeholder}
-        readOnly={bound}
+        readOnly={bound || looking}
         title={bound ? t.data.liveCellReadOnly : undefined}
         className={`flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-emerald-500 ${bound ? "bg-emerald-50 text-emerald-800" : ""}`}
       />

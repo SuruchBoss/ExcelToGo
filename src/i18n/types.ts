@@ -557,6 +557,17 @@ export interface Messages {
     sortAnyway: string;
     cancel: string;
   };
+  /** One tab edits the workbook at a time (#47): the question a second tab asks, and what a tab
+   *  that is only looking says about itself. */
+  otherTab: {
+    title: string;
+    body: string;
+    useHere: string;
+    viewOnly: string;
+    viewing: string;
+    handedOff: string;
+    refused: string;
+  };
   /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
   newFile: {
     button: string;

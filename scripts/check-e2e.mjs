@@ -25,6 +25,7 @@
  * here. What is left is the seams — store to grid to engine and back, a real file leaving the app
  * and coming back in, the keyboard, and whether anything is said out loud.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { readdirSync, readFileSync } from "node:fs";
@@ -84,6 +85,7 @@ const label = {
   pointingKeys: /^(ปุ่มสำหรับพิมพ์สูตร|Formula keys)$/,
   pointingDone: /^(เสร็จ|Done)$/,
   pickRange: /^(เลือกช่วงจากตาราง|Pick a range from the table)$/,
+  useHere: /^(ใช้แท็บนี้แทน|Use this tab instead)$/,
   exportExcel: /^(ส่งออก Excel|Export Excel)$/,
   importFile: /^(นำเข้าไฟล์|Import file)$/,
   addRow: /^(แถว|Row)$/,
@@ -806,6 +808,116 @@ const FLOWS = [
       note(!(await dialog.isVisible()) && after === before, `Escape leaves the sheet as it was (A2 "${after}")`);
     },
   },
+  ...[1280, 390].map((width) => ({
+    // #136: a file whose date columns are Excel's default width shows its dates, because Excel does.
+    // The grid's font is wider than Calibri, so the date is drawn smaller in its cell; the column
+    // keeps the file's width, and `###` stays for a column Excel cannot fit the date in either.
+    name: `dates in Excel's default column width show as dates, not ### (${width}px)`,
+    width,
+    touch: width < 640,
+    async run(page, { tmp }) {
+      const { default: ExcelJS } = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Sheet1");
+      const when = new Date(Date.UTC(2026, 8, 28, 14, 30));
+      [["B", "dd/mm/yyyy"], ["C", "yyyy-mm-dd"], ["D", "hh:mm"], ["E", "dd/mm/yyyy"]].forEach(([col, fmt]) => {
+        ws.getColumn(col).numFmt = fmt;
+        ws.getCell(`${col}1`).value = fmt;
+        ws.getCell(`${col}2`).value = when;
+      });
+      ws.getColumn("E").width = 5; // 40px: narrower than Calibri's 68px for this date
+      const file = join(tmp, `dates-${width}.xlsx`);
+      await wb.xlsx.writeFile(file);
+      await page.locator('input[type="file"]').setInputFiles(file);
+      await page.waitForFunction(() => /2026/.test(document.querySelector('td[data-row="1"][data-col="2"]')?.textContent ?? ""));
+      // As a person sees it: once the page's font is in. The grid fits dates in that font, and has
+      // to fit them again when it arrives — on CI it arrives after the file does.
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(200);
+
+      for (const [col, want] of [[1, "28/09/2026"], [2, "2026-09-28"]]) {
+        const seen = await cell(page, 1, col).evaluate((td) => {
+          const span = td.querySelector("span");
+          return { text: td.innerText.trim(), whole: span.scrollWidth <= span.clientWidth, width: td.offsetWidth, drawn: `${span.scrollWidth}/${span.clientWidth}px at ${span.style.fontSize || "full size"}` };
+        });
+        note(seen.text === want && seen.whole, `${want} shows whole in its ${seen.width}px column (showed "${seen.text}", ${seen.drawn})`);
+      }
+      const narrow = await cell(page, 1, 4).evaluate((td) => ({ text: td.querySelector("span [aria-hidden]")?.textContent, title: td.title }));
+      note(narrow.text === "###" && narrow.title.includes("28/09/2026"), `a 40px column is still ### with the date in its tooltip ("${narrow.title}")`);
+
+      if (width >= 640) {
+        const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: label.exportExcel }).click()]);
+        const out = join(tmp, `dates-${width}-out.xlsx`);
+        await download.saveAs(out);
+        const back = new ExcelJS.Workbook();
+        await back.xlsx.readFile(out);
+        const widths = ["B", "C", "E"].map((col) => Math.round(back.worksheets[0].getColumn(col).width * 100) / 100);
+        note(widths.join() === "9,9,5", `export keeps the file's column widths (B, C, E: ${widths.join(", ")})`);
+      }
+    },
+  })),
+  {
+    // #47: two tabs on one workbook used to save over each other in silence. Now the second one
+    // asks, and taking over turns the first view-only — with a cell still being typed in the first
+    // tab committed and saved on the way, so nothing either tab did is lost.
+    name: "a second tab asks first, taking over turns the first view-only, and no edit is lost",
+    async run(page) {
+      await typeInCell(page, 0, 0, "first-tab");
+      await cell(page, 1, 0).click();
+      await page.keyboard.type("half-typed"); // the editor is still open when the other tab takes over
+
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const ask = second.getByRole("alertdialog", { name: /^(ไฟล์นี้เปิดอยู่ในอีกแท็บ|This workbook is open in another tab)$/ });
+      await ask.waitFor({ timeout: 5000 });
+      note(true, "the second tab says the workbook is open in another tab");
+      const focused = await second.evaluate(() => document.activeElement?.textContent?.trim());
+      note(/^(ดูอย่างเดียว|View only)$/.test(focused ?? ""), `"View only", which changes nothing anywhere, has the focus ("${focused}")`);
+
+      await ask.getByRole("button", { name: label.useHere }).click();
+      await page.getByRole("status").filter({ hasText: /แท็บนี้ดูอย่างเดียวแล้ว|This tab is view-only now/ }).waitFor({ timeout: 5000 });
+      note(true, "the first tab says it is view-only now");
+
+      await second.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "half-typed", null, { timeout: 5000 }).catch(() => {});
+      const got = await Promise.all([0, 1].map(async (r) => (await cell(second, r, 0).innerText()).trim()));
+      note(got.join() === "first-tab,half-typed", `the tab taking over has both edits, the half-typed one too (${got.join(", ")})`);
+
+      await typeInCell(page, 2, 0, "typed-in-first");
+      const refused = (await cell(page, 2, 0).innerText()).trim();
+      const said = await page.getByRole("status").filter({ hasText: /แก้ในแท็บนี้ไม่ได้|Nothing can be changed in this tab/ }).count();
+      note(refused === "" && said === 1, `typing in the view-only tab changes nothing and says why (A3 "${refused}")`);
+
+      await typeInCell(second, 2, 0, "typed-in-second");
+      await page.waitForFunction(() => document.querySelector('td[data-row="2"][data-col="0"]')?.innerText.trim() === "typed-in-second", null, { timeout: 5000 }).catch(() => {});
+      const mirrored = (await cell(page, 2, 0).innerText()).trim();
+      note(mirrored === "typed-in-second", `the view-only tab shows what the other tab saves (A3 "${mirrored}")`);
+
+      // Nobody is editing once the second tab closes, so a third one simply edits.
+      await second.close();
+      const third = await page.context().newPage();
+      await third.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const kept = await Promise.all([0, 1, 2].map(async (r) => (await cell(third, r, 0).innerText()).trim()));
+      note(kept.join() === "first-tab,half-typed,typed-in-second", `reopened, the workbook has every edit from both tabs (${kept.join(", ")})`);
+      await third.close();
+    },
+  },
+  {
+    // A Thai sheet name has to arrive as a Thai file name. It also guards this gate: Chromium under
+    // a POSIX locale names such a file "download", which is how QA's round 2 filed a bug that was
+    // not there. Should the browser ever launch without browserEnv() again, this goes red.
+    name: "a Thai sheet name downloads as a Thai file name",
+    width: 1440,
+    async run(page) {
+      await typeInCell(page, 0, 0, "1");
+      await page.getByText("Sheet1", { exact: true }).first().dblclick();
+      await page.keyboard.press("Control+a");
+      await page.keyboard.insertText("ยอดขาย");
+      await page.keyboard.press("Enter");
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "ส่งออก CSV" }).click()]);
+      const name = download.suggestedFilename();
+      note(name === "ยอดขาย.csv", `the CSV is named after the sheet ("${name}")`);
+    },
+  },
   {
     // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
     // recorded, because the promise is not only "it works" but "nothing about it reaches us".
@@ -865,6 +977,8 @@ const FLOWS = [
       // failed" beside "loading…", which is what it used to say.
       const tab = await page.context().newPage();
       await tab.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      // The first tab is still open, so this one asks first (#47); working here means taking over.
+      await tab.getByRole("alertdialog").getByRole("button", { name: label.useHere }).click();
       await tab.getByRole("button", { name: label.liveData }).first().click();
       const card = tab.locator("div.relative.rounded-lg").filter({ hasText: "Stock" });
       await card.getByRole("button", { name: label.enterSecret }).waitFor({ timeout: 15_000 });
@@ -1359,6 +1473,8 @@ try {
     // Set CHROME_PATH where Playwright's own download isn't the browser to use; CI installs one
     // and leaves this unset.
     executablePath: process.env.CHROME_PATH || undefined,
+    // A UTF-8 locale, or a Thai file name downloads as "download" (see browserEnv.mjs).
+    env: browserEnv(),
   });
 
   for (const flow of only ? FLOWS.filter((f) => f.name.includes(only)) : FLOWS) {
