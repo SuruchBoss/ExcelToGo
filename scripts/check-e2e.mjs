@@ -732,6 +732,28 @@ const FLOWS = [
     },
   },
   {
+    // #53: Percent is Excel's now (×100). What a unit test cannot reach is the store's migration
+    // running on a real autosave: a cell saved as "50, Percent" by the version before must still read
+    // 50.00%, not 5000%, while choosing Percent now gives Excel's.
+    name: "a percent saved before #53 still reads the same, and Percent is Excel's now",
+    // 1440: from 1366 the number format menu sits in the row rather than in the tools panel.
+    width: 1440,
+    async run(page) {
+      await page.evaluate(() => {
+        const sheet = { rows: 30, cols: 10, cells: { "0,0": "50", "1,0": "0.25" }, formats: { "0,0": { numberFormat: "percent" } } };
+        localStorage.setItem("exceltogo-sheet-v2", JSON.stringify({ state: { sheets: [{ id: "old", name: "Sheet1", sheet }], activeSheetId: "old" }, version: 0 }));
+      });
+      await page.reload({ waitUntil: "networkidle" });
+      const a1 = (await cell(page, 0, 0).innerText()).trim();
+      note(a1 === "50.00%", `the old save's 50 in Percent still reads 50.00% (A1 "${a1}")`);
+
+      await cell(page, 1, 0).click();
+      await page.getByRole("combobox", { name: "รูปแบบตัวเลข" }).first().selectOption("percent");
+      const a2 = (await cell(page, 1, 0).innerText()).trim();
+      note(a2 === "25.00%", `0.25 given Percent now reads 25.00%, as in Excel (A2 "${a2}")`);
+    },
+  },
+  {
     // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
     // recorded, because the promise is not only "it works" but "nothing about it reaches us".
     name: "an API connected from this browser fills the sheet and refreshes, and nothing about it reaches /api/*",

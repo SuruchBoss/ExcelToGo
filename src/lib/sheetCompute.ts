@@ -205,8 +205,8 @@ const MAX_DIRTY_FRACTION = 0.4;
 function displayOf(sheet: SheetModel, r: number, c: number, v: FormulaValue): string {
   const format = sheet.formats[r]?.[c];
   const numberFormat = format?.numberFormat;
-  if (typeof v === "number" && numberFormat && numberFormat !== "general") {
-    return formatNumberForDisplay(v, numberFormat, format?.dateFormat);
+  if (typeof v === "number" && ((numberFormat && numberFormat !== "general") || format?.numFmtCode)) {
+    return formatNumberForDisplay(v, numberFormat ?? "general", format?.dateFormat, format?.numFmtCode);
   }
   // A date typed as a date shows as typed: the value is its serial (#45), but the cell says
   // `2024-01-15`, as Excel's does. A formula over it that has no date format shows the number, as

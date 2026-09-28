@@ -38,7 +38,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1650%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1661%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -59,7 +59,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1650 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1661 automated tests.
 
 ---
 
@@ -103,7 +103,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1650 passing tests could not catch
+### 🧪 What 1661 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -114,7 +114,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1650 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1661 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -382,7 +382,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1650-case Vitest suite |
+| `npm test` | Run the 1661-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -390,7 +390,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 26 flows: opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 27 flows: a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -1078,6 +1078,24 @@ Bold, **italic, underline**, text alignment (left/center/right), text color, num
 currency ฿ / [text](#-phone-numbers-and-codes-keep-their-zeros)) — travels with the cell on copy/paste and survives Excel export too.
 
 <p align="center"><img src="public/screenshots/en/06-format-filter.png" width="820"></p>
+
+**Percent is Excel's percent** (#53): the stored value ×100, so 0.3846 shows as 38.46% and `=3040/6435` as
+47.24%, and it exports as a real `0.00%` format that opens in Excel with the same value. It used to show the
+number itself with a `%` after it, so an accountant's VAT of 0.07 read "0.07%", on screen and in the export.
+
+**A file's number formats show as the file has them**: `0%`, `0.0%`, `"$"#,##0.00`, `0.000`, `#,##0`,
+negatives in brackets `#,##0;(#,##0)`, currency tags `[$€-407]`. They used to collapse into the app's four
+presets ($ became ฿, 1.2345 became 1.23, 12345 lost its comma); the code is kept now, shown as written and
+exported as it came. Picking a format from the menu replaces it with the app's.
+
+**Sheets saved before this look the same**: a cell where somebody typed 50 and chose Percent still reads
+50.00%, not 5000%, in the browser and in cloud workbooks. It becomes the `0.00"%"` code the app used to write,
+once, on load; choosing Percent again gives Excel's.
+
+**Limits:** typing `50%` into a cell still gives text (#52). A file's fractions (`# ?/?`) and scientific codes
+(`0.00E+00`) show the plain number. Codes cannot be written in the app yet, only brought in with a file. A cloud
+workbook saved by this version is refused by older app versions, on purpose: opened there, its percentages would
+be 100 times off.
 
 **Italic and underline only just got buttons.** Both were in the model long before: an imported .xlsx kept
 them, the grid drew them and the export wrote them back, but nothing in the app could set them. They now sit
@@ -2486,7 +2504,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1650 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1661 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2782,6 +2800,7 @@ src/
                               # leading zero or twelve-plus digits make it text (tested)
     excelDate.ts             # Dates as Excel keeps them: 1900-system serials (29 Feb 1900 included),
                               # the ISO forms read as dates, and Excel date codes like dd/mm/yyyy (tested)
+    numberFormatCode.ts      # Excel number-format codes (0%, "$"#,##0.00, #,##0;(#,##0)) shown as Excel does — a file's own formats (#53)
     dateCells.ts             # Which cells are dates — so charts, pivots and CSV label with the date,
                               # not its serial
     sheetCompute.ts          # Works out every cell's value, and works out the next one without redoing
@@ -3457,20 +3476,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1650 cases across 107 files, via Vitest
+npm test      # 1661 cases across 109 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1650 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1661 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 26 flows in a real browser (needs a build)
+npm run check:e2e   # 27 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3582,10 +3601,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1650 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1661 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1650 passing tests could not catch](#-what-1650-passing-tests-could-not-catch), repeatable
+> [What 1661 passing tests could not catch](#-what-1661-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3608,6 +3627,8 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
 | `excelDate.test.ts` | 7 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) |
+| `numberFormatCode.test.ts` | 6 | Excel number-format codes (#53): the issue's table (7%, 12.5%, $1,234.50, 1.235, 12,345), the old `0.00"%"` not multiplied, negative/zero sections, currency tags, scaling commas, literals between digits, and the fallback for fractions and scientific codes |
+| `numberFormats.test.ts` | 5 | Percent, currency and decimals through a real .xlsx both ways (#53): a file's codes shown and exported unchanged, the app's Percent ×100 and exported as `0.00%`, and old sheets in the browser and the cloud (format 1) still reading 50.00% |
 | `dates.test.ts` | 14 | Dates in a sheet (#45): the issue's table (`=A2-A1` = 36, `=A1+30`, `=A3*24`), YEAR/DATEDIF on serials and ISO text, a sheet saved before the fix opening with dates, charts and CSV using dates as labels, export as real date cells, import keeping the time and the file's layout (`dd/mm/yyyy`, a time alone, midnight), and the PaynEat ERP import template round-tripped with every sheet's size and every date unchanged |
 | `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
 | `executeSource.test.ts` | 47 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, the auth header on every page of its own origin and on no other, a mid-chain 429, and the SSRF guard on the path that actually fetches (including a redirect to a private address) |
@@ -3851,7 +3872,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 26 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 27 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -3939,6 +3960,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros))
 - [ ] **`SUM`/`AVERAGE`/`COUNT` skip text in a range, as Excel does (#38)** — today number-looking text is added in
 - [x] **Live CSV data uses the same rule (#36)** — done: leading zeros in live CSV data stay
+- [x] **Percent ×100 as Excel does, and a file's number formats shown as the file has them (#53)** — done (see [Cell formatting](#-cell-formatting)) · still open: typing `50%` as a number (#52), writing codes in the app
 - [x] **Dates are dates (#45)** — done (see [Dates and times](#-dates-and-times)): Excel serials, times kept
       on import, real date cells on export, a file's own layout shown as the file has it, and `###` rather than a cut-off date
 - [x] **Opening blank, a sample button, and New file** — done (see [A blank start, and New file](#-a-blank-start-and-new-file))

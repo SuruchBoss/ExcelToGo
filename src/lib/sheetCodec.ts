@@ -140,3 +140,29 @@ export function toStorage(sheet: SheetModel): PackedSheet {
 export function fromStorage(value: PackedSheet | SheetModel): SheetModel {
   return isPacked(value) ? unpackSheet(value) : (value as SheetModel);
 }
+
+/**
+ * A sheet saved before percent meant Excel's percent (#53), made to look exactly as it did.
+ *
+ * "Percent" used to show the number itself with a "%" after it, so somebody who typed 50 and chose
+ * Percent saw 50.00%. It is Excel's now — the value ×100 — and that same cell would silently read
+ * 5000.00%. So a percent cell from before carries the code it effectively had, `0.00"%"` (a literal
+ * sign, no ×100): it shows and exports as it always did, and choosing Percent again gives Excel's.
+ * Applied once, where saved sheets come back in: the autosave (store version 1) and cloud workbooks
+ * (format 2).
+ */
+export const LEGACY_PERCENT_CODE = '0.00"%"';
+
+const legacyFormat = (f: CellFormat | undefined): CellFormat | undefined =>
+  f?.numberFormat === "percent" && !f.numFmtCode ? { ...f, numFmtCode: LEGACY_PERCENT_CODE } : f;
+
+export function withLegacyPercent<T extends PackedSheet | SheetModel>(sheet: T): T {
+  if (isPacked(sheet)) {
+    if (!sheet.formats) return sheet;
+    const formats: Record<CellKey, CellFormat> = {};
+    for (const [key, f] of Object.entries(sheet.formats)) formats[key] = legacyFormat(f)!;
+    return { ...sheet, formats };
+  }
+  const dense = sheet as SheetModel;
+  return { ...dense, formats: dense.formats.map((row) => row?.map(legacyFormat)) } as T;
+}

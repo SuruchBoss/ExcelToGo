@@ -23,6 +23,7 @@ import {
   DEFAULT_FONT_SIZE,
   EXCEL_NUM_FMT,
   fileDateCode,
+  fileNumberCode,
   isDateFormat,
   numberFormatFromExcelNumFmt,
   ptToPx,
@@ -529,6 +530,8 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): { sheet: SheetModel; row
             cell.numFmt && cell.numFmt !== "General" ? numberFormatFromExcelNumFmt(cell.numFmt) : undefined,
           // The file's own date layout (`dd/mm/yyyy`), kept to show and to write back as it was (#45).
           dateFormat: fileDateCode(cell.numFmt),
+          // The file's own number code (`0%`, `"$"#,##0.00`), shown and written back as written (#53).
+          numFmtCode: fileNumberCode(cell.numFmt),
           fill: fillColorOf(cell),
           // Only carry a size that differs from Excel's default, so a plain file doesn't end up
           // with an explicit font size on every single cell.
@@ -722,7 +725,10 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
       if (format?.align || format?.valign) {
         cell.alignment = { horizontal: format.align, vertical: format.valign };
       }
-      if (format?.numberFormat && EXCEL_NUM_FMT[format.numberFormat]) {
+      if (format?.numFmtCode && !isDateFormat(format.numberFormat)) {
+        // The file's own code, written back as it came (#53).
+        cell.numFmt = format.numFmtCode;
+      } else if (format?.numberFormat && EXCEL_NUM_FMT[format.numberFormat]) {
         cell.numFmt = format.dateFormat && isDateFormat(format.numberFormat) ? format.dateFormat : EXCEL_NUM_FMT[format.numberFormat]!;
       } else if (typeof cell.value === "number") {
         // A date typed as a date goes out as a date cell: the serial, with a date format Excel

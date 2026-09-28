@@ -289,7 +289,7 @@ describe('the "text" number format', () => {
     sheet = setRangeFormat(sheet, 0, 0, 0, 0, { numberFormat: "percent" });
     const computed = computeSheet(sheet);
     expect(computed.values[0][0]).toBe(0.5);
-    expect(computed.display[0][0]).toBe("0.50%");
+    expect(computed.display[0][0]).toBe("50.00%"); // Excel's ×100 (#53); this read "0.50%" before
   });
 
   it("goes out to .xlsx as a string cell formatted @, and comes back formatted as text", async () => {

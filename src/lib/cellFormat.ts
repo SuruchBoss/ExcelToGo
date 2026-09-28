@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DEFAULT_DATE_CODE, formatSerial, isDateFormatCode, kindOfDateCode } from "./excelDate";
+import { formatNumberCode, isPercentCode } from "./numberFormatCode";
 
 /**
  * "text" is Excel's `@`: whatever is typed stays exactly as typed, digits included (#23).
@@ -32,6 +33,9 @@ export interface CellFormat {
   /** The Excel code a date came in with (`dd/mm/yyyy`), shown and written back as the file had it.
    *  Absent means the app's own ISO form for the kind. */
   dateFormat?: string;
+  /** The Excel number code a file gave a number (`0%`, `"$"#,##0.00`, `#,##0`), shown and written
+   *  back as written (#53). Absent means the preset's own code. */
+  numFmtCode?: string;
   /** Background colour as #rrggbb. The coloured bands across a form's headings are the most
    *  recognisable thing about it, so a file that has them has to keep them. */
   fill?: string;
@@ -58,35 +62,37 @@ export function pxToPt(px: number | undefined): number | undefined {
 }
 
 /**
- * Renders a numeric cell value under the given number format. This only changes what's
- * displayed — the underlying value/formula stored in the cell is untouched. "percent" here
- * means "show this number followed by %", not Excel's convention of multiplying a stored
- * fraction by 100 — since our cells hold plain numbers with no separate fraction/display
- * distinction, that keeps a cell showing "50" and one showing "50%" both mean what they say.
+ * Renders a numeric cell value under the given number format. This only changes what's displayed —
+ * the value stored in the cell is untouched.
+ *
+ * "percent" is Excel's: the stored fraction ×100, so 0.07 shows as 7.00% (#53). It used to show the
+ * number itself with a "%" after it, which made every percentage in an Excel file 100 times too
+ * small on screen — an accountant's VAT of 0.07 read "0.07%". A code that came with the file
+ * (`numCode`) wins over the preset, so `0%` and `"$"#,##0.00` show as the file has them.
  */
-export function formatNumberForDisplay(value: number, fmt: NumberFormat, dateCode?: string): string {
+export function formatNumberForDisplay(value: number, fmt: NumberFormat, dateCode?: string, numCode?: string): string {
   if (isDateFormat(fmt)) return formatSerial(value, dateCode ?? DEFAULT_DATE_CODE[fmt]);
-  const fixed2 = () => value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (numCode) return formatNumberCode(value, numCode);
+  const fixed2 = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   switch (fmt) {
     case "number2":
-      return fixed2();
+      return fixed2(value);
     case "percent":
-      return `${fixed2()}%`;
+      return formatNumberCode(value, "0.00%");
     case "currency":
-      return `฿${fixed2()}`;
+      return `฿${fixed2(value)}`;
     default:
       return String(value);
   }
 }
 
-/** Custom (non-semantic) Excel number format codes chosen so an exported .xlsx displays the
- *  cell exactly the way it looked in the app — literal "%"/currency-symbol suffixes rather
- *  than Excel's built-in percent type, which would additionally multiply the stored value
- *  by 100 for display and make the file disagree with what the user saw. */
+/** The Excel code each preset goes out as, so an exported .xlsx shows the cell the way the app did.
+ *  Percent is Excel's own `0.00%` (#53): the file used to carry `0.00"%"`, a literal sign that
+ *  Excel showed without the ×100, so a real percentage opened in Excel 100 times too small. */
 export const EXCEL_NUM_FMT: Record<NumberFormat, string | undefined> = {
   general: undefined,
   number2: "#,##0.00",
-  percent: '0.00"%"',
+  percent: "0.00%",
   currency: '"฿"#,##0.00',
   text: "@",
   date: DEFAULT_DATE_CODE.date,
@@ -112,8 +118,18 @@ export function numberFormatFromExcelNumFmt(numFmt: string | undefined): NumberF
   if (numFmt === "@") return "text";
   // Before the checks below: `yyyy"%"` is still a date, and `dd.mm.yyyy` would read as "0.00".
   if (isDateFormatCode(numFmt)) return kindOfDateCode(numFmt);
-  if (numFmt.includes("%")) return "percent";
+  if (isPercentCode(numFmt)) return "percent";
   if (numFmt.includes("฿") || numFmt.includes("$")) return "currency";
   if (numFmt.includes("0.00")) return "number2";
   return "general";
+}
+
+/**
+ * The number code worth keeping from a file (#53): anything but General, text, a date, or the code
+ * the preset it maps to would write anyway. Kept so `0%`, `0.000` and `"$"#,##0.00` show as the file
+ * has them rather than as the nearest of the app's four presets.
+ */
+export function fileNumberCode(numFmt: string | undefined): string | undefined {
+  if (!numFmt || numFmt === "General" || numFmt === "@" || isDateFormatCode(numFmt)) return undefined;
+  return numFmt === EXCEL_NUM_FMT[numberFormatFromExcelNumFmt(numFmt)] ? undefined : numFmt;
 }
