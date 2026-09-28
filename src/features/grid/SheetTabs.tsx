@@ -8,6 +8,7 @@ import { Plus, X } from "lucide-react";
 import { useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import ShortcutsButton from "@/features/help/ShortcutsButton";
+import { usePointingActive } from "./PointingBar";
 import clsx from "clsx";
 
 export default function SheetTabs() {
@@ -20,11 +21,15 @@ export default function SheetTabs() {
   const deleteSheet = useSheetStore((s) => s.deleteSheet);
 
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  // Out of the way while a formula is pointed at on a phone, like the format row (#99).
+  const pointing = usePointingActive();
 
   const commitRename = () => {
     if (renaming) renameSheet(renaming.id, renaming.name);
     setRenaming(null);
   };
+
+  if (pointing) return null;
 
   return (
     <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-zinc-200 bg-zinc-50 px-2 py-1.5">

@@ -9,6 +9,8 @@ import FormulaBar from "@/features/grid/FormulaBar";
 import TemplateBar from "@/features/grid/TemplateBar";
 import SpreadsheetGrid from "@/features/grid/SpreadsheetGrid";
 import BackToSelection from "@/features/grid/BackToSelection";
+import PointingBar from "@/features/grid/PointingBar";
+import PickingBar from "@/features/formulas/PickingBar";
 import SheetTabs from "@/features/grid/SheetTabs";
 import TouchActionBar from "@/features/grid/TouchActionBar";
 import FormulaPalette from "@/features/formulas/FormulaPalette";
@@ -51,6 +53,13 @@ import { useEffect, useSyncExternalStore } from "react";
 /** "Has this rendered in a browser yet?" — false on the server and during hydration, true after. */
 const noSubscription = () => () => {};
 
+const NARROW = "(max-width: 1023px)";
+function subscribeNarrow(onChange: () => void): () => void {
+  const query = window.matchMedia(NARROW);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
 export default function Home() {
   const t = useT();
   useHydrateSheetStore();
@@ -87,6 +96,11 @@ export default function Home() {
   const setSidebarMode = useSheetStore((s) => s.setSidebarMode);
   const cancelPending = useSheetStore((s) => s.cancelPending);
   const sidebarVisible = hasPending || sidebarMode !== "none";
+  // ⌖ on a phone: the form folds into a bar so the grid above it can be tapped (#138). From 1024px
+  // the form sits beside the grid and nothing needs to move.
+  const picking = useSheetStore((s) => s.pending?.pickingKey != null);
+  const narrow = useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW).matches, () => false);
+  const folded = picking && narrow;
   const closeSidebar = () => (hasPending ? cancelPending() : setSidebarMode("none"));
 
   return (
@@ -115,7 +129,8 @@ export default function Home() {
           <TouchActionBar />
           <SheetTabs />
         </main>
-        {sidebarVisible && (
+        {folded && <PickingBar />}
+        {sidebarVisible && !folded && (
           <>
             {/* On a phone the panel is a sheet instead of sitting beside the grid. Side by side, a
                 320px panel left the grid showing nothing but its row numbers — the one thing a
@@ -158,6 +173,7 @@ export default function Home() {
         )}
       </div>
       <DataPicker />
+      <PointingBar />
     </div>
   );
 }

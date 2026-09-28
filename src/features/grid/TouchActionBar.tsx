@@ -8,6 +8,7 @@ import { selectActiveSelection, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import { useCoarsePointer } from "./SelectionHandle";
 import { useKeyboardOpen } from "@/features/toolbar/useKeyboardOpen";
+import { usePointingActive } from "./PointingBar";
 
 /**
  * Copy, cut, paste, fill down and clear, for a finger.
@@ -32,8 +33,10 @@ export default function TouchActionBar() {
   const fillWithinSelection = useSheetStore((s) => s.fillWithinSelection);
   const clearSelection = useSheetStore((s) => s.clearSelection);
   const keyboardOpen = useKeyboardOpen();
+  // A formula pointed at has the pointing bar in this place, even with no keyboard up (#99).
+  const pointing = usePointingActive();
 
-  if (!coarse || keyboardOpen || panelOpen) return null;
+  if (!coarse || keyboardOpen || panelOpen || pointing) return null;
 
   const multiRow = selection.endRow > selection.startRow;
   const button =

@@ -12,6 +12,7 @@ import { precedentsOf } from "@/lib/precedents";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { FormulaBarDraft, formulaBarCellKey, formulaBarShown, formulaBarWrite } from "./formulaBarDraft";
 import { awaitsOperand } from "./openFormula";
+import { lastPressWasTouch, noteFormulaText, pointingFormula, registerFormulaEditor, unregisterFormulaEditor } from "./pointing";
 
 /**
  * Always-visible bar showing the selected cell's address and raw content (a formula or a
@@ -62,6 +63,9 @@ export default function FormulaBar() {
   useEffect(() => {
     function handleWindowMouseDown(e: MouseEvent) {
       if (document.activeElement !== inputRef.current || e.target === inputRef.current) return;
+      // A finger on the grid while a formula is open is pointing, not leaving: the grid puts the
+      // cell's address into this bar and the bar keeps its draft (#99).
+      if (pointingFormula() && lastPressWasTouch() && (e.target as HTMLElement).closest?.('[role="grid"]')) return;
       // `=` typed here and then a tap on a cell saved `=` over the selected cell and moved on — on
       // the sample sheet it wrote over "Mains" (#99). While the formula is still waiting for an
       // address the grid ignores the tap and the bar keeps its draft and its keyboard.
@@ -113,8 +117,27 @@ export default function FormulaBar() {
         onChange={(e) => {
           draftRef.current = { cellKey, text: e.target.value };
           setDraft(draftRef.current);
+          noteFormulaText(e.currentTarget, e.target.value);
         }}
-        onBlur={commit}
+        onFocus={(e) =>
+          registerFormulaEditor({
+            input: e.currentTarget,
+            commit: (text) => {
+              draftRef.current = { cellKey, text };
+              commit();
+              inputRef.current?.blur();
+            },
+            cancel: () => {
+              draftRef.current = null;
+              setDraft(null);
+              inputRef.current?.blur();
+            },
+          })
+        }
+        onBlur={(e) => {
+          unregisterFormulaEditor(e.currentTarget);
+          commit();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             commit();

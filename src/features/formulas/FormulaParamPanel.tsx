@@ -11,6 +11,7 @@ import { selectActiveSelection, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import { Crosshair, X } from "lucide-react";
 import clsx from "clsx";
+import { useCoarsePointer } from "@/features/grid/SelectionHandle";
 
 export default function FormulaParamPanel() {
   const t = useT();
@@ -19,6 +20,7 @@ export default function FormulaParamPanel() {
   const onChange = useSheetStore((s) => s.updatePending);
   const onInsert = useSheetStore((s) => s.insertPending);
   const onCancel = useSheetStore((s) => s.cancelPending);
+  const coarse = useCoarsePointer();
 
   /**
    * Escape gets you out, from wherever you are.
@@ -120,7 +122,9 @@ export default function FormulaParamPanel() {
         ))}
         {def.params.length === 0 && <p className="text-xs text-zinc-500">{t.paramPanel.noParams}</p>}
         {pending.pickingKey && (
-          <p className="rounded bg-emerald-50 p-2 text-xs text-emerald-700">{t.paramPanel.pickingHint}</p>
+          <p className="rounded bg-emerald-50 p-2 text-xs text-emerald-700">
+            {coarse ? t.paramPanel.pickingHintTouch : t.paramPanel.pickingHint}
+          </p>
         )}
       </div>
 

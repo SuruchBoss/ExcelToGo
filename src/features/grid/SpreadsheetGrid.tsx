@@ -9,6 +9,7 @@ import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
 import { normalizeSelection, singleCellSelection, type SelectionRect } from "@/types/sheet-ui";
 import { awaitsOperand } from "./openFormula";
+import { forgetClosedEditor, lastPressWasTouch, noteFormulaText, pointAt, pointingFormula, registerFormulaEditor, unregisterFormulaEditor, usePointingStore, widenPointed } from "./pointing";
 import {
   selectActiveSelection,
   selectActiveSheet,
@@ -35,7 +36,7 @@ import { mergeLookup } from "@/lib/sheetMerges";
 import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 // Shared with the chart overlay, which places charts in these same coordinates.
-import { COL_WIDTH, columnLeft, columnWidth, MAX_COL_WIDTH, MIN_COL_WIDTH, ROW_HEADER_WIDTH, ROW_HEIGHT, rowTop } from "@/lib/gridGeometry";
+import { COL_WIDTH, columnLeft, columnWidth, MAX_COL_WIDTH, MIN_COL_WIDTH, ROW_HEADER_WIDTH, ROW_HEIGHT, rowHeight, rowTop } from "@/lib/gridGeometry";
 import { NO_FREEZE } from "@/lib/sheetFreeze";
 import { NO_PRECEDENTS, precedentsOf } from "@/lib/precedents";
 import { packCell } from "@/lib/formulaEngine/formulaProgram";
@@ -71,6 +72,12 @@ export default function SpreadsheetGrid() {
   const setColumnWidth = useSheetStore((s) => s.setColumnWidth);
   const addColumn = useSheetStore((s) => s.addColumn);
   const growColumnsTo = useSheetStore((s) => s.growColumnsTo);
+  /** A formula open in an editor on a touch screen: taps point instead of select (#99). */
+  const pointingNow = usePointingStore((s) => s.editor !== null && s.text.startsWith("="));
+  const pointed = usePointingStore((s) => s.pointed);
+  const pickingInto = useSheetStore((s) => s.pending?.pickingKey != null);
+  const pendingRow = useSheetStore((s) => s.pending?.anchorRow ?? -1);
+  const pendingCol = useSheetStore((s) => s.pending?.anchorCol ?? -1);
   const copySelection = useSheetStore((s) => s.copySelection);
   const cutSelection = useSheetStore((s) => s.cutSelection);
   const pasteAtSelection = useSheetStore((s) => s.pasteAtSelection);
@@ -295,6 +302,10 @@ export default function SpreadsheetGrid() {
     reportEditing(next?.row ?? 0, next ? next.col : null);
     setEditingState(next);
   }, []);
+  // The cell's editor closes by unmounting, which fires no blur: tell the pointing state it is gone.
+  useEffect(() => {
+    if (!editing) forgetClosedEditor();
+  }, [editing]);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
   /**
    * The column being dragged wider or narrower, drawn from here until the pointer lets go. Only
@@ -886,7 +897,9 @@ export default function SpreadsheetGrid() {
                   // One tab stop for the whole grid, not one per cell — the roving tabindex the
                   // grid pattern calls for. Every cell was tabbable before, which on the sample
                   // sheet alone meant walking three hundred Tab presses to reach the sheet tabs.
-                  tabIndex={isActive(r, c) ? 0 : -1}
+                  // While its editor is open the cell is not the thing to focus: the editor is, and
+                  // a focusable cell under it read to axe as a target squeezed to its borders.
+                  tabIndex={editingHere ? undefined : isActive(r, c) ? 0 : -1}
                   data-row={r}
                   data-col={c}
                   rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
@@ -966,6 +979,9 @@ export default function SpreadsheetGrid() {
                     !isActive(r, c) && isInSelection(r, c) && "bg-blue-50",
                     dragOverCell?.row === r && dragOverCell?.col === c && "bg-emerald-100 ring-2 ring-emerald-400",
                     isInClipboard(r, c) && (clipboard?.cut ? "outline-dashed outline-2 outline-orange-400 -outline-offset-2" : "outline-dashed outline-2 outline-blue-400 -outline-offset-2"),
+                    // Where a formula from the palette will land, while its range is picked on the
+                    // grid — so the cell being pointed away from is not forgotten (#138).
+                    pickingInto && r === pendingRow && c === pendingCol && "bg-emerald-50 ring-2 ring-inset ring-emerald-600",
                     isErr && "text-red-600"
                   )}
                   style={(() => {
@@ -1059,10 +1075,29 @@ export default function SpreadsheetGrid() {
                   ) : editingHere ? (
                     <input
                       ref={inputRef}
+                      aria-label={t.grid.editorLabel(cellRef(r, c))}
                       className="absolute inset-0 z-40 h-full w-full border-2 border-blue-500 bg-white px-2 text-sm outline-none"
                       value={editing.value}
-                      onChange={(e) => setEditing({ row: r, col: c, value: e.target.value })}
-                      onBlur={commitEdit}
+                      onChange={(e) => {
+                        setEditing({ row: r, col: c, value: e.target.value });
+                        noteFormulaText(e.currentTarget, e.target.value);
+                      }}
+                      // Tapping cells into a formula (#99): the pointing bar and the grid write
+                      // into whichever editor has focus, and save or drop through these two.
+                      onFocus={(e) =>
+                        registerFormulaEditor({
+                          input: e.currentTarget,
+                          commit: (text) => {
+                            commitCell(r, c, text);
+                            setEditing(null);
+                          },
+                          cancel: () => setEditing(null),
+                        })
+                      }
+                      onBlur={(e) => {
+                        unregisterFormulaEditor(e.currentTarget);
+                        commitEdit();
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -1163,9 +1198,21 @@ export default function SpreadsheetGrid() {
       // A click or tap anywhere on the grid while the cell's editor holds a formula waiting for an
       // address (`=`, `=SUM(`) used to save that half-formula over the cell (#99). Stopped here, on
       // the way down, so neither the cell's own mousedown nor the editor's blur ever sees it.
+      //
+      // On a touch screen the tap does more than nothing: while either editor holds a formula, the
+      // tapped cell's address goes into it (pointing, #99) and the editor keeps focus and keyboard.
       onMouseDownCapture={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("input, select")) return;
+        const formula = pointingFormula();
+        if (formula && lastPressWasTouch()) {
+          e.preventDefault();
+          e.stopPropagation();
+          const td = target.closest<HTMLElement>("td[data-row]");
+          if (td) pointAt(Number(td.dataset.row), Number(td.dataset.col));
+          return;
+        }
         if (!editing || !awaitsOperand(editing.value)) return;
-        if ((e.target as HTMLElement).closest("input, select")) return;
         e.preventDefault();
         e.stopPropagation();
       }}
@@ -1314,13 +1361,41 @@ export default function SpreadsheetGrid() {
         style={{ fontSize: 16 }}
         onKeyDown={(e) => e.stopPropagation()}
       />
-      <SelectionHandle
-        sheet={sheet}
-        selection={selection}
-        hiddenRows={hiddenRows}
-        scrollRef={scrollRef}
-        onSelect={setSelection}
-      />
+      {/* While a formula is being pointed at, the grip belongs to the cells in the formula: it
+          widens C2 into C2:C10 in the text. The selection's own grip would move the cell being
+          edited out from under the editor. */}
+      {pointingNow && pointed ? (
+        <>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute z-20 border-2 border-dashed border-amber-600 bg-amber-100/30"
+            style={{
+              left: columnLeft(sheet, pointed.range.startCol),
+              top: rowTop(sheet, pointed.range.startRow, hiddenRows),
+              width: columnLeft(sheet, pointed.range.endCol) + columnWidth(sheet, pointed.range.endCol) - columnLeft(sheet, pointed.range.startCol),
+              height:
+                rowTop(sheet, pointed.range.endRow, hiddenRows) + rowHeight(sheet, pointed.range.endRow) - rowTop(sheet, pointed.range.startRow, hiddenRows),
+            }}
+          />
+          <SelectionHandle
+            sheet={sheet}
+            selection={{ ...pointed.range, anchorRow: pointed.range.startRow, anchorCol: pointed.range.startCol }}
+            hiddenRows={hiddenRows}
+            scrollRef={scrollRef}
+            onSelect={widenPointed}
+          />
+        </>
+      ) : (
+        !pointingNow && (
+          <SelectionHandle
+            sheet={sheet}
+            selection={selection}
+            hiddenRows={hiddenRows}
+            scrollRef={scrollRef}
+            onSelect={setSelection}
+          />
+        )
+      )}
 
       <ChartOverlay sheet={sheet} values={values} display={display} hiddenRows={hiddenRows} />
 
