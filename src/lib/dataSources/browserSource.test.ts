@@ -90,6 +90,19 @@ describe("fetching an API from this browser (#110)", () => {
     expect(await fetchInBrowser({ type: "rest", url: "https://busy.example.com/" }, undefined, fetchImpl).catch((e) => e)).toBeInstanceOf(RateLimitError);
   });
 
+  it("an empty page is a table with no rows, and two empty lists are a question it will not guess (#65)", async () => {
+    const { fetchImpl } = recorder({
+      "https://erp.example.com/empty": { body: JSON.stringify({ ok: true, page: 99, total: 120, items: [], next: null }) },
+      "https://erp.example.com/two": { body: JSON.stringify({ ok: true, orders: [], refunds: [] }) },
+    });
+    const empty = await fetchInBrowser({ type: "rest", url: "https://erp.example.com/empty" }, undefined, fetchImpl);
+    expect(empty.rows).toEqual([]);
+    const two = await fetchInBrowser({ type: "rest", url: "https://erp.example.com/two" }, undefined, fetchImpl).catch((e) => e);
+    expect(two).toBeInstanceOf(BrowserFetchError);
+    expect(two.code).toBe("not_table");
+    expect(two.detail.keys).toEqual(["ok", "orders", "refunds"]);
+  });
+
   it("sends no header at all when the source has none", async () => {
     const { calls, fetchImpl } = recorder({ "https://open.example.com/": { body: "[]" } });
     await fetchInBrowser({ type: "rest", url: "https://open.example.com/", headerName: "Authorization" }, undefined, fetchImpl);

@@ -48,11 +48,19 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
   const waitSec = backoff ? Math.max(0, Math.floor((backoff.until - now) / 1000)) : 0;
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Waiting on the person — a header value this tab never had, or the one reload a new origin
+  // costs — is not a failure, and nothing is loading meanwhile (#115). The card says what it is
+  // waiting for, in a neutral colour, rather than "connection failed" beside "loading…".
+  const waiting = source.local && (error === "needs_secret" || error === "needs_reload") ? error : null;
   const size = table
-    ? table.rows.length > 1
+    ? table.rows.length === 0
+      ? t.data.noRows
+      : table.rows.length > 1
       ? t.data.itemCount(table.rows.length, table.columns.length)
       : t.data.valueCount(table.columns.length)
-    : t.data.loading;
+    : error
+      ? null
+      : t.data.loading;
 
   return (
     <div className="relative rounded-lg border border-zinc-200 bg-white p-2.5 hover:border-emerald-200">
@@ -67,7 +75,13 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
             {t.data.live}
           </span>
         )}
-        {error && !backoff?.rateLimited && <span className="shrink-0 text-[11px] font-semibold text-red-600">{t.data.error}</span>}
+        {waiting ? (
+          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">
+            {waiting === "needs_secret" ? t.data.browser.waitingSecret : t.data.browser.waitingReload}
+          </span>
+        ) : (
+          error && !backoff?.rateLimited && <span className="shrink-0 text-[11px] font-semibold text-red-600">{t.data.error}</span>
+        )}
         <button
           onClick={() => setMenuOpen((o) => !o)}
           title={t.data.options}
@@ -84,11 +98,13 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
           {source.connection}
         </p>
       )}
-      <p className="mt-0.5 text-[11px] text-zinc-500">
-        {size}
-        {table && (table.pageCount ?? 1) > 1 && ` · ${t.data.pages(table.pageCount ?? 1)}`}
-        {table && ` · ${t.data.updatedAgo(ago)}`}
-      </p>
+      {size && (
+        <p className="mt-0.5 text-[11px] text-zinc-500">
+          {size}
+          {table && (table.pageCount ?? 1) > 1 && ` · ${t.data.pages(table.pageCount ?? 1)}`}
+          {table && ` · ${t.data.updatedAgo(ago)}`}
+        </p>
+      )}
       {table?.truncated && (
         <p className="mt-1 text-[11px] font-medium text-amber-700" title={partialHintText(table, t.data)}>
           ⚠ {t.data.partial(table.rows.length)}
@@ -106,15 +122,15 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
         </div>
       ) : error && source.local && BROWSER_CODES.has(error) ? (
         // This browser's own source: the checklist for IT, or the one thing the person can do now.
-        <div className="mt-1 flex flex-col gap-1.5 rounded bg-red-50 p-1.5">
+        <div className={clsx("mt-1 flex flex-col gap-1.5 rounded p-1.5", waiting ? "bg-amber-50" : "bg-red-50")}>
           <BrowserSourceError code={error} detail={detail} url={source.url} headerName={source.authHeader?.name} />
           {error === "needs_secret" && onEdit && (
-            <button onClick={onEdit} className="self-start text-[11px] font-semibold text-red-800 underline hover:no-underline">
+            <button onClick={onEdit} className="self-start text-[11px] font-semibold text-amber-900 underline hover:no-underline">
               {t.data.browser.enterSecret}
             </button>
           )}
           {error === "needs_reload" && (
-            <button onClick={() => reloadToAllow(source.url)} className="self-start text-[11px] font-semibold text-red-800 underline hover:no-underline">
+            <button onClick={() => reloadToAllow(source.url)} className="self-start text-[11px] font-semibold text-amber-900 underline hover:no-underline">
               {t.data.browser.reloadNow}
             </button>
           )}

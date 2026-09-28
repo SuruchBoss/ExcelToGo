@@ -46,14 +46,14 @@ formula palette, AI, live data, conditional formatting, charts, pivots, find/rep
 dialog, the validation, names and comment popovers, the alert shown when a save is refused, the fill swatches, the dialog asked when a file would open on top of work, the cell menu, a landing problem card unfolded, the two live-data dialogs (the picker and adding a source), the connect-from-this-browser form and the checklist for IT it shows when a connection fails, and the two phone-only sheets (the menu and cell tools, scanned at 390px only), across `/`, `/app` and `/guide` — 63 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 24 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, เปิดไฟล์ทับงานแล้วแอปถามก่อน (ตัวเลือกที่ focus อยู่ต้องเก็บงานไว้ และ undo ถอนไฟล์ออกได้) พร้อม `Ctrl+B`, Tab ตามแถวแล้ว Enter กลับคอลัมน์แรก กับเมนูเซลล์จาก `Shift+F10`, ลากคอลัมน์ให้กว้างแล้ว undo ครั้งเดียวกลับ, Enter บนมือถือเข้าช่องถัดไปโดยคีย์บอร์ดไม่พับ,
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 25 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, เปิดไฟล์ทับงานแล้วแอปถามก่อน (ตัวเลือกที่ focus อยู่ต้องเก็บงานไว้ และ undo ถอนไฟล์ออกได้) พร้อม `Ctrl+B`, Tab ตามแถวแล้ว Enter กลับคอลัมน์แรก กับเมนูเซลล์จาก `Shift+F10`, ลากคอลัมน์ให้กว้างแล้ว undo ครั้งเดียวกลับ, Enter บนมือถือเข้าช่องถัดไปโดยคีย์บอร์ดไม่พับ,
 เดินด้วยคีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, ตัดข้ามชีต, แถบสูตรไม่เขียนค่าค้าง, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
-ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) บันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้, ต่อ API จากเบราว์เซอร์แล้วค่าลงตารางและรีเฟรชเอง โดยไม่มีอะไรเกี่ยวกับมันถึง `/api/*` (และ CSP ของคนที่ไม่เคยเพิ่มแหล่งยังเหมือนเดิมทุกตัวอักษร), API ที่ไม่ตอบ CORS ได้รายการตรวจสำหรับ IT ไม่ใช่ error เปล่า, ไม่มีหน้าไหนเรียกตัวเองว่าเดโมทั้งสองภาษา และที่ 390px ทางไปข้อมูลสดอยู่บนจอและมีชื่อ เกณฑ์เลือก flow มีข้อเดียว:
+ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) บันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้, ต่อ API จากเบราว์เซอร์แล้วค่าลงตารางและรีเฟรชเอง โดยไม่มีอะไรเกี่ยวกับมันถึง `/api/*` (และ CSP ของคนที่ไม่เคยเพิ่มแหล่งยังเหมือนเดิมทุกตัวอักษร · แท็บใหม่ที่ไม่มีค่า header ขึ้นว่ารอค่า ไม่ใช่เชื่อมต่อไม่ได้), API ที่ไม่ตอบ CORS ได้รายการตรวจสำหรับ IT ไม่ใช่ error เปล่า, ไม่มีหน้าไหนเรียกตัวเองว่าเดโมทั้งสองภาษา และที่ 390px ทางไปข้อมูลสดอยู่บนจอและมีชื่อ และค่าข้ามชีตบนจอยังถูกหลังส่งออก PDF, sort และ undo เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 24 flows — type a formula and watch the value
+`npm run check:e2e` drives the real app in a browser through 25 flows — type a formula and watch the value
 move, export `.xlsx` and import it back, a file opened on top of work that asks first (the focused choice keeps the work, and undo takes the file back out) along with `Ctrl+B`, a row typed with Tab ending with Enter under its first column and the cell menu from `Shift+F10`, a column dragged wider that one undo puts back, Enter on a phone going into the next cell's editor, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
-(served, blocking exfiltration, and not tripping the app up), a refused save that is announced while export still works, an API connected from this browser that fills the sheet and refreshes with nothing about it reaching `/api/*` (and the CSP unchanged, character for character, for anyone who never added a source), an API without CORS getting a checklist for IT rather than a bare error, no page calling itself a demo in either language, and at 390px whether the way to live data is on screen and named. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
+(served, blocking exfiltration, and not tripping the app up), a refused save that is announced while export still works, an API connected from this browser that fills the sheet and refreshes with nothing about it reaching `/api/*` (and the CSP unchanged, character for character, for anyone who never added a source; a new tab without the header value says it is waiting, not failing), an API without CORS getting a checklist for IT rather than a bare error, no page calling itself a demo in either language, at 390px whether the way to live data is on screen and named, and cross-sheet values still right on screen after a PDF export, a sort and its undo. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
 
 `npm run check:deps` ไม่ได้แค่รัน `npm audit` — ทุก advisory ต้อง**ถูกแก้ หรือถูกเขียนไว้พร้อมเหตุผลและวันหมดอายุ**
@@ -198,6 +198,20 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
   Rate severity by who can reach it. A path behind `SOURCES_ADMIN_TOKEN` is open to the operator, or to whoever
   runs an upstream the operator picked — not to the public. #18/#19 were filed as Medium and moved to Low for
   exactly that reason; a finding shaped like that is reliability, and an ordinary issue is fine.
+- **โค้ดที่ยืมข้ามโปรเจกต์ในตระกูลเดียวกัน ต้องแก้ครบทุกที่ก่อนเผยแพร่ advisory** (ADR-0022 ข้อ 9 ของ PaynEat ERP ซึ่งเป็น
+  กติกาเดียวกันทั้ง ecosystem) · ถ้าช่องโหว่อยู่ในโค้ดที่ ERP, POS, MeDF หรือโปรเจกต์อื่นคัดลอกไป (เช่น `urlGuard`,
+  `usage.ts`, `saveHealth.ts`) ให้ระบุในร่าง advisory ว่าโปรเจกต์ไหนใช้โค้ดนั้นอยู่ owner จะแจ้งแบบส่วนตัวให้แก้ก่อนเผยแพร่
+  Code adapted between projects in the ecosystem is fixed in every one of them before any advisory is published
+  (PaynEat ERP ADR-0022, decision 9). A draft advisory names the other projects known to carry the same code.
+
+### สำหรับ session ที่เป็น PO / For a session acting as Product Owner
+
+- **อ่าน [`docs/PO_LESSONS.md`](docs/PO_LESSONS.md) ก่อนเริ่มงานทุกครั้ง** — บันทึกความผิดพลาดจริงของ PO และกฎที่เกิดจากมัน
+  ข้อที่สำคัญที่สุด: **"พร้อม" แปลว่าลองงานหลักของ owner บน production ในฐานะผู้ใช้แล้ว ไม่ใช่เทสต์เขียว** · วันแรกที่เปิดให้คนนอกใช้
+  ด่านทั้งสิบเขียวครบ ขณะที่ฟีเจอร์ที่เป็นเหตุผลของแอป (ต่อ API/ข้อมูลของตัวเอง) ถูกปิดอยู่บน production
+  Read `docs/PO_LESSONS.md` before starting. Its first rule: "ready" means the owner's core jobs were tried on
+  production as a user, not that the gates are green — on launch day every gate was green while the feature the
+  app exists for was switched off in production.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

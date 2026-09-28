@@ -51,6 +51,11 @@ export interface Messages {
     cloudShort: string;
   };
   data: {
+    /** A row or column inserted or deleted inside a live block (#46), and what deleting its first one does. */
+    blockStructure: string;
+    blockUnlinked: (at: string) => string;
+    /** A source that answered with an empty list (#65). */
+    noRows: string;
     title: string;
     subtitle: string;
     addSource: string;
@@ -137,6 +142,9 @@ export interface Messages {
       keysFound: (keys: string) => string;
       needsSecret: string;
       needsReload: (host: string) => string;
+      /** The card's label while a source waits on the person, not on the API (#115). */
+      waitingSecret: string;
+      waitingReload: string;
       networkTitle: string;
       networkChecks: (appOrigin: string, headers: string) => string[];
       copyForIt: string;

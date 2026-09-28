@@ -20,6 +20,9 @@ export interface LiveBlock {
    *  fewer rows/columns can clear what the previous one left behind. */
   rows: number;
   cols: number;
+  /** The header a table block last wrote. An empty result keeps it: a header with no rows under it,
+   *  not a block wiped without a word (#65). */
+  header?: string[];
 }
 
 function cellText(v: CellValue): string {
@@ -47,8 +50,14 @@ export function liveBlockCells(block: LiveBlock, table: TableData): string[][] {
   if (block.kind === "value") {
     return [[cellText(aggregateColumn(table, block.column ?? "", block.aggregate ?? "first"))]];
   }
-  const header = table.columns.map((c) => c.label);
+  const header = table.columns.length > 0 ? table.columns.map((c) => c.label) : (block.header ?? []);
   return [header, ...table.rows.map((r) => r.map(cellText))];
+}
+
+/** The block after a write: its new extent, and the header to keep for an empty result (#65). */
+export function afterWrite(block: LiveBlock, table: TableData, written: { rows: number; cols: number }): LiveBlock {
+  const header = block.kind === "table" && table.columns.length > 0 ? table.columns.map((c) => c.label) : block.header;
+  return { ...block, rows: written.rows, cols: written.cols, ...(header ? { header } : {}) };
 }
 
 function ensureSize(sheet: SheetModel, rows: number, cols: number): SheetModel {
@@ -152,4 +161,38 @@ export function regionHasContent(
       b.anchorCol < anchorCol + cols &&
       b.anchorCol + b.cols > anchorCol
   );
+}
+
+/**
+ * Where live blocks go when a row or column is inserted or deleted (#46).
+ *
+ * The cells move with the edit, so the anchors have to as well: a block left on its old anchor
+ * clears and rewrites its old area on the next refresh, over whatever of the person's moved there.
+ *
+ * - Before a block: it moves by one.
+ * - Inside one — between its first row/column and its last — the edit is refused (`null`): an
+ *   inserted row would be overwritten by the next refresh, and a deleted one written back over the
+ *   row below the block. Same rule as a template's locked structure.
+ * - Its first row/column (a table's header, a single value's own cell) deleted: the link ends and
+ *   the block is dropped from the list, its values left behind as ordinary cells.
+ */
+export function shiftLiveBlocks(
+  blocks: LiveBlock[],
+  axis: "row" | "col",
+  index: number,
+  delta: 1 | -1
+): { blocks: LiveBlock[]; unlinked: LiveBlock[] } | null {
+  const next: LiveBlock[] = [];
+  const unlinked: LiveBlock[] = [];
+  for (const b of blocks) {
+    const start = axis === "row" ? b.anchorRow : b.anchorCol;
+    const size = Math.max(1, axis === "row" ? b.rows : b.cols);
+    const moved = (by: number) => (axis === "row" ? { ...b, anchorRow: b.anchorRow + by } : { ...b, anchorCol: b.anchorCol + by });
+    if (index > start && index < start + size) return null;
+    if (delta === 1) next.push(index <= start ? moved(1) : b);
+    else if (index < start) next.push(moved(-1));
+    else if (index === start) unlinked.push(b);
+    else next.push(b);
+  }
+  return { blocks: next, unlinked };
 }

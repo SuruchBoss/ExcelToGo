@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { csvToTable, extractRecords, getByPath, jsonToTable, tableFromRecords } from "./jsonToTable";
+import { csvToTable, emptyListIn, extractRecords, getByPath, jsonToTable, tableFromRecords } from "./jsonToTable";
 import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "./paginate";
 import { RateLimitError } from "./rateLimit";
 import { MAX_RESPONSE_BYTES, SOURCE_TOO_LARGE, SourceLimitError, TOTAL_BUDGET_MS } from "./fetchLimits";
@@ -136,6 +136,11 @@ export async function collectTable({ type, jsonPath, maxRows: wanted, startUrl, 
 
   const maxRows = wanted === undefined ? DEFAULT_MAX_ROWS : wanted;
   const records = extractRecords(scoped);
+  // Several lists, all empty: which one the table is about is a guess, and a wrong one would read
+  // another list's emptiness as this one's (#65). Say so, with the keys, so a JSON path can decide.
+  if (!records && emptyListIn(scoped) === "ambiguous") {
+    throw new NotATableError("Several empty lists; set the JSON path to the one the table is", topKeys(scoped));
+  }
   // No list to page through (a KPI object, a bare value), or paging switched off.
   if (!records || maxRows <= 0) return jsonToTable(scoped, fetchedAt);
 

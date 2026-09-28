@@ -43,6 +43,8 @@ const ORIGIN = `http://localhost:${PORT}`;
  * refresh can be seen; `/nocors` answers the same data with no CORS header at all.
  */
 const API_PORT = Number(process.env.E2E_API_PORT || 4725);
+/** `E2E_ONLY=<part of a name>` runs the matching flows only, for the edit loop. The gate runs them all. */
+const only = process.env.E2E_ONLY;
 const API = `http://127.0.0.1:${API_PORT}`;
 const API_SECRET = "Bearer e2e-secret";
 let apiCalls = 0;
@@ -92,6 +94,9 @@ const label = {
   insert: /^(ใส่ลงตาราง|Insert)$/,
   copyForIt: /^(คัดลอกไปส่ง IT|Copy for IT)$/,
   trySales: /^(ลองต่อ|Try it): (ยอดขายสด|Live sales)$/,
+  enterSecret: /^(ใส่ค่า header|Enter the header value)$/,
+  exportPdf: /^(ส่งออก PDF|Export PDF)$/,
+  sortAsc: /^(เรียงจากน้อยไปมาก|Sort ascending)/,
   menu: /^(เมนู|Menu)$/,
   connectApi: /^(ต่อ API \/ ฐานข้อมูล|Connect an API \/ database)/,
   tools: /^(เครื่องมือ|Tools)/,
@@ -740,6 +745,25 @@ const FLOWS = [
 
       const leaked = toApp.filter((r) => r.includes(String(API_PORT)) || r.includes("e2e-secret") || r.includes("RICE-5KG"));
       note(leaked.length === 0, `no request to /api/* carries the URL, the header or the data (${toApp.length} request(s) to /api/* in all)`, leaked.join(" | "));
+
+      // #115: a second tab has the source but not the header value, which lives in the first tab's
+      // sessionStorage. That is waiting on the person, and the card has to say so — not "connection
+      // failed" beside "loading…", which is what it used to say.
+      const tab = await page.context().newPage();
+      await tab.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await tab.getByRole("button", { name: label.liveData }).first().click();
+      const card = tab.locator("div.relative.rounded-lg").filter({ hasText: "Stock" });
+      await card.getByRole("button", { name: label.enterSecret }).waitFor({ timeout: 15_000 });
+      const said = await card.innerText();
+      note(/รอค่า header|Waiting for header/.test(said), "a reopened tab says it is waiting for the header value");
+      note(!/เชื่อมต่อไม่ได้|Connection failed/.test(said) && !/กำลังโหลด|Loading/.test(said), `and says neither "connection failed" nor "loading" (${said.replace(/\s+/g, " ").slice(0, 120)})`);
+      await card.getByRole("button", { name: label.enterSecret }).click();
+      const again = tab.getByRole("dialog");
+      await again.getByLabel(/^(ค่า \(เช่น Bearer xxx\)|Value \(e\.g\. Bearer xxx\))$/).fill(API_SECRET);
+      await again.getByRole("button", { name: label.saveAndAdd }).click();
+      await card.getByText(/^(สด|Live)$/).waitFor({ timeout: 15_000 });
+      note(true, "once the value is entered, the card is live again");
+      await tab.close();
     },
   },
   {
@@ -926,6 +950,53 @@ const FLOWS = [
       note(!(await sheet.isVisible()), "a tool pressed in the sheet does its job and the sheet closes behind it");
     },
   },
+  {
+    // #95: the screen itself went wrong. An export or a sort computed a sheet without the rest of
+    // the workbook, the cache kept that `#REF!`, and a few tabs later the grid was handed it back.
+    // Six sheets, because it takes four other sheets computed to push a result out of the history,
+    // and one of the five others (Sheet1) is only ever read through the cache.
+    name: "cross-sheet values stay right on screen after a PDF export, and after a sort and its undo (#95, #58)",
+    // Wide enough for the PDF button to sit on the toolbar; below 1366px it lives in the menu (#117).
+    width: 1440,
+    async run(page) {
+      const tab = (name) => page.locator("span.cursor-pointer.select-none").filter({ hasText: new RegExp(`^${name}$`) });
+      const shown = async (r, c) => (await cell(page, r, c).innerText()).trim();
+      await typeInCell(page, 0, 0, "42");
+      await typeInCell(page, 1, 0, "10");
+      for (let n = 2; n <= 6; n++) {
+        await page.getByTitle(label.addSheet).click();
+        await tab(`Sheet${n}`).waitFor();
+        await typeInCell(page, 0, 0, `=Sheet1!A1*${n}`);
+      }
+      // Sheet6: three rows to sort, two of them read Sheet1.
+      await typeInCell(page, 0, 0, "=Sheet1!A1*2");
+      await typeInCell(page, 1, 0, "=Sheet1!A2*3");
+      await typeInCell(page, 2, 0, "5");
+      const before = [await shown(0, 0), await shown(1, 0), await shown(2, 0)];
+      note(before.join(",") === "84,30,5", `the summary sheet shows its cross-sheet values (${before})`);
+
+      const [pdf] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: label.exportPdf }).click()]);
+      await pdf.path();
+      for (const name of ["Sheet2", "Sheet3", "Sheet4", "Sheet5", "Sheet1", "Sheet6"]) {
+        await tab(name).click();
+        await page.waitForTimeout(150);
+      }
+      const afterPdf = [await shown(0, 0), await shown(1, 0), await shown(2, 0)];
+      note(afterPdf.join(",") === "84,30,5", `after the PDF export and a walk through the tabs, the same values (${afterPdf})`);
+
+      await cell(page, 0, 0).click();
+      await page.getByTitle(label.sortAsc).click();
+      const sorted = [await shown(0, 0), await shown(1, 0), await shown(2, 0)];
+      note(sorted.join(",") === "5,30,84", `a sort orders them by their numbers (${sorted})`);
+      await page.keyboard.press("Control+z");
+      for (const name of ["Sheet2", "Sheet3", "Sheet4", "Sheet5", "Sheet1", "Sheet6"]) {
+        await tab(name).click();
+        await page.waitForTimeout(150);
+      }
+      const undone = [await shown(0, 0), await shown(1, 0), await shown(2, 0)];
+      note(undone.join(",") === "84,30,5", `and its undo brings them back, still numbers (${undone})`);
+    },
+  },
 ];
 
 const tmp = await mkdtemp(join(tmpdir(), "exceltogo-e2e-"));
@@ -950,7 +1021,7 @@ try {
     executablePath: process.env.CHROME_PATH || undefined,
   });
 
-  for (const flow of FLOWS) {
+  for (const flow of only ? FLOWS.filter((f) => f.name.includes(only)) : FLOWS) {
     console.log(`\n${flow.name}`);
     const { ctx, page } = await freshPage(browser, flow.width, flow.touch);
     const errors = [];
@@ -976,4 +1047,4 @@ if (failures.length > 0) {
   console.error(`\ncheck:e2e — ${failures.length} check(s) failed`);
   process.exit(1);
 }
-console.log(`\ncheck:e2e — ${FLOWS.length} flows passed`);
+console.log(only ? `\ncheck:e2e — flows matching "${only}" passed` : `\ncheck:e2e — ${FLOWS.length} flows passed`);
