@@ -223,7 +223,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1593 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1605 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -259,8 +259,7 @@ export const en: Messages = {
     painTitle: "The problems your team already pays for, and how this solves them",
     painLead:
       "Not a feature list — the work that eats hours, adds risk or sits waiting in any office that lives in Excel. Each one is solved by several features working together, and every picture is taken from the running app. If none of these is your problem, this app may not be for you.",
-    painIndexLabel: "Jump to your problem",
-    painLabels: { problem: "Problem", who: "Who has it", cost: "What it costs now", solvedBy: "Solved by", outcome: "Outcome" },
+    painLabels: { problem: "Problem", who: "Who has it", cost: "What it costs now", solvedBy: "Solved by", outcome: "Outcome", details: "How it is solved, with a screenshot" },
     pains: [
       {
         short: "One person writes all the formulas",
@@ -426,7 +425,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1593", label: "automated tests" },
+      { value: "1605", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -992,7 +991,7 @@ export const en: Messages = {
       wholeRow: "Select the whole row",
       typeToEdit: "Start typing to replace what is there",
       editInPlace: "Edit without clearing the cell first",
-      commit: "Commit and move down",
+      commit: "Commit and move down · after Tabs, back to the column you started in",
       commitUp: "Commit and move up",
       nextCell: "Next cell to the right",
       prevCell: "Previous cell to the left",
@@ -1011,6 +1010,7 @@ export const en: Messages = {
       italic: "Italic",
       underline: "Underline",
       find: "Find and replace",
+      cellMenu: "Open the cell menu (cut, paste, insert, delete)",
       help: "Open or close this page",
     },
   },
@@ -1021,6 +1021,7 @@ export const en: Messages = {
   },
   grid: {
     filterColumnTitle: "Filter this column",
+    cellMenu: "Cell menu",
     insertRowAbove: "Insert row above",
     deleteRow: "Delete this row",
     insertColumnLeft: "Insert column left",

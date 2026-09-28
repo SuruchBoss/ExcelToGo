@@ -48,7 +48,7 @@ import {
 } from "@/lib/sheet";
 import { fromStorage, PackedSheet, toStorage } from "@/lib/sheetCodec";
 import { guardedStorage } from "@/lib/saveHealth";
-import { autoChartAnchor } from "@/lib/gridGeometry";
+import { autoChartAnchor, MAX_COL_WIDTH, MIN_COL_WIDTH } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, headerRow } from "@/lib/aiRange";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
@@ -358,6 +358,8 @@ interface SheetState {
   setTextColor: (color: string) => void;
   /** Background of the selection; `undefined` takes it off. */
   setFillColor: (fill: string | undefined) => void;
+  /** One column's width in pixels, clamped; `undefined` goes back to the default. One undo step. */
+  setColumnWidth: (col: number, width: number | undefined) => void;
   setNumberFormat: (fmt: NumberFormat) => void;
   /** Joins the selection into one cell, or splits any merge it touches. */
   toggleMerge: () => void;
@@ -1465,6 +1467,18 @@ export const useSheetStore = create<SheetState>()(
 
         setFillColor: (fill) =>
           set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { fill })) })),
+
+        setColumnWidth: (col, width) =>
+          set((s) => ({
+            sheets: updateActiveSheet(s, (sheet) => {
+              if (col < 0 || col >= sheet.cols) return sheet;
+              const next = width === undefined ? undefined : Math.round(Math.min(Math.max(width, MIN_COL_WIDTH), MAX_COL_WIDTH));
+              if ((sheet.colWidths?.[col] ?? undefined) === next) return sheet;
+              const colWidths = Array.from({ length: sheet.cols }, (_, i) => sheet.colWidths?.[i]);
+              colWidths[col] = next;
+              return { ...sheet, colWidths: colWidths.some((w) => w !== undefined) ? colWidths : undefined };
+            }),
+          })),
 
         setNumberFormat: (numberFormat) =>
           set((s) => ({

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { readFileSync } from "fs";
-import { fixThaiMarks } from "./pdfExport";
+import { fixThaiMarks, hexToRgb, pdfCellStyle } from "./pdfExport";
 
 /** A jsPDF document with the real Thai font registered, as the export builds it. */
 function thaiDoc() {
@@ -95,5 +95,25 @@ describe("fixThaiMarks", () => {
     expect(drawn).toContain(JSON.stringify(["ดืม"]));
     expect(drawn).toContain(JSON.stringify(["ป่า"])); // untouched
     expect(drawn.filter((d) => d === JSON.stringify("่"))).toHaveLength(2);
+  });
+});
+
+describe("cell colours in the PDF", () => {
+  it("reads #rrggbb and #rgb, and gives no colour for anything else", () => {
+    expect(hexToRgb("#fff2cc")).toEqual([255, 242, 204]);
+    expect(hexToRgb("#0f0")).toEqual([0, 255, 0]);
+    expect(hexToRgb("red")).toBeUndefined();
+    expect(hexToRgb(undefined)).toBeUndefined();
+  });
+
+  it("carries a cell's fill and text colour, and nothing for a plain cell", () => {
+    expect(pdfCellStyle({ fill: "#e2efda", color: "#c00000" })).toEqual({ fillColor: [226, 239, 218], textColor: [192, 0, 0] });
+    expect(pdfCellStyle(undefined)).toEqual({});
+    expect(pdfCellStyle({ bold: true })).toEqual({});
+  });
+
+  it("a filled heading row gets dark text, so the heading's white text does not vanish on a pale fill", () => {
+    expect(pdfCellStyle({ fill: "#fff2cc" }, true)).toEqual({ fillColor: [255, 242, 204], textColor: [24, 24, 27] });
+    expect(pdfCellStyle({}, true)).toEqual({});
   });
 });

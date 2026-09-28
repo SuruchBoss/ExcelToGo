@@ -1,25 +1,25 @@
 {
   "25-landing.png": {
-    "tests": 1593,
+    "tests": 1605,
     "paletteFormulas": 37
   },
   "27-landing-stats.png": {
     "paletteFormulas": 37,
     "engineFunctions": 64,
-    "tests": 1593,
+    "tests": 1605,
     "securityTests": 323
   },
   "38-landing-problems.png": {
     "paletteFormulas": 37
   },
   "en/25-landing.png": {
-    "tests": 1593,
+    "tests": 1605,
     "paletteFormulas": 37
   },
   "en/27-landing-stats.png": {
     "paletteFormulas": 37,
     "engineFunctions": 64,
-    "tests": 1593,
+    "tests": 1605,
     "securityTests": 323
   },
   "en/38-landing-problems.png": {

@@ -34,7 +34,7 @@ import { mergeLookup } from "@/lib/sheetMerges";
 import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
 // Shared with the chart overlay, which places charts in these same coordinates.
-import { COL_WIDTH, columnLeft, columnWidth, ROW_HEADER_WIDTH, ROW_HEIGHT, rowTop } from "@/lib/gridGeometry";
+import { COL_WIDTH, columnLeft, columnWidth, MAX_COL_WIDTH, MIN_COL_WIDTH, ROW_HEADER_WIDTH, ROW_HEIGHT, rowTop } from "@/lib/gridGeometry";
 import { NO_FREEZE } from "@/lib/sheetFreeze";
 import { NO_PRECEDENTS, precedentsOf } from "@/lib/precedents";
 import { packCell } from "@/lib/formulaEngine/formulaProgram";
@@ -43,6 +43,8 @@ import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gri
 import ChartOverlay from "./ChartOverlay";
 import SelectionHandle from "./SelectionHandle";
 import FillHandle from "./FillHandle";
+import { afterEnter, afterTab, type TabRun } from "./tabReturn";
+import CellContextMenu from "./CellContextMenu";
 
 
 export default function SpreadsheetGrid() {
@@ -57,6 +59,10 @@ export default function SpreadsheetGrid() {
   const toggleBold = useSheetStore((s) => s.toggleBold);
   const toggleItalic = useSheetStore((s) => s.toggleItalic);
   const toggleUnderline = useSheetStore((s) => s.toggleUnderline);
+  const setColumnWidth = useSheetStore((s) => s.setColumnWidth);
+  const copySelection = useSheetStore((s) => s.copySelection);
+  const cutSelection = useSheetStore((s) => s.cutSelection);
+  const pasteAtSelection = useSheetStore((s) => s.pasteAtSelection);
   const fillSelectionFromAnchor = useSheetStore((s) => s.fillSelectionFromAnchor);
   const fillFrom = useSheetStore((s) => s.fillFrom);
   const clipboard = useSheetStore((s) => s.clipboard);
@@ -264,6 +270,60 @@ export default function SpreadsheetGrid() {
     setEditingState(next);
   }, []);
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
+  /**
+   * The column being dragged wider or narrower, drawn from here until the pointer lets go. Only
+   * the release writes to the sheet, so a drag is one undo step rather than one per pixel.
+   */
+  const [resizing, setResizing] = useState<{ col: number; width: number } | null>(null);
+  /** Where the cell menu is open, if it is. */
+  const [cellMenu, setCellMenu] = useState<{ x: number; y: number } | null>(null);
+  const inSelection = (r: number, c: number) =>
+    r >= selection.startRow && r <= selection.endRow && c >= selection.startCol && c <= selection.endCol;
+  const widthOf = (c: number) => (resizing?.col === c ? resizing.width : sheet.colWidths?.[c] ?? COL_WIDTH);
+
+  const startResize = (e: React.PointerEvent, c: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startW = widthOf(c);
+    const clamp = (w: number) => Math.min(Math.max(w, MIN_COL_WIDTH), MAX_COL_WIDTH);
+    let latest = startW;
+    const move = (ev: PointerEvent) => {
+      latest = clamp(startW + ev.clientX - startX);
+      setResizing({ col: c, width: latest });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setResizing(null);
+      if (latest !== startW) setColumnWidth(c, latest);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
+  /**
+   * Double-click on the edge: as wide as the longest thing the column shows, the way Excel does.
+   * Measured with the grid's own font on a canvas, over what is displayed rather than the raw
+   * text — a formula is as wide as its answer, not as its source.
+   */
+  const fitColumn = (c: number) => {
+    const probe = scrollRef.current?.querySelector("td");
+    const ctx = document.createElement("canvas").getContext("2d");
+    if (!probe || !ctx) return;
+    const style = getComputedStyle(probe);
+    ctx.font = `600 ${style.fontSize} ${style.fontFamily}`;
+    let widest = ctx.measureText(colToLetters(c)).width;
+    const rows = Math.min(sheet.rows, 5000);
+    for (let r = 0; r < rows; r++) {
+      const text = display[r]?.[c];
+      if (text) widest = Math.max(widest, ctx.measureText(String(text)).width);
+    }
+    // 16px of cell padding, and room for the filter button beside the letter.
+    setColumnWidth(c, Math.ceil(widest) + 28);
+  };
   const isSelecting = useRef(false);
   /** Whether the cell a touch landed on was already the selected one, sampled before the tap
    *  changes the selection. See the pointer handlers on each cell for why. */
@@ -273,6 +333,17 @@ export default function SpreadsheetGrid() {
 
   /** Set by a finger opening the editor, read once when the editor mounts. */
   const caretAtEnd = useRef(false);
+  /** Whether the open editor was opened by a finger, so Enter keeps the phone keyboard up. */
+  const touchSession = useRef(false);
+  /**
+   * Holds focus for the instant between one cell's editor and the next. A phone shows its keyboard
+   * only while an input has focus, and only lets a page give focus from inside the user's own
+   * gesture — the next cell's editor mounts a render later, too late to count. So Enter hands focus
+   * here synchronously, the keyboard stays, and the new editor takes it over when it mounts.
+   */
+  const keyboardKeeper = useRef<HTMLInputElement>(null);
+  /** The run of Tabs in progress, so Enter can go back to the column it started in. */
+  const tabRun = useRef<TabRun | null>(null);
 
   useEffect(() => {
     const input = inputRef.current;
@@ -286,6 +357,7 @@ export default function SpreadsheetGrid() {
     } else {
       input?.select();
     }
+    if (input) touchSession.current = caretAtEnd.current;
     caretAtEnd.current = false;
   }, [editing?.row, editing?.col]);
 
@@ -345,13 +417,17 @@ export default function SpreadsheetGrid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on a newly selected block, not on every refresh that resizes it
   }, [placedBlockId]);
 
+  const canEdit = useCallback(
+    (row: number, col: number) => !boundCells.has(`${row},${col}`) && !isTemplateLocked(sheet.template, row, col),
+    [boundCells, sheet.template]
+  );
+
   const startEdit = useCallback(
     (row: number, col: number, initialValue?: string) => {
-      if (boundCells.has(`${row},${col}`)) return;
-      if (isTemplateLocked(sheet.template, row, col)) return;
+      if (!canEdit(row, col)) return;
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
-    [rawAt, boundCells, sheet.template, setEditing]
+    [rawAt, canEdit, setEditing]
   );
 
   /**
@@ -476,8 +552,13 @@ export default function SpreadsheetGrid() {
           break;
         }
         // Enter commits and walks down a column, Shift+Enter back up it — and neither extends a
-        // selection, which is why it does not go through `step`.
-        setSelection(singleCellSelection(Math.min(Math.max(row + (e.shiftKey ? -1 : 1), 0), sheet.rows - 1), col));
+        // selection, which is why it does not go through `step`. After a run of Tabs it goes back
+        // to the column the run started in, the way a row of a table is typed in Excel.
+        {
+          const to = afterEnter(tabRun.current, row, col, e.shiftKey, sheet.rows);
+          tabRun.current = null;
+          setSelection(singleCellSelection(to.row, to.col));
+        }
         e.preventDefault();
         break;
       case "ArrowUp":
@@ -489,10 +570,13 @@ export default function SpreadsheetGrid() {
       case "ArrowRight":
         step(0, 1);
         break;
-      case "Tab":
-        setSelection(singleCellSelection(row, Math.min(Math.max(col + (e.shiftKey ? -1 : 1), 0), sheet.cols - 1)));
+      case "Tab": {
+        const toCol = Math.min(Math.max(col + (e.shiftKey ? -1 : 1), 0), sheet.cols - 1);
+        tabRun.current = afterTab(tabRun.current, row, col, toCol);
+        setSelection(singleCellSelection(row, toCol));
         e.preventDefault();
         break;
+      }
       case "Home":
         // Home to the start of the row, Ctrl+Home to the start of the sheet.
         go(jump ? 0 : fromRow, 0);
@@ -603,6 +687,17 @@ export default function SpreadsheetGrid() {
         startEdit(row, col);
         e.preventDefault();
         break;
+      case "ContextMenu":
+      case "F10": {
+        // The Menu key, or Shift+F10: the cell menu for anyone who cannot right-click, opened at
+        // the cell rather than wherever the mouse happens to be.
+        if (e.key === "F10" && !e.shiftKey) break;
+        const td = scrollRef.current?.querySelector<HTMLElement>(`td[data-row="${row}"][data-col="${col}"]`);
+        const box = td?.getBoundingClientRect();
+        setCellMenu({ x: box ? box.left + 8 : 80, y: box ? box.bottom : 120 });
+        e.preventDefault();
+        break;
+      }
       case "Escape":
         if (clipboard) {
           clearClipboard();
@@ -682,7 +777,18 @@ export default function SpreadsheetGrid() {
                   data-col={c}
                   rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
                   colSpan={merge ? merge.endCol - merge.startCol + 1 : undefined}
-                  onMouseDown={(e) => handleMouseDown(r, c, e.shiftKey)}
+                  onMouseDown={(e) => {
+                    // A right-click inside the selection keeps it, so the menu acts on all of it —
+                    // as in Excel. Outside, it selects the cell first, like any other click.
+                    if (e.button === 2 && inSelection(r, c)) return;
+                    handleMouseDown(r, c, e.shiftKey);
+                  }}
+                  onContextMenu={(e) => {
+                    // The editor keeps the browser's own menu: spelling, paste as text, select all.
+                    if (editingHere) return;
+                    e.preventDefault();
+                    setCellMenu({ x: e.clientX, y: e.clientY });
+                  }}
                   onMouseEnter={() => handleMouseEnter(r, c)}
                   onDoubleClick={() => startEdit(r, c)}
                   // Touch has no keyboard to start typing into and no comfortable double-tap, so
@@ -795,7 +901,7 @@ export default function SpreadsheetGrid() {
                     // A merged cell's box comes from the columns and rows it spans, so pinning
                     // it to a single column's width would squash it back to one cell.
                     if (merge) return { height: h, backgroundColor: background, ...bar, ...borders, ...opaque, ...pinned };
-                    const w = sheet.colWidths?.[c] ?? COL_WIDTH;
+                    const w = widthOf(c);
                     return {
                       width: w,
                       minWidth: w,
@@ -843,14 +949,29 @@ export default function SpreadsheetGrid() {
                       onBlur={commitEdit}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          commitEdit();
-                          setSelection(singleCellSelection(Math.min(r + 1, sheet.rows - 1), c));
+                          e.preventDefault();
+                          const to = afterEnter(tabRun.current, r, c, e.shiftKey, sheet.rows);
+                          tabRun.current = null;
+                          const moved = to.row !== r || to.col !== c;
+                          if (touchSession.current && moved && canEdit(to.row, to.col) && keyboardKeeper.current) {
+                            // On a phone, straight into the next cell with the keyboard still up.
+                            // Focusing the keeper blurs this input, and its onBlur commits.
+                            keyboardKeeper.current.focus({ preventScroll: true });
+                            setSelection(singleCellSelection(to.row, to.col));
+                            caretAtEnd.current = true;
+                            startEdit(to.row, to.col);
+                          } else {
+                            commitEdit();
+                            setSelection(singleCellSelection(to.row, to.col));
+                          }
                         } else if (e.key === "Escape") {
                           setEditing(null);
                         } else if (e.key === "Tab") {
                           e.preventDefault();
                           commitEdit();
-                          setSelection(singleCellSelection(r, Math.min(c + 1, sheet.cols - 1)));
+                          const toCol = Math.min(Math.max(c + (e.shiftKey ? -1 : 1), 0), sheet.cols - 1);
+                          tabRun.current = afterTab(tabRun.current, r, c, toCol);
+                          setSelection(singleCellSelection(r, toCol));
                         }
                       }}
                     />
@@ -963,7 +1084,7 @@ export default function SpreadsheetGrid() {
                   c >= selection.startCol && c <= selection.endCol ? "bg-blue-100 text-blue-800" : "bg-zinc-100"
                 )}
                 style={(() => {
-                  const w = sheet.colWidths?.[c] ?? COL_WIDTH;
+                  const w = widthOf(c);
                   // A frozen column's *letter* has to be pinned too. The first version froze the
                   // cells and left the header row to scroll, so column B stayed on screen with
                   // column F's letter above it — which is worse than not freezing at all.
@@ -1004,6 +1125,24 @@ export default function SpreadsheetGrid() {
                     </button>
                   )}
                 </div>
+                {/* The edge to drag. A pointer-only affordance (hidden from a screen reader, not a
+                    tab stop): the cursor says what it does, and a double-click fits the contents.
+                    Wider on a touch screen, where 8px is not something a finger can find. */}
+                <div
+                  aria-hidden
+                  data-col-resize={c}
+                  onPointerDown={(e) => startResize(e, c)}
+                  onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    fitColumn(c);
+                  }}
+                  className={clsx(
+                    "absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize touch-none pointer-coarse:-right-2 pointer-coarse:w-4",
+                    "after:absolute after:inset-y-1 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:rounded after:bg-emerald-600 after:opacity-0 hover:after:opacity-100",
+                    resizing?.col === c && "after:opacity-100"
+                  )}
+                />
               </th>
             ))}
           </tr>
@@ -1032,6 +1171,16 @@ export default function SpreadsheetGrid() {
         scrollRef={scrollRef}
         onFill={fillFrom}
       />
+      {/* 16px so iOS does not zoom when it takes focus; out of the tab order and hidden from a
+          screen reader, because it only ever holds focus for the one render between two editors. */}
+      <input
+        ref={keyboardKeeper}
+        aria-hidden
+        tabIndex={-1}
+        className="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0"
+        style={{ fontSize: 16 }}
+        onKeyDown={(e) => e.stopPropagation()}
+      />
       <SelectionHandle
         sheet={sheet}
         selection={selection}
@@ -1052,6 +1201,25 @@ export default function SpreadsheetGrid() {
           onRefresh={() => void useDataSourceStore.getState().refresh(selectedBlock.sourceId)}
           onChange={() => openDataPicker({ sourceId: selectedBlock.sourceId, replacingBlockId: selectedBlock.id })}
           onRemove={() => removeLiveBlock(selectedBlock.id)}
+        />
+      )}
+
+      {cellMenu && (
+        <CellContextMenu
+          x={cellMenu.x}
+          y={cellMenu.y}
+          onClose={() => setCellMenu(null)}
+          actions={{
+            cut: cutSelection,
+            copy: copySelection,
+            paste: () => pasteAtSelection(),
+            canPaste: clipboard !== null,
+            insertRow: insertRowAtSelection,
+            insertColumn: insertColumnAtSelection,
+            deleteRow: deleteSelectedRow,
+            deleteColumn: deleteSelectedColumn,
+            clear: clearSelection,
+          }}
         />
       )}
 

@@ -277,6 +277,27 @@ const OPENED_STATES = [
     },
   },
   {
+    // A menu, so it is scanned as one: role, names, and the focus it takes. Right-click is what a
+    // mouse does; the gate opens it the way a keyboard does, which reaches it at both widths.
+    name: "cell context menu",
+    path: "/app",
+    async open(page) {
+      await page.locator('td[data-row="1"][data-col="1"]').click();
+      await page.keyboard.press("Shift+F10");
+      await page.getByRole("menu").waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    // The problem cards on the landing page keep "how it is solved" and a screenshot folded. What
+    // unfolds is content a scan of the page as it loads never reaches.
+    name: "landing problem card, opened",
+    path: "/",
+    async open(page) {
+      await page.locator("#formulas summary").click();
+      await page.locator("#formulas figure").waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
     // Anchored to its button like the validation popover, and reached the same way on a phone —
     // through the cell tools sheet — so it gets the same `reveal` first.
     name: "fill colour popover",

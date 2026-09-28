@@ -111,6 +111,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "escape", combos: [["Escape"]], handles: ["Escape"] },
       { id: "saveComment", combos: [["Mod", "Enter"]], handles: [] },
       { id: "find", combos: [["Mod", "F"], ["Mod", "H"]], handles: [] },
+      // The Menu key does the same, and is handled, but has no glyph worth drawing beside it.
+      { id: "cellMenu", combos: [["Shift", "F10"]], handles: ["F10", "ContextMenu"] },
       { id: "help", combos: [["Mod", "/"], ["F1"]], handles: [] },
     ],
   },

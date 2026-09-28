@@ -281,8 +281,7 @@ export interface Messages {
     painTitle: string;
     painLead: string;
     /** The label for the index of problems at the top of the section, read by screen readers. */
-    painIndexLabel: string;
-    painLabels: { problem: string; who: string; cost: string; solvedBy: string; outcome: string };
+    painLabels: { problem: string; who: string; cost: string; solvedBy: string; outcome: string; details: string };
     pains: {
       /** Short enough for the index: the problem in four or five words. */
       short: string;
@@ -774,6 +773,7 @@ export interface Messages {
   };
   grid: {
     filterColumnTitle: string;
+    cellMenu: string;
     insertRowAbove: string;
     deleteRow: string;
     insertColumnLeft: string;
