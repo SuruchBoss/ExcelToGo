@@ -102,3 +102,34 @@ export function renameSheetInFormulas(tabs: NamedSheet[], from: string, to: stri
     })
   );
 }
+
+/**
+ * Makes an incoming workbook's sheets fit beside the ones already open.
+ *
+ * Opening a file used to replace the whole workbook without a word, and the fix is to let it be
+ * added instead — which means two tabs can arrive with the same name. The incoming one is the one
+ * renamed ("Sheet1 (2)"), never an existing one, and its own file's formulas that pointed at it
+ * follow it, through the same rewrite a manual rename uses. New names avoid every name on both
+ * sides, so one rename can never land on a sheet the next rename is about to move.
+ */
+export function renameIncomingToFit(existingNames: string[], incoming: NamedSheet[]): NamedSheet[] {
+  const taken = new Set([...existingNames, ...incoming.map((t) => t.name)].map((n) => n.toLowerCase()));
+  const existing = new Set(existingNames.map((n) => n.toLowerCase()));
+  let tabs = incoming.map((t) => ({ ...t }));
+  for (let i = 0; i < tabs.length; i++) {
+    const from = tabs[i].name;
+    if (!existing.has(from.toLowerCase())) continue;
+    let n = 2;
+    let to = "";
+    do {
+      const suffix = ` (${n++})`;
+      // Excel stops a sheet name at 31 characters; the suffix is what has to survive.
+      to = from.slice(0, 31 - suffix.length) + suffix;
+    } while (taken.has(to.toLowerCase()));
+    taken.add(to.toLowerCase());
+    const renamed = tabs.map((t, j) => (j === i ? { ...t, name: to } : t));
+    const fixed = renameSheetInFormulas(renamed, from, to);
+    tabs = renamed.map((t, j) => ({ ...t, sheet: fixed[j] }));
+  }
+  return tabs;
+}

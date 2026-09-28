@@ -84,14 +84,16 @@ export default function MobileMenu({ onClose, onImport }: { onClose: () => void;
   const heading = "px-2 pt-3 pb-1 font-mono text-[10.5px] font-medium uppercase tracking-wide text-zinc-500";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:hidden">
-      <div onClick={onClose} aria-hidden className="absolute inset-0 bg-zinc-900/40" />
+    // A sheet from the bottom below 1024px, where the panel buttons are a tab bar; from 1024 to
+    // 1365px a panel dropped under the top row's "Menu" button, where the file buttons do not fit.
+    <div className="fixed inset-0 z-50 flex items-end lg:items-start lg:justify-end lg:px-3 lg:pt-14 min-[1366px]:hidden">
+      <div onClick={onClose} aria-hidden className="absolute inset-0 bg-zinc-900/40 lg:bg-zinc-900/10" />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl"
+        className="relative flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl lg:max-h-[80dvh] lg:max-w-sm lg:rounded-2xl lg:border lg:border-zinc-200"
       >
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2">
           <h2 id={titleId} className="text-base font-semibold text-zinc-900">

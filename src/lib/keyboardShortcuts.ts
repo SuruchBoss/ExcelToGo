@@ -41,7 +41,7 @@ export interface ShortcutGroup {
  * Ordered for a two-column grid, which is why "editing" comes before "selecting".
  *
  * The groups are laid out row by row into two columns, so the pairing decides the shape: move (7
- * rows) beside edit (7), select (3) beside clipboard (5), other (3) alone. Left in reading order
+ * rows) beside edit (7), select (3) beside clipboard (5), format (3) beside other (4). Left in reading order
  * they paired 7-with-3 and 7-with-5 and the left column ran out a third of the way up the sheet.
  * On a phone there is one column and this is simply the order you read them in.
  */
@@ -95,6 +95,14 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "paste", combos: [["Mod", "V"]], handles: [] },
       { id: "undo", combos: [["Mod", "Z"]], handles: [] },
       { id: "redo", combos: [["Mod", "Y"], ["Mod", "Shift", "Z"]], handles: [] },
+    ],
+  },
+  {
+    id: "format",
+    shortcuts: [
+      { id: "bold", combos: [["Mod", "B"]], handles: ["b", "B"] },
+      { id: "italic", combos: [["Mod", "I"]], handles: ["i", "I"] },
+      { id: "underline", combos: [["Mod", "U"]], handles: ["u", "U"] },
     ],
   },
   {

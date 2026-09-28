@@ -91,6 +91,10 @@ const SHOWS = {
   "44-mobile-menu.png": [],
   "45-mobile-cell-tools.png": [],
   "46-guide.png": [],
+  "47-import-choice.png": [],
+  "48-touch-actions.png": [],
+  "49-fill-colour.png": [],
+  "50-tablet-tools.png": [],
   "demo.gif": [],
 };
 
