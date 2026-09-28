@@ -127,16 +127,24 @@ function cellText(v: FormulaValue): string {
   return String(v);
 }
 
-/** Reads the block of cells a chart covers out of the computed grid. */
-function block(values: FormulaValue[][], range: SheetRange): FormulaValue[][] {
+/**
+ * Reads the block of cells a chart covers out of the computed grid.
+ *
+ * A date reads as the text the grid shows (#45): its value is a serial, and a column of serials
+ * would be plotted as a series instead of labelling the rows it is the label for.
+ */
+function block(values: FormulaValue[][], range: SheetRange, dateText?: DateTextAt): FormulaValue[][] {
   const out: FormulaValue[][] = [];
   for (let r = range.startRow; r <= range.endRow; r++) {
     const row: FormulaValue[] = [];
-    for (let c = range.startCol; c <= range.endCol; c++) row.push(values[r]?.[c] ?? null);
+    for (let c = range.startCol; c <= range.endCol; c++) row.push(dateText?.(r, c) ?? values[r]?.[c] ?? null);
     out.push(row);
   }
   return out;
 }
+
+/** The grid's text for a date cell, or null — see `dateCells.dateTextReader`. */
+export type DateTextAt = (row: number, col: number) => string | null;
 
 /**
  * Turns a range into labels and series, working out for itself whether the first row holds series
@@ -146,8 +154,8 @@ function block(values: FormulaValue[][], range: SheetRange): FormulaValue[][] {
  * instead — so a label column's first entry never turns an ordinary row of data into a header.
  * Getting that backwards drops a row of real data out of the chart without saying so.
  */
-export function chartDataFrom(values: FormulaValue[][], range: SheetRange): ChartData {
-  const cells = block(values, range);
+export function chartDataFrom(values: FormulaValue[][], range: SheetRange, dateText?: DateTextAt): ChartData {
+  const cells = block(values, range, dateText);
   if (cells.length === 0 || cells[0].length === 0) {
     return { labels: [], series: [], usedHeaderRow: false, usedLabelColumn: false };
   }

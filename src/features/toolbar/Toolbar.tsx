@@ -4,7 +4,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database, Cloud, Menu } from "lucide-react";
+import { FilePlus, FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database, Cloud, Menu } from "lucide-react";
 import clsx from "clsx";
 import { selectHasWork, useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
@@ -15,6 +15,7 @@ import { isCloudConfigured } from "@/lib/cloud/config";
 import MobileMenu from "./MobileMenu";
 import { useKeyboardOpen } from "./useKeyboardOpen";
 import ImportChoiceDialog from "./ImportChoiceDialog";
+import NewFileDialog from "./NewFileDialog";
 
 /**
  * One of the panel switches. From 1024px up it is the toolbar button it always was; below that the
@@ -76,6 +77,11 @@ export default function Toolbar() {
   // A file waiting on the keep-or-replace question. Asked only when there is work to lose.
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const sheetCount = useSheetStore((s) => s.sheets.length);
+  const startBlank = useSheetStore((s) => s.startBlank);
+  const [askNewFile, setAskNewFile] = useState(false);
+  // Asked only when there is something to lose; on an empty workbook or the untouched sample a
+  // question would be one more thing to click through.
+  const newFile = () => (selectHasWork(useSheetStore.getState()) ? setAskNewFile(true) : startBlank());
   const keyboardOpen = useKeyboardOpen();
 
   return (
@@ -95,6 +101,18 @@ export default function Toolbar() {
         {busy && <span className="truncate text-xs text-zinc-500">{busy}</span>}
       </div>
 
+      {/* An icon from 1024px up, beside the file buttons, like undo and redo: the row was measured
+          to the pixel at 1280 and 1366 in both languages, and a worded button would push "Ask AI"
+          off the edge again. The name is its tooltip and what a screen reader says; below 1024px it
+          is a worded line at the top of the menu's File group. */}
+      <button
+        onClick={newFile}
+        aria-label={t.newFile.button}
+        title={`${t.newFile.button} — ${t.newFile.hint}`}
+        className="hidden min-w-8 shrink-0 items-center justify-center rounded-md border border-zinc-300 px-1.5 py-1.5 text-zinc-700 hover:bg-zinc-50 lg:flex"
+      >
+        <FilePlus size={15} />
+      </button>
       <button
         onClick={() => fileInputRef.current?.click()}
         aria-label={t.toolbar.importFile}
@@ -143,7 +161,9 @@ export default function Toolbar() {
         <FileSpreadsheet size={15} /> {t.toolbar.exportCsv}
       </button>
 
-      <div className="mx-1 hidden h-5 w-px shrink-0 bg-zinc-200 lg:block" />
+      {/* From 1440 only: at 1366 in English the row was 14px over once New file joined it, and
+          this line is the one thing in it that does nothing. */}
+      <div className="mx-1 hidden h-5 w-px shrink-0 bg-zinc-200 min-[1440px]:block" />
 
       <button
         onClick={undoSheet}
@@ -254,7 +274,21 @@ export default function Toolbar() {
         </button>
       </nav>
       <LanguageToggle />
-      {menuOpen && <MobileMenu onClose={() => setMenuOpen(false)} onImport={() => fileInputRef.current?.click()} />}
+      {menuOpen && <MobileMenu onClose={() => setMenuOpen(false)} onImport={() => fileInputRef.current?.click()} onNewFile={newFile} />}
+      {askNewFile && (
+        <NewFileDialog
+          sheets={sheetCount}
+          onCancel={() => setAskNewFile(false)}
+          onExport={() => {
+            setAskNewFile(false);
+            void exportXlsx();
+          }}
+          onConfirm={() => {
+            setAskNewFile(false);
+            startBlank();
+          }}
+        />
+      )}
       {pendingFile && (
         <ImportChoiceDialog
           fileName={pendingFile.name}

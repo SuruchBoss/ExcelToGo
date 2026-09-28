@@ -425,8 +425,8 @@ export const en: Messages = {
     },
     stats: [
       { value: "37", label: "ready-made formulas" },
-      { value: "64", label: "engine functions" },
-      { value: "1605", label: "automated tests" },
+      { value: "65", label: "engine functions" },
+      { value: "1650", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -699,6 +699,22 @@ export const en: Messages = {
     text: "This is sample data, not something you left behind.",
     tip: "Change a price and watch the Total column and the grand total move, or try Pivot and Chart on it.",
     startBlank: "Start from a blank sheet",
+    opened: "Sample data opened — undo to go back to the blank sheet",
+  },
+  startNotice: {
+    text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
+    openSample: "Try it with sample data",
+  },
+  newFile: {
+    button: "New file",
+    hint: "Start a blank sheet (you can undo it)",
+    title: "Start a new file?",
+    body: (sheets) =>
+      `The ${sheets === 1 ? "sheet" : `${sheets} sheets`} open now will be replaced by a blank one. Undo brings ${sheets === 1 ? "it" : "them"} back, but to keep a copy as a file, export first.`,
+    exportFirst: "Export Excel first",
+    confirm: "Start a new file",
+    cancel: "Cancel",
+    started: "New file started — undo to get your work back",
   },
   storageNotice: {
     text: "Your work is saved in this browser only — never uploaded. Clearing your browser data or moving to another device loses it, so use \"Export Excel\" to keep a copy.",
@@ -866,6 +882,9 @@ export const en: Messages = {
     percent: "Percent (%)",
     currency: "Currency (฿)",
     text: "Text",
+    date: "Date",
+    datetime: "Date and time",
+    time: "Time",
   },
   pivot: {
     title: "Summarise (Pivot)",

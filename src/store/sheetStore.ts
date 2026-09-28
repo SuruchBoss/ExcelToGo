@@ -74,9 +74,10 @@ import { checkValue, ruleAt, shiftValidation, ValidationRule, withValidation } f
 import { nameKey, nameProblem, refForSelection, shiftNames, withName, withoutName, type NameProblem } from "@/lib/namedRanges";
 import { countUsage } from "@/lib/usage";
 import { getLocale, getMessages } from "@/i18n";
-import { DEFAULT_LOCALE, type Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n/types";
 import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
+import { dateTextAt, valuesWithIsoDates, withFormulaDateFormat, withRoomForDateTime } from "@/lib/dateCells";
 import { afterWrite, boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, shiftLiveBlocks, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
@@ -239,9 +240,18 @@ interface SheetState {
 
   setActiveSheet: (id: string) => void;
   addSheet: () => void;
-  /** Throws away the sample workbook and starts from one empty sheet. Only reachable while the
-   *  sample is untouched, so there is nothing of the user's to lose. */
+  /**
+   * One empty sheet in place of the whole workbook: "New file", and "start blank" on the sample.
+   * In the undo history, so Ctrl+Z brings back what was there. The toolbar asks first when there
+   * is work to lose (`selectHasWork`); this does not ask, because the store is not where questions go.
+   */
   startBlank: () => void;
+  /**
+   * The sample workbook in the language on screen, in place of an empty one. The app opens blank:
+   * a grid full of somebody else's coffee prices read as data left behind, and the first thing a
+   * person does is their own work. The sample is one press away for anybody who wants to try first.
+   */
+  openSample: () => void;
   /**
    * Swaps the sample for the one in this language. Does nothing once anything has been touched:
    * the sample is the only content the app may replace on its own, because it is the only content
@@ -405,6 +415,22 @@ interface RenderedPivot {
   cols: number;
 }
 
+/**
+ * The block a pivot reads, as values — except a date, which is grouped by the text the grid shows
+ * (#45). Its value is a serial, and a pivot by day would otherwise have 45306 as a row heading.
+ * Shared by the build and the "source has changed" check, so the two hash the same thing.
+ */
+function pivotSourceRows(sourceSheet: SheetModel, range: PivotSource["range"], sheets: readonly SheetTab[]): FormulaValue[][] {
+  const computed = computeTab(sourceSheet, sheets);
+  const rows: FormulaValue[][] = [];
+  for (let r = range.startRow; r <= range.endRow; r++) {
+    const row: FormulaValue[] = [];
+    for (let c = range.startCol; c <= range.endCol; c++) row.push(dateTextAt(sourceSheet, computed, r, c) ?? computed.values[r]?.[c] ?? null);
+    rows.push(row);
+  }
+  return rows;
+}
+
 function renderPivotSheet(
   sourceSheet: SheetModel,
   range: PivotSource["range"],
@@ -413,14 +439,7 @@ function renderPivotSheet(
   sheets: readonly SheetTab[]
 ): RenderedPivot | null {
   if (range.endRow <= range.startRow) return null;
-  const computed = computeTab(sourceSheet, sheets);
-
-  const rows: FormulaValue[][] = [];
-  for (let r = range.startRow; r <= range.endRow; r++) {
-    const row: FormulaValue[] = [];
-    for (let c = range.startCol; c <= range.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
-    rows.push(row);
-  }
+  const rows = pivotSourceRows(sourceSheet, range, sheets);
 
   const m = getMessages();
   const result = buildPivot(rows, config, {
@@ -536,7 +555,7 @@ type StoredTab = Omit<SheetTab, "sheet"> & { sheet: PackedSheet | SheetModel };
  * sample from somebody's work (see below), and each language needs an identity of its own.
  */
 const SAMPLES: Record<Locale, SheetModel> = { th: seedSample("th"), en: seedSample("en") };
-const initialTab = newTab("Sheet1", SAMPLES[DEFAULT_LOCALE]);
+const initialTab = newTab("Sheet1");
 
 /**
  * Is the workbook still exactly what the app opened with — the sample, untouched?
@@ -557,6 +576,14 @@ export type ImportMode = "append" | "replace";
 export function selectHasWork(s: SheetState): boolean {
   if (selectShowingSample(s)) return false;
   return s.sheets.some((t) => t.sheet.cells.some((row) => row.some((v) => v !== "" && v !== undefined)));
+}
+
+/** Whether an autosave is one tab holding the untouched sample, in either language. */
+export function isStoredSample(stored: StoredTab[]): boolean {
+  if (stored.length !== 1 || stored[0].liveBlocks?.length) return false;
+  // Through the codec both ways, so a save from before the packed format compares the same.
+  const saved = JSON.stringify(toStorage(fromStorage(stored[0].sheet)));
+  return Object.values(SAMPLES).some((sample) => JSON.stringify(toStorage(sample)) === saved);
 }
 
 export function selectShowingSample(s: SheetState): boolean {
@@ -734,7 +761,12 @@ export const useSheetStore = create<SheetState>()(
 
         startBlank: () => {
           const tab = newTab("Sheet1");
-          set({ sheets: [tab], activeSheetId: tab.id });
+          set({ sheets: [tab], activeSheetId: tab.id, ...say(getMessages().newFile.started) });
+        },
+
+        openSample: () => {
+          const tab = newTab("Sheet1", SAMPLES[getLocale()]);
+          set({ sheets: [tab], activeSheetId: tab.id, ...say(getMessages().sampleNotice.opened) });
         },
 
         showSampleIn: (locale) => {
@@ -793,7 +825,11 @@ export const useSheetStore = create<SheetState>()(
             // Once per page load, whatever the formula was — the count is "somebody used the
             // engine", and what they typed is none of its business.
             if (raw.startsWith("=") && raw.length > 1) countUsage("formula_entered");
-            return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
+            return {
+              sheets: withActiveSheet(s, (tab) =>
+                withRoomForDateTime(withFormulaDateFormat(setCellRaw(tab.sheet, row, col, raw), raw, row, col), raw, col)
+              ),
+            };
           }),
 
         /** Applies a rule to the selection, or clears it when `rule` is undefined. */
@@ -1482,7 +1518,10 @@ export const useSheetStore = create<SheetState>()(
 
         setNumberFormat: (numberFormat) =>
           set((s) => ({
-            sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { numberFormat })),
+            // A layout a file brought in (`dd/mm/yyyy`) goes with it: picking "date" means the app's own.
+            sheets: updateActiveSheet(s, (sheet, selection) =>
+              applySelectionFormat(sheet, selection, { numberFormat, dateFormat: undefined })
+            ),
           })),
 
         /**
@@ -1684,8 +1723,8 @@ export const useSheetStore = create<SheetState>()(
             return;
           }
           set((s) => ({
-            sheets: updateActiveSheet(s, (sheet, selection) =>
-              applyFormula(sheet, body, {
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const written = applyFormula(sheet, body, {
                 scope: pending.scope,
                 anchorRow: pending.anchorRow,
                 anchorCol: pending.anchorCol,
@@ -1695,8 +1734,18 @@ export const useSheetStore = create<SheetState>()(
                   endRow: selection.endRow,
                   endCol: selection.endCol,
                 },
-              })
-            ),
+              });
+              const { anchorRow: r, anchorCol: c, scope } = pending;
+              const [r0, c0, r1, c1] =
+                scope === "row"
+                  ? [r, 0, r, sheet.cols - 1]
+                  : scope === "column"
+                    ? [0, c, sheet.rows - 1, c]
+                    : scope === "selection"
+                      ? [selection.startRow, selection.startCol, selection.endRow, selection.endCol]
+                      : [r, c, r, c];
+              return withFormulaDateFormat(written, `=${body}`, r0, c0, r1, c1);
+            }),
             pending: null,
             ...say(getMessages().live.formulaInserted(`=${body}`, cellRef(pending.anchorRow, pending.anchorCol))),
           }));
@@ -1708,7 +1757,12 @@ export const useSheetStore = create<SheetState>()(
             const sel = activeSelectionOf(s);
             return {
               sheets: updateActiveSheet(s, (sheet, selection) =>
-                setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw)
+                withFormulaDateFormat(
+                  setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw),
+                  raw,
+                  selection.anchorRow,
+                  selection.anchorCol
+                )
               ),
               ...say(getMessages().live.formulaInserted(raw, cellRef(sel.anchorRow, sel.anchorCol))),
             };
@@ -1831,7 +1885,8 @@ export const useSheetStore = create<SheetState>()(
           try {
             const tab = activeTab(get());
             const { toCsv, trimGrid, valuesToCsvGrid } = await import("@/lib/csv");
-            const grid = trimGrid(valuesToCsvGrid(computeTab(tab.sheet, get().sheets).values));
+            // Dates go out as ISO text rather than their serials (#45) — see `valuesWithIsoDates`.
+            const grid = trimGrid(valuesToCsvGrid(valuesWithIsoDates(tab.sheet, computeTab(tab.sheet, get().sheets))));
             if (grid.length === 0) {
               alert(getMessages().store.csvEmpty);
               return;
@@ -1880,6 +1935,10 @@ export const useSheetStore = create<SheetState>()(
         const p = persisted as { sheets?: StoredTab[]; activeSheetId?: string } | undefined;
         const stored = p?.sheets;
         if (!stored || stored.length === 0) return current;
+        // The sample, saved exactly as the app used to open it, is not somebody's work: every
+        // visitor before the app opened blank has it in their browser, and it is what "left over
+        // in the cells" meant. Exactly — one change of any kind and it is theirs, and stays.
+        if (isStoredSample(stored)) return current;
         // `fromStorage` reads both shapes: what `partialize` writes now, and the dense grid that
         // is sitting in somebody's browser from the version before it. Dropping those would be
         // losing their work to save bytes.
@@ -2038,13 +2097,7 @@ export function selectPivotStatus(s: SheetState): PivotStatus | null {
   const source = s.sheets.find((t) => t.id === spec.sheetId);
   if (!source) return "orphaned";
 
-  const computed = computeTab(source.sheet, s.sheets);
-  const rows: FormulaValue[][] = [];
-  for (let r = spec.range.startRow; r <= spec.range.endRow; r++) {
-    const row: FormulaValue[] = [];
-    for (let c = spec.range.startCol; c <= spec.range.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
-    rows.push(row);
-  }
+  const rows = pivotSourceRows(source.sheet, spec.range, s.sheets);
   return hashValues(rows) === spec.hash ? "fresh" : "stale";
 }
 

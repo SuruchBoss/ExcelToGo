@@ -1,8 +1,18 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-/** "text" is Excel's `@`: whatever is typed stays exactly as typed, digits included (#23). */
-export type NumberFormat = "general" | "number2" | "percent" | "currency" | "text";
+import { DEFAULT_DATE_CODE, formatSerial, isDateFormatCode, kindOfDateCode } from "./excelDate";
+
+/**
+ * "text" is Excel's `@`: whatever is typed stays exactly as typed, digits included (#23).
+ * "date", "datetime" and "time" show an Excel date serial as a date (#45); a file's own date code
+ * (`dd/mm/yyyy`) rides along in `CellFormat.dateFormat`.
+ */
+export type NumberFormat = "general" | "number2" | "percent" | "currency" | "text" | "date" | "datetime" | "time";
+
+export const DATE_FORMATS: readonly NumberFormat[] = ["date", "datetime", "time"];
+export const isDateFormat = (fmt: NumberFormat | undefined): fmt is "date" | "datetime" | "time" =>
+  fmt === "date" || fmt === "datetime" || fmt === "time";
 export type CellAlign = "left" | "center" | "right";
 export type CellVAlign = "top" | "middle" | "bottom";
 
@@ -19,6 +29,9 @@ export interface CellFormat {
   color?: string;
   align?: CellAlign;
   numberFormat?: NumberFormat;
+  /** The Excel code a date came in with (`dd/mm/yyyy`), shown and written back as the file had it.
+   *  Absent means the app's own ISO form for the kind. */
+  dateFormat?: string;
   /** Background colour as #rrggbb. The coloured bands across a form's headings are the most
    *  recognisable thing about it, so a file that has them has to keep them. */
   fill?: string;
@@ -51,7 +64,8 @@ export function pxToPt(px: number | undefined): number | undefined {
  * fraction by 100 — since our cells hold plain numbers with no separate fraction/display
  * distinction, that keeps a cell showing "50" and one showing "50%" both mean what they say.
  */
-export function formatNumberForDisplay(value: number, fmt: NumberFormat): string {
+export function formatNumberForDisplay(value: number, fmt: NumberFormat, dateCode?: string): string {
+  if (isDateFormat(fmt)) return formatSerial(value, dateCode ?? DEFAULT_DATE_CODE[fmt]);
   const fixed2 = () => value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   switch (fmt) {
     case "number2":
@@ -75,11 +89,29 @@ export const EXCEL_NUM_FMT: Record<NumberFormat, string | undefined> = {
   percent: '0.00"%"',
   currency: '"฿"#,##0.00',
   text: "@",
+  date: DEFAULT_DATE_CODE.date,
+  datetime: DEFAULT_DATE_CODE.datetime,
+  time: DEFAULT_DATE_CODE.time,
 };
+
+/**
+ * Excel's built-in short date (number format 14) as ExcelJS names it. Excel shows it in the reader's
+ * own locale, so it carries no layout of its own worth keeping: it reads as the app's default.
+ */
+const LOCALE_SHORT_DATE = new Set(["mm-dd-yy", "m/d/yy", "m/d/yyyy"]);
+
+/** The date code worth keeping from a file, or undefined when the app's default says the same. */
+export function fileDateCode(numFmt: string | undefined): string | undefined {
+  if (!numFmt || !isDateFormatCode(numFmt) || LOCALE_SHORT_DATE.has(numFmt)) return undefined;
+  const kind = kindOfDateCode(numFmt);
+  return numFmt === DEFAULT_DATE_CODE[kind] ? undefined : numFmt;
+}
 
 export function numberFormatFromExcelNumFmt(numFmt: string | undefined): NumberFormat {
   if (!numFmt || numFmt === "General") return "general";
   if (numFmt === "@") return "text";
+  // Before the checks below: `yyyy"%"` is still a date, and `dd.mm.yyyy` would read as "0.00".
+  if (isDateFormatCode(numFmt)) return kindOfDateCode(numFmt);
   if (numFmt.includes("%")) return "percent";
   if (numFmt.includes("฿") || numFmt.includes("$")) return "currency";
   if (numFmt.includes("0.00")) return "number2";

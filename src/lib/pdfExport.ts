@@ -5,6 +5,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { colToLetters, rangeRefString } from "./formulaEngine/address";
 import { chartDataFrom } from "./charts";
+import { dateTextReader } from "./dateCells";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf } from "./gridGeometry";
 import { THAI_FONT_NAME, registerThaiFont } from "./pdfFont";
@@ -113,7 +114,7 @@ async function addCharts(doc: jsPDF, sheet: SheetModel, computed: ComputedSheet,
 
   for (const chart of charts) {
     const anchor = chartAnchorOf(sheet, chart);
-    const picture = chartToSvg(chart.kind, chartDataFrom(computed.values, chart.range), anchor.w, anchor.h, chart.seriesIndex);
+    const picture = chartToSvg(chart.kind, chartDataFrom(computed.values, chart.range, dateTextReader(sheet, computed)), anchor.w, anchor.h, chart.seriesIndex);
     if (!picture) continue;
 
     // Points, not pixels: a 300px chart at 96dpi is 225pt, and placing it at 300 would run it off

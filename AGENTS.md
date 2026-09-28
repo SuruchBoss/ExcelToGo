@@ -39,18 +39,18 @@ for sideways scroll at 360/390/820/1280/1440. Two widths because one was not eno
 desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
 
 ด่านนี้ยัง **เปิดพาเนลขึ้นมาตรวจด้วย** ไม่ใช่สแกนแค่หน้าตอนโหลด — พาเลตสูตร, AI, ข้อมูลสด, conditional
-formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์, หน้าคีย์ลัด, แถบเตือนตอนบันทึกไม่ลง ช่องสีพื้น หน้าต่างถามตอนเปิดไฟล์ทับงาน เมนูคลิกขวาที่เซลล์ การ์ดปัญหาบนหน้า landing ที่กางออก สองหน้าต่างของข้อมูลสด (เลือกข้อมูล · เพิ่มแหล่งข้อมูล) ฟอร์มต่อ API จากเบราว์เซอร์กับรายการตรวจสำหรับ IT ที่ขึ้นตอนต่อไม่ติด และสองแผ่นที่มีเฉพาะบนมือถือ (เมนู · เครื่องมือเซลล์ สแกนเฉพาะที่ 390px) บนสามหน้า `/`, `/app`, `/guide` รวม 63 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
+formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์, หน้าคีย์ลัด, แถบเตือนตอนบันทึกไม่ลง ช่องสีพื้น หน้าต่างถามตอนเปิดไฟล์ทับงาน หน้าต่างถามก่อนเริ่มไฟล์ใหม่ แถบของข้อมูลตัวอย่างหลังกดเปิด เมนูคลิกขวาที่เซลล์ การ์ดปัญหาบนหน้า landing ที่กางออก สองหน้าต่างของข้อมูลสด (เลือกข้อมูล · เพิ่มแหล่งข้อมูล) ฟอร์มต่อ API จากเบราว์เซอร์กับรายการตรวจสำหรับ IT ที่ขึ้นตอนต่อไม่ติด และสองแผ่นที่มีเฉพาะบนมือถือ (เมนู · เครื่องมือเซลล์ สแกนเฉพาะที่ 390px) บนสามหน้า `/`, `/app`, `/guide` รวม 67 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
 `OPENED_STATES` เมื่อนั้น** และสถานะที่เปิดไม่ขึ้นถือว่าด่านตก ไม่ใช่ข้าม
 The gate also **opens panels before scanning them** rather than only scanning the page as it loads — the
 formula palette, AI, live data, conditional formatting, charts, pivots, find/replace and the shortcut
-dialog, the validation, names and comment popovers, the alert shown when a save is refused, the fill swatches, the dialog asked when a file would open on top of work, the cell menu, a landing problem card unfolded, the two live-data dialogs (the picker and adding a source), the connect-from-this-browser form and the checklist for IT it shows when a connection fails, and the two phone-only sheets (the menu and cell tools, scanned at 390px only), across `/`, `/app` and `/guide` — 63 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
+dialog, the validation, names and comment popovers, the alert shown when a save is refused, the fill swatches, the dialog asked when a file would open on top of work, the one asked before New file, the sample's notice once it is opened, the cell menu, a landing problem card unfolded, the two live-data dialogs (the picker and adding a source), the connect-from-this-browser form and the checklist for IT it shows when a connection fails, and the two phone-only sheets (the menu and cell tools, scanned at 390px only), across `/`, `/app` and `/guide` — 67 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 25 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, เปิดไฟล์ทับงานแล้วแอปถามก่อน (ตัวเลือกที่ focus อยู่ต้องเก็บงานไว้ และ undo ถอนไฟล์ออกได้) พร้อม `Ctrl+B`, Tab ตามแถวแล้ว Enter กลับคอลัมน์แรก กับเมนูเซลล์จาก `Shift+F10`, ลากคอลัมน์ให้กว้างแล้ว undo ครั้งเดียวกลับ, Enter บนมือถือเข้าช่องถัดไปโดยคีย์บอร์ดไม่พับ,
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 26 flow — เปิดมาเป็นตารางว่างและข้อมูลตัวอย่างที่ค้างในเบราว์เซอร์ไม่กลับมา (แต่ถ้าแก้แล้วต้องอยู่) ไฟล์ใหม่ถามก่อนและ Ctrl+Z เอางานคืน, พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, เปิดไฟล์ทับงานแล้วแอปถามก่อน (ตัวเลือกที่ focus อยู่ต้องเก็บงานไว้ และ undo ถอนไฟล์ออกได้) พร้อม `Ctrl+B`, Tab ตามแถวแล้ว Enter กลับคอลัมน์แรก กับเมนูเซลล์จาก `Shift+F10`, ลากคอลัมน์ให้กว้างแล้ว undo ครั้งเดียวกลับ, Enter บนมือถือเข้าช่องถัดไปโดยคีย์บอร์ดไม่พับ,
 เดินด้วยคีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, ตัดข้ามชีต, แถบสูตรไม่เขียนค่าค้าง, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
 ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) บันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้, ต่อ API จากเบราว์เซอร์แล้วค่าลงตารางและรีเฟรชเอง โดยไม่มีอะไรเกี่ยวกับมันถึง `/api/*` (และ CSP ของคนที่ไม่เคยเพิ่มแหล่งยังเหมือนเดิมทุกตัวอักษร · แท็บใหม่ที่ไม่มีค่า header ขึ้นว่ารอค่า ไม่ใช่เชื่อมต่อไม่ได้), API ที่ไม่ตอบ CORS ได้รายการตรวจสำหรับ IT ไม่ใช่ error เปล่า, ไม่มีหน้าไหนเรียกตัวเองว่าเดโมทั้งสองภาษา และที่ 390px ทางไปข้อมูลสดอยู่บนจอและมีชื่อ และค่าข้ามชีตบนจอยังถูกหลังส่งออก PDF, sort และ undo เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 25 flows — type a formula and watch the value
+`npm run check:e2e` drives the real app in a browser through 26 flows — opening blank, with a sample an older version saved not coming back (and one edited, staying), New file asking first and Ctrl+Z bringing the work back, type a formula and watch the value
 move, export `.xlsx` and import it back, a file opened on top of work that asks first (the focused choice keeps the work, and undo takes the file back out) along with `Ctrl+B`, a row typed with Tab ending with Enter under its first column and the cell menu from `Shift+F10`, a column dragged wider that one undo puts back, Enter on a phone going into the next cell's editor, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up), a refused save that is announced while export still works, an API connected from this browser that fills the sheet and refreshes with nothing about it reaching `/api/*` (and the CSP unchanged, character for character, for anyone who never added a source; a new tab without the header value says it is waiting, not failing), an API without CORS getting a checklist for IT rather than a bare error, no page calling itself a demo in either language, at 390px whether the way to live data is on screen and named, and cross-sheet values still right on screen after a PDF export, a sort and its undo. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
@@ -83,12 +83,17 @@ The milliseconds stay in a `console.log`, because the README's numbers come from
 `npm run check:mutants` ทุบเอนจินทีละจุด (32 mutant, seed คงที่) แล้วถามว่าเทสต์แดงไหม — **"1,088 เทสต์"
 บอกว่ามีกี่ข้อ ไม่ได้บอกว่ามันจับบั๊กได้** ตัวที่รอดคือช่องโหว่จริง รอบแรกเจอหก แล้วเขียนเทสต์ใหม่หกข้อจากมัน
 seed ถูกปักไว้เพื่อไม่ให้ด่านแดงเพราะดวง อยากหาช่องใหม่ให้รัน `SEED=13 MUTANTS=60 npm run check:mutants` เอง
-ไม่ได้ลงไลบรารีเพิ่ม เขียนเองเหมือน PRNG ของ property test
+ไม่ได้ลงไลบรารีเพิ่ม เขียนเองเหมือน PRNG ของ property test · ตัวที่รอดเพราะเป็น **equivalent** (เปลี่ยนโค้ดแต่ไม่เปลี่ยนผล)
+ให้เขียน `// equivalent-mutant: "<" → "<=" — เหตุผล` ไว้บรรทัดเหนือโค้ด ห้ามลดเพดานหรือเปลี่ยน seed เพื่อให้ด่านเขียว
+**ตัวที่รอดแต่ไม่ใช่ equivalent คือเทสต์ที่ขาด ไม่ใช่ที่ให้ติดมาร์กเกอร์**
 `npm run check:mutants` breaks the engine one edit at a time (32 mutants, one pinned seed) and asks whether
 the suite goes red. **"1,088 tests" says how many exist, not whether they would notice a bug.** A survivor is
 a real gap: the first run left six alive and six tests were written from them. The seed is pinned so a red
 cross means this commit rather than this draw; go looking for new gaps on purpose with
 `SEED=13 MUTANTS=60 npm run check:mutants`. No new dependency — hand-written, like the property tests' PRNG.
+A survivor that is **equivalent** (the code changes, the result cannot) gets
+`// equivalent-mutant: "<" → "<=" — reason` on the line above it, never a lower floor or a new seed.
+**A survivor that is not equivalent is a missing test, not a place for a marker.**
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:
 `npm run check:readme` is dependency-free and catches what the eye misses:

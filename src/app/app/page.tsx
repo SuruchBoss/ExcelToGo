@@ -21,6 +21,7 @@ import CloudPanel from "@/features/cloud/CloudPanel";
 import StorageNotice from "@/features/grid/StorageNotice";
 import SaveFailedNotice from "@/features/grid/SaveFailedNotice";
 import SampleNotice from "@/features/grid/SampleNotice";
+import StartNotice from "@/features/grid/StartNotice";
 import PivotNotice from "@/features/grid/PivotNotice";
 import ImportNotice from "@/features/grid/ImportNotice";
 import DataPicker from "@/features/data/DataPicker";
@@ -31,6 +32,7 @@ import SkipLink from "@/features/a11y/SkipLink";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import {
+  selectHasWork,
   selectShowingSample,
   useClipboardShortcuts,
   useHydrateSheetStore,
@@ -57,6 +59,7 @@ export default function Home() {
   useClipboardShortcuts();
   useLiveDataPolling();
   const showingSample = useSheetStore(selectShowingSample);
+  const hasWork = useSheetStore(selectHasWork);
 
   // The panel covers the whole screen on a phone, so leaving it open by default meant a visitor
   // arriving from a phone saw the formula list and not one cell of the spreadsheet. Closing it on
@@ -97,7 +100,7 @@ export default function Home() {
       <FormulaBar />
       <TemplateBar />
       <SaveFailedNotice />
-      {showingSample ? <SampleNotice /> : <StorageNotice />}
+      {showingSample ? <SampleNotice /> : hasWork ? <StorageNotice /> : <StartNotice />}
       <ImportNotice />
       <PivotNotice />
       <div className="flex min-h-0 flex-1 gap-3 p-2 sm:p-3">

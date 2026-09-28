@@ -5,7 +5,7 @@
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import Link from "next/link";
-import { BookOpen, ChevronRight, Cloud, FileDown, FileSpreadsheet, FileText, FileUp, Plug, Rows3, Columns3, X } from "lucide-react";
+import { BookOpen, ChevronRight, Cloud, FileDown, FilePlus, FileSpreadsheet, FileText, FileUp, Plug, Rows3, Columns3, X } from "lucide-react";
 import clsx from "clsx";
 import { useSheetStore } from "@/store/sheetStore";
 import { isCloudConfigured } from "@/lib/cloud/config";
@@ -20,7 +20,7 @@ import { useT } from "@/i18n";
  * all. Its line names the four kinds of source, so somebody scanning for "database" finds the word
  * PostgreSQL rather than having to guess that a cylinder icon leads there.
  */
-export default function MobileMenu({ onClose, onImport }: { onClose: () => void; onImport: () => void }) {
+export default function MobileMenu({ onClose, onImport, onNewFile }: { onClose: () => void; onImport: () => void; onNewFile: () => void }) {
   const t = useT();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -122,6 +122,9 @@ export default function MobileMenu({ onClose, onImport }: { onClose: () => void;
           </Link>
 
           <p className={heading}>{t.menu.file}</p>
+          <button onClick={act(onNewFile)} className={line}>
+            {row(<FilePlus size={17} />, t.newFile.button, t.newFile.hint)}
+          </button>
           <button onClick={act(onImport)} className={line}>
             {row(<FileUp size={17} />, t.toolbar.importFile, t.toolbar.importTitle)}
           </button>
