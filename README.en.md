@@ -40,7 +40,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1650%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1666%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -61,7 +61,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1650 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1666 automated tests.
 
 ---
 
@@ -105,7 +105,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1650 passing tests could not catch
+### 🧪 What 1666 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -116,7 +116,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1650 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1666 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -285,6 +285,7 @@ the outcome under a double rule like a total.
   - [Opens with the network off](#-opens-with-the-network-off)
   - [Works on a phone](#-works-on-a-phone)
   - [Copy, paste and fill down with a finger](#-copy-paste-and-fill-down-with-a-finger)
+  - [Selecting a range with a finger without losing the data](#-selecting-a-range-with-a-finger-without-losing-the-data)
   - [Tablets and folding phones](#-tablets-and-folding-phones)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Right-click on a cell](#️-right-click-on-a-cell)
@@ -384,7 +385,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1650-case Vitest suite |
+| `npm test` | Run the 1666-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -392,7 +393,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 26 flows: opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 27 flows: opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -1005,6 +1006,11 @@ changes, it has to follow — and no gate compares them yet.
   the moment a save does not land, with an export button in it, and editing and exporting carry on as normal.
 - **Ctrl+Z** / **Ctrl+Y** (or Ctrl+Shift+Z) undo/redo content edits only — moving the selection or switching
   sheet tabs doesn't count as history.
+- **The status sits beside the app's name**, where a document app puts it: a tick and "Autosaved", turning
+  to an amber warning and **"Not saved"** the moment the browser refuses a save (the words from 1536px; below
+  that the icon alone, with the words as its tooltip and for a screen reader). It used to be a
+  floppy disk — the icon of a Save *button* — at the head of the panel buttons on the right, and it read as a
+  button that did nothing.
 
 ### 🩹 The app can break and you still get your file out
 
@@ -1912,6 +1918,39 @@ is now a row of five named commands — **Copy · Cut · Paste · Fill down · C
 **Not supported yet:** pasting the system clipboard (text copied in another app) from this row — mobile browsers
 ask permission every time, so it uses the app's clipboard only.
 
+### 🎯 Selecting a range with a finger without losing the data
+
+In blind test round 2, on a phone, almost every way of selecting a range **ran on to column J** and scrolled the
+view to H–J, taking the data off the screen. Getting back took five to seven swipes, one column each, and a
+formatting rule made that way covered a range far wider than meant (#127). Now:
+
+- **A drag down grows rows only.** A drag on the grip that is mostly vertical (sideways under half the
+  vertical) grows the range in rows, so a thumb drifting right no longer pulls the next columns in. Moving
+  sideways by more than half a column frees it to grow both ways again.
+- **The edge scrolls only when the finger heads for it.** The grip on the right-most visible column starts
+  inside the edge zone, and used to scroll the moment it was touched. The speed starts slow and rises with
+  depth, instead of a flat 750px a second — about seven columns.
+- **The right-most column's grip can be taken whole.** A cell scrolled flush with the right edge left half its
+  grip off screen, so a finger landed on the border instead.
+- **A row header, a column header or Ctrl+A leaves the view where it is.** A tap on row header 1 used to jump
+  to H–J, because J is the row's far corner.
+- **A way back.** When the selection is wholly off screen and the sheet has stopped moving, a **"Back to
+  B2:B9"** chip appears at that edge; a tap brings it back (touch only — a mouse has a scroll bar and Excel's keys).
+- **Each sheet remembers where it was.** The grid used to be one view for every tab, so a sheet left at H–J
+  opened the next one at H–J too.
+
+<p align="center"><img src="public/screenshots/en/59-back-to-selection.png" width="320" alt="A phone with B2:B9 scrolled off to the left, and a blue Back to B2:B9 chip at the left edge"></p>
+
+**A stopgap for #99 (sev:critical).** Typing `=` and then tapping another cell used to **save `=` over the
+cell being edited** — on the sample sheet it wrote over the word "Mains". Now, while a formula is still
+waiting for an address (`=`, `=SUM(`, `=A1+`), a tap or click on the grid **does nothing**, in the cell's own
+editor and in the formula bar alike: the editor stays open, the keyboard stays up, the cell keeps its value.
+A finished formula such as `=SUM(A1:A3)` is still saved by clicking another cell, as before.
+
+**Not yet:** tapping a cell while typing a formula to *insert its address* (as Excel does), and a Done button
+above the keyboard — the next piece of work (the pointing bar, #99 + #138). Until then, type the address and
+press Enter.
+
 ### 📲 Tablets and folding phones
 
 On a Galaxy Z Fold7 opened out, the toolbar **scrolled off the edge of the screen** — a width wider than a phone
@@ -2115,14 +2154,20 @@ nothing at stake is the one that teaches people to click through without reading
 - **Returning visitors** — a browser that saved the untouched sample (everybody who opened the app before)
   opens blank too. The comparison is byte for byte: one changed cell, row or sheet makes it their work,
   and it stays.
-- **New file** — an icon before Import from 1024px, and the first line of the menu's File group. Over
+- **The sheet runs to the edge of the screen.** A new sheet is ten columns, and on a wide screen it used to
+  stop at J with a blank band beside it, which read as "the sheet ends here". The columns past the last one
+  are now drawn empty to the edge, as Excel does, and a click on one grows the sheet to it (undoable).
+  **They are drawn, not added**, so an export holds only the columns that exist — no trailing empties.
+- **New file** — a worded button from 1440px, an icon before Import from 1024 to 1439px, and the first line of the menu's File group. Over
   work it asks first, with **Export Excel first** under the cursor (so Enter is the harmless answer);
   confirming leaves one blank sheet, and Ctrl+Z brings the work back. With nothing to lose it does not ask.
 
 <p align="center"><img src="public/screenshots/en/58-new-file.png" width="700" alt="The question before a new file: Export Excel first, Start a new file, or Cancel"></p>
 
-**Limits:** on a wide screen New file is an icon only (its name is the tooltip and what a screen reader
-says), because the top row was measured to the pixel at 1280 and 1366 in both languages. Undo lives in
+**Limits:** from 1024 to 1439px New file is an icon only (its name is the tooltip and what a screen reader
+says), because at 1366px in English the top row has 7px to spare. Rows are not drawn on past the last one
+the way columns are: a new sheet has 30, and "+ Row" adds more. A template with a locked shape draws no
+extra columns, since it cannot grow. Undo lives in
 this tab: close it and replaced work does not come back, which is why export is offered first.
 
 ### 🧩 Drag-and-drop formulas
@@ -2497,7 +2542,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1650 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1666 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3469,20 +3514,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1650 cases across 107 files, via Vitest
+npm test      # 1666 cases across 109 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1650 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1666 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 26 flows in a real browser (needs a build)
+npm run check:e2e   # 27 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3594,10 +3639,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1650 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1666 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1650 passing tests could not catch](#-what-1650-passing-tests-could-not-catch), repeatable
+> [What 1666 passing tests could not catch](#-what-1666-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3695,6 +3740,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       confirmation (see ⚠️ under cloud save). Resolving the invitee to an `auth.uid()` once they have
       signed in, and matching on that, would remove the dependency on a setting this app cannot see.
       Also worth a policy test pinning the behaviour for a confirmed vs an unconfirmed address
+- [ ] **Rows drawn on past the last one, as columns are** — columns now run to the edge of the screen,
+      but rows still stop at a new sheet's 30th, which leaves blank space under it on a tall screen
 - [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
       each other type, presence shows where each cursor is, the cell you have open is never
       overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed
@@ -3863,7 +3910,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 26 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 27 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

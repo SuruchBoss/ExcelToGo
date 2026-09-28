@@ -44,6 +44,8 @@ export interface Messages {
     addColumn: string;
     autosaveTitle: string;
     autosaveLabel: string;
+    /** Beside the logo when the browser refused the last save (storage full or blocked). */
+    autosaveFailed: string;
     formulas: string;
     askAi: string;
     data: string;
@@ -800,6 +802,8 @@ export interface Messages {
     deleteColumn: string;
     /** The touch grip that pulls a selection out to a range. */
     extendSelection: string;
+    /** The chip that brings a selection scrolled off screen back into view, e.g. "Back to B2:B9". */
+    backToSelection: (address: string) => string;
     /** The mouse grip on the same corner, which continues the selection instead. */
     fillHandle: string;
     /** Names the grid itself. A `role="grid"` with no name is announced as "grid" and nothing else. */

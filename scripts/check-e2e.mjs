@@ -907,6 +907,18 @@ const FLOWS = [
         `3 rows × 4 columns by Tab…Enter land as a rectangle, not a staircase (${grid.join(" | ")})`
       );
 
+      // Past the last column the sheet is drawn on to the edge of the screen, and a click there grows
+      // it — a blank sheet used to stop at J with a blank band beside it. The formula panel is put
+      // away first so a 1280px screen has room past J.
+      const palette = page.getByRole("button", { name: /^(สูตร|Formulas)$/ });
+      if ((await palette.getAttribute("aria-pressed")) === "true") await palette.click();
+      const ghostCol = Number(await page.locator("td[data-ghost-col]").first().getAttribute("data-ghost-col"));
+      await page.locator(`td[data-ghost-col="${ghostCol}"]`).nth(1).click();
+      await page.keyboard.type("k");
+      await page.keyboard.press("Enter");
+      const grownInto = (await cell(page, 1, ghostCol).innerText()).trim();
+      note(grownInto === "k", `a click on a column drawn past the last one grows the sheet into it (${ghostCol}: "${grownInto}")`);
+
       // Tab at the last column used to stay put, so the next value typed over the one just entered.
       const lastCol = await page.evaluate(() => Math.max(...[...document.querySelectorAll("thead th[aria-colindex]")].map((th) => Number(th.getAttribute("aria-colindex")))) - 2);
       await cell(page, 8, lastCol).click();
@@ -986,6 +998,90 @@ const FLOWS = [
       await page.keyboard.press("Enter");
       const values = [(await cell(page, 1, 1).innerText()).trim(), (await cell(page, 2, 1).innerText()).trim()];
       note(values[0] === "one" && values[1] === "two", `both values landed without a tap in between (${values.join(", ")})`);
+    },
+  },
+  {
+    // #127 and the stopgap for #99, on a phone, where both were found. A drag pulled mostly down
+    // with the thumb drifting right went C2:C11 → C2:J11 and took the data off screen; a row
+    // header tap jumped the view to H–J; and `=` then a tap on another cell saved `=` over the cell.
+    // All three are a finger meeting the grid's scroll and focus, which only a browser has.
+    name: "on a phone, a drag stays in its column, the view stays put, and a tap during = saves nothing",
+    width: 390,
+    touch: true,
+    async run(page) {
+      const scroller = page.locator("[data-grid-scroller]");
+      const scrollLeft = () => scroller.evaluate((el) => el.scrollLeft);
+      const nameBox = () => page.locator("span.w-16").first().innerText();
+
+      // By coordinates on the part of C2 that shows: a locator's tap scrolls the cell fully into
+      // view first, which a finger never does, and that is the very case this is about.
+      const c2 = await cell(page, 1, 2).boundingBox();
+      await page.touchscreen.tap(c2.x + 30, c2.y + c2.height / 2);
+      await page.waitForTimeout(100);
+      const grip = await page.locator('[role="slider"]').first().boundingBox();
+      const onGrip = await page.evaluate(([gx, gy]) => document.elementFromPoint(gx, gy)?.closest('[role="slider"]') !== null, [grip.x + grip.width / 2, grip.y + grip.height / 2]);
+      note(onGrip, "the grip on the right-most visible column is fully on screen, so a finger can take it");
+      const target = await cell(page, 10, 2).boundingBox();
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+      let x = grip.x + grip.width / 2;
+      let y = grip.y + grip.height / 2;
+      const endY = target.y + target.height / 2;
+      await touch("touchStart", x, y);
+      // Down to C11, drifting right into the edge zone the way a thumb does, then held there.
+      for (let i = 1; i <= 20; i++) {
+        await touch("touchMove", x + i * 1.5, y + ((endY - y) * i) / 20);
+        await page.waitForTimeout(16);
+      }
+      x += 30;
+      await page.waitForTimeout(600);
+      await touch("touchEnd", x, endY);
+      await page.waitForTimeout(100);
+      const range = (await nameBox()).trim();
+      const colA = await cell(page, 10, 0).boundingBox();
+      note(range === "C2:C11", `the drag selected C2:C11, not the columns beside it (${range})`);
+      note(colA !== null && colA.x >= 0, `column A is still on screen after the drag (scrollLeft ${await scrollLeft()})`);
+
+      const before = await scrollLeft();
+      await page.locator('tbody th[scope="row"]').first().tap();
+      await page.waitForTimeout(100);
+      note((await scrollLeft()) === before, `a tap on row header 1 leaves the view where it was (${before} → ${await scrollLeft()})`);
+
+      // The chip: the selection scrolled wholly off to the left comes back with one tap.
+      await cell(page, 1, 2).tap();
+      await scroller.evaluate((el) => el.scrollTo({ left: 900 }));
+      const chip = page.getByRole("button", { name: /^(กลับไปที่|Back to) C2$/ });
+      await chip.waitFor({ timeout: 3000 });
+      await chip.tap();
+      await page.waitForTimeout(100);
+      const back = await cell(page, 1, 2).boundingBox();
+      note(back !== null && back.x > 0 && back.x < 390, `the chip brings the selection back on screen (C2 at x ${back && Math.round(back.x)})`);
+
+      // #99's stopgap, both editors: a tap on another cell while the draft is `=` saves nothing.
+      await cell(page, 3, 1).tap();
+      await cell(page, 3, 1).tap();
+      await cell(page, 3, 1).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("=");
+      await cell(page, 5, 2).tap();
+      await page.waitForTimeout(100);
+      const stillEditing = await cell(page, 3, 1).locator("input").count();
+      note(stillEditing === 1, "a tap on C6 while B4 holds `=` leaves B4's editor open");
+      await page.keyboard.press("Escape");
+      note((await cell(page, 3, 1).innerText()).trim() === "", "and B4 was not written");
+
+      await cell(page, 4, 1).tap();
+      await cell(page, 4, 1).tap();
+      await cell(page, 4, 1).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("keep");
+      await page.keyboard.press("Enter");
+      await cell(page, 4, 1).tap();
+      const bar = page.getByPlaceholder(/SUM\(A1:A10\)/);
+      await bar.tap();
+      await bar.fill("=");
+      await cell(page, 6, 2).tap();
+      await page.waitForTimeout(100);
+      note((await cell(page, 4, 1).innerText()).trim() === "keep", "`=` in the formula bar and a tap on C7: B5 still says keep");
+      note((await nameBox()).trim() === "B5", "and the selection did not move to the tapped cell");
     },
   },
   {
