@@ -908,6 +908,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     // the same here would be a silent wrong number, so the walk stops at the first value that
     // breaks the expected order.
     let best: number | null = null;
+    // equivalent-mutant: "<" → "<=" — the extra item is undefined, which the blank check skips.
     for (let i = 0; i < vector.length; i++) {
       const v = vector[i];
       if (isBlank(v) || isError(v)) continue;
@@ -921,9 +922,13 @@ export const FUNCTIONS: Record<string, FnImpl> = {
         cmp = text === lookupText ? 0 : text < lookupText ? -1 : 1;
       }
       if (cmp === 0) return i + 1;
+      // equivalent-mutant: "<" → "<=" — cmp is never 0 here: that case returned on the line above.
       if (matchType === 1 && cmp < 0) best = i + 1;
+      // equivalent-mutant: ">" → ">=" — cmp is never 0 here: that case returned two lines above.
       if (matchType === 1 && cmp > 0) break;
+      // equivalent-mutant: ">" → ">=" — cmp is never 0 here: that case returned three lines above.
       if (matchType === -1 && cmp > 0) best = i + 1;
+      // equivalent-mutant: "<" → "<=" — cmp is never 0 here: that case returned four lines above.
       if (matchType === -1 && cmp < 0) break;
     }
     return best ?? ERR_NA;
@@ -949,6 +954,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     let rowNum = Math.trunc(firstArg);
     let colNum = secondArg === null ? 0 : Math.trunc(secondArg);
     // One index into a single-row range counts across it, not down it.
+    // equivalent-mutant: ">" → ">=" — a 1×1 range answers the same either way: one index into one cell is that cell, or #REF!.
     if (secondArg === null && height === 1 && width > 1) {
       colNum = rowNum;
       rowNum = 1;
@@ -997,6 +1003,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     let total = 0;
     let count = 0;
     for (let r = 0; r < target.length; r++) {
+      // equivalent-mutant: "<" → "<=" — the extra cell is undefined, which the blank check below skips.
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
         const v = target[r][c];
@@ -1019,6 +1026,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     if (isError(pairs)) return pairs;
     let total = 0;
     for (let r = 0; r < target.length; r++) {
+      // equivalent-mutant: "<" → "<=" — the extra cell is undefined, read as 0, and adding 0 changes nothing.
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
         const n = toNumber(target[r][c] ?? 0);
@@ -1107,6 +1115,7 @@ function rankIn(args: EvalResult[]): FormulaValue {
   const numbers: number[] = [];
   for (const v of requireRange(args[1]).flat()) {
     if (isError(v)) return v;
+    // equivalent-mutant: "||" → "&&" — a blank or a boolean is dropped again two lines down (not finite, or empty text).
     if (isBlank(v) || typeof v === "boolean") continue;
     const n = Number(toDisplayString(v).trim());
     if (Number.isFinite(n) && toDisplayString(v).trim() !== "") numbers.push(n);

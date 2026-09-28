@@ -1,13 +1,14 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { calc, gridContext } from "./testUtils";
 import { parseFormula } from "./parser";
 import { evaluate } from "./evaluator";
 import { colToLetters } from "./address";
 import { adjustFormulaForStructuralOp } from "./structuralShift";
 import { FormulaValue, isError } from "./types";
+import { serialOf } from "../excelDate";
 
 const grid = [
   ["ชื่อ", "หมวด", "ราคา"],
@@ -824,3 +825,52 @@ describe("a leading minus binds tighter than ^, as in Excel (#25)", () => {
   });
 });
 
+
+/**
+ * Written from the mutation gate's survivors (see `check:mutants`): each is a change to the engine
+ * that the suite used to let through. One test per gap, each asserting a result Excel gives.
+ */
+describe("gaps the mutation gate found", () => {
+  it("NOW is today's serial plus the time of day, in local time (#45)", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 2, 1, 14, 30, 15));
+      const today = serialOf(2026, 3, 1);
+      expect(calc("TODAY()")).toBe(today);
+      expect(calc("NOW()")).toBe(today + (14 * 3600 + 30 * 60 + 15) / 86_400);
+      expect(calc("NOW()-TODAY()")).toBeCloseTo(0.60434, 5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("PRODUCT multiplies", () => {
+    expect(calc("PRODUCT(2,3,4)")).toBe(24);
+  });
+
+  it("text compares equal without regard to case, and >= holds between equals", () => {
+    expect(calc('"abc"="ABC"')).toBe(true);
+    expect(calc('"b">="b"')).toBe(true);
+    expect(calc('"b">"b"')).toBe(false);
+  });
+
+  it("a criterion written as =text counts exactly that text", () => {
+    const g: FormulaValue[][] = [["apple"], ["pear"], ["Apple"]];
+    expect(calc('COUNTIF(A1:A3,"=apple")', g)).toBe(2);
+  });
+
+  it("XLOOKUP in wildcard mode still finds a plain exact match, not the first non-match", () => {
+    const g: FormulaValue[][] = [["a", 1], ["b", 2], ["c", 3]];
+    expect(calc('XLOOKUP("b",A1:A3,B1:B3,"none",2)', g)).toBe(2);
+  });
+
+  it("SUMIFS with no condition at all is #VALUE!, not the sum of everything", () => {
+    const g: FormulaValue[][] = [[1], [2], [3]];
+    expect(isError(calc("SUMIFS(A1:A3)", g))).toBe(true);
+    expect(isError(calc("COUNTIFS(A1:A3)", g))).toBe(true);
+  });
+
+  it("inserting a row at the first row of a range moves the range down rather than growing it", () => {
+    expect(adjustFormulaForStructuralOp("SUM(A2:A4)", "row", 1, 1)).toBe("SUM(A3:A5)");
+  });
+});

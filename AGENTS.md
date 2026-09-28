@@ -83,12 +83,17 @@ The milliseconds stay in a `console.log`, because the README's numbers come from
 `npm run check:mutants` ทุบเอนจินทีละจุด (32 mutant, seed คงที่) แล้วถามว่าเทสต์แดงไหม — **"1,088 เทสต์"
 บอกว่ามีกี่ข้อ ไม่ได้บอกว่ามันจับบั๊กได้** ตัวที่รอดคือช่องโหว่จริง รอบแรกเจอหก แล้วเขียนเทสต์ใหม่หกข้อจากมัน
 seed ถูกปักไว้เพื่อไม่ให้ด่านแดงเพราะดวง อยากหาช่องใหม่ให้รัน `SEED=13 MUTANTS=60 npm run check:mutants` เอง
-ไม่ได้ลงไลบรารีเพิ่ม เขียนเองเหมือน PRNG ของ property test
+ไม่ได้ลงไลบรารีเพิ่ม เขียนเองเหมือน PRNG ของ property test · ตัวที่รอดเพราะเป็น **equivalent** (เปลี่ยนโค้ดแต่ไม่เปลี่ยนผล)
+ให้เขียน `// equivalent-mutant: "<" → "<=" — เหตุผล` ไว้บรรทัดเหนือโค้ด ห้ามลดเพดานหรือเปลี่ยน seed เพื่อให้ด่านเขียว
+**ตัวที่รอดแต่ไม่ใช่ equivalent คือเทสต์ที่ขาด ไม่ใช่ที่ให้ติดมาร์กเกอร์**
 `npm run check:mutants` breaks the engine one edit at a time (32 mutants, one pinned seed) and asks whether
 the suite goes red. **"1,088 tests" says how many exist, not whether they would notice a bug.** A survivor is
 a real gap: the first run left six alive and six tests were written from them. The seed is pinned so a red
 cross means this commit rather than this draw; go looking for new gaps on purpose with
 `SEED=13 MUTANTS=60 npm run check:mutants`. No new dependency — hand-written, like the property tests' PRNG.
+A survivor that is **equivalent** (the code changes, the result cannot) gets
+`// equivalent-mutant: "<" → "<=" — reason` on the line above it, never a lower floor or a new seed.
+**A survivor that is not equivalent is a missing test, not a place for a marker.**
 
 `npm run check:readme` (ไม่มี dependency เพิ่ม) จับสิ่งที่ตาคนมักพลาด:
 `npm run check:readme` is dependency-free and catches what the eye misses:

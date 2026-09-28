@@ -38,7 +38,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1613%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1621%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -59,7 +59,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1613 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1621 automated tests.
 
 ---
 
@@ -103,7 +103,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1613 passing tests could not catch
+### 🧪 What 1621 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -114,7 +114,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1613 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1621 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -378,13 +378,13 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1613-case Vitest suite |
+| `npm test` | Run the 1621-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
 | `npm run check:deps` | Every advisory is fixed, or written down with a reason and a review date |
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
-| `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
+| `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
 | `npm run check:e2e` | Drives the real app through 22 flows: formulas, `.xlsx` round trip, an import on top of work that asks first, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
@@ -2360,7 +2360,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1613 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1621 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3328,13 +3328,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1613 cases across 104 files, via Vitest
+npm test      # 1621 cases across 104 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1613 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1621 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -3393,10 +3393,31 @@ being wrong that nothing else was watching:**
 | `VLOOKUP`'s `key <= n` → `<` | An approximate match skipped an exact hit and returned the row above — a plausible neighbouring value |
 | `"FALSE"` → `true` in `toBoolean` | Nothing asked what the *text* `"FALSE"` means |
 
-The pinned sample now kills 31 of 32. The one survivor is **equivalent**: running SUMPRODUCT's row
-loop one past the end reads a row that is not there, a missing cell contributes zero to a product,
-and zero is then added to the total — the arithmetic cannot tell the difference. No test can kill
-it, and writing one that tried would be asserting an implementation detail instead of a result. The
+An **equivalent** mutant changes the code without changing what it computes. Running SUMPRODUCT's
+row loop one past the end reads a row that is not there, a missing cell contributes zero to a
+product, and zero is then added to the total — the arithmetic cannot tell the difference. No test
+can kill it, and writing one that tried would be asserting an implementation detail instead of a
+result. One of those is marked **on the line above the code**, with its reason, and the gate stops
+drawing that one swap on that one line (the line's other operators are still drawn):
+
+```ts
+// equivalent-mutant: "<" → "<=" — the extra cell is undefined, which the blank check below skips.
+```
+
+The reason sits next to the code, where a reviewer sees it — the same bargain `check:deps` makes for
+an accepted advisory.
+
+**The sample is tied to what each site is, not where it is.** It used to shuffle the whole list by
+position, so one site gained or lost anywhere in the engine redrew all 32: the first commit of the
+date work (#45) turned 31/32 into 22/32 by drawing a different sample, not by weakening a single
+test. Each site is now ranked by a hash of its file, its line's text and its swap, so an edit only
+moves the sites it touched. That fresh sample found seven real gaps, and each has its own test:
+`NOW()` never checked for adding the time of day (#45's own new code), `PRODUCT` had no test at all,
+`>=` between texts, a `"=apple"` criterion in COUNTIF, XLOOKUP's wildcard mode meeting an exact
+match, SUMIFS with no condition at all, and inserting a row at the first row of a range — plus
+`SEQUENCE(1,3)` spilling to the right. The rest were equivalent; ten are marked, each with its reason.
+
+The pinned sample now kills 32 of 32. The
 floor is 90%, a little under what the sample scores, because the job is to notice the suite getting
 *worse* rather than to demand a number a legitimate refactor could cost.
 
@@ -3432,10 +3453,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1613 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1621 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1613 passing tests could not catch](#-what-1613-passing-tests-could-not-catch), repeatable
+> [What 1621 passing tests could not catch](#-what-1621-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3650,8 +3671,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Mutation testing** — done: `npm run check:mutants` breaks the engine one character at a time and
       checks the suite goes red, hand-written rather than Stryker so nothing new is installed. The first run
       left six survivors and six tests were written from them, each covering a specific way of being wrong
-      that nothing was watching. The pinned sample now kills 31 of 32; the last one is an equivalent mutant
-      and is documented as such. Still open: it only covers the formula engine, and one whole suite run per
+      that nothing was watching. The pinned sample now kills 32 of 32; it is drawn by what each site is rather
+      than where, and an equivalent mutant carries its reason next to the code. Still open: it only covers the formula engine, and one whole suite run per
       mutant means it cannot cover much more without getting slow.
 - [x] **Supply-chain and size gates** — done: `check:deps` requires every advisory to be fixed or written
       down with a reason *and a review date*, so an accepted risk expires instead of becoming a habit; two

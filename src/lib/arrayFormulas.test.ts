@@ -211,3 +211,9 @@ describe("the array functions themselves", () => {
     expect(String(calc("SEQUENCE(250,201)"))).toBe("#NUM!");
   });
 });
+
+describe("a single row spills across (from the mutation gate)", () => {
+  it("fills the cells to the right of a one-row answer", () => {
+    expect(shown(sheetOf([["=SEQUENCE(1,3)"]]), 1, 3)).toEqual([["1", "2", "3"]]);
+  });
+});

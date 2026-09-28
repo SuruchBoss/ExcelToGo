@@ -35,6 +35,7 @@ export function cellRef(row: number, col: number): string {
  * with a space in it: `'ยอดขาย Q1'!A1`. A doubled `''` inside quotes is one literal quote, again
  * following Excel.
  */
+// equivalent-mutant: "<" → "<=" — inside a regex character class that already holds "=": the class matches the same characters.
 const SHEET_PREFIX_RE = /^(?:'((?:[^']|'')+)'|([^\s'!,()+\-*/^&=<>%:]+))!/;
 
 /** Splits `Sheet2!A1` into its two halves. `sheet` is null for a plain, same-sheet reference. */
