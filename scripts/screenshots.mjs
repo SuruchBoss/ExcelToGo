@@ -37,6 +37,7 @@
  *
  * After retaking, look at every image, then `npm run check:screens -- --bless`.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1400,7 +1401,7 @@ for (const lang of LANGS) mkdirSync(outDir(lang), { recursive: true });
 
 const M = await loadMessages();
 const stubApi = startStubApi();
-const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ["--font-render-hinting=none"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, env: browserEnv(), args: ["--font-render-hinting=none"] });
 const failed = [];
 
 for (const cloud of [true, false]) {

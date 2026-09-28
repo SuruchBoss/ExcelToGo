@@ -28,6 +28,7 @@
  * at 2.62:1, and a scrolling list no keyboard could reach. Neither could ever have been caught by
  * looking at `/app` as it loads, because neither exists until someone presses a button.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -469,6 +470,8 @@ try {
     // Set CHROME_PATH where Playwright's own download isn't the browser to use; CI installs one
     // and leaves this unset.
     executablePath: process.env.CHROME_PATH || undefined,
+    // A UTF-8 locale, or a Thai file name downloads as "download" (see browserEnv.mjs).
+    env: browserEnv(),
   });
 
   for (const path of PAGES) {

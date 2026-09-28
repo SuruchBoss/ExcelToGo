@@ -18,6 +18,7 @@
  * Thai renders because the repo already carries Noto Sans Thai for the PDF export; it is inlined as
  * a data URI so the render does not depend on a font being installed on whatever machine runs this.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import fs from "fs";
 import path from "path";
 import { chromium } from "playwright";
@@ -68,7 +69,7 @@ h1 { font-size: 52px; line-height: 1.22; letter-spacing: -1px; margin-top: 22px;
     .join("")}</div>
 </div></body></html>`;
 
-const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH, env: browserEnv() });
 const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
 await page.setContent(html, { waitUntil: "load" });
 await page.evaluate(() => document.fonts.ready);

@@ -25,6 +25,7 @@
  * here. What is left is the seams — store to grid to engine and back, a real file leaving the app
  * and coming back in, the keyboard, and whether anything is said out loud.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { readdirSync, readFileSync } from "node:fs";
@@ -794,6 +795,23 @@ const FLOWS = [
     },
   },
   {
+    // A Thai sheet name has to arrive as a Thai file name. It also guards this gate: Chromium under
+    // a POSIX locale names such a file "download", which is how QA's round 2 filed a bug that was
+    // not there. Should the browser ever launch without browserEnv() again, this goes red.
+    name: "a Thai sheet name downloads as a Thai file name",
+    width: 1440,
+    async run(page) {
+      await typeInCell(page, 0, 0, "1");
+      await page.getByText("Sheet1", { exact: true }).first().dblclick();
+      await page.keyboard.press("Control+a");
+      await page.keyboard.insertText("ยอดขาย");
+      await page.keyboard.press("Enter");
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "ส่งออก CSV" }).click()]);
+      const name = download.suggestedFilename();
+      note(name === "ยอดขาย.csv", `the CSV is named after the sheet ("${name}")`);
+    },
+  },
+  {
     // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
     // recorded, because the promise is not only "it works" but "nothing about it reaches us".
     name: "an API connected from this browser fills the sheet and refreshes, and nothing about it reaches /api/*",
@@ -1152,6 +1170,8 @@ try {
     // Set CHROME_PATH where Playwright's own download isn't the browser to use; CI installs one
     // and leaves this unset.
     executablePath: process.env.CHROME_PATH || undefined,
+    // A UTF-8 locale, or a Thai file name downloads as "download" (see browserEnv.mjs).
+    env: browserEnv(),
   });
 
   for (const flow of only ? FLOWS.filter((f) => f.name.includes(only)) : FLOWS) {
