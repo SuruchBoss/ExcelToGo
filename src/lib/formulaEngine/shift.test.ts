@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { shiftFormulaRefs } from "./shift";
+import { moveOwnRowRefs, rowReferences, shiftFormulaRefs } from "./shift";
 
 describe("shiftFormulaRefs", () => {
   it("shifts a relative cell reference by the given offset", () => {
@@ -52,3 +52,24 @@ describe("shiftFormulaRefs", () => {
   });
 });
 
+
+describe("a formula moved by a sort (#48)", () => {
+  it("moves references to its own row and nothing else", () => {
+    // Row 2 (index 1) sorted down to row 5: its own C2, D2 and C2:D2 follow; the rate in B6, the
+    // fixed $2 row and the other sheet stay where they point.
+    expect(moveOwnRowRefs("C2*D2", 1, 3)).toBe("C5*D5");
+    expect(moveOwnRowRefs("SUM(C2:D2)*B6", 1, 3)).toBe("SUM(C5:D5)*B6");
+    expect(moveOwnRowRefs("C$2+Sheet1!C2+C1:C2", 1, 3)).toBe("C$2+Sheet1!C2+C1:C2");
+    expect(moveOwnRowRefs("IF(C2>0,\"a,b\",D2)", 1, -1)).toBe('IF(C1>0,"a,b",D1)');
+    expect(moveOwnRowRefs("C2*D2", 1, 0)).toBe("C2*D2");
+  });
+
+  it("lists the rows it points at on its own sheet, with which are $-fixed", () => {
+    expect(rowReferences("C2*D$3+SUM(E4:E10)+Other!A1")).toEqual([
+      { row: 1, absolute: false },
+      { row: 2, absolute: true },
+      { row: 3, absolute: false },
+      { row: 9, absolute: false },
+    ]);
+  });
+});

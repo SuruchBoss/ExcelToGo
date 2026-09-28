@@ -223,7 +223,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1661 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1671 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -425,7 +425,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1661", label: "automated tests" },
+      { value: "1671", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -703,6 +703,13 @@ export const en: Messages = {
   startNotice: {
     text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
     openSample: "Try it with sample data",
+  },
+  sortWarning: {
+    title: "Formulas here point at other rows",
+    body: (formulas) =>
+      `${formulas === 1 ? "One formula" : `${formulas} formulas`} in the rows being sorted ${formulas === 1 ? "points" : "point"} at a row other than ${formulas === 1 ? "its" : "their"} own (a running total, or a total caught in the range). After the sort ${formulas === 1 ? "it" : "they"} would work from different rows' numbers — formulas that only use their own row move with it correctly. Undo always takes a sort back.`,
+    sortAnyway: "Sort anyway",
+    cancel: "Cancel",
   },
   newFile: {
     button: "New file",

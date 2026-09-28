@@ -355,6 +355,20 @@ const OPENED_STATES = [
     },
   },
   {
+    // Asked before a sort that would give formulas another row's numbers (#48): the sample's grand
+    // total caught in the range is enough.
+    name: "sort warning dialog",
+    path: "/app",
+    async open(page) {
+      await page.getByRole("button", { name: "ลองกับข้อมูลตัวอย่าง", exact: true }).click();
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      await page.locator('td[data-row="11"][data-col="4"]').click({ modifiers: ["Shift"] });
+      await reveal(page, 'button[title^="เรียงจากน้อยไปมาก"]');
+      await page.locator('button[title^="เรียงจากน้อยไปมาก"]').first().click();
+      await page.getByRole("alertdialog").waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
     name: "names popover",
     path: "/app",
     async open(page) {

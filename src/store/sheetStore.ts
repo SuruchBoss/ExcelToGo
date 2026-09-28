@@ -31,6 +31,7 @@ import {
   deleteColumn,
   deleteRow,
   detectSortRange,
+  sortRisks,
   getCellFormat,
   insertColumnBefore,
   insertRowBefore,
@@ -340,7 +341,14 @@ interface SheetState {
   pasteAtSelection: (externalText?: string) => void;
   clearClipboard: () => void;
 
-  sortSelection: (ascending: boolean) => void;
+  /**
+   * Sorts the rows around the selection. When a formula in them points at another row (#48), it
+   * records `sortWarning` and does nothing until asked again with `force`.
+   */
+  sortSelection: (ascending: boolean, force?: boolean) => void;
+  /** Set while a sort waits on the question "these formulas point at other rows — sort anyway?". */
+  sortWarning: { ascending: boolean; formulas: number } | null;
+  dismissSortWarning: () => void;
   setColumnFilter: (col: number, values: string[]) => void;
   clearColumnFilter: (col: number) => void;
   clearAllFilters: () => void;
@@ -1245,15 +1253,24 @@ export const useSheetStore = create<SheetState>()(
 
         clearClipboard: () => set({ clipboard: null }),
 
-        sortSelection: (ascending) =>
+        sortWarning: null,
+        dismissSortWarning: () => set({ sortWarning: null }),
+
+        sortSelection: (ascending, force = false) =>
           set((s) => {
             if (refusedStructuralChange(activeTab(s).sheet)) return {};
+            const sheet = activeTab(s).sheet;
+            const selection = activeSelectionOf(s);
+            const computed = computeTab(sheet, s.sheets);
+            const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
+            // Asked first, not refused: sometimes a running total is meant to be re-run on new
+            // rows. But a sort that silently gives each row another row's numbers is how #48 cost
+            // a tester 2,710 baht, so it is never silent.
+            const risks = force ? [] : sortRisks(sheet, range);
+            if (risks.length > 0) return { sortWarning: { ascending, formulas: risks.length } };
             return {
-            sheets: updateActiveSheet(s, (sheet, selection) => {
-              const computed = computeTab(sheet, s.sheets);
-              const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
-              return sortRange(sheet, computed, range, selection.anchorCol, ascending);
-            }),
+            sortWarning: null,
+            sheets: updateActiveSheet(s, (current) => sortRange(current, computed, range, selection.anchorCol, ascending)),
             // Rows move under a cursor that stays put — the change nobody watching the cell would
             // notice, which is exactly what the live region is for.
             ...say(getMessages().live.sorted(colToLetters(activeSelectionOf(s).anchorCol), ascending)),

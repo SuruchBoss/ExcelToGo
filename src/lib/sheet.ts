@@ -303,4 +303,4 @@ export type { SheetRange } from "./sheetRange";
 export type { ClipboardBlock } from "./sheetClipboard";
 export { copyRange, pasteClipboardBlock, pastePlainTextBlock, clearRange, ensureBounds, toTsv, parseTsv } from "./sheetClipboard";
 export type { SortRange } from "./sheetSort";
-export { detectSortRange, sortRange } from "./sheetSort";
+export { detectSortRange, sortRange, sortRisks } from "./sheetSort";
