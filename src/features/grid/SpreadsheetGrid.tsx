@@ -43,7 +43,7 @@ import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gri
 import ChartOverlay from "./ChartOverlay";
 import SelectionHandle from "./SelectionHandle";
 import FillHandle from "./FillHandle";
-import { dateFit } from "./dateFit";
+import { dateFit, useFontsLoaded } from "./dateFit";
 import { isEditingTab, noteRefusedEdit } from "@/store/tabStore";
 import { dateKindAt } from "@/lib/dateCells";
 import { afterEnter, afterTab, type TabRun } from "./tabReturn";
@@ -87,6 +87,8 @@ export default function SpreadsheetGrid() {
   const rawAt = useCallback((row: number, col: number) => sheet.cells[row]?.[col] ?? "", [sheet]);
 
   const merges = useMemo(() => mergeLookup(sheet.merges), [sheet.merges]);
+  // A date is fitted to its column in the page's font; drawn again once that font has arrived (#136).
+  useFontsLoaded();
 
   // ── Only the rows on screen go in the DOM ──────────────────────────────────────────────────
   //
