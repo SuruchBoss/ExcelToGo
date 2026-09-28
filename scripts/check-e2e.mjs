@@ -906,6 +906,32 @@ const FLOWS = [
     },
   },
   {
+    // #145: the screen that holds someone's work on the worst day had no gate at all. The crash is
+    // the app's own crash test (`features/crash/crashTest.ts`), which only an automated browser that
+    // asks for it can set off — never a workbook in a format the app happens not to read.
+    name: "a crash offers the work as a file that holds it, and Try again comes back to it",
+    async run(page, { tmp }) {
+      await typeInCell(page, 0, 0, "rescued");
+      await typeInCell(page, 1, 0, "=1+1");
+      await page.evaluate(() => sessionStorage.setItem("exceltogo:crash-test", "1"));
+      await page.reload({ waitUntil: "networkidle" });
+      await page.getByRole("heading", { level: 1, name: /มีบางอย่างพัง/ }).waitFor({ timeout: 10_000 });
+      note(true, "the rescue screen appears, and says the sheet is still here");
+
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /Sheet1/ }).click()]);
+      const file = join(tmp, "rescued.csv");
+      await download.saveAs(file);
+      const csv = await readFile(file, "utf8");
+      note(csv.includes("rescued") && csv.includes("=1+1"), `the file it offers holds the work, formulas as typed (${JSON.stringify(csv.replace(/^\uFEFF/, "").trim())})`);
+
+      await page.evaluate(() => sessionStorage.removeItem("exceltogo:crash-test"));
+      await page.getByRole("button", { name: /ลองอีกครั้ง/ }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "rescued", null, { timeout: 10_000 }).catch(() => {});
+      const back = (await cell(page, 0, 0).innerText().catch(() => "")).trim();
+      note(back === "rescued", `Try again comes back to the sheet as it was (A1 "${back}")`);
+    },
+  },
+  {
     // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
     // recorded, because the promise is not only "it works" but "nothing about it reaches us".
     name: "an API connected from this browser fills the sheet and refreshes, and nothing about it reaches /api/*",

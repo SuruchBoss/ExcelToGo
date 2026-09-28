@@ -1042,8 +1042,10 @@ const SCENES = [
     },
   },
   {
-    // The error screen, reached the way the error boundary is tested: `?crash=1` throws on render.
-    // The workbook is what the store would have saved, so the rescue has something real to offer.
+    // The error screen, reached the way the gates reach it: the crash test in `features/crash`
+    // throws on render (#145). It used to be a workbook saved in a format the app could not read,
+    // which stopped crashing anything once #139 taught the app to read it. The workbook is what the
+    // store would have saved, so the rescue has something real to offer.
     file: "39-crash-rescue.png",
     async take(k) {
       const [first, second] = W[k.lang].crashTabs;
@@ -1055,7 +1057,14 @@ const SCENES = [
         prepare: (page) =>
           page.addInitScript(
             ({ first, second, header }) => {
-              const sheet = (cells) => ({ rows: cells.length, cols: cells[0].length, cells });
+              sessionStorage.setItem("exceltogo:crash-test", "1");
+              // Saved as the store saves today (version 1, cells keyed "row,col"). A version-0 save
+              // that looks like the sample is dropped on purpose (#139), and this one would.
+              const sheet = (grid) => ({
+                rows: grid.length,
+                cols: grid[0].length,
+                cells: Object.fromEntries(grid.flatMap((row, r) => row.map((text, c) => [`${r},${c}`, text]))),
+              });
               localStorage.setItem(
                 "exceltogo-sheet-v2",
                 JSON.stringify({
@@ -1066,15 +1075,17 @@ const SCENES = [
                     ],
                     activeSheetId: "a",
                   },
-                  version: 0,
+                  version: 1,
                 })
               );
             },
             { first, second, header: W[k.lang].header }
           ),
       });
-      await k.page.goto(ORIGIN + "/app?crash=1", { waitUntil: "networkidle" });
-      await k.page.locator("h1").first().waitFor();
+      // The rescue screen's own heading and a file to take away, or the scene fails — a rescue
+      // screen with nothing to offer is not the picture the README describes.
+      await k.page.getByRole("heading", { level: 1, name: /Something broke|มีบางอย่างพัง/ }).waitFor({ timeout: 10_000 });
+      await k.page.getByRole("button", { name: new RegExp(first) }).waitFor({ timeout: 10_000 });
       await k.shot(this.file);
     },
   },
