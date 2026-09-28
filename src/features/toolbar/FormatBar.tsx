@@ -31,6 +31,7 @@ import { isFrozen } from "@/lib/sheetFreeze";
 import { ruleAt } from "@/lib/dataValidation";
 import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
+import { keepGridFocus } from "./keepGridFocus";
 import CommentPopover from "@/features/grid/CommentPopover";
 import ValidationPopover from "@/features/grid/ValidationPopover";
 import NamesPopover from "@/features/grid/NamesPopover";
@@ -136,7 +137,7 @@ export default function FormatBar() {
 
 
   return (
-    <div ref={barRef} className="flex items-center gap-2 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">
+    <div ref={barRef} className="flex items-center gap-2 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4" onMouseDown={keepGridFocus}>
       {/* The word only on a wide screen: italic and underline made this row 72px longer, and at
           1366px the word was the one thing on it nobody presses. */}
       <span className="hidden shrink-0 text-xs font-medium text-zinc-500 2xl:inline">{t.formatBar.label}</span>

@@ -243,6 +243,13 @@ export default function Landing() {
               {t.landing.headline}
             </h1>
             <p className="mt-5 max-w-xl text-[15.5px] leading-[1.75] text-ash">{t.landing.subheadline}</p>
+            {/* The promise's limit, right under the promise (#125). The public site has no server key
+                on purpose, so a visitor without their own gets the keyword guess — and three blind
+                testers took its wrong formulas for the product. Said here, where the claim is made,
+                not in fine print further down. */}
+            <p className="mt-4 max-w-xl border-l-2 border-amber-500 pl-3.5 text-[14px] leading-relaxed text-ink/80">
+              {t.landing.aiNote}
+            </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               {cta}

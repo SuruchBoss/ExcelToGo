@@ -201,14 +201,17 @@ for (const locale of ["th", "en"]) {
     const m = new RegExp(`\\{ value: "(\\d+)", label: "[^"]*${label}[^"]*" \\}`).exec(source);
     return m ? Number(m[1]) : null;
   };
-  const eyebrow = /eyebrow: "[^"]*?(\d+)[^"]*"/.exec(source);
+  // The hero's eyebrow is for someone deciding whether to try a spreadsheet, not for a developer:
+  // the test count moved to the "under the hood" band (QA round 2, UX-11), which `stat` checks
+  // below. Fail if a count creeps back up into the hero.
+  const heroEyebrow = /landing: \{[\s\S]*?eyebrow: "([^"]*)"/.exec(source)?.[1] ?? "";
+  if (/\d{3,}/.test(heroEyebrow)) fail(`src/i18n/${locale}.ts: the landing hero's eyebrow prints a count ("${heroEyebrow}") — developer figures live in the "under the hood" band`);
 
   for (const [what, actual, found] of [
     ["engine functions", engineFunctions, stat(locale === "th" ? "ฟังก์ชันในเอนจิน" : "engine functions")],
     ["palette formulas", paletteFormulas, stat(locale === "th" ? "สูตรพร้อมใช้" : "ready-made formulas")],
     ["tests", actualTests, stat(locale === "th" ? "เทสต์อัตโนมัติ" : "automated tests")],
     ["security tests", securityTests, stat(locale === "th" ? "เทสต์ด้านความปลอดภัย" : "security tests")],
-    ["tests (eyebrow)", actualTests, eyebrow ? Number(eyebrow[1]) : null],
   ]) {
     if (found === null) fail(`src/i18n/${locale}.ts: couldn't find the landing page's ${what} figure`);
     else if (found !== actual) fail(`src/i18n/${locale}.ts: landing page says ${found} ${what}, but there are ${actual}`);

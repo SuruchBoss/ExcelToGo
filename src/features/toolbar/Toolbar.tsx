@@ -8,6 +8,7 @@ import { FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Und
 import clsx from "clsx";
 import { selectHasWork, useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
+import { keepGridFocus } from "./keepGridFocus";
 import LanguageToggle from "./LanguageToggle";
 import Link from "next/link";
 import { isCloudConfigured } from "@/lib/cloud/config";
@@ -82,7 +83,7 @@ export default function Toolbar() {
     // the format bar and the formula bar under it, more than half a phone screen was chrome before
     // the first cell. Below 1024px it now holds four things and does not scroll at all; from 1024px up
     // it scrolls when it has to, like the format bar under it.
-    <div className="flex items-center gap-1.5 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 sm:py-2">
+    <div className="flex items-center gap-1.5 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 sm:py-2" onMouseDown={keepGridFocus}>
       {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
       <Link href="/" title={t.landing.home} className="mr-2 shrink-0 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}

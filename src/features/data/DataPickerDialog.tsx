@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Hash, Table2, X } from "lucide-react";
 import clsx from "clsx";
 import { PublicDataSource } from "@/lib/dataSources/types";
@@ -12,6 +12,7 @@ import { cellRef, parseCellRef } from "@/lib/formulaEngine/address";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { selectActiveSelection, selectActiveSheet, useLiveBlocks, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
+import { useDialogKeys } from "@/features/a11y/useDialogKeys";
 import { formatValue, valueLabel } from "./valueLabel";
 import { partialHintText } from "./sourceError";
 
@@ -30,6 +31,9 @@ interface Props {
 export default function DataPickerDialog({ source, replacing, onClose }: Props) {
   const t = useT();
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Escape closes and focus goes back to the button that opened it, like the app's other dialogs (#122).
+  useDialogKeys(panelRef, onClose);
   const table = useDataSourceStore((s) => s.data[source.id]);
   const sheet = useSheetStore(selectActiveSheet);
   const selection = useSheetStore(selectActiveSelection);
@@ -79,6 +83,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/35 p-5" onMouseDown={onClose}>
       <div
         className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        ref={panelRef}
         onMouseDown={(e) => e.stopPropagation()}
         // Announced as what it is. Without the role a screen reader heard the page go on as if
         // nothing had opened — found when the screenshot script went looking for the dialog by role.

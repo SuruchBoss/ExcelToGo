@@ -58,9 +58,9 @@ h1 { font-size: 52px; line-height: 1.22; letter-spacing: -1px; margin-top: 22px;
 .url { margin-top: 16px; font-size: 19px; color: #6b6f76; }
 </style></head><body><div class="page">
   <div class="eyebrow"><div class="sq"></div><div>ExcelToGo · ไม่ต้องจำสูตร ไม่ต้องสมัคร ไม่ต้องอัปโหลด</div></div>
-  <h1>พิมพ์เป็นภาษาไทย แล้วได้สูตร Excel ที่ใช้ได้จริง</h1>
+  <h1>พิมพ์บอกเป็นภาษาไทย แล้วได้สูตร Excel แนะนำ</h1>
   <div class="mono">“รวมยอดขายเฉพาะสาขาเหนือ”&nbsp;&nbsp;→&nbsp;&nbsp;=SUMIF(B2:B50,"เหนือ",D2:D50)</div>
-  <div class="sub">Describe what you want and get a working Excel formula back, with an explanation. Or pick from ${paletteFormulas} ready-made formulas and drag across the cells instead of typing addresses.</div>
+  <div class="sub">Describe what you want and get a suggested formula with an explanation — a keyword guess, marked as one, until you add your own API key. Or pick from ${paletteFormulas} ready-made formulas and drag across the cells instead of typing addresses.</div>
   <div class="url">excel-to-go.vercel.app</div>
   <div class="spacer"></div>
   <div class="stats">${stats

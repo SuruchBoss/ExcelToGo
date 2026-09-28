@@ -45,18 +45,38 @@ export function pickLocale(languages: readonly string[]): Locale {
  */
 const TITLES: Record<Locale, { home: string; guide: string }> = {
   th: {
-    home: "ExcelToGo — พิมพ์เป็นภาษาไทย แล้วได้สูตร Excel ที่ใช้ได้จริง",
+    home: "ExcelToGo — ตาราง Excel ในเบราว์เซอร์ พิมพ์บอกแล้วได้สูตรแนะนำ",
     guide: "คู่มือต่อข้อมูลของคุณเอง · ExcelToGo",
   },
   en: {
-    home: "ExcelToGo — describe it in plain words, get a working Excel formula",
+    home: "ExcelToGo — a spreadsheet in your browser that suggests formulas",
     guide: "Connect your own data · ExcelToGo",
   },
 };
 
+/** The title the page should have, once a language is known; `null` until then. */
+let wantedTitle: string | null = null;
+let titleGuard: MutationObserver | null = null;
+
+/**
+ * Keeps the tab title in the reader's language.
+ *
+ * Setting `document.title` once was not enough (QA round 2, UX-10): the metadata `<title>` is a
+ * React-rendered element, and a few dozen milliseconds after hydration React writes its server text
+ * back into it — so an English browser got `lang="en"` and a Thai title. The guard watches `<head>`
+ * and puts the chosen title back whenever something else rewrites it; our own write matches and
+ * stops there, so it cannot loop.
+ */
 const syncDocument = (locale: Locale) => {
   document.documentElement.lang = locale;
-  document.title = TITLES[locale][window.location.pathname.startsWith("/guide") ? "guide" : "home"];
+  wantedTitle = TITLES[locale][window.location.pathname.startsWith("/guide") ? "guide" : "home"];
+  if (document.title !== wantedTitle) document.title = wantedTitle;
+  if (!titleGuard && typeof MutationObserver !== "undefined") {
+    titleGuard = new MutationObserver(() => {
+      if (wantedTitle !== null && document.title !== wantedTitle) document.title = wantedTitle;
+    });
+    titleGuard.observe(document.head, { subtree: true, childList: true, characterData: true });
+  }
 };
 
 /** Reads an autosaved language preference from localStorage once, after the initial render — or,
