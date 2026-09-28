@@ -1757,6 +1757,11 @@ export const useSheetStore = create<SheetState>()(
 
         dismissImportNotice: () => set({ importNotice: null }),
 
+        /**
+         * Swaps the whole document for another one — opening a workbook from the optional cloud
+         * backend. Selections and filters are keyed by sheet id, and the incoming ids are not the
+         * outgoing ones, so they are cleared rather than left pointing at sheets that are gone.
+         */
         replaceWorkbook: (sheets) => {
           if (sheets.length === 0) return;
           set({
