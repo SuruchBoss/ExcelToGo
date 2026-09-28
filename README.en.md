@@ -382,7 +382,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 19 flows: formulas, `.xlsx` round trip, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar (needs a build) |
+| `npm run check:e2e` | Drives the real app through 20 flows: formulas, `.xlsx` round trip, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -577,7 +577,7 @@ second is never called (`hit our own /api/ai/formula: false`); the first arrives
 
 <p align="center"><img src="public/screenshots/en/34-live-data.gif" width="820" alt="Picking a live source, pressing it into the sheet, and the table changing on its own every five seconds"></p>
 
-<sub>Recorded from a production build by `npm run screenshots` — the source in it is one of the sample feeds the app serves itself under `/api/demo/*` (its numbers move every five seconds), added as a server-side source the way an operator adds any other.</sub>
+<sub>Recorded from a production build by `npm run screenshots` — the source in it is one of the sample feeds the app serves itself under `/api/sample/*` (its numbers move every five seconds), added as a server-side source the way an operator adds any other.</sub>
 
 <p align="center"><img src="public/screenshots/en/08-live-data.png" width="820"></p>
 
@@ -606,6 +606,20 @@ and **Save and add to the sheet** goes straight on to the picker.
 
 <p align="center"><img src="public/screenshots/en/47-browser-source.png" width="700" alt="The connect-from-this-browser form after a test: 6 rows × 3 columns and the first five rows"></p>
 <p align="center"><sub><b>After a test</b> — 6 rows × 3 columns and the first five rows, before deciding to save</sub></p>
+
+#### Try a sample API
+
+No API of your own yet? The live-data panel has **three sample APIs** served by this site, with numbers that
+move on their own, each in a shape real APIs come in — **Live sales** (a list whose values change every 5
+seconds), **Today's summary** (an object of single values) and **Orders (several pages)** (120 rows, 25 a page,
+to show the pages being followed). **Nothing is added for you**: "Try it" fills in the same form a real API uses,
+and you test, save and put it in the sheet yourself — so trying one is practice for the real thing, not a shortcut
+that only works on samples. They are on the app's own site, which `'self'` in the CSP already covers, so there is
+no reload and nothing goes into the CSP cookie. A sample already connected shows as "Added" instead of inviting a
+duplicate.
+
+<p align="center"><img src="public/screenshots/en/49-sample-apis.png" width="700" alt="The live-data panel: Live sales, connected through Try it, is in the list, and the other two sample APIs still offer Try it"></p>
+<p align="center"><sub><b>Sample APIs in the live-data panel</b> — Try it on Live sales, test, save, and it shows as Added; the other two wait their turn</sub></p>
 
 It works the way draw.io opens a file: **the request goes from your browser straight to the API.** If this
 machine can open the API — on the VPN, in the office, or on the public internet — the app can fetch it, and
@@ -827,11 +841,10 @@ Behind the scenes:
 - **Drag and drop still works** for people who prefer it, it's just no longer the primary path.
 - The side panel keeps a "Live data in this sheet" list showing what is placed where, each with its own remove
   button.
-- The app's three sample feeds are still there: `/api/demo/sales` (a table whose numbers drift every 5s),
-  `/api/demo/summary` (a KPI-style object) and `/api/demo/orders` (**paginated**, 25 rows a page over 120 rows) —
-  used by the screenshots and the gates. An operator can add them as server-side sources with an app-relative
-  URL, but **nothing is put there for you any more** (#109): the server no longer seeds `data/sources.json`,
-  and the UI has no ready-made sample sources.
+- **This site's three sample APIs** (`/api/sample/sales`, a table whose numbers drift every 5s;
+  `/api/sample/summary`, a set of single values; and `/api/sample/orders`, **paginated**, 25 rows a page over 120)
+  sit in the live-data panel under **"Try a sample API"** — see [Try a sample API](#try-a-sample-api) above.
+  Nothing is added for you: the server does not seed `data/sources.json`, and a sample is connected by pressing it.
 
 #### Limits
 
@@ -2383,7 +2396,7 @@ src/
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
                               # errorResponse.ts: failures → responses; a rate limit keeps a real 429 + its wait
-    api/demo/                # Sample feeds whose numbers drift on their own — used by the screenshots and the
+    api/sample/                # Sample feeds whose numbers drift on their own — used by the screenshots and the
                               # gates; nothing is wired to them for you
                               # (sales, summary, and orders — paginated at 25 rows a page)
   store/
@@ -3193,7 +3206,7 @@ assistant sent a range including its text header, because the context builder re
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 19 flows in a real browser (needs a build)
+npm run check:e2e   # 20 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3545,7 +3558,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 19 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 20 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

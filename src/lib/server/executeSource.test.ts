@@ -210,9 +210,9 @@ describe("executeSource pagination", () => {
   });
 
   it("resolves an app-relative URL against the origin", async () => {
-    const calls = stubFetch({ "https://app.test/api/demo/sales": { body: rows(1, 2) } });
-    await executeSource({ type: "rest", url: "/api/demo/sales" }, ORIGIN);
-    expect(calls).toEqual(["https://app.test/api/demo/sales"]);
+    const calls = stubFetch({ "https://app.test/api/sample/sales": { body: rows(1, 2) } });
+    await executeSource({ type: "rest", url: "/api/sample/sales" }, ORIGIN);
+    expect(calls).toEqual(["https://app.test/api/sample/sales"]);
   });
 
   it("treats a CSV source as a single page", async () => {
@@ -328,16 +328,16 @@ describe("the URL guard on the path that actually fetches", () => {
 
   it("lets the app reach its own demo routes, which are relative and not user-controlled", async () => {
     // These resolve to the deployment itself, so a loopback address here is not a warning sign.
-    stubFetch({ "https://app.test/api/demo/sales": { body: [{ a: 1 }] } });
-    const table = await executeSource({ type: "rest", url: "/api/demo/sales" }, ORIGIN);
+    stubFetch({ "https://app.test/api/sample/sales": { body: [{ a: 1 }] } });
+    const table = await executeSource({ type: "rest", url: "/api/sample/sales" }, ORIGIN);
     expect(table.rows).toHaveLength(1);
   });
 
   it("still checks where a relative source is redirected to", async () => {
     stubFetch({
-      "https://app.test/api/demo/sales": { body: "", status: 302, headers: { location: "http://10.0.0.5/secrets" } },
+      "https://app.test/api/sample/sales": { body: "", status: 302, headers: { location: "http://10.0.0.5/secrets" } },
     });
-    await expect(executeSource({ type: "rest", url: "/api/demo/sales" }, ORIGIN)).rejects.toThrow(
+    await expect(executeSource({ type: "rest", url: "/api/sample/sales" }, ORIGIN)).rejects.toThrow(
       /not a public address/
     );
   });

@@ -104,7 +104,7 @@ async function fetchPage(
 /**
  * Fetches a source and normalizes whatever it returns into a TableData. Runs on the server so
  * the auth header never reaches the browser and CORS isn't the user's problem. `origin` lets an
- * app-relative URL ("/api/demo/sales") resolve against the current deployment.
+ * app-relative URL ("/api/sample/sales") resolve against the current deployment.
  *
  * When the first response looks like a list and signals a next page, following pages are fetched
  * and their records appended, up to `maxRows` (and never more than MAX_PAGES requests or the total

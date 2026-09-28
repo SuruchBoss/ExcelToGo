@@ -103,7 +103,7 @@ with no token; that is gone (#109), and the server no longer seeds `data/sources
 `NEXT_PUBLIC_DEMO_MODE=1` is still read, for deployments that set it, and now means exactly one
 thing: every server-side source route refuses with 403 `server_sources_off`, **even with a token
 set** — kept rather than removed so an old setting cannot silently switch a server feature *on*. The
-sample feeds under `/api/demo/*` still exist for screenshots and tests, and the list in
+sample feeds under `/api/sample/*` still exist for screenshots and tests, and the list in
 `src/lib/server/demoSources.ts` (app-relative URLs, no credential, GET only, exact-id lookup — pinned
 by `demoSources.test.ts`) is kept for a future follow-along sample.
 
@@ -129,7 +129,7 @@ length the address does not state. So is Teredo, `2001::/32` (RFC 4380), which c
 obscured and is switched off almost everywhere. Only `http` and `https` are allowed.
 
 A URL beginning with a single `/` is one of the app's own routes and is the one case the guard is
-skipped for — an app-relative source such as the sample feed `/api/demo/sales` is reached even when the
+skipped for — an app-relative source such as the sample feed `/api/sample/sales` is reached even when the
 deployment's own origin is loopback. "Its own route" is decided by resolving the URL and comparing the *resolved origin* to the
 deployment's, not by the leading slash alone: `//169.254.169.254/` and `/\169.254.169.254/` also
 begin with a slash, but resolve to a foreign host, so they clear the full guard like any absolute

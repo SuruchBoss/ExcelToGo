@@ -91,6 +91,7 @@ const label = {
   wholeTable: /^(ตารางทั้งหมด|Whole table)/,
   insert: /^(ใส่ลงตาราง|Insert)$/,
   copyForIt: /^(คัดลอกไปส่ง IT|Copy for IT)$/,
+  trySales: /^(ลองต่อ|Try it): (ยอดขายสด|Live sales)$/,
   menu: /^(เมนู|Menu)$/,
   connectApi: /^(ต่อ API \/ ฐานข้อมูล|Connect an API \/ database)/,
   tools: /^(เครื่องมือ|Tools)/,
@@ -713,6 +714,37 @@ const FLOWS = [
       const text = await form.innerText();
       note(text.includes("Access-Control-Allow-Origin: " + ORIGIN), "the checklist names the header IT has to send, with this site's own origin");
       note(/VPN/.test(text), "and asks about the VPN first");
+    },
+  },
+  {
+    // The sample APIs: not added for anyone, but one press from a filled-in form. They live on this
+    // site, which `'self'` already covers, so trying one costs no reload and leaves the policy alone.
+    name: "a sample API goes through the same form, with no reload and no change to the policy",
+    async run(page) {
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.trySales }).click();
+      const form = page.getByRole("dialog");
+      const url = await form.getByPlaceholder("https://erp.example.com/api/items").inputValue();
+      note(url === ORIGIN + "/api/sample/sales", `the form is filled in with the sample's URL on this site (${url})`);
+      const test = form.getByRole("button", { name: label.test });
+      note(await test.isVisible(), "and its button just says Test — a sample needs no reload");
+      await test.click();
+      await form.getByText(/ได้ข้อมูล 5 แถว|Got 5 rows/).waitFor({ timeout: 15_000 });
+      await form.getByRole("button", { name: label.saveAndAdd }).click();
+      const picker = page.getByRole("dialog");
+      await picker.getByRole("button", { name: label.wholeTable }).click();
+      await picker.getByRole("textbox").fill("G1");
+      await picker.getByRole("button", { name: label.insert }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="6"]')?.innerText.trim() === "CF-01", null, { timeout: 15_000 });
+      note(true, "its rows are in the sheet at G1");
+      const cookie = (await page.context().cookies()).find((c) => c.name === "etg-api-origins");
+      note(!cookie || !decodeURIComponent(cookie.value).includes(ORIGIN), "this site's own origin is not added to the cookie");
+      const header = (await page.goto(ORIGIN + "/app"))?.headers()["content-security-policy"] ?? "";
+      note(connectSrcOf(header) === BASE_CONNECT_SRC, `and connect-src is still exactly the old one (${connectSrcOf(header)})`);
+      // The panel may already be open after the reload; the tab toggles, so press it only if not.
+      const sample = page.getByRole("button", { name: label.trySales });
+      if (!(await sample.isVisible().catch(() => false))) await page.getByRole("button", { name: label.liveData }).first().click();
+      note(await sample.isDisabled(), "the sample now shows as added instead of inviting a duplicate");
     },
   },
   {

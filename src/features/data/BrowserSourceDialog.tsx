@@ -23,6 +23,8 @@ interface Props {
   source?: BrowserSourceConfig;
   /** A draft brought back across the reload that allowed its origin, to be tested at once. */
   resume?: { draft: BrowserSourceDraft; headerValue: string };
+  /** A form filled in for a sample API — nothing is run until the person presses Test. */
+  preset?: BrowserSourceDraft;
   onClose: () => void;
 }
 
@@ -51,14 +53,14 @@ type Result = { ok: true; table: TableData } | { ok: false; code: string; detail
  * The first time an origin is used the page has to reload once so its CSP names it; the buttons say
  * so before they are pressed, and the form comes back after the reload with the test running.
  */
-export default function BrowserSourceDialog({ source, resume, onClose }: Props) {
+export default function BrowserSourceDialog({ source, resume, preset, onClose }: Props) {
   const t = useT();
   const b = t.data.browser;
   const titleId = useId();
   const saveBrowserSource = useDataSourceStore((s) => s.saveBrowserSource);
   const testBrowserSource = useDataSourceStore((s) => s.testBrowserSource);
   const openPicker = useSheetStore((s) => s.openDataPicker);
-  const [draft, setDraft] = useState<BrowserSourceDraft>(() => resume?.draft ?? draftFrom(source));
+  const [draft, setDraft] = useState<BrowserSourceDraft>(() => resume?.draft ?? preset ?? draftFrom(source));
   const [headerValue, setHeaderValue] = useState(() => resume?.headerValue ?? "");
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);

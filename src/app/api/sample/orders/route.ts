@@ -45,6 +45,6 @@ export async function GET(request: Request) {
     page_size: PAGE_SIZE,
     total: TOTAL,
     items,
-    next: hasNext ? `/api/demo/orders?page=${page + 1}${langParam}` : null,
+    next: hasNext ? `/api/sample/orders?page=${page + 1}${langParam}` : null,
   });
 }

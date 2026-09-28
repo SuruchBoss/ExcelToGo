@@ -129,7 +129,7 @@ const unlockedData = async (page) => {
     const res = await fetch(ORIGIN + "/api/sources", {
       method: "POST",
       headers: { "content-type": "application/json", "x-sources-token": SOURCES_TOKEN },
-      body: JSON.stringify({ name: "ยอดขาย", type: "rest", url: "/api/demo/sales", refreshSec: 30 }),
+      body: JSON.stringify({ name: "ยอดขาย", type: "rest", url: "/api/sample/sales", refreshSec: 30 }),
     });
     if (!res.ok) throw new Error(`adding a server source failed: ${res.status}`);
     sampleAdded = true;

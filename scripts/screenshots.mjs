@@ -483,15 +483,15 @@ async function startBlank(k) {
 }
 
 /**
- * The three sample feeds the app serves under `/api/demo/*`, added as server sources the way an
+ * The three sample feeds the app serves under `/api/sample/*`, added as server sources the way an
  * operator would. The server used to seed them itself; it no longer does (#109), so a scene that
  * wants a panel with sources in it adds them, and they go when the scene closes.
  */
 async function addSampleSources(k) {
   const q = k.lang === "en" ? "?lang=en" : "";
-  await addSource(k, { name: W[k.lang].salesSource, type: "rest", url: `/api/demo/sales${q}`, refreshSec: 5 });
-  await addSource(k, { name: W[k.lang].summarySource, type: "rest", url: `/api/demo/summary${q}`, refreshSec: 5 });
-  await addSource(k, { name: W[k.lang].pagedSource, type: "rest", url: `/api/demo/orders${q}`, maxRows: 200, refreshSec: 30 });
+  await addSource(k, { name: W[k.lang].salesSource, type: "rest", url: `/api/sample/sales${q}`, refreshSec: 5 });
+  await addSource(k, { name: W[k.lang].summarySource, type: "rest", url: `/api/sample/summary${q}`, refreshSec: 5 });
+  await addSource(k, { name: W[k.lang].pagedSource, type: "rest", url: `/api/sample/orders${q}`, maxRows: 200, refreshSec: 30 });
 }
 
 async function openData(k, { blank = false, ...view } = {}) {
@@ -716,7 +716,7 @@ const SCENES = [
     // guard doing its job, so a cap only a second page could reach would never be hit.)
     file: "13-partial-data.png",
     async take(k) {
-      await addSource(k, { name: W[k.lang].ordersSource, type: "rest", url: "/api/demo/orders", maxRows: 20, refreshSec: 30 });
+      await addSource(k, { name: W[k.lang].ordersSource, type: "rest", url: "/api/sample/orders", maxRows: 20, refreshSec: 30 });
       await openData(k, { blank: true });
       await openPicker(k, W[k.lang].ordersSource);
       await k.page.getByRole("dialog").getByText(k.t.data.partial(20)).first().waitFor();
@@ -1173,6 +1173,34 @@ const SCENES = [
       await fillBrowserForm(k, `${API}/nocors`);
       await d.getByRole("button", { name: k.t.data.browser.test, exact: true }).click();
       await d.getByText(k.t.data.browser.networkTitle).waitFor({ timeout: 15_000 });
+      await k.settle(600);
+      await k.shot(this.file);
+    },
+  },
+  {
+    // The three sample APIs, in the panel below the person's own sources: one connected by hand
+    // through the same form — Try it, Test, Save — and put in the sheet, so it shows as added and
+    // the other two still invite a try. Nothing is seeded; the scene presses what a person would.
+    file: "49-sample-apis.png",
+    async take(k) {
+      await k.open("/app", { width: 1100, height: 900 });
+      await startBlank(k);
+      await k.button(k.t.toolbar.data).click();
+      const s = k.t.data.samples;
+      const sales = k.button(`${s.tryIt}: ${s.items.sales.name}`);
+      await sales.click();
+      const d = k.page.getByRole("dialog");
+      await d.getByRole("button", { name: k.t.data.browser.test, exact: true }).click();
+      await d.getByText(k.t.data.browser.testOk(5, 7)).waitFor({ timeout: 15_000 });
+      await d.getByRole("button", { name: k.t.data.browser.save, exact: true }).click();
+      const picker = k.page.getByRole("dialog");
+      await picker.getByRole("button", { name: k.t.data.picker.wholeTable }).click();
+      await picker.getByRole("button", { name: k.t.data.picker.insert, exact: true }).click();
+      await k.cell(0, 0).click();
+      await k.settle(800);
+      if (!(await sales.isVisible().catch(() => false))) await k.button(k.t.toolbar.data).click();
+      await sales.and(k.page.locator(":disabled")).waitFor();
+      await k.page.getByRole("heading", { name: s.title }).scrollIntoViewIfNeeded();
       await k.settle(600);
       await k.shot(this.file);
     },
