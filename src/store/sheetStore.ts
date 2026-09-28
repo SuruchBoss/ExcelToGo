@@ -286,6 +286,9 @@ interface SheetState {
   applyRemoteCell: (tabId: string, row: number, col: number, raw: string, spoken?: string) => void;
   addRow: () => void;
   addColumn: () => void;
+  /** Grows the active sheet to `cols` columns in one step (one undo). The grid calls it when a cell
+   *  past the last column is clicked: those are drawn to the edge of the screen but do not exist yet. */
+  growColumnsTo: (cols: number) => void;
   deleteSelectedRow: () => void;
   deleteSelectedColumn: () => void;
   insertRowAtSelection: () => void;
@@ -973,6 +976,19 @@ export const useSheetStore = create<SheetState>()(
                   ...say(getMessages().live.columnAppended(activeTab(s).sheet.cols + 1)),
                 }
           ),
+        growColumnsTo: (cols) =>
+          set((s) => {
+            const sheet = activeTab(s).sheet;
+            if (cols <= sheet.cols || refusedStructuralChange(sheet)) return {};
+            return {
+              sheets: withActiveSheet(s, (tab) => {
+                let grown = tab.sheet;
+                while (grown.cols < cols) grown = addColumn(grown);
+                return grown;
+              }),
+              ...say(getMessages().live.columnAppended(cols)),
+            };
+          }),
 
         unlockTemplate: () =>
           set((s) => ({
