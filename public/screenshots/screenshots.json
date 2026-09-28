@@ -5,8 +5,8 @@
   "27-landing-stats.png": {
     "paletteFormulas": 37,
     "engineFunctions": 65,
-    "tests": 1688,
-    "securityTests": 323
+    "tests": 1718,
+    "securityTests": 325
   },
   "38-landing-problems.png": {
     "paletteFormulas": 37
@@ -17,8 +17,8 @@
   "en/27-landing-stats.png": {
     "paletteFormulas": 37,
     "engineFunctions": 65,
-    "tests": 1688,
-    "securityTests": 323
+    "tests": 1718,
+    "securityTests": 325
   },
   "en/38-landing-problems.png": {
     "paletteFormulas": 37

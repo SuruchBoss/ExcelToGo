@@ -260,6 +260,7 @@ const W = {
     items: [["กาแฟลาเต้", "เครื่องดื่ม"]],
     findReplaceWith: "น้ำอัดลม",
     aiQuestion: "หาค่าเฉลี่ยราคา",
+    aiConditional: "ยอดรวมของหมวดเครื่องดื่ม",
     ordersSource: "ออเดอร์ทั้งหมด",
     limitedSource: "API ที่จำกัดจำนวนครั้ง",
     salesSource: "ยอดขายสด",
@@ -308,6 +309,7 @@ const W = {
     items: [["Caffè latte", "Drinks"]],
     findReplaceWith: "Beverages",
     aiQuestion: "Find the average price",
+    aiConditional: "The total for drinks",
     ordersSource: "All orders",
     limitedSource: "Rate-limited API",
     salesSource: "Live sales",
@@ -672,6 +674,22 @@ const SCENES = [
       const insert = k.button(k.t.ai.insertAt("C11"));
       await insert.waitFor({ timeout: 30_000 });
       await insert.scrollIntoViewIfNeeded();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // #62: a question about some rows only. No formula and no Insert, the reason, and the form
+    // that fits one press away. The matcher's own answer — no key, nothing typed in.
+    file: "60-ai-declined.png",
+    async take(k) {
+      await k.open();
+      await k.cell(10, 4).click();
+      await k.button(k.t.toolbar.askAi).first().click();
+      await k.page.getByPlaceholder(k.t.ai.textareaPlaceholder).fill(W[k.lang].aiConditional);
+      await k.button(k.t.ai.askButton).last().click();
+      const form = k.button(k.t.ai.openForm("SUMIF"));
+      await form.waitFor({ timeout: 30_000 });
+      await form.scrollIntoViewIfNeeded();
       await k.shot(this.file);
     },
   },

@@ -860,6 +860,10 @@ export interface Messages {
     guessBadge: string;
     /** Under a suggestion when the cell it would go in already holds something. */
     overwriteWarning: (address: string) => string;
+    /** The answer reads the only cell it could go into, so it is not offered (#64). */
+    selfReference: (address: string) => string;
+    /** Opens the palette form a declined answer points at (#62). */
+    openForm: (name: string) => string;
     connectionError: string;
     /** Shown when the server refuses because this browser has asked too often. */
     rateLimited: (seconds: number) => string;
@@ -908,6 +912,16 @@ export interface Messages {
      *  the old `fallback` handed back SUM for anything unrecognised, which is how "join these
      *  names" became a number nobody questioned. */
     noMatch: string;
+    /** Why it will not guess, each with the palette form it points at instead (#62–#64). */
+    declined: {
+      conditional: (form: string | null) => string;
+      needsRange: (form: string) => string;
+      textColumns: (form: string) => string;
+      lookup: string;
+      ifDetail: string;
+      subtract: string;
+      dates: string;
+    };
     /** The two outcomes the IF suggestion writes into the cell — in the formula, so in the sheet. */
     ifOutcomes: [pass: string, fail: string];
   };
