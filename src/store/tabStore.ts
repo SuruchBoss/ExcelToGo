@@ -15,6 +15,9 @@ interface TabState {
   role: TabRole;
   /** Bumped when an edit is refused here, so the notice can say why nothing happened. */
   refused: number;
+  /** This tab edits because the one editing closed or left, not because it asked (#146). Said
+   *  once, until the notice is dismissed or the role changes again. */
+  freed: boolean;
   takeOver: () => void;
   viewOnly: () => void;
 }
@@ -22,6 +25,7 @@ interface TabState {
 export const useTabStore = create<TabState>(() => ({
   role: "starting",
   refused: 0,
+  freed: false,
   takeOver: () => {},
   viewOnly: () => {},
 }));

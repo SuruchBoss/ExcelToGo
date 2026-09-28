@@ -393,6 +393,20 @@ const OPENED_STATES = [
     },
   },
   {
+    // …and when the tab that took over closes, the one it took over from edits again and says why (#146).
+    name: "other tab closed notice",
+    path: "/app",
+    async open(page) {
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await second.getByRole("alertdialog").getByRole("button", { name: "ใช้แท็บนี้แทน" }).click();
+      await page.getByRole("status").filter({ hasText: "แท็บนี้ดูอย่างเดียวแล้ว" }).waitFor({ timeout: 10_000 });
+      await second.close();
+      await page.getByRole("status").filter({ hasText: "อีกแท็บปิดแล้ว" }).waitFor({ timeout: 10_000 });
+      return page;
+    },
+  },
+  {
     name: "names popover",
     path: "/app",
     async open(page) {

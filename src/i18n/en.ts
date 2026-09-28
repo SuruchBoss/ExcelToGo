@@ -427,7 +427,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1705", label: "automated tests" },
+      { value: "1711", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -718,9 +718,11 @@ export const en: Messages = {
     body: "One tab edits at a time, so neither can save over the other's work. Use this tab instead and the other tab turns view-only, with everything done there already saved. View only shows the latest work here without changing it.",
     useHere: "Use this tab instead",
     viewOnly: "View only",
-    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here.",
+    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here. If that tab closes, this one can edit by itself.",
     handedOff: "This tab is view-only now: the workbook was opened for editing in another tab. Everything done here was saved.",
     refused: "Nothing can be changed in this tab. Use this tab instead to edit here.",
+    freed: "The other tab closed — you can edit here now, with everything it saved.",
+    dismiss: "Dismiss",
   },
   newFile: {
     button: "New file",

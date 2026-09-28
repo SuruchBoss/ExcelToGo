@@ -188,6 +188,9 @@ async function freshPage(browser, width = 1280, touch = false) {
   return { ctx, page };
 }
 
+/** The notice a tab shows when it edits because the editing tab closed (#146). */
+const FREED = /อีกแท็บปิดแล้ว|The other tab closed/;
+
 const FLOWS = [
   {
     name: "typing a formula recalculates on screen",
@@ -879,13 +882,42 @@ const FLOWS = [
       const mirrored = (await cell(page, 2, 0).innerText()).trim();
       note(mirrored === "typed-in-second", `the view-only tab shows what the other tab saves (A3 "${mirrored}")`);
 
-      // Nobody is editing once the second tab closes, so a third one simply edits.
+      // The tab that took over closes: the first one was waiting, so it edits again by itself (#146).
       await second.close();
-      const third = await page.context().newPage();
-      await third.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
-      const kept = await Promise.all([0, 1, 2].map(async (r) => (await cell(third, r, 0).innerText()).trim()));
-      note(kept.join() === "first-tab,half-typed,typed-in-second", `reopened, the workbook has every edit from both tabs (${kept.join(", ")})`);
-      await third.close();
+      await page.getByRole("status").filter({ hasText: FREED }).waitFor({ timeout: 5000 });
+      await typeInCell(page, 3, 0, "back-in-first");
+      const kept = await Promise.all([0, 1, 2, 3].map(async (r) => (await cell(page, r, 0).innerText()).trim()));
+      note(kept.join() === "first-tab,half-typed,typed-in-second,back-in-first", `the first tab edits again with every edit from both tabs (${kept.join(", ")})`);
+    },
+  },
+  {
+    // #146: closing the old tab and carrying on in the one in front of you is how this usually ends.
+    name: "a tab that chose view only edits by itself once the editing tab closes, from its last save",
+    async run(page) {
+      await typeInCell(page, 0, 0, "one");
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const ask = second.getByRole("alertdialog", { name: /^(ไฟล์นี้เปิดอยู่ในอีกแท็บ|This workbook is open in another tab)$/ });
+      await ask.waitFor({ timeout: 5000 });
+      await second.keyboard.press("Escape");
+      await second.getByRole("status").filter({ hasText: /^(ดูอย่างเดียว|View only):/ }).waitFor({ timeout: 5000 });
+
+      await typeInCell(page, 1, 0, "two");
+      await page.close();
+
+      await second.getByRole("status").filter({ hasText: FREED }).waitFor({ timeout: 5000 });
+      note(true, "the second tab says the other tab closed and it can edit");
+      const stale = await second.getByRole("status").filter({ hasText: /กำลังแก้อยู่ในอีกแท็บ|being edited in another tab/ }).count();
+      note(stale === 0, `nothing still says another tab is editing (${stale})`);
+
+      await typeInCell(second, 2, 0, "three");
+      const got = await Promise.all([0, 1, 2].map(async (r) => (await cell(second, r, 0).innerText()).trim()));
+      note(got.join() === "one,two,three", `typing works and the earlier work is all there (${got.join(", ")})`);
+
+      // And it is this tab that saves now: a fresh tab opens on what it typed.
+      await second.reload({ waitUntil: "networkidle" });
+      const saved = (await cell(second, 2, 0).innerText()).trim();
+      note(saved === "three", `what it typed was saved (A3 "${saved}")`);
     },
   },
   {

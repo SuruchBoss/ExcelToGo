@@ -15,6 +15,17 @@
  * over reads the save only once it holds the lock — so the last keystroke of the old tab is in
  * what the new one opens.
  *
+ * A tab that is not editing keeps a request for the lock waiting (#146), so when the editing tab
+ * closes, crashes or leaves the app the browser hands the lock to one waiting tab — no polling —
+ * and that tab reads the latest save before it edits, the same as taking over. The other waiting
+ * tabs keep looking, and what they say stays true: another tab is editing again.
+ *
+ * Several tabs can be waiting when one presses "use this tab instead", and the lock goes to them
+ * in the order they asked, not to the one that pressed. So a waiting tab that has heard another
+ * ask to take over passes the lock on once when it comes: it queues again, behind the tab that
+ * asked, and lets go. Only if it comes round to it a second time — the tab that asked closed first
+ * — does it keep it.
+ *
  * A browser without Web Locks (or a context that refuses them) edits as every tab did before:
  * the old behaviour, not a tab that can never save.
  */
@@ -29,8 +40,11 @@ export const CHANNEL_NAME = "exceltogo-tabs";
 type Lock = unknown;
 /** The part of `navigator.locks` this uses, so a test can hand in its own. */
 export interface LockManagerLike {
-  request(name: string, options: { ifAvailable: boolean }, callback: (lock: Lock | null) => unknown): Promise<unknown>;
-  request(name: string, callback: (lock: Lock | null) => unknown): Promise<unknown>;
+  request(
+    name: string,
+    options: { ifAvailable?: boolean; signal?: AbortSignal },
+    callback: (lock: Lock | null) => unknown,
+  ): Promise<unknown>;
 }
 /** The part of `BroadcastChannel` this uses. */
 export interface ChannelLike {
@@ -42,7 +56,9 @@ export interface ChannelLike {
 export interface TabLockOptions {
   locks: LockManagerLike | undefined;
   channel: ChannelLike | undefined;
-  onRole(role: TabRole): void;
+  /** `freed` when this tab edits because the tab that was editing let go by itself (#146) — it
+   *  closed or left the app — rather than because this one asked to take over. */
+  onRole(role: TabRole, freed?: boolean): void;
   /** Called on the editing tab just before it lets go: commit whatever is half-typed. */
   beforeHandOff(): void;
   /** Called on the tab taking over once it holds the lock, before it edits: read the latest save. */
@@ -62,12 +78,16 @@ const TAKE_OVER = "take-over";
 export function createTabLock(opts: TabLockOptions): TabLock {
   let role: TabRole = "starting";
   let release: (() => void) | null = null;
-  let waiting = false;
+  let wait: AbortController | null = null;
+  // This tab pressed "use this tab instead" and is waiting for the lock because of it.
+  let takingOver = false;
+  // Another tab asked to take over since this one last queued: pass the lock on once if it comes.
+  let owed = false;
   let stopped = false;
-  const setRole = (next: TabRole) => {
+  const setRole = (next: TabRole, freed = false) => {
     if (stopped || next === role) return;
     role = next;
-    opts.onRole(next);
+    opts.onRole(next, freed);
   };
   // Held until another tab takes over or this one closes; the browser drops it on close by itself.
   const hold = () =>
@@ -80,6 +100,34 @@ export function createTabLock(opts: TabLockOptions): TabLock {
   };
 
   const { locks, channel } = opts;
+  // Waits for the lock without asking anyone for it. Not awaited: the promise settles when the lock
+  // is released again, not when it is granted.
+  const queue = () => {
+    if (!locks || wait || stopped) return;
+    const controller = new AbortController();
+    wait = controller;
+    owed = false;
+    void locks
+      .request(LOCK_NAME, { signal: controller.signal }, () => {
+        wait = null;
+        if (stopped) return;
+        if (owed && !takingOver) {
+          // Behind the tab that asked, then let go so it gets the lock.
+          queue();
+          return;
+        }
+        const freed = !takingOver;
+        takingOver = false;
+        opts.afterTakeOver();
+        setRole("editor", freed);
+        return hold();
+      })
+      .catch(() => {
+        if (wait === controller) wait = null;
+        takingOver = false;
+      });
+  };
+
   if (!locks) {
     setRole("editor");
   } else {
@@ -88,6 +136,7 @@ export function createTabLock(opts: TabLockOptions): TabLock {
         if (stopped) return;
         if (!lock) {
           setRole("asking");
+          queue();
           return;
         }
         setRole("editor");
@@ -99,37 +148,34 @@ export function createTabLock(opts: TabLockOptions): TabLock {
   if (channel) {
     channel.onmessage = (event) => {
       const data = event.data as { type?: string } | null;
-      if (data?.type !== TAKE_OVER || role !== "editor") return;
+      if (data?.type !== TAKE_OVER) return;
+      if (role !== "editor") {
+        owed = true;
+        return;
+      }
       opts.beforeHandOff();
       setRole("handedOff");
       letGo();
+      queue();
     };
   }
 
   return {
     role: () => role,
     takeOver() {
-      if (!locks || role === "editor" || waiting || stopped) return;
-      waiting = true;
+      if (!locks || role === "editor" || takingOver || stopped) return;
+      takingOver = true;
+      // The request already waiting is this tab's place in the queue; the tabs ahead of it pass.
+      queue();
       channel?.postMessage({ type: TAKE_OVER });
-      // Not awaited: the promise settles when the lock is released again, not when it is granted.
-      void locks
-        .request(LOCK_NAME, () => {
-          waiting = false;
-          if (stopped) return;
-          opts.afterTakeOver();
-          setRole("editor");
-          return hold();
-        })
-        .catch(() => {
-          waiting = false;
-        });
     },
     viewOnly() {
       if (role === "asking") setRole("viewer");
     },
     stop() {
       stopped = true;
+      wait?.abort();
+      wait = null;
       letGo();
       if (channel) {
         channel.onmessage = null;
@@ -138,7 +184,6 @@ export function createTabLock(opts: TabLockOptions): TabLock {
     },
   };
 }
-
 /** The real `navigator.locks` and a channel, where this browser has them. */
 export function browserTabLock(options: Omit<TabLockOptions, "locks" | "channel">): TabLock {
   const locks = typeof navigator !== "undefined" ? (navigator.locks as unknown as LockManagerLike | undefined) : undefined;
