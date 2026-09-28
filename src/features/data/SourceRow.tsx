@@ -11,6 +11,8 @@ import { useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
 import { setLiveDragData } from "./dragTypes";
 import { partialHintText, sourceErrorText } from "./sourceError";
+import BrowserSourceError, { BROWSER_CODES } from "./BrowserSourceError";
+import { reloadToAllow } from "./allowOrigin";
 
 interface Props {
   source: PublicDataSource;
@@ -38,6 +40,7 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
   const refresh = useDataSourceStore((s) => s.refresh);
   const deleteSource = useDataSourceStore((s) => s.deleteSource);
   const backoff = useDataSourceStore((s) => s.backoff[source.id]);
+  const detail = useDataSourceStore((s) => s.errorDetail[source.id]);
   const now = useNow();
   const ago = table ? Math.max(0, Math.floor((now - new Date(table.fetchedAt).getTime()) / 1000)) : 0;
   // Floored, not rounded up: `now` ticks once a second so it can lag, and a 40s wait displayed as
@@ -55,6 +58,9 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
     <div className="relative rounded-lg border border-zinc-200 bg-white p-2.5 hover:border-emerald-200">
       <div className="flex items-center gap-1.5">
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-800">{source.name}</span>
+        {source.local && (
+          <span className="shrink-0 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-800">{t.data.browser.badge}</span>
+        )}
         {table && (
           <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-emerald-700">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
@@ -97,6 +103,21 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
               {t.data.retryNow}
             </button>
           </div>
+        </div>
+      ) : error && source.local && BROWSER_CODES.has(error) ? (
+        // This browser's own source: the checklist for IT, or the one thing the person can do now.
+        <div className="mt-1 flex flex-col gap-1.5 rounded bg-red-50 p-1.5">
+          <BrowserSourceError code={error} detail={detail} url={source.url} headerName={source.authHeader?.name} />
+          {error === "needs_secret" && onEdit && (
+            <button onClick={onEdit} className="self-start text-[11px] font-semibold text-red-800 underline hover:no-underline">
+              {t.data.browser.enterSecret}
+            </button>
+          )}
+          {error === "needs_reload" && (
+            <button onClick={() => reloadToAllow(source.url)} className="self-start text-[11px] font-semibold text-red-800 underline hover:no-underline">
+              {t.data.browser.reloadNow}
+            </button>
+          )}
         </div>
       ) : (
         error && (

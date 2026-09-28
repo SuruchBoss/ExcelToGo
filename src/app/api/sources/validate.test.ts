@@ -17,8 +17,8 @@ const base = { name: "src", type: "rest" as const };
 
 describe("parseSourceBody URL rules", () => {
   it("accepts a genuine relative path (the app's own routes)", async () => {
-    const r = await parseSourceBody(body({ ...base, url: "/api/demo/sales" }));
-    expect("value" in r && r.value.url).toBe("/api/demo/sales");
+    const r = await parseSourceBody(body({ ...base, url: "/api/sample/sales" }));
+    expect("value" in r && r.value.url).toBe("/api/sample/sales");
   });
 
   it("accepts absolute http and https URLs", async () => {

@@ -5,7 +5,6 @@ import { promises as fs } from "fs";
 import path from "path";
 import { DataSourceConfig, PublicDataSource } from "@/lib/dataSources/types";
 import { decryptSecret, encryptSecret, isEncrypted } from "./secretBox";
-import { DEMO_SOURCES } from "./demoSources";
 import { parseConnectionString } from "./dbGuard";
 
 // Storage is one JSON file on the server. Credentials never leave it — the API only ever returns
@@ -20,9 +19,9 @@ async function readAll(): Promise<DataSourceConfig[]> {
     const raw = await fs.readFile(FILE, "utf8");
     return JSON.parse(raw) as DataSourceConfig[];
   } catch {
-    // Seeded on first run so a fresh clone has something live in the panel straight away.
-    await writeAll(DEMO_SOURCES);
-    return DEMO_SOURCES;
+    // No file yet: no sources. The three examples this used to seed are gone from the product
+    // (#109); a sample to follow along with is its own piece of work.
+    return [];
   }
 }
 

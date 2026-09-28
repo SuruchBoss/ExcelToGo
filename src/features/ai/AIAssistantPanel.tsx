@@ -3,11 +3,11 @@
 
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { countUsage } from "@/lib/usage";
-import { Sparkles, Loader2, KeyRound, ExternalLink } from "lucide-react";
+import { Sparkles, Loader2, KeyRound, ExternalLink, ChevronDown, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
-import { useAIContext, useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, selectActiveSheet, useAIContext, useSheetStore } from "@/store/sheetStore";
 import { useLocale, useT } from "@/i18n";
 import { clearKey, keyServerSnapshot, keySnapshot, looksLikeAnthropicKey, maskKey, saveKey, subscribeToKey } from "@/lib/byok";
 import { askAnthropicDirect } from "./askAnthropicDirect";
@@ -34,6 +34,21 @@ export default function AIAssistantPanel() {
   const [keyDraft, setKeyDraft] = useState("");
   const [editingKey, setEditingKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
+  // The key settings fold away: they used to sit above the question and squeeze it to one clipped
+  // line at 1366×768, when the question is what people open this panel for.
+  const [keyOpen, setKeyOpen] = useState(false);
+  const answerRef = useRef<HTMLDivElement>(null);
+  // What the insert button would overwrite. The anchor is where insertAIFormula writes.
+  const target = useSheetStore((s) => {
+    const sel = selectActiveSelection(s);
+    return selectActiveSheet(s).cells[sel.anchorRow]?.[sel.anchorCol] ?? "";
+  });
+
+  // The answer arrives below the fold on a laptop screen; bring it into view rather than leave
+  // someone wondering whether anything happened.
+  useEffect(() => {
+    if (suggestion) answerRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [suggestion]);
 
   const commitKey = () => {
     const value = keyDraft.trim();
@@ -106,12 +121,112 @@ export default function AIAssistantPanel() {
         {t.ai.selectionLabel} <span className="font-medium text-zinc-700">{selectionAddress}</span>
       </div>
 
-      {/* Bring your own key. Sits above the question box because it changes what the answer will
-          be — finding it after a disappointing keyword guess is finding it too late. */}
+      <textarea
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            ask(question);
+          }
+        }}
+        placeholder={t.ai.textareaPlaceholder}
+        rows={3}
+        className="min-h-[4.5rem] w-full shrink-0 resize-none rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+      />
+
+      <button
+        onClick={() => ask(question)}
+        disabled={loading || !question.trim()}
+        className="flex items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+        {t.ai.askButton}
+      </button>
+
+      <div className="flex flex-wrap gap-1.5">
+        {t.ai.examples.map((ex) => (
+          <button
+            key={ex}
+            onClick={() => {
+              setQuestion(ex);
+              ask(ex);
+            }}
+            className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] text-zinc-600 hover:bg-zinc-200"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="rounded bg-red-50 p-2 text-xs text-red-600">{error}</p>}
+
+      {/* A declined answer is not an answer in a quieter colour — it is amber, it carries no
+          formula, and it offers no Insert button, because there is nothing to insert. The version
+          this replaces handed back `=SUM(...)` for every question it did not understand, in the
+          same green card as a real answer, above the same green button. */}
+      {suggestion && (
+        <div
+          ref={answerRef}
+          className={clsx(
+            "mt-1 flex flex-col gap-2 rounded-md border p-3",
+            suggestion.formula ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
+          )}
+        >
+          {suggestion.formula ? (
+            <>
+              {/* A guess says it is one before anything else, and its insert button is the quieter
+                  kind: the big green button under a keyword guess read as a real answer, and the
+                  note saying otherwise was 1.84:1 grey-green that nobody could read. */}
+              {suggestion.source === "heuristic" && (
+                <span className="self-start rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                  {t.ai.guessBadge}
+                </span>
+              )}
+              <code className="text-sm font-semibold text-emerald-900">{suggestion.formula}</code>
+              <p className="text-xs text-emerald-800">{suggestion.explanation}</p>
+              {suggestion.source === "heuristic" && <p className="text-[11px] leading-relaxed text-zinc-700">{t.ai.heuristicNote}</p>}
+              {target !== "" && (
+                <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-900">
+                  <TriangleAlert size={13} className="mt-0.5 shrink-0" aria-hidden />
+                  {t.ai.overwriteWarning(selectionAddress.split(":")[0])}
+                </p>
+              )}
+              <button
+                onClick={() => onInsert(suggestion.formula!)}
+                className={clsx(
+                  "rounded-md px-3 py-1.5 text-xs font-medium",
+                  suggestion.source === "heuristic"
+                    ? "border border-emerald-700 bg-white text-emerald-800 hover:bg-emerald-100"
+                    : "bg-emerald-700 text-white hover:bg-emerald-800"
+                )}
+              >
+                {t.ai.insertAt(selectionAddress.split(":")[0])}
+              </button>
+            </>
+          ) : (
+            <p className="text-xs leading-relaxed text-amber-800">{suggestion.explanation}</p>
+          )}
+        </div>
+      )}
+
+      {/* Bring your own key. It used to sit above the question and push it down to one clipped
+          line; now it is one line under the answer that says what it does, and opens when asked.
+          A key already in use keeps it open — that line says which key, which is worth seeing. */}
       <div className="rounded-md border border-zinc-200 bg-white p-2.5">
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700">
-          <KeyRound size={13} className="text-emerald-600" /> {t.ai.byok.title}
-        </p>
+        <button
+          type="button"
+          onClick={() => setKeyOpen((v) => !v)}
+          aria-expanded={keyOpen || Boolean(savedKey)}
+          aria-controls="byok-body"
+          className="flex min-h-9 w-full items-center gap-1.5 text-left text-xs font-semibold text-zinc-700"
+        >
+          <KeyRound size={13} className="text-emerald-600" aria-hidden />
+          <span className="flex-1">{t.ai.byok.title}</span>
+          <ChevronDown size={14} aria-hidden className={clsx("transition-transform", (keyOpen || savedKey) && "rotate-180")} />
+        </button>
+        {(keyOpen || savedKey) && (
+        <div id="byok-body">
 
         {savedKey && !editingKey ? (
           <>
@@ -188,78 +303,10 @@ export default function AIAssistantPanel() {
             follows from it — bring one you can throw away — is only useful before the paste, so it
             is here and not in a doc nobody opens. */}
         <p className="mt-1.5 text-[10px] leading-relaxed text-amber-700">{t.ai.byok.keyAdviceNote}</p>
-      </div>
-
-      <textarea
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            ask(question);
-          }
-        }}
-        placeholder={t.ai.textareaPlaceholder}
-        rows={3}
-        className="w-full resize-none rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
-      />
-
-      <button
-        onClick={() => ask(question)}
-        disabled={loading || !question.trim()}
-        className="flex items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-        {t.ai.askButton}
-      </button>
-
-      <div className="flex flex-wrap gap-1.5">
-        {t.ai.examples.map((ex) => (
-          <button
-            key={ex}
-            onClick={() => {
-              setQuestion(ex);
-              ask(ex);
-            }}
-            className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] text-zinc-600 hover:bg-zinc-200"
-          >
-            {ex}
-          </button>
-        ))}
-      </div>
-
-      {error && <p className="rounded bg-red-50 p-2 text-xs text-red-600">{error}</p>}
-
-      {/* A declined answer is not an answer in a quieter colour — it is amber, it carries no
-          formula, and it offers no Insert button, because there is nothing to insert. The version
-          this replaces handed back `=SUM(...)` for every question it did not understand, in the
-          same green card as a real answer, above the same green button. */}
-      {suggestion && (
-        <div
-          className={clsx(
-            "mt-1 flex flex-col gap-2 rounded-md border p-3",
-            suggestion.formula ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
-          )}
-        >
-          {suggestion.formula ? (
-            <>
-              <code className="text-sm font-semibold text-emerald-900">{suggestion.formula}</code>
-              <p className="text-xs text-emerald-700">{suggestion.explanation}</p>
-              {suggestion.source === "heuristic" && (
-                <p className="text-[10px] text-emerald-400">{t.ai.heuristicNote}</p>
-              )}
-              <button
-                onClick={() => onInsert(suggestion.formula!)}
-                className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-              >
-                {t.ai.insertAt(selectionAddress.split(":")[0])}
-              </button>
-            </>
-          ) : (
-            <p className="text-xs leading-relaxed text-amber-800">{suggestion.explanation}</p>
-          )}
         </div>
-      )}
+        )}
+      </div>
+
     </div>
   );
 }

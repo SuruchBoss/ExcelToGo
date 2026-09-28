@@ -54,11 +54,7 @@ export interface Messages {
     title: string;
     subtitle: string;
     addSource: string;
-    demoNote: string;
-    /** The question the demo box answers, and the ways to the in-app guide at /guide. */
-    ownTitle: string;
-    guideCta: string;
-    guideLinkLocked: string;
+    /** The way to the in-app guide at /guide. */
     guideLink: string;
     empty: string;
     live: string;
@@ -92,6 +88,69 @@ export interface Messages {
     partialHint: string;
     /** Why a table cut for size is partial: it met the most one refresh sends to the browser, in MB. */
     partialSizeHint: (megabytes: number) => string;
+    /** A source fetched by this browser (#110): the form, and what it says when a fetch fails. */
+    browser: {
+      add: string;
+      badge: string;
+      newTitle: string;
+      editTitle: string;
+      intro: string;
+      name: string;
+      namePlaceholder: string;
+      type: string;
+      typeJson: string;
+      typeCsv: string;
+      url: string;
+      urlPlaceholder: string;
+      header: string;
+      headerHint: string;
+      headerName: string;
+      headerValue: string;
+      headerValueKeep: string;
+      badHeaderName: string;
+      badHeaderValue: string;
+      secretInQuery: string;
+      jsonPath: string;
+      jsonPathHint: string;
+      maxRows: string;
+      refresh: string;
+      seconds: string;
+      rows: string;
+      test: string;
+      testing: string;
+      testAndAllow: string;
+      testOk: (rows: number, cols: number) => string;
+      preview: string;
+      save: string;
+      saveAndAllow: string;
+      cancel: string;
+      reloadNotice: (host: string) => string;
+      reloading: (host: string) => string;
+      reloadBlocked: string;
+      reloadNow: string;
+      enterSecret: string;
+      invalidUrl: string;
+      insecureHttp: string;
+      auth: (status: number) => string;
+      http: (status: number, url: string) => string;
+      notTable: string;
+      keysFound: (keys: string) => string;
+      needsSecret: string;
+      needsReload: (host: string) => string;
+      networkTitle: string;
+      networkChecks: (appOrigin: string, headers: string) => string[];
+      copyForIt: string;
+      copied: string;
+      itNote: (appOrigin: string, apiUrl: string, headers: string) => string;
+    };
+    /** Three APIs this site serves, to try the browser path on before connecting a real one. */
+    samples: {
+      title: string;
+      lead: string;
+      tryIt: string;
+      added: string;
+      items: Record<"sales" | "summary" | "orders", { name: string; hint: string }>;
+    };
     /** Shown instead of a raw "HTTP 429" when a source asks to be called less often. */
     rateLimited: string;
     retryIn: (seconds: number) => string;
@@ -173,6 +232,8 @@ export interface Messages {
     ctaPrimary: string;
     ctaSecondary: string;
     ctaNote: string;
+    /** Three answers a first visit is looking for — free? private? on my phone? — under the buttons. */
+    benefits: string[];
     screenshotAlt: string;
     /** Copy for the live, editable sheet in the hero. The figures live in the component — they are
      *  the same in every language — so only the labels a reader parses are here. */
@@ -492,8 +553,17 @@ export interface Messages {
     eyebrow: string;
     title: string;
     lead: string;
-    demoTitle: string;
-    demoBody: string[];
+    /** Connecting from the browser (#110): the way that works on this site, first. */
+    browserTitle: string;
+    browserBody: string[];
+    browserSteps: string[];
+    /** What to ask the people who run the API. */
+    itTitle: string;
+    itLead: string;
+    itItems: string[];
+    /** From here on: the server-side sources, for a self-hosted deployment. */
+    serverTitle: string;
+    serverLead: string;
     typesTitle: string;
     typesLead: string;
     typesHead: { type: string; needs: string; example: string };
@@ -515,6 +585,22 @@ export interface Messages {
     copyFailed: string;
     codeLabel: string;
   };
+  /** The question asked before a file is opened over work, and the notice after it. */
+  importChoice: {
+    title: string;
+    body: (sheets: number) => string;
+    append: string;
+    appendHint: string;
+    replace: string;
+    replaceHint: (sheets: number) => string;
+    cancel: string;
+    doneAppend: (sheets: number) => string;
+    doneReplace: (sheets: number) => string;
+    undo: string;
+    dismiss: string;
+  };
+  /** The copy / paste / fill row shown where the pointer is a finger. */
+  touchBar: { label: string; copy: string; cut: string; paste: string; fillDown: string; clear: string };
   /** The phone's tab bar and the menu sheet its last tab opens. */
   menu: {
     navLabel: string;
@@ -541,6 +627,11 @@ export interface Messages {
     underlineTitle: string;
     alignTitle: { left: string; center: string; right: string };
     colorTitle: string;
+    /** The paint bucket: background colour of the selection, as a few swatches. */
+    fillTitle: string;
+    fillShort: string;
+    fillNone: string;
+    fillColors: Record<"yellow" | "green" | "blue" | "orange" | "red" | "purple" | "grey", string>;
     sortAscTitle: string;
     sortDescTitle: string;
     numberFormatTitle: string;
@@ -694,6 +785,8 @@ export interface Messages {
     searchPlaceholder: string;
     notFound: string;
     allCategory: string;
+    /** The everyday handful — SUM, AVERAGE, IF, SUMIF, VLOOKUP — that the list now starts with. */
+    commonCategory: string;
   };
   categories: Record<CategoryKey, string>;
   paramPanel: {
@@ -717,6 +810,10 @@ export interface Messages {
     textareaPlaceholder: string;
     askButton: string;
     heuristicNote: string;
+    /** On a keyword guess, above the formula. */
+    guessBadge: string;
+    /** Under a suggestion when the cell it would go in already holds something. */
+    overwriteWarning: (address: string) => string;
     connectionError: string;
     /** Shown when the server refuses because this browser has asked too often. */
     rateLimited: (seconds: number) => string;

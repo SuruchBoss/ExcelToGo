@@ -26,6 +26,7 @@
  * and coming back in, the keyboard, and whether anything is said out loud.
  */
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import { readdirSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -36,6 +37,45 @@ import { chromium } from "playwright";
 const PORT = Number(process.env.E2E_PORT || 3124);
 const ORIGIN = `http://localhost:${PORT}`;
 
+/**
+ * A company API on another port, for the browser-source flows (#110). `/stock` answers CORS for the
+ * app's origin, wants `Authorization: Bearer e2e-secret`, and moves a number on every call so a
+ * refresh can be seen; `/nocors` answers the same data with no CORS header at all.
+ */
+const API_PORT = Number(process.env.E2E_API_PORT || 4725);
+const API = `http://127.0.0.1:${API_PORT}`;
+const API_SECRET = "Bearer e2e-secret";
+let apiCalls = 0;
+const stubApi = createServer((req, res) => {
+  const url = new URL(req.url, API);
+  const body = () => JSON.stringify({ data: [{ sku: "RICE-5KG", qty: 100 + apiCalls }, { sku: "OIL-1L", qty: 40 }] });
+  if (url.pathname === "/nocors") {
+    res.setHeader("content-type", "application/json");
+    res.end(body());
+    return;
+  }
+  res.setHeader("access-control-allow-origin", ORIGIN);
+  res.setHeader("access-control-allow-headers", "authorization");
+  if (req.method === "OPTIONS") {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+  if (req.headers.authorization !== API_SECRET) {
+    res.statusCode = 401;
+    res.end("{}");
+    return;
+  }
+  apiCalls++;
+  res.setHeader("content-type", "application/json");
+  res.end(body());
+});
+stubApi.listen(API_PORT);
+
+/** The connect-src a visitor who never added a source is served, exactly. */
+const BASE_CONNECT_SRC = "connect-src 'self' https://api.anthropic.com";
+const connectSrcOf = (header) => header.split(";").map((d) => d.trim()).find((d) => d.startsWith("connect-src")) ?? "";
+
 /** Every visible label exists in both languages, and the default depends on what is in storage. */
 const label = {
   exportExcel: /^(ส่งออก Excel|Export Excel)$/,
@@ -44,6 +84,14 @@ const label = {
   addSheet: /^(เพิ่มชีตใหม่|Add a new sheet)$/,
   formulaBar: /^(พิมพ์ค่าหรือสูตร|Type a value or formula)/,
   liveData: /^(ข้อมูลสด|Live data)$/,
+  connectYourApi: /^(ต่อ API ของคุณ|Connect your API)$/,
+  allowAndTest: /^(อนุญาตและทดสอบ|Allow and test)$/,
+  test: /^(ทดสอบ|Test)$/,
+  saveAndAdd: /^(บันทึกและใส่ลงตาราง|Save and add to the sheet)$/,
+  wholeTable: /^(ตารางทั้งหมด|Whole table)/,
+  insert: /^(ใส่ลงตาราง|Insert)$/,
+  copyForIt: /^(คัดลอกไปส่ง IT|Copy for IT)$/,
+  trySales: /^(ลองต่อ|Try it): (ยอดขายสด|Live sales)$/,
   menu: /^(เมนู|Menu)$/,
   connectApi: /^(ต่อ API \/ ฐานข้อมูล|Connect an API \/ database)/,
   tools: /^(เครื่องมือ|Tools)/,
@@ -119,7 +167,8 @@ async function typeThaiInCell(page, row, col, text) {
 
 /** A fresh app with nothing carried over from the flow before. */
 async function freshPage(browser, width = 1280) {
-  const ctx = await browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true });
+  // Thai, fixed: a first visit takes the browser's language now, and several flows read Thai text.
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true, locale: "th-TH" });
   const page = await ctx.newPage();
   await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
   await page.evaluate(() => window.localStorage.clear());
@@ -597,6 +646,166 @@ const FLOWS = [
     },
   },
   {
+    // The blind test's worst moment: someone opened a file to look something up and lost an hour of
+    // typing, because an import replaced the workbook without a word. The store tests cover what
+    // "append" builds; this asks the seam — does the file input actually stop and ask, does the
+    // choice the dialog puts under the cursor keep the work, and does undo take the file back out.
+    name: "opening a file on top of work asks first, and keeping both keeps both",
+    async run(page) {
+      // G3: outside the sample's table, whose header row is already drawn heavier.
+      await typeInCell(page, 2, 6, "keep-me");
+      await page.keyboard.press("ArrowUp");
+      const weightOf = () => cell(page, 2, 6).evaluate((td) => getComputedStyle(td.querySelector("span") ?? td).fontWeight);
+      const before = await weightOf();
+      await page.keyboard.press("Control+b");
+      const weight = await weightOf();
+      note(Number(weight) === 700 && Number(before) < 700, `Ctrl+B makes the cell bold without opening it (font-weight ${before} → ${weight})`);
+
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "incoming.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("incoming,1\n"),
+      });
+      const dialog = page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ });
+      await dialog.waitFor({ timeout: 5000 });
+      note(true, "the file waits for a choice instead of replacing the workbook");
+
+      // Enter takes whatever has focus, which is what someone who does not read the dialog does.
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "incoming");
+      await page.getByText("Sheet1", { exact: true }).first().click();
+      const kept = (await cell(page, 2, 6).innerText()).trim();
+      note(kept === "keep-me", `the default choice keeps the work in its own tab (G3 showed "${kept}")`);
+
+      await page.getByRole("status").getByRole("button", { name: /^(ย้อนกลับ|Undo)$/ }).click();
+      const tabs = await page.getByText("incoming", { exact: true }).count();
+      note(tabs === 0, `undo on the notice takes the file's sheet back out (${tabs} left)`);
+    },
+  },
+  {
+    // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
+    // recorded, because the promise is not only "it works" but "nothing about it reaches us".
+    name: "an API connected from this browser fills the sheet and refreshes, and nothing about it reaches /api/*",
+    async run(page) {
+      const toApp = [];
+      page.on("request", (r) => {
+        if (new URL(r.url()).origin === ORIGIN && new URL(r.url()).pathname.startsWith("/api/")) {
+          toApp.push(`${r.method()} ${r.url()} ${JSON.stringify(r.headers())} ${r.postData() ?? ""}`);
+        }
+      });
+      const first = (await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" }))?.headers()["content-security-policy"] ?? "";
+      note(connectSrcOf(first) === BASE_CONNECT_SRC, `before any source, connect-src is exactly the old one (${connectSrcOf(first)})`);
+
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.connectYourApi }).click();
+      const form = page.getByRole("dialog");
+      await form.getByRole("textbox").first().fill("Stock");
+      await form.getByPlaceholder("https://erp.example.com/api/items").fill(`${API}/stock`);
+      await form.getByLabel(/^(ชื่อ header|Header name)$/).fill("Authorization");
+      await form.getByLabel(/^(ค่า \(เช่น Bearer xxx\)|Value \(e\.g\. Bearer xxx\))$/).fill(API_SECRET);
+      await form.getByPlaceholder("data.items").fill("data");
+      await form.locator('input[type="number"]').nth(1).fill("5");
+
+      // A new origin costs one reload, which the button says before it is pressed.
+      const reloadedDoc = page.waitForResponse((r) => r.url() === ORIGIN + "/app" && r.request().resourceType() === "document");
+      await form.getByRole("button", { name: label.allowAndTest }).click();
+      const response = await reloadedDoc;
+      const after = connectSrcOf(response.headers()["content-security-policy"] ?? "");
+      note(after === `${BASE_CONNECT_SRC} ${API}`, `after allowing it, connect-src has that one origin added and nothing else (${after})`);
+
+      await page.getByRole("dialog").getByText(/ได้ข้อมูล 2 แถว|Got 2 rows/).waitFor({ timeout: 15_000 });
+      note(true, "the form came back after the reload and the test ran: 2 rows");
+      await page.getByRole("dialog").getByRole("button", { name: label.saveAndAdd }).click();
+      const picker = page.getByRole("dialog");
+      await picker.getByRole("button", { name: label.wholeTable }).click();
+      await picker.getByRole("textbox").fill("G1");
+      await picker.getByRole("button", { name: label.insert }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="6"]')?.innerText.trim() === "RICE-5KG", null, { timeout: 15_000 });
+      const qty = () => cell(page, 1, 7).innerText();
+      const was = Number(await qty());
+      await page.waitForFunction((n) => Number(document.querySelector('td[data-row="1"][data-col="7"]')?.innerText) > n, was, { timeout: 20_000 });
+      note(true, `the rows are in the sheet at G1 and refresh on their own (${was} → ${await qty()})`);
+
+      const stored = await page.evaluate(() => ({
+        local: Object.keys(localStorage).map((k) => localStorage.getItem(k) ?? "").join("\n"),
+        session: Object.keys(sessionStorage).filter((k) => (sessionStorage.getItem(k) ?? "").includes("e2e-secret")),
+      }));
+      note(!stored.local.includes("e2e-secret"), "the header value is not in localStorage");
+      note(stored.session.length === 1 && stored.session[0].startsWith("etg-source-header:"), `it is in sessionStorage under the source's id (${stored.session.join(", ")})`);
+
+      const leaked = toApp.filter((r) => r.includes(String(API_PORT)) || r.includes("e2e-secret") || r.includes("RICE-5KG"));
+      note(leaked.length === 0, `no request to /api/* carries the URL, the header or the data (${toApp.length} request(s) to /api/* in all)`, leaked.join(" | "));
+    },
+  },
+  {
+    name: "an API that does not answer CORS gets a checklist for IT, not a bare error",
+    async run(page) {
+      await page.context().addCookies([{ name: "etg-api-origins", value: encodeURIComponent(API), url: ORIGIN, sameSite: "Strict", secure: true }]);
+      await page.reload({ waitUntil: "networkidle" });
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.connectYourApi }).click();
+      const form = page.getByRole("dialog");
+      await form.getByRole("textbox").first().fill("No CORS");
+      await form.getByPlaceholder("https://erp.example.com/api/items").fill(`${API}/nocors`);
+      await form.getByRole("button", { name: label.test }).click();
+      await form.getByRole("button", { name: label.copyForIt }).waitFor({ timeout: 15_000 });
+      const text = await form.innerText();
+      note(text.includes("Access-Control-Allow-Origin: " + ORIGIN), "the checklist names the header IT has to send, with this site's own origin");
+      note(/VPN/.test(text), "and asks about the VPN first");
+    },
+  },
+  {
+    // The sample APIs: not added for anyone, but one press from a filled-in form. They live on this
+    // site, which `'self'` already covers, so trying one costs no reload and leaves the policy alone.
+    name: "a sample API goes through the same form, with no reload and no change to the policy",
+    async run(page) {
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.trySales }).click();
+      const form = page.getByRole("dialog");
+      const url = await form.getByPlaceholder("https://erp.example.com/api/items").inputValue();
+      note(url === ORIGIN + "/api/sample/sales", `the form is filled in with the sample's URL on this site (${url})`);
+      const test = form.getByRole("button", { name: label.test });
+      note(await test.isVisible(), "and its button just says Test — a sample needs no reload");
+      await test.click();
+      await form.getByText(/ได้ข้อมูล 5 แถว|Got 5 rows/).waitFor({ timeout: 15_000 });
+      await form.getByRole("button", { name: label.saveAndAdd }).click();
+      const picker = page.getByRole("dialog");
+      await picker.getByRole("button", { name: label.wholeTable }).click();
+      await picker.getByRole("textbox").fill("G1");
+      await picker.getByRole("button", { name: label.insert }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="6"]')?.innerText.trim() === "CF-01", null, { timeout: 15_000 });
+      note(true, "its rows are in the sheet at G1");
+      const cookie = (await page.context().cookies()).find((c) => c.name === "etg-api-origins");
+      note(!cookie || !decodeURIComponent(cookie.value).includes(ORIGIN), "this site's own origin is not added to the cookie");
+      const header = (await page.goto(ORIGIN + "/app"))?.headers()["content-security-policy"] ?? "";
+      note(connectSrcOf(header) === BASE_CONNECT_SRC, `and connect-src is still exactly the old one (${connectSrcOf(header)})`);
+      // The panel may already be open after the reload; the tab toggles, so press it only if not.
+      const sample = page.getByRole("button", { name: label.trySales });
+      if (!(await sample.isVisible().catch(() => false))) await page.getByRole("button", { name: label.liveData }).first().click();
+      note(await sample.isDisabled(), "the sample now shows as added instead of inviting a duplicate");
+    },
+  },
+  {
+    // #109: there is no demo. The word was on the guide, the panel and the landing page, and it
+    // told people the real app was a trial.
+    name: "no page calls itself a demo, in either language",
+    async run(page) {
+      for (const lang of ["th", "en"]) {
+        await page.evaluate((l) => localStorage.setItem("exceltogo-locale", JSON.stringify({ state: { locale: l }, version: 0 })), lang);
+        for (const route of ["/", "/app", "/guide"]) {
+          await page.goto(ORIGIN + route, { waitUntil: "networkidle" });
+          if (route === "/app") {
+            await page.getByRole("button", { name: label.liveData }).first().click();
+            await page.locator("aside h2", { hasText: /ข้อมูลสด|Live data/ }).waitFor({ timeout: 5000 });
+          }
+          const text = await page.evaluate(() => document.body.innerText);
+          const hit = text.match(/.{0,30}(เดโม|demo).{0,30}/i)?.[0];
+          note(!hit, `${lang} ${route}: no "demo" in the visible text`, hit);
+        }
+      }
+    },
+  },
+  {
     // The report this came from: on a phone, the person who wrote the app could not find where to
     // connect an API. The panel switches were a scrolling row of unnamed icons, and the rest of the
     // row was past the edge. A unit test cannot see a layout, so this is the one place that asks
@@ -670,6 +879,7 @@ try {
   }
 } finally {
   await browser?.close();
+  stubApi.close();
   server.kill("SIGTERM");
   await rm(tmp, { recursive: true, force: true });
 }

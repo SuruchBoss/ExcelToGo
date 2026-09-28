@@ -21,7 +21,7 @@ const DEMO_NAMES: Record<string, Record<Locale, string>> = {
  * no authentication and makes the *server* fetch a URL the caller chose, which on a cloud host
  * reaches instance metadata and internal services. Every word of that is about **a URL the caller
  * chose**. These three are not — they are fixed at build time, app-relative, and answered by this
- * app's own `/api/demo/*` handlers, so on the demo the server's HTTP client has exactly three
+ * app's own `/api/sample/*` handlers, so on the demo the server's HTTP client has exactly three
  * destinations and no visitor can add a fourth. Writing is still refused outright, which is what
  * keeps that true: with no create, edit or test endpoint there is no way to introduce a URL.
  *
@@ -38,7 +38,7 @@ export const DEMO_SOURCES: DataSourceConfig[] = [
     id: "demo-sales",
     name: DEMO_NAMES["demo-sales"].th,
     type: "rest",
-    url: "/api/demo/sales",
+    url: "/api/sample/sales",
     method: "GET",
     refreshSec: 5,
     createdAt: new Date(0).toISOString(),
@@ -47,7 +47,7 @@ export const DEMO_SOURCES: DataSourceConfig[] = [
     id: "demo-summary",
     name: DEMO_NAMES["demo-summary"].th,
     type: "rest",
-    url: "/api/demo/summary",
+    url: "/api/sample/summary",
     method: "GET",
     refreshSec: 5,
     createdAt: new Date(0).toISOString(),
@@ -58,7 +58,7 @@ export const DEMO_SOURCES: DataSourceConfig[] = [
     id: "demo-orders",
     name: DEMO_NAMES["demo-orders"].th,
     type: "rest",
-    url: "/api/demo/orders",
+    url: "/api/sample/orders",
     method: "GET",
     maxRows: 200,
     refreshSec: 30,

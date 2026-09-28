@@ -40,6 +40,12 @@ import AxeBuilder from "@axe-core/playwright";
 const PORT = Number(process.env.A11Y_PORT || 3123);
 const ORIGIN = `http://localhost:${PORT}`;
 const PAGES = ["/", "/app", "/guide"];
+/**
+ * The browser's language, fixed. A first visit now takes the language the browser asks for, and
+ * the selectors below are the Thai names — so the gate says which language it scans rather than
+ * inheriting whatever the machine running it is set to.
+ */
+const LOCALE = "th-TH";
 /** The phone width the labels vanish at, and a desktop width where they don't. */
 const ALL_AXE_WIDTHS = [390, 1280];
 /** Narrowest phone still worth supporting, two tablet-ish sizes, two desktops. */
@@ -107,7 +113,33 @@ const OVERFLOW_WIDTHS = requested ? SHARDS[requested] : ALL_OVERFLOW_WIDTHS;
  * and, once they did, that their close button had no name either.
  */
 const SOURCES_TOKEN = randomBytes(12).toString("hex");
+let sampleAdded = false;
+
+/**
+ * The browser-source form (#110), open to everyone with no token. The checklist state points it at
+ * a closed port on this machine, allowed by the page's CSP through the same cookie the app writes,
+ * so the fetch fails the way an unreachable or CORS-refusing API does and the checklist for IT is
+ * what gets scanned.
+ */
+const browserForm = async (page) => {
+  await page.locator('button[aria-label="ข้อมูลสด"]').first().click();
+  await page.getByRole("button", { name: "ต่อ API ของคุณ", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ timeout: 10_000 });
+};
+const CLOSED = "http://127.0.0.1:9";
 const unlockedData = async (page) => {
+  // The server no longer seeds sources of its own (#109), so the picker has one to open: one of the
+  // app's own sample feeds, added the way an operator adds any source. Once is enough — it stays in
+  // this run's scratch data directory for every state after.
+  if (!sampleAdded) {
+    const res = await fetch(ORIGIN + "/api/sources", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-sources-token": SOURCES_TOKEN },
+      body: JSON.stringify({ name: "ยอดขาย", type: "rest", url: "/api/sample/sales", refreshSec: 30 }),
+    });
+    if (!res.ok) throw new Error(`adding a server source failed: ${res.status}`);
+    sampleAdded = true;
+  }
   await page.evaluate((token) => sessionStorage.setItem("exceltogo.sources-token", token), SOURCES_TOKEN);
   await page.reload({ waitUntil: "networkidle" });
   await page.locator('button[aria-label="ข้อมูลสด"]').first().click();
@@ -168,6 +200,27 @@ const OPENED_STATES = [
     },
   },
   {
+    name: "browser source form",
+    path: "/app",
+    async open(page) {
+      await browserForm(page);
+    },
+  },
+  {
+    name: "browser source checklist for IT",
+    path: "/app",
+    async open(page) {
+      await page.context().addCookies([{ name: "etg-api-origins", value: encodeURIComponent(CLOSED), url: ORIGIN, sameSite: "Strict", secure: true }]);
+      await page.reload({ waitUntil: "networkidle" });
+      await browserForm(page);
+      const d = page.getByRole("dialog");
+      await d.getByRole("textbox").first().fill("สต็อก");
+      await d.getByPlaceholder("https://erp.example.com/api/items").fill(CLOSED + "/items");
+      await d.getByRole("button", { name: "ทดสอบ", exact: true }).click();
+      await d.getByRole("button", { name: "คัดลอกไปส่ง IT" }).waitFor({ timeout: 20_000 });
+    },
+  },
+  {
     name: "shortcuts dialog",
     path: "/app",
     async open(page) {
@@ -221,6 +274,37 @@ const OPENED_STATES = [
         .getByRole("alert")
         .filter({ has: page.getByRole("button", { name: /^(ส่งออก Excel|Export Excel)$/ }) })
         .waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    // Anchored to its button like the validation popover, and reached the same way on a phone —
+    // through the cell tools sheet — so it gets the same `reveal` first.
+    name: "fill colour popover",
+    path: "/app",
+    async open(page) {
+      await reveal(page, 'button[title="สีพื้นเซลล์"]');
+      await page.locator('button[title="สีพื้นเซลล์"]').first().click();
+      await page.getByRole("dialog", { name: "สีพื้นเซลล์" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    // Only asked when opening a file would land on top of work, so the state needs work first:
+    // the sample does not count, a typed cell in a blank sheet does. The file goes in through the
+    // same hidden input the Import button clicks — a native picker is not something a page can drive.
+    name: "import choice dialog",
+    path: "/app",
+    async open(page) {
+      await page.getByRole("button", { name: "เริ่มจากตารางเปล่า", exact: true }).click();
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      // ASCII: Thai goes in through insertText, which fires no keydown, so the cell never opens.
+      await page.keyboard.type("work");
+      await page.keyboard.press("Enter");
+      await page.locator('input[type="file"]').first().setInputFiles({
+        name: "incoming.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("a,b\n1,2\n"),
+      });
+      await page.getByRole("dialog", { name: "เปิดไฟล์นี้อย่างไร" }).waitFor({ state: "visible", timeout: 10_000 });
     },
   },
   {
@@ -328,7 +412,7 @@ try {
 
   for (const path of PAGES) {
     for (const width of AXE_WIDTHS) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: LOCALE });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + path, { waitUntil: "networkidle" });
       const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
@@ -343,7 +427,7 @@ try {
 
   for (const state of OPENED_STATES) {
     for (const width of AXE_WIDTHS.filter((w) => !state.widths || state.widths.includes(w))) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: LOCALE });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + state.path, { waitUntil: "networkidle" });
       let violations = [];
@@ -366,7 +450,7 @@ try {
 
   for (const path of PAGES) {
     for (const width of OVERFLOW_WIDTHS) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: LOCALE });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + path, { waitUntil: "networkidle" });
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);

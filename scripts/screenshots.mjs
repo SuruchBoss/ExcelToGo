@@ -44,6 +44,7 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { randomBytes } from "node:crypto";
+import { createServer } from "node:http";
 import { chromium } from "playwright";
 
 const ROOT = process.cwd();
@@ -66,6 +67,10 @@ const BUILD = !flag("no-build");
 const PORT = Number(process.env.SCREENSHOT_PORT || 3150);
 const ORIGIN = `http://localhost:${PORT}`;
 const TOKEN = randomBytes(12).toString("hex");
+/** A company API stand-in on another port, for the browser-source scenes (#110): it answers CORS for
+ *  the app, wants a bearer header, and has a path that answers without CORS, for the checklist. */
+const API_PORT = Number(process.env.SCREENSHOT_API_PORT || 4717);
+const API = `http://localhost:${API_PORT}`;
 const outDir = (lang) => path.join(ROOT, "public/screenshots", lang === "th" ? "" : lang);
 
 // ── The app's own words ─────────────────────────────────────────────────────────────────────────
@@ -142,8 +147,12 @@ function sceneKit(browser, lang, M) {
   const kit = {
     lang,
     t,
-    /** A fresh visitor: empty storage, the language already chosen, nothing else. */
-    async open(route = "/app", { width = 1360, height = 860, scale = 2, touch = false, unlocked = false, prepare } = {}) {
+    /**
+     * A fresh visitor: empty storage, the language already chosen, nothing else. 1440 wide by
+     * default: from 1366 the whole format row is on screen, and below it most of the row folds into
+     * the tools panel, which is a picture of its own (53) rather than the backdrop for every other.
+     */
+    async open(route = "/app", { width = 1440, height = 860, scale = 2, touch = false, unlocked = false, prepare } = {}) {
       const ctx = await browser.newContext({
         viewport: { width, height },
         deviceScaleFactor: scale,
@@ -246,6 +255,11 @@ const W = {
     aiQuestion: "หาค่าเฉลี่ยราคา",
     ordersSource: "ออเดอร์ทั้งหมด",
     limitedSource: "API ที่จำกัดจำนวนครั้ง",
+    salesSource: "ยอดขายสด",
+    summarySource: "สรุปวันนี้",
+    pagedSource: "รายการสั่งซื้อ (หลายหน้า)",
+    apiSource: "สต็อกคลังกลาง",
+    stock: [["RICE-5KG", "ข้าวหอมมะลิ 5 กก.", 128], ["OIL-1L", "น้ำมันพืช 1 ลิตร", 64], ["SUGAR-1KG", "น้ำตาลทราย 1 กก.", 90], ["FISH-SAUCE", "น้ำปลา 700 มล.", 45], ["EGG-30", "ไข่ไก่ แผง 30 ฟอง", 22], ["NOODLE", "เส้นหมี่ 500 ก.", 70]],
     branchMonths: [
       ["สาขา", "ม.ค.", "ก.พ.", "มี.ค."],
       ["กรุงเทพ", 182000, 205000, 246000],
@@ -289,6 +303,11 @@ const W = {
     aiQuestion: "Find the average price",
     ordersSource: "All orders",
     limitedSource: "Rate-limited API",
+    salesSource: "Live sales",
+    summarySource: "Today's summary",
+    pagedSource: "Orders (several pages)",
+    apiSource: "Central stock",
+    stock: [["RICE-5KG", "Jasmine rice 5 kg", 128], ["OIL-1L", "Vegetable oil 1 L", 64], ["SUGAR-1KG", "Sugar 1 kg", 90], ["FISH-SAUCE", "Fish sauce 700 ml", 45], ["EGG-30", "Eggs, tray of 30", 22], ["NOODLE", "Rice noodles 500 g", 70]],
     branchMonths: [
       ["Branch", "Jan", "Feb", "Mar"],
       ["Bangkok", 182000, 205000, 246000],
@@ -412,12 +431,75 @@ async function addSource(k, body) {
 }
 
 // ── Steps several scenes share ──────────────────────────────────────────────────────────────────
+/** The browser-source form, with the stand-in API's origin already allowed by the page's CSP. */
+async function openBrowserForm(k) {
+  await k.open("/app", {
+    width: 1100,
+    height: 900,
+    prepare: (page) =>
+      page.context().addCookies([{ name: "etg-api-origins", value: encodeURIComponent(API), url: ORIGIN, sameSite: "Strict", secure: true }]),
+  });
+  await k.button(k.t.toolbar.data).click();
+  await k.button(k.t.data.browser.add).click();
+  await k.page.getByRole("dialog").waitFor();
+}
+
+async function fillBrowserForm(k, url) {
+  const d = k.page.getByRole("dialog");
+  await d.getByRole("textbox").first().fill(W[k.lang].apiSource);
+  await d.getByPlaceholder(k.t.data.browser.urlPlaceholder).fill(k.lang === "en" ? `${url}?lang=en` : url);
+  await d.getByLabel(k.t.data.browser.headerName).fill("Authorization");
+  await d.getByLabel(k.t.data.browser.headerValue).fill("Bearer 3f9c2a7e41d8");
+  await d.getByPlaceholder("data.items").fill("items");
+}
+
+/** The stand-in API. Answers CORS for the app's origin only, and requires the bearer header. */
+function startStubApi() {
+  const server = createServer((req, res) => {
+    const url = new URL(req.url, API);
+    const lang = url.searchParams.get("lang") === "en" ? "en" : "th";
+    if (url.pathname === "/nocors") {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ items: [] }));
+      return;
+    }
+    res.setHeader("access-control-allow-origin", ORIGIN);
+    res.setHeader("access-control-allow-headers", "authorization");
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    if (!req.headers.authorization) {
+      res.statusCode = 401;
+      res.end("{}");
+      return;
+    }
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ items: W[lang].stock.map(([sku, name, qty]) => ({ sku, name, qty })) }));
+  });
+  server.listen(API_PORT);
+  return server;
+}
 async function startBlank(k) {
   await k.button(k.t.sampleNotice.startBlank).click();
   await k.settle(300);
 }
 
+/**
+ * The three sample feeds the app serves under `/api/sample/*`, added as server sources the way an
+ * operator would. The server used to seed them itself; it no longer does (#109), so a scene that
+ * wants a panel with sources in it adds them, and they go when the scene closes.
+ */
+async function addSampleSources(k) {
+  const q = k.lang === "en" ? "?lang=en" : "";
+  await addSource(k, { name: W[k.lang].salesSource, type: "rest", url: `/api/sample/sales${q}`, refreshSec: 5 });
+  await addSource(k, { name: W[k.lang].summarySource, type: "rest", url: `/api/sample/summary${q}`, refreshSec: 5 });
+  await addSource(k, { name: W[k.lang].pagedSource, type: "rest", url: `/api/sample/orders${q}`, maxRows: 200, refreshSec: 30 });
+}
+
 async function openData(k, { blank = false, ...view } = {}) {
+  await addSampleSources(k);
   await k.open("/app", { unlocked: true, ...view });
   if (blank) await startBlank(k);
   await k.button(k.t.toolbar.data).click();
@@ -573,6 +655,8 @@ const SCENES = [
       await k.button(k.t.toolbar.askAi).first().click();
       const key = process.env.SCREENSHOT_ANTHROPIC_KEY;
       if (key) {
+        // The key settings are folded under the answer now; open them the way a person would.
+        await k.button(k.t.ai.byok.title).click();
         await k.page.locator("#byok-key").fill(key);
         await k.button(k.t.ai.byok.save).click();
       }
@@ -638,7 +722,7 @@ const SCENES = [
     // guard doing its job, so a cap only a second page could reach would never be hit.)
     file: "13-partial-data.png",
     async take(k) {
-      await addSource(k, { name: W[k.lang].ordersSource, type: "rest", url: "/api/demo/orders", maxRows: 20, refreshSec: 30 });
+      await addSource(k, { name: W[k.lang].ordersSource, type: "rest", url: "/api/sample/orders", maxRows: 20, refreshSec: 30 });
       await openData(k, { blank: true });
       await openPicker(k, W[k.lang].ordersSource);
       await k.page.getByRole("dialog").getByText(k.t.data.partial(20)).first().waitFor();
@@ -798,7 +882,7 @@ const SCENES = [
       await k.page.getByRole("button", { name: k.t.grid.insertRowAbove }).first().click();
       await k.cell(1, 6).click();
       await k.scrollHome();
-      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1360, height: 560 } });
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 560 } });
     },
   },
   {
@@ -833,7 +917,7 @@ const SCENES = [
       await k.type(12, 0, W[k.lang].reportTitle);
       await k.select(12, 0, 12, 4);
       await k.button(k.t.merge.join).click();
-      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1360, height: 640 } });
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 640 } });
     },
   },
   {
@@ -863,6 +947,7 @@ const SCENES = [
     async take(k) {
       await k.open("/app", { scale: 2.5 });
       await k.button(k.t.toolbar.askAi).first().click();
+      await k.button(k.t.ai.byok.title).click();
       await k.page.locator("#byok-key").fill("sk-ant-api03-demo-not-a-real-key-000000001234");
       await k.button(k.t.ai.byok.save).click();
       const panel = k.page.locator("div.rounded-md.border", { has: k.page.getByText(k.t.ai.byok.title, { exact: true }) }).first();
@@ -1045,7 +1130,7 @@ const SCENES = [
       await k.type(6, 1, `=SUM(${w.rangeName})`);
       await k.cell(6, 1).click();
       await k.button(k.t.names.short).click();
-      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1360, height: 600 } });
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 600 } });
     },
   },
   {
@@ -1072,6 +1157,62 @@ const SCENES = [
     },
   },
   {
+    // Connecting an API from the browser (#110): the form after a test, rows × columns and the
+    // first five rows. The origin is already in the cookie, as it is after the one reload a new
+    // origin costs, so the picture is the state a person sees rather than the reload itself.
+    file: "47-browser-source.png",
+    async take(k) {
+      await openBrowserForm(k);
+      const d = k.page.getByRole("dialog");
+      await fillBrowserForm(k, `${API}/stock`);
+      await d.getByRole("button", { name: k.t.data.browser.test, exact: true }).click();
+      await d.getByText(k.t.data.browser.testOk(W[k.lang].stock.length, 3)).waitFor({ timeout: 15_000 });
+      await k.settle(600);
+      await k.shot(this.file);
+    },
+  },
+  {
+    // The same API without CORS: what the app can say when the browser will not say why.
+    file: "48-browser-error.png",
+    async take(k) {
+      await openBrowserForm(k);
+      const d = k.page.getByRole("dialog");
+      await fillBrowserForm(k, `${API}/nocors`);
+      await d.getByRole("button", { name: k.t.data.browser.test, exact: true }).click();
+      await d.getByText(k.t.data.browser.networkTitle).waitFor({ timeout: 15_000 });
+      await k.settle(600);
+      await k.shot(this.file);
+    },
+  },
+  {
+    // The three sample APIs, in the panel below the person's own sources: one connected by hand
+    // through the same form — Try it, Test, Save — and put in the sheet, so it shows as added and
+    // the other two still invite a try. Nothing is seeded; the scene presses what a person would.
+    file: "49-sample-apis.png",
+    async take(k) {
+      await k.open("/app", { width: 1100, height: 900 });
+      await startBlank(k);
+      await k.button(k.t.toolbar.data).click();
+      const s = k.t.data.samples;
+      const sales = k.button(`${s.tryIt}: ${s.items.sales.name}`);
+      await sales.click();
+      const d = k.page.getByRole("dialog");
+      await d.getByRole("button", { name: k.t.data.browser.test, exact: true }).click();
+      await d.getByText(k.t.data.browser.testOk(5, 7)).waitFor({ timeout: 15_000 });
+      await d.getByRole("button", { name: k.t.data.browser.save, exact: true }).click();
+      const picker = k.page.getByRole("dialog");
+      await picker.getByRole("button", { name: k.t.data.picker.wholeTable }).click();
+      await picker.getByRole("button", { name: k.t.data.picker.insert, exact: true }).click();
+      await k.cell(0, 0).click();
+      await k.settle(800);
+      if (!(await sales.isVisible().catch(() => false))) await k.button(k.t.toolbar.data).click();
+      await sales.and(k.page.locator(":disabled")).waitFor();
+      await k.page.getByRole("heading", { name: s.title }).scrollIntoViewIfNeeded();
+      await k.settle(600);
+      await k.shot(this.file);
+    },
+  },
+  {
     // The guide the app sends people to when they want their own API or database.
     file: "46-guide.png",
     async take(k) {
@@ -1080,10 +1221,61 @@ const SCENES = [
     },
   },
   {
+    // A file opened on top of work: the question that replaced a silent overwrite, with the safe
+    // answer already under the cursor.
+    file: "50-import-choice.png",
+    async take(k) {
+      await k.open("/app");
+      await k.type(1, 2, "70");
+      await k.page.locator('input[type="file"]').first().setInputFiles({
+        name: k.lang === "th" ? "ยอดขาย-กันยายน.csv" : "sales-september.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("a,b\n1,2\n"),
+      });
+      await k.page.getByRole("dialog", { name: k.t.importChoice.title }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // A phone, a column of cells selected: copy, cut, paste, fill down and clear, with no keyboard.
+    file: "51-touch-actions.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await k.select(1, 1, 5, 1);
+      await k.page.getByRole("toolbar", { name: k.t.touchBar.label }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // The header row tinted, and the swatches open again with that tint marked as the current one.
+    file: "52-fill-colour.png",
+    async take(k) {
+      await k.open("/app");
+      await k.select(0, 0, 0, 4);
+      await k.byTitle(k.t.formatBar.fillTitle).click();
+      await k.button(k.t.formatBar.fillColors.yellow).click();
+      await k.byTitle(k.t.formatBar.fillTitle).click();
+      await k.page.getByRole("dialog", { name: k.t.formatBar.fillTitle }).waitFor();
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 420 } });
+    },
+  },
+  {
+    // A tablet, or a folding phone opened out: one row of formatting, and the rest as a panel that
+    // drops under it instead of a row that scrolls off the edge.
+    file: "53-tablet-tools.png",
+    async take(k) {
+      await k.open("/app", { width: 1024, height: 768, touch: true });
+      await k.page.getByRole("button", { name: k.t.formatBar.tools }).click();
+      await k.page.getByRole("dialog", { name: k.t.formatBar.toolsTitle }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {
-      await k.open("/app", { width: 1180, height: 640, scale: 1.5 });
+      // 1366: the narrowest width where Pivot is a button in the row rather than in the tools panel.
+      await k.open("/app", { width: 1366, height: 640, scale: 1.5 });
       const frames = [];
       // Scrolled home first: clicking a toolbar button scrolls the toolbar to it, which at this
       // width pushes the name off the left edge of every frame after.
@@ -1135,6 +1327,7 @@ if (wanted.length === 0) throw new Error(`--only ${ONLY} matches no scene`);
 for (const lang of LANGS) mkdirSync(outDir(lang), { recursive: true });
 
 const M = await loadMessages();
+const stubApi = startStubApi();
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ["--font-render-hinting=none"] });
 const failed = [];
 
@@ -1174,6 +1367,7 @@ if (BUILD && wanted.every((s) => s.cloud)) {
 }
 
 await browser.close();
+stubApi.close();
 rmSync(FIXTURES, { recursive: true, force: true });
 if (failed.length) {
   console.log(`\n${failed.length} scene(s) failed: ${failed.join(", ")}`);

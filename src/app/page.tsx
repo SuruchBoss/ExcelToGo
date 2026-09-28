@@ -50,17 +50,17 @@ const CONTACT_EMAIL = "bossxiii@gmail.com";
  * each against the file, so a retake that changes one says so.
  */
 const PAIN_EXHIBITS = [
-  { id: "formulas", file: "04-ai-assistant.png", size: { th: [2720, 1720], en: [2720, 1720] } },
+  { id: "formulas", file: "04-ai-assistant.png", size: { th: [2880, 1720], en: [2880, 1720] } },
   // The names panel open over a sheet that is already using one: the formula bar reads the total
   // by its name, the cells that name stands for are lit as its precedents, and the emerald rings
   // down column A are the validated cells. One frame carries three of the four fixes.
-  { id: "silent-errors", file: "43-sheet-rules.png", size: { th: [2720, 1200], en: [2720, 1200] } },
+  { id: "silent-errors", file: "43-sheet-rules.png", size: { th: [2880, 1200], en: [2880, 1200] } },
   // Animated, so it shows the one thing a still cannot: the table arriving in the sheet, and then
   // changing again on its own. `unoptimized` because the optimiser returns a single still frame.
   { id: "monthly-export", file: "34-live-data.gif", size: { th: [1000, 542], en: [1000, 542] }, unoptimized: true },
-  { id: "existing-files", file: "17-styled-import.png", size: { th: [2720, 1720], en: [2720, 1720] } },
-  { id: "privacy", file: "33-byok.png", size: { th: [735, 628], en: [735, 628] } },
-  { id: "lost-work", file: "42-save-failed.png", size: { th: [2720, 1720], en: [2720, 1720] } },
+  { id: "existing-files", file: "17-styled-import.png", size: { th: [2880, 1720], en: [2880, 1720] } },
+  { id: "privacy", file: "33-byok.png", size: { th: [735, 678], en: [735, 678] } },
+  { id: "lost-work", file: "42-save-failed.png", size: { th: [2880, 1720], en: [2880, 1720] } },
 ] as const;
 
 /** Where a screenshot lives for this language: the Thai set at the root, every other in its own folder. */
@@ -258,7 +258,20 @@ export default function Landing() {
                 {t.landing.ctaSecondary}
               </a>
             </div>
-            <p className="mt-4 max-w-xl text-[12.5px] leading-relaxed text-ash">{t.landing.ctaNote}</p>
+            {/* The three questions a first visit asked and the page did not answer out loud: is it
+                free, where does my file go, does it work on my phone. Answered next to the button
+                rather than somewhere in the fine print (blind test U31). */}
+            <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[14px] font-medium text-ink">
+              {t.landing.benefits.map((b) => (
+                <li key={b} className="flex items-center gap-2">
+                  <span aria-hidden className="font-mono text-[13px] text-ledger">
+                    ✓
+                  </span>
+                  {b}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-ash">{t.landing.ctaNote}</p>
           </div>
 
           <div className="min-w-0">

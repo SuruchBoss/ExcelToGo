@@ -12,7 +12,7 @@ export interface DataSourceConfig {
   id: string;
   name: string;
   type: DataSourceType;
-  /** Absolute URL, or an app-relative path like "/api/demo/sales" (resolved against the request origin). */
+  /** Absolute URL, or an app-relative path like "/api/sample/sales" (resolved against the request origin). */
   url: string;
   method?: "GET" | "POST";
   /** Optional header used for auth, e.g. { name: "Authorization", value: "Bearer ..." }. */
@@ -39,6 +39,9 @@ export interface PublicDataSource extends Omit<DataSourceConfig, "authHeader" | 
   /** Host and database only — never the user or the password. The panel needs to show *which*
    *  database a source points at; it has no business knowing how to reach it. */
   connection?: string;
+  /** Fetched by this browser rather than by the server (#110): its settings live in this browser,
+   *  and nothing about it — URL, header or data — ever reaches `/api/*`. */
+  local?: true;
 }
 
 export type CellValue = string | number | boolean | null;

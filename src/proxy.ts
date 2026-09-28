@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NextRequest, NextResponse } from "next/server";
+import { API_ORIGINS_COOKIE, connectSrcExtra } from "@/lib/apiOrigins";
 
 /**
  * A fresh nonce per request, so `script-src` can drop `'unsafe-inline'`.
@@ -53,7 +54,13 @@ const SUPABASE_ORIGIN = (() => {
   }
 })();
 
-function policy(nonce: string, dev: boolean): string {
+/**
+ * `apiOrigins` is the one per-user part of the policy: the origins of the API sources this browser
+ * has added (#110), read from a first-party cookie and re-validated in `src/lib/apiOrigins.ts` so
+ * that nothing the cookie says reaches the header unless it is exactly an allowed origin. Empty for
+ * everyone who has not added one, which leaves their policy exactly what it was.
+ */
+function policy(nonce: string, dev: boolean, apiOrigins = ""): string {
   return [
     "default-src 'self'",
     // 'unsafe-eval' in development only: React rebuilds server stacks with eval to say where an
@@ -68,7 +75,7 @@ function policy(nonce: string, dev: boolean): string {
     "font-src 'self' data:",
     // The exfiltration control, and the original reason this policy exists: the visitor's own
     // Anthropic key lives in sessionStorage, so the places this page may talk to are named.
-    ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN, REPORT_ORIGIN].filter(Boolean).join(" "),
+    ["connect-src 'self' https://api.anthropic.com", SUPABASE_ORIGIN, REPORT_ORIGIN, apiOrigins].filter(Boolean).join(" "),
     // The service worker, and the manifest the install prompt reads. Both same-origin, both
     // covered by `default-src 'self'` in principle — spelled out because a policy that relies on
     // the fallback is one nobody can check by reading.
@@ -85,7 +92,7 @@ function policy(nonce: string, dev: boolean): string {
 export function proxy(request: NextRequest) {
   // `crypto.randomUUID` rather than Math.random: a guessable nonce is no nonce at all.
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = policy(nonce, process.env.NODE_ENV === "development");
+  const csp = policy(nonce, process.env.NODE_ENV === "development", connectSrcExtra(request.cookies.get(API_ORIGINS_COOKIE)?.value));
 
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);

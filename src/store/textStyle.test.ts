@@ -57,4 +57,12 @@ describe("italic and underline", () => {
     undoSheet();
     expect(formatAt(0, 0)?.italic).toBeFalsy();
   });
+
+  it("fill colours the whole selection, and no-fill takes it off again", () => {
+    select(0, 0, 0, 2);
+    state().setFillColor("#fff2cc");
+    for (const c of [0, 1, 2]) expect(formatAt(0, c)?.fill).toBe("#fff2cc");
+    state().setFillColor(undefined);
+    expect(formatAt(0, 1)?.fill).toBeUndefined();
+  });
 });

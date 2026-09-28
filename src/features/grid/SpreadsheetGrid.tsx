@@ -54,6 +54,9 @@ export default function SpreadsheetGrid() {
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
   const clearSelection = useSheetStore((s) => s.clearSelection);
   const fillWithinSelection = useSheetStore((s) => s.fillWithinSelection);
+  const toggleBold = useSheetStore((s) => s.toggleBold);
+  const toggleItalic = useSheetStore((s) => s.toggleItalic);
+  const toggleUnderline = useSheetStore((s) => s.toggleUnderline);
   const fillSelectionFromAnchor = useSheetStore((s) => s.fillSelectionFromAnchor);
   const fillFrom = useSheetStore((s) => s.fillFrom);
   const clipboard = useSheetStore((s) => s.clipboard);
@@ -268,9 +271,22 @@ export default function SpreadsheetGrid() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  /** Set by a finger opening the editor, read once when the editor mounts. */
+  const caretAtEnd = useRef(false);
+
   useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
+    const input = inputRef.current;
+    input?.focus();
+    // A mouse or F2 opens with the whole value selected, which is what typing over it wants. A
+    // finger does not: selected text plus one ⌫ was a cell wiped when all anyone meant was to fix
+    // one letter, and on a phone there is no tap that moves the caret inside a selection. So a
+    // tap-opened editor puts the caret at the end, the way the phone keyboard expects.
+    if (input && caretAtEnd.current) {
+      input.setSelectionRange(input.value.length, input.value.length);
+    } else {
+      input?.select();
+    }
+    caretAtEnd.current = false;
   }, [editing?.row, editing?.col]);
 
   /**
@@ -514,6 +530,25 @@ export default function SpreadsheetGrid() {
         }
         startEdit(row, col, e.key);
         break;
+      // Excel's text style keys. The buttons existed; the keys an Excel user presses first did not,
+      // and "Ctrl+B does nothing" was the first thing the blind test's Excel user noticed. Taken
+      // before the browser's own meanings (bookmarks, view source) because focus is in the grid.
+      case "b":
+      case "B":
+      case "i":
+      case "I":
+      case "u":
+      case "U":
+        if (jump) {
+          const k = e.key.toLowerCase();
+          if (k === "b") toggleBold();
+          else if (k === "i") toggleItalic();
+          else toggleUnderline();
+          e.preventDefault();
+          break;
+        }
+        startEdit(row, col, e.key);
+        break;
       case "a":
       case "A": {
         if (!jump) {
@@ -660,7 +695,10 @@ export default function SpreadsheetGrid() {
                   }}
                   onPointerUp={(e) => {
                     if (e.pointerType !== "touch" || !tappedAlreadySelected.current) return;
-                    if (!editingHere && !locked) startEdit(r, c);
+                    if (!editingHere && !locked) {
+                      caretAtEnd.current = true;
+                      startEdit(r, c);
+                    }
                   }}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -954,10 +992,12 @@ export default function SpreadsheetGrid() {
                         "-m-1 rounded p-2 hover:bg-zinc-300/60",
                         columnFilters[c]
                           ? "text-emerald-700"
-                          // Quiet until pointed at — but only where pointing exists. A phone has no
-                          // hover, so this hid sort-and-filter from every touch user completely:
-                          // the button was there, fully clickable, at opacity zero.
-                          : "text-zinc-500 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+                          // Always shown. It used to be invisible until hovered — first hidden from
+                          // every touch user, then, with a mouse, from anyone who did not happen to
+                          // hover the letter: an Excel user looks for the arrow on the header and
+                          // took a minute to find it (blind test U28). Any dimmer than zinc-500 and
+                          // the icon drops under the 3:1 a control's shape needs against the header.
+                          : "text-zinc-500"
                       )}
                     >
                       <Filter size={11} />

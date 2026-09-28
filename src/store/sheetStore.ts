@@ -51,7 +51,7 @@ import { autoChartAnchor } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, headerRow } from "@/lib/aiRange";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
-import { renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
+import { renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
 import { fillBlock, fillTargetFor, fillWithin, type FillTarget } from "@/lib/fillSeries";
 import { findMatches, replaceIn, type Match, type SearchOptions } from "@/lib/sheetSearch";
 import type { Axis } from "@/lib/formulaEngine/structuralShift";
@@ -218,6 +218,12 @@ interface SheetState {
   formatBarOpen: boolean;
   busy: string | null;
   /**
+   * What the last file open did, while its notice is up: how many sheets came in and whether they
+   * joined the work already open or replaced it. The notice offers the undo that used to be the
+   * only way back, and that nobody knew about.
+   */
+  importNotice: { sheets: number; mode: ImportMode } | null;
+  /**
    * The last thing worth saying out loud, and a sequence number.
    *
    * The number is not decoration: a screen reader announces a live region when its *text changes*,
@@ -349,6 +355,8 @@ interface SheetState {
   toggleUnderline: () => void;
   setAlign: (align: CellAlign) => void;
   setTextColor: (color: string) => void;
+  /** Background of the selection; `undefined` takes it off. */
+  setFillColor: (fill: string | undefined) => void;
   setNumberFormat: (fmt: NumberFormat) => void;
   /** Joins the selection into one cell, or splits any merge it touches. */
   toggleMerge: () => void;
@@ -360,7 +368,9 @@ interface SheetState {
 
   insertAIFormula: (formula: string) => void;
 
-  importFromFile: (file: File) => Promise<void>;
+  /** `append` adds the file's sheets after the ones open; `replace` swaps the workbook for it. */
+  importFromFile: (file: File, mode?: ImportMode) => Promise<void>;
+  dismissImportNotice: () => void;
   replaceWorkbook: (sheets: SheetTab[]) => void;
   exportXlsx: () => Promise<void>;
   exportPdf: () => Promise<void>;
@@ -520,6 +530,18 @@ const initialTab = newTab("Sheet1", SAMPLES[DEFAULT_LOCALE]);
  * those that leave the cells alone, and "start from a blank sheet" would then quietly throw away a
  * chart somebody had just made.
  */
+export type ImportMode = "append" | "replace";
+
+/**
+ * Is there anything in the workbook a file open could destroy? The untouched sample is not work,
+ * and neither is a workbook of empty sheets — asking "keep or replace?" over nothing is a question
+ * that teaches people to click through questions.
+ */
+export function selectHasWork(s: SheetState): boolean {
+  if (selectShowingSample(s)) return false;
+  return s.sheets.some((t) => t.sheet.cells.some((row) => row.some((v) => v !== "" && v !== undefined)));
+}
+
 export function selectShowingSample(s: SheetState): boolean {
   return s.sheets.length === 1 && Object.values(SAMPLES).includes(s.sheets[0].sheet);
 }
@@ -671,6 +693,7 @@ export const useSheetStore = create<SheetState>()(
         sidebarMode: "palette",
         formatBarOpen: true,
         busy: null,
+        importNotice: null,
         announcement: null,
         clipboard: null,
         dataPicker: null,
@@ -1417,6 +1440,9 @@ export const useSheetStore = create<SheetState>()(
         setTextColor: (color) =>
           set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { color })) })),
 
+        setFillColor: (fill) =>
+          set((s) => ({ sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { fill })) })),
+
         setNumberFormat: (numberFormat) =>
           set((s) => ({
             sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { numberFormat })),
@@ -1651,9 +1677,25 @@ export const useSheetStore = create<SheetState>()(
             };
           }),
 
-        importFromFile: async (file) => {
+        importFromFile: async (file, mode = "replace") => {
           countUsage("file_imported");
           set({ busy: getMessages().store.busyImporting });
+          /**
+           * Puts the file's sheets in the workbook. `replace` is what opening a file always did;
+           * `append` keeps the work that was open and adds the file after it, renaming a tab whose
+           * name is already taken (and the file's own formulas that point at it).
+           */
+          const place = (incoming: { name: string; sheet: SheetModel }[]) => {
+            const s = get();
+            const fitted = mode === "append" ? renameIncomingToFit(s.sheets.map((t) => t.name), incoming) : incoming;
+            const tabs = fitted.map((w) => newTab(w.name, w.sheet));
+            const notice = { importNotice: { sheets: tabs.length, mode }, ...say(getMessages().live.imported(tabs.length)) };
+            if (mode === "append") {
+              set({ sheets: [...s.sheets, ...tabs], activeSheetId: tabs[0].id, ...notice });
+            } else {
+              set({ sheets: tabs, activeSheetId: tabs[0].id, selectionBySheetId: {}, filtersBySheetId: {}, ...notice });
+            }
+          };
           try {
             // A .csv is plain text, so it never reaches ExcelJS — which would reject it anyway.
             // The delimiter is sniffed rather than assumed: Excel writes the list separator of the
@@ -1668,22 +1710,13 @@ export const useSheetStore = create<SheetState>()(
               }
               // Cells hold raw text and computeSheet coerces numeric-looking strings when it reads
               // them, so the values go in as they came out of the file.
-              const sheet = sheetFromGrid(rows);
               const name = file.name.replace(/\.csv$/i, "").slice(0, 31) || "CSV";
-              const sheets = [newTab(name, sheet)];
-              set({
-                sheets,
-                activeSheetId: sheets[0].id,
-                selectionBySheetId: {},
-                filtersBySheetId: {},
-                ...say(getMessages().live.imported(sheets.length)),
-              });
+              place([{ name, sheet: sheetFromGrid(rows) }]);
               return;
             }
             const { importWorkbookFromFile } = await import("@/lib/excelIO");
             const imported = await importWorkbookFromFile(file);
-            const sheets = imported.map((w) => newTab(w.name, w.sheet));
-            set({ sheets, activeSheetId: sheets[0].id, ...say(getMessages().live.imported(sheets.length)) });
+            place(imported.map((w) => ({ name: w.name, sheet: w.sheet })));
             // A file longer than the sheet can open is opened as far as it goes — and said out loud,
             // because rows missing without a word is the bug this replaced (#43).
             const clipped = imported.filter((w) => w.rowsInFile !== undefined);
@@ -1699,11 +1732,8 @@ export const useSheetStore = create<SheetState>()(
           }
         },
 
-        /**
-         * Swaps the whole document for another one — opening a workbook from the optional cloud
-         * backend. Selections and filters are keyed by sheet id, and the incoming ids are not the
-         * outgoing ones, so they are cleared rather than left pointing at sheets that are gone.
-         */
+        dismissImportNotice: () => set({ importNotice: null }),
+
         replaceWorkbook: (sheets) => {
           if (sheets.length === 0) return;
           set({
