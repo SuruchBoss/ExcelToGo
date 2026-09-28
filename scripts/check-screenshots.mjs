@@ -106,8 +106,9 @@ const SHOWS = {
   // The start notice and the New file question: words and buttons, no counted figures.
   "57-blank-start.png": [],
   "58-new-file.png": [],
-  "59-other-tab.png": [],
-  "60-ai-declined.png": [],
+  "59-back-to-selection.png": [],
+  "61-other-tab.png": [],
+  "63-ai-declined.png": [],
   "demo.gif": [],
 };
 

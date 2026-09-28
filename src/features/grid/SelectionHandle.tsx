@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cellAt, columnLeft, columnWidth, rowHeight, rowTop } from "@/lib/gridGeometry";
+import { dragAxis, edgeStep, SCROLL_TICK_MS, type Axis } from "./dragRules";
 import { SheetModel } from "@/lib/sheet";
 import { normalizeSelection, SelectionRect } from "@/types/sheet-ui";
 import { useT } from "@/i18n";
@@ -21,11 +22,6 @@ import { useT } from "@/i18n";
  * Shown only where the pointer is coarse. On a mouse it would sit under the cursor looking like
  * Excel's fill handle and doing something else entirely.
  */
-
-/** How close to an edge a finger has to get before the sheet starts scrolling to meet it. */
-const EDGE = 44;
-const SCROLL_STEP = 12;
-const SCROLL_TICK_MS = 16;
 
 function stopScrolling(timer: React.RefObject<number | null>) {
   if (timer.current !== null) window.clearInterval(timer.current);
@@ -67,6 +63,9 @@ export default function SelectionHandle({
   /** The last pointer position, so the auto-scroll loop knows where the finger still is after it
    *  has stopped moving. */
   const pointer = useRef<{ x: number; y: number } | null>(null);
+  /** Where the finger went down, and the corner it was pulling, for the axis lock. */
+  const origin = useRef<{ x: number; y: number; row: number; col: number } | null>(null);
+  const axis = useRef<Axis>(null);
   const timer = useRef<number | null>(null);
 
   const extendTo = useCallback(
@@ -76,7 +75,11 @@ export default function SelectionHandle({
       const box = container.getBoundingClientRect();
       const x = clientX - box.left + container.scrollLeft;
       const y = clientY - box.top + container.scrollTop;
-      const { row, col } = cellAt(sheet, x, y, hiddenRows);
+      const at = cellAt(sheet, x, y, hiddenRows);
+      const from = origin.current;
+      if (from) axis.current = dragAxis(axis.current, clientX - from.x, clientY - from.y);
+      const row = axis.current === "cols" && from ? from.row : at.row;
+      const col = axis.current === "rows" && from ? from.col : at.col;
       onSelect(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
     },
     [sheet, hiddenRows, onSelect, scrollRef, selection.anchorRow, selection.anchorCol]
@@ -96,6 +99,8 @@ export default function SelectionHandle({
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     pointer.current = { x: e.clientX, y: e.clientY };
+    origin.current = { x: e.clientX, y: e.clientY, row: selection.endRow, col: selection.endCol };
+    axis.current = null;
     setDragging(true);
     // A timer rather than a rAF chain: the loop has to keep running while the finger is held
     // still at the edge, and a self-scheduling callback can't be written as a hook without
@@ -105,11 +110,14 @@ export default function SelectionHandle({
       const container = scrollRef.current;
       const at = pointer.current;
       if (!container || !at) return;
+      const from = origin.current;
+      if (!from) return;
       const box = container.getBoundingClientRect();
       // Dragging to the edge scrolls the sheet to meet the finger — without it a range can only
-      // ever be as big as the screen, which on a phone is a handful of columns.
-      const dx = at.x > box.right - EDGE ? SCROLL_STEP : at.x < box.left + EDGE ? -SCROLL_STEP : 0;
-      const dy = at.y > box.bottom - EDGE ? SCROLL_STEP : at.y < box.top + EDGE ? -SCROLL_STEP : 0;
+      // ever be as big as the screen, which on a phone is a handful of columns. Never along the
+      // axis the drag is locked out of.
+      const dx = axis.current === "rows" ? 0 : edgeStep(at.x, from.x, box.left, box.right);
+      const dy = axis.current === "cols" ? 0 : edgeStep(at.y, from.y, box.top, box.bottom);
       if (dx === 0 && dy === 0) return;
       container.scrollBy(dx, dy);
       extendTo(at.x, at.y);
@@ -125,6 +133,8 @@ export default function SelectionHandle({
   const end = () => {
     setDragging(false);
     pointer.current = null;
+    origin.current = null;
+    axis.current = null;
     stopScrolling(timer);
   };
 

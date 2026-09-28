@@ -680,7 +680,7 @@ const SCENES = [
   {
     // #62: a question about some rows only. No formula and no Insert, the reason, and the form
     // that fits one press away. The matcher's own answer — no key, nothing typed in.
-    file: "60-ai-declined.png",
+    file: "63-ai-declined.png",
     async take(k) {
       await k.open();
       await k.cell(10, 4).click();
@@ -1362,10 +1362,21 @@ const SCENES = [
     },
   },
   {
+    // A phone with the selection swiped off to the left, and the chip that brings it back (#127).
+    file: "59-back-to-selection.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await k.select(1, 1, 8, 1);
+      await k.page.locator("[data-grid-scroller]").evaluate((el) => el.scrollTo({ left: 900 }));
+      await k.page.getByRole("button", { name: k.t.grid.backToSelection("B2:B9") }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
     // #47: the sample being edited in one tab, and a second tab opened on it asking first. Opened
     // with window.open, as a person's second tab would be; it also carries this run's session over,
     // so the second tab does not start from an emptied browser.
-    file: "59-other-tab.png",
+    file: "61-other-tab.png",
     async take(k) {
       await k.open("/app");
       await k.type(1, 2, "70");

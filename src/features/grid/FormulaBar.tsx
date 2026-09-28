@@ -12,6 +12,7 @@ import { useT } from "@/i18n";
 import { precedentsOf } from "@/lib/precedents";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { FormulaBarDraft, formulaBarCellKey, formulaBarShown, formulaBarWrite } from "./formulaBarDraft";
+import { awaitsOperand } from "./openFormula";
 
 /**
  * Always-visible bar showing the selected cell's address and raw content (a formula or a
@@ -63,7 +64,16 @@ export default function FormulaBar() {
   // phase runs before that click's own (bubble-phase) handler changes anything, avoiding the race.
   useEffect(() => {
     function handleWindowMouseDown(e: MouseEvent) {
-      if (document.activeElement === inputRef.current && e.target !== inputRef.current) commit();
+      if (document.activeElement !== inputRef.current || e.target === inputRef.current) return;
+      // `=` typed here and then a tap on a cell saved `=` over the selected cell and moved on — on
+      // the sample sheet it wrote over "Mains" (#99). While the formula is still waiting for an
+      // address the grid ignores the tap and the bar keeps its draft and its keyboard.
+      if (awaitsOperand(draftRef.current?.text) && (e.target as HTMLElement).closest?.('[role="grid"]')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      commit();
     }
     window.addEventListener("mousedown", handleWindowMouseDown, true);
   return () => window.removeEventListener("mousedown", handleWindowMouseDown, true);
