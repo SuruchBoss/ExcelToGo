@@ -123,7 +123,9 @@ export default function PointingBar() {
             onMouseDown={keep}
             onClick={() => typeKey(key.chars)}
             aria-label={t.pointing.keys[key.name]}
-            className="flex h-11 min-w-9 flex-1 items-center justify-center rounded-md bg-zinc-100 font-mono text-base text-zinc-900 hover:bg-zinc-200"
+            // No minimum width: the keys share what Done and ✕ leave. At 36px each they pushed Done
+            // off a 360px screen (PO's check of #144); at 320 they are still 25px, over the 24px floor.
+            className="flex h-11 min-w-0 flex-1 items-center justify-center rounded-md bg-zinc-100 font-mono text-base text-zinc-900 hover:bg-zinc-200"
           >
             {key.chars === "-" ? "−" : key.chars}
           </button>

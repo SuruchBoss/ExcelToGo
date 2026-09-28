@@ -1194,6 +1194,21 @@ const FLOWS = [
       const bar = page.getByRole("toolbar", { name: label.pointingKeys });
       await bar.waitFor({ timeout: 5000 });
       note(true, "typing = on a phone brings up the pointing bar");
+      // Done ran off a 360px screen (PO's check of #144): the bar clips its own overflow, so nothing
+      // scrolls sideways and no other gate sees it.
+      for (const width of [360, 320]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.waitForTimeout(150);
+        const outside = await bar.locator("button").evaluateAll((buttons) =>
+          buttons.filter((b) => {
+            const r = b.getBoundingClientRect();
+            return r.left < 0 || r.right > window.innerWidth;
+          }).length
+        );
+        note(outside === 0, `every button of the pointing bar is on screen at ${width}px (${outside} past the edge)`);
+      }
+      await page.setViewportSize({ width: 390, height: 900 });
+      await page.waitForTimeout(150);
       await tapCell(1, 1);
       await tapCell(2, 1);
       note((await editor.inputValue()) === "=SUM(B3", `a second tap replaces the first address (${await editor.inputValue()})`);
