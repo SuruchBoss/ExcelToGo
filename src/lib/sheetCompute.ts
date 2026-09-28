@@ -14,6 +14,7 @@ import { FormulaError, FormulaValue } from "./formulaEngine/types";
 import { toDisplayString } from "./formulaEngine/coerce";
 import { formatNumberForDisplay } from "./cellFormat";
 import { literalValue } from "./cellLiteral";
+import { dateLiteral } from "./excelDate";
 
 /**
  * Recalculating a sheet, and doing it again after one cell changes without redoing the rest.
@@ -202,10 +203,19 @@ const MAX_INCREMENTAL_EDITS = 256;
 const MAX_DIRTY_FRACTION = 0.4;
 
 function displayOf(sheet: SheetModel, r: number, c: number, v: FormulaValue): string {
-  const numberFormat = sheet.formats[r]?.[c]?.numberFormat;
-  return typeof v === "number" && numberFormat && numberFormat !== "general"
-    ? formatNumberForDisplay(v, numberFormat)
-    : toDisplayString(v);
+  const format = sheet.formats[r]?.[c];
+  const numberFormat = format?.numberFormat;
+  if (typeof v === "number" && numberFormat && numberFormat !== "general") {
+    return formatNumberForDisplay(v, numberFormat, format?.dateFormat);
+  }
+  // A date typed as a date shows as typed: the value is its serial (#45), but the cell says
+  // `2024-01-15`, as Excel's does. A formula over it that has no date format shows the number, as
+  // Excel's does until it is given one.
+  if (typeof v === "number") {
+    const raw = sheet.cells[r]?.[c] ?? "";
+    if (!isFormula(raw) && dateLiteral(raw)) return raw;
+  }
+  return toDisplayString(v);
 }
 
 function isFormula(raw: string): boolean {

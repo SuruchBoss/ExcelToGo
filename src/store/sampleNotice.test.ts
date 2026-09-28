@@ -3,18 +3,80 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { singleCellSelection } from "@/types/sheet-ui";
-import { selectShowingSample, useSheetStore } from "./sheetStore";
+import { toStorage } from "@/lib/sheetCodec";
+import { isStoredSample, selectHasWork, selectShowingSample, useSheetStore } from "./sheetStore";
 
 /**
- * The rule the sample banner depends on: it is shown while — and only while — the workbook is
- * still exactly what the app opened with. Getting this wrong in either direction is a real cost:
- * left showing, it calls someone's own work "sample data"; retired too early, the first thing a
- * visitor sees is unexplained data in a grid, which is what prompted the banner in the first place.
+ * The app opens blank, and the sample is one press away (the owner's call: a grid already full of
+ * sample prices read as data left behind). The rule the sample's notice depends on is unchanged: it
+ * shows while — and only while — the workbook is exactly the sample as it was opened. Left showing,
+ * it calls someone's own work "sample data"; retired too early, a visitor sees unexplained data.
  */
 const fresh = useSheetStore.getState();
+const state = () => useSheetStore.getState();
+const undo = () => useSheetStore.temporal.getState().undo();
 
 beforeEach(() => {
   useSheetStore.setState({ sheets: fresh.sheets, activeSheetId: fresh.activeSheetId });
+  useSheetStore.temporal.getState().clear();
+  state().openSample();
+});
+
+describe("opening the app", () => {
+  it("opens on one empty sheet, which is not work and not the sample", () => {
+    useSheetStore.setState({ sheets: fresh.sheets, activeSheetId: fresh.activeSheetId });
+    expect(state().sheets).toHaveLength(1);
+    expect(state().sheets[0].sheet.cells.flat().filter(Boolean)).toHaveLength(0);
+    expect(selectShowingSample(state())).toBe(false);
+    expect(selectHasWork(state())).toBe(false);
+  });
+
+  it("opens the sample on request, and undo takes it away again", () => {
+    useSheetStore.setState({ sheets: fresh.sheets, activeSheetId: fresh.activeSheetId });
+    useSheetStore.temporal.getState().clear();
+    state().openSample();
+    expect(selectShowingSample(state())).toBe(true);
+    undo();
+    expect(state().sheets[0].sheet.cells.flat().filter(Boolean)).toHaveLength(0);
+  });
+});
+
+describe("a sample left in a browser by the version that opened on it", () => {
+  const stored = () => state().sheets.map((tab) => ({ ...tab, sheet: toStorage(tab.sheet) }));
+
+  it("is recognised as the sample, in either language, and so is not restored", () => {
+    expect(isStoredSample(stored())).toBe(true);
+    state().showSampleIn("en");
+    expect(isStoredSample(stored())).toBe(true);
+  });
+
+  it("is somebody's work after any change at all", () => {
+    state().setCellRaw(1, 2, "100");
+    expect(isStoredSample(stored())).toBe(false);
+    state().openSample();
+    state().addRow();
+    expect(isStoredSample(stored())).toBe(false);
+    state().openSample();
+    state().addSheet();
+    expect(isStoredSample(stored())).toBe(false);
+  });
+});
+
+describe("New file", () => {
+  it("replaces work with one empty sheet, and undo brings the work back", () => {
+    state().setCellRaw(1, 2, "100");
+    expect(selectHasWork(state())).toBe(true);
+    useSheetStore.temporal.getState().clear();
+    state().startBlank();
+    expect(state().sheets[0].sheet.cells.flat().filter(Boolean)).toHaveLength(0);
+    undo();
+    expect(state().sheets[0].sheet.cells[1][2]).toBe("100");
+  });
+
+  it("says out loud what it did, and how to take it back", () => {
+    state().startBlank();
+    expect(state().announcement?.text).toMatch(/ย้อนกลับ|undo/i);
+  });
 });
 
 describe("while nothing has been touched", () => {

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptySheet, setCellRaw, setRangeFormat, SheetModel } from "./sheet";
 import { computeSheet, computeStats, resetComputeCache } from "./sheetCompute";
 import { FormulaError } from "./formulaEngine/types";
+import { serialOf } from "./excelDate";
 
 /** Fixed seed: a failure has to be reproducible, and "it passed last time" is not a test. */
 function rng(seed: number): () => number {
@@ -160,13 +161,13 @@ describe("incremental recalculation", () => {
       let sheet = createEmptySheet(3, 2);
       sheet = setCellRaw(sheet, 0, 0, "=TODAY()");
       sheet = setCellRaw(sheet, 1, 1, "1");
-      expect(computeSheet(sheet).values[0][0]).toBe("2026-03-01");
+      expect(computeSheet(sheet).values[0][0]).toBe(serialOf(2026, 3, 1)); // a serial since #45
 
       // A day passes, and the only cell edited is one =TODAY() does not read. A cache that trusted
       // the dependency graph alone would hand back yesterday, forever.
       vi.setSystemTime(new Date("2026-03-02T09:00:00Z"));
       sheet = setCellRaw(sheet, 1, 1, "2");
-      expect(computeSheet(sheet).values[0][0]).toBe("2026-03-02");
+      expect(computeSheet(sheet).values[0][0]).toBe(serialOf(2026, 3, 2));
       expect(computeStats.incremental).toBeGreaterThan(0);
     } finally {
       vi.useRealTimers();

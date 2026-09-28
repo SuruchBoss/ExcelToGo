@@ -10,11 +10,10 @@ import { useT } from "@/i18n";
 /**
  * Says, once and where it will be read, that the grid is showing sample data.
  *
- * The app opens on a seeded workbook on purpose: a first-time visitor who presses Pivot or Chart on
- * an empty sheet learns nothing, and every total in the sample is a formula, so changing one price
- * demonstrates the engine in a single edit. But nothing said so, and the only banner on screen was
- * the autosave one — "your data is kept in this browser" — which reads as a claim that the sample
- * belongs to you. The first person to look at it fresh asked why the app had data left over.
+ * The sample opens from the start notice (the app itself opens blank). Every total in it is a
+ * formula, so changing one price demonstrates the engine in a single edit. Without this, the only
+ * banner on screen was the autosave one — "your data is kept in this browser" — which reads as a
+ * claim that the sample belongs to you; the first person to see it asked why the app had data left over.
  *
  * It needs no dismiss button: it disappears the moment anything is touched, which is the same
  * moment the sentence stops being true.

@@ -1,6 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
+import { dateLiteral } from "../excelDate";
 import { FormulaError, FormulaValue, isError, ERR_VALUE } from "./types";
 
 export function toNumber(v: FormulaValue): number | FormulaError {
@@ -12,8 +13,10 @@ export function toNumber(v: FormulaValue): number | FormulaError {
     const trimmed = v.trim();
     if (trimmed === "") return 0;
     const n = Number(trimmed);
-    if (Number.isNaN(n)) return ERR_VALUE;
-    return n;
+    if (!Number.isNaN(n)) return n;
+    // `="2024-01-15"+1` is a date in Excel too: text that reads as one is its serial (#45).
+    const date = dateLiteral(trimmed);
+    return date ? date.serial : ERR_VALUE;
   }
   return ERR_VALUE;
 }

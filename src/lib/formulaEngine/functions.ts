@@ -3,6 +3,7 @@
 
 import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_NUM, ERR_VALUE } from "./types";
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
+import { dateLiteral, partsOfSerial, serialOf } from "../excelDate";
 
 // SUM/AVERAGE/MIN/MAX etc. silently ignore text and blanks found inside a
 // range (matching Excel), but still propagate a genuine formula error and
@@ -40,20 +41,23 @@ function flattenNumbers(args: EvalResult[]): number[] | FormulaError {
  * reading them back with the UTC accessors keeps a date the day it says it is, wherever it is read.
  */
 function parseDateValue(v: FormulaValue): Date | null {
-  if (v instanceof Date) return v;
+  // A date in a cell is its Excel serial now (#45); a number is read as one, as Excel reads it.
+  if (typeof v === "number") return v >= 0 && Number.isFinite(v) ? dateOfSerial(v) : null;
   const text = toDisplayString(v).trim();
   if (text === "") return null;
-  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?$/.exec(text);
-  if (iso) {
-    const [, y, m, d, hh, mm] = iso;
-    const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), Number(hh ?? 0), Number(mm ?? 0)));
-    // Date.UTC rolls 2024-02-31 over into March rather than rejecting it; Excel treats a date that
-    // doesn't exist as an error, and so should this.
-    if (date.getUTCMonth() !== Number(m) - 1 || date.getUTCDate() !== Number(d)) return null;
-    return date;
-  }
+  // ISO text — typed in quotes, or kept as text on purpose — means the same date. A date that does
+  // not exist (2024-02-31) is not one, as in Excel, rather than rolling over into March.
+  const iso = dateLiteral(text.replace("T", " "));
+  if (iso) return dateOfSerial(iso.serial);
+  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(text)) return null;
   const loose = new Date(text);
   return Number.isNaN(loose.getTime()) ? null : loose;
+}
+
+/** A serial as an instant at UTC, so the UTC accessors read back the calendar date it names. */
+function dateOfSerial(serial: number): Date {
+  const p = partsOfSerial(serial);
+  return new Date(Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second));
 }
 
 /** Whole months from one date to another, counting only months that have fully elapsed. */
@@ -644,11 +648,32 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const v = scalarOf(args[0]);
     return toDisplayString(v);
   },
+  // Both are serials (#45), in the reader's own time zone: NOW used to be UTC while TODAY was local,
+  // so in Bangkok between midnight and 7am the two disagreed about the date.
   TODAY: () => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return serialOf(d.getFullYear(), d.getMonth() + 1, d.getDate());
   },
-  NOW: () => new Date().toISOString().slice(0, 16).replace("T", " "),
+  NOW: () => {
+    const d = new Date();
+    return serialOf(d.getFullYear(), d.getMonth() + 1, d.getDate()) + (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86_400;
+  },
+  /**
+   * DATE(year, month, day) — the serial of that day, as Excel builds it (#45). A month or day past
+   * its end rolls over (`DATE(2024,14,1)` is February 2025, `DATE(2024,3,0)` the last of
+   * February), and a year under 1900 counts from 1900, both as Excel does. Before 1900 is #NUM!.
+   */
+  DATE: (args) => {
+    const parts = [0, 1, 2].map((i) => toNumber(scalarOf(args[i])));
+    for (const p of parts) if (isError(p)) return p;
+    const [given, month, day] = (parts as number[]).map(Math.trunc);
+    if (given < 0 || given > 9999) return ERR_NUM;
+    const year = given < 1900 ? given + 1900 : given;
+    const d = new Date(Date.UTC(2000, 0, 1));
+    d.setUTCFullYear(year, month - 1, day);
+    const serial = serialOf(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+    return serial < 1 || serial > 2_958_465 ? ERR_NUM : serial;
+  },
   YEAR: (args) => {
     const d = parseDateValue(scalarOf(args[0]));
     return d ? d.getUTCFullYear() : ERR_VALUE;
@@ -899,6 +924,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     // the same here would be a silent wrong number, so the walk stops at the first value that
     // breaks the expected order.
     let best: number | null = null;
+    // equivalent-mutant: "<" → "<=" — the extra item is undefined, which the blank check skips.
     for (let i = 0; i < vector.length; i++) {
       const v = vector[i];
       if (isBlank(v) || isError(v)) continue;
@@ -912,9 +938,13 @@ export const FUNCTIONS: Record<string, FnImpl> = {
         cmp = text === lookupText ? 0 : text < lookupText ? -1 : 1;
       }
       if (cmp === 0) return i + 1;
+      // equivalent-mutant: "<" → "<=" — cmp is never 0 here: that case returned on the line above.
       if (matchType === 1 && cmp < 0) best = i + 1;
+      // equivalent-mutant: ">" → ">=" — cmp is never 0 here: that case returned two lines above.
       if (matchType === 1 && cmp > 0) break;
+      // equivalent-mutant: ">" → ">=" — cmp is never 0 here: that case returned three lines above.
       if (matchType === -1 && cmp > 0) best = i + 1;
+      // equivalent-mutant: "<" → "<=" — cmp is never 0 here: that case returned four lines above.
       if (matchType === -1 && cmp < 0) break;
     }
     return best ?? ERR_NA;
@@ -940,6 +970,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     let rowNum = Math.trunc(firstArg);
     let colNum = secondArg === null ? 0 : Math.trunc(secondArg);
     // One index into a single-row range counts across it, not down it.
+    // equivalent-mutant: ">" → ">=" — a 1×1 range answers the same either way: one index into one cell is that cell, or #REF!.
     if (secondArg === null && height === 1 && width > 1) {
       colNum = rowNum;
       rowNum = 1;
@@ -988,6 +1019,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     let total = 0;
     let count = 0;
     for (let r = 0; r < target.length; r++) {
+      // equivalent-mutant: "<" → "<=" — the extra cell is undefined, which the blank check below skips.
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
         const v = target[r][c];
@@ -1010,6 +1042,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     if (isError(pairs)) return pairs;
     let total = 0;
     for (let r = 0; r < target.length; r++) {
+      // equivalent-mutant: "<" → "<=" — the extra cell is undefined, read as 0, and adding 0 changes nothing.
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
         const n = toNumber(target[r][c] ?? 0);
@@ -1098,6 +1131,7 @@ function rankIn(args: EvalResult[]): FormulaValue {
   const numbers: number[] = [];
   for (const v of requireRange(args[1]).flat()) {
     if (isError(v)) return v;
+    // equivalent-mutant: "||" → "&&" — a blank or a boolean is dropped again two lines down (not finite, or empty text).
     if (isBlank(v) || typeof v === "boolean") continue;
     const n = Number(toDisplayString(v).trim());
     if (Number.isFinite(n) && toDisplayString(v).trim() !== "") numbers.push(n);

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { NumberFormat } from "./cellFormat";
+import { dateLiteral } from "./excelDate";
 import type { FormulaValue } from "./formulaEngine/types";
 
 /**
@@ -23,7 +24,10 @@ import type { FormulaValue } from "./formulaEngine/types";
  * 4. **Twelve digits or more, nothing else** (`1234567890123`) is text. Past that length it is an
  *    ID card, an account or a barcode, not an amount, and Excel's own answer — show it as
  *    1.23457E+12 and round off the tail past fifteen digits — destroys it.
- * 5. Anything else that `Number()` accepts is a number.
+ * 5. **An ISO date or time** (`2024-01-15`, `2024-01-15 13:45`, `13:45`) is that date's Excel serial,
+ *    so `=A1+1` is the next day and the file gets a real date (#45). The text stays in the cell;
+ *    only its value is a number. Other layouts stay text — see `excelDate.dateLiteral` for why.
+ * 6. Anything else that `Number()` accepts is a number.
  *
  * Nothing is stored to make the automatic rules work, so a sheet saved before they existed shows
  * its zeros again the moment it is opened.
@@ -33,6 +37,8 @@ export function literalValue(raw: string, numberFormat?: NumberFormat): FormulaV
   if (raw.startsWith("'")) return raw.slice(1);
   if (numberFormat === "text") return raw;
   if (LEADING_ZERO.test(raw) || LONG_DIGITS.test(raw)) return raw;
+  const date = dateLiteral(raw);
+  if (date) return date.serial;
   const n = Number(raw);
   return raw.trim() !== "" && !Number.isNaN(n) ? n : raw;
 }

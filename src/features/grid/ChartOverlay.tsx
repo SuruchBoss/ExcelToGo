@@ -17,6 +17,7 @@ import {
   pieSeriesIndex,
   resizeFrame,
 } from "@/lib/charts";
+import { dateTextReader } from "@/lib/dateCells";
 import { anchorToFrame, chartAnchorOf, contentSize, frameToAnchor } from "@/lib/gridGeometry";
 import { rangeRefString } from "@/lib/formulaEngine/address";
 import { FormulaValue } from "@/lib/formulaEngine/types";
@@ -61,10 +62,13 @@ interface Gesture {
 export default function ChartOverlay({
   sheet,
   values,
+  display,
   hiddenRows,
 }: {
   sheet: SheetModel;
   values: FormulaValue[][];
+  /** For dates: a chart labels with the text the grid shows, not the serial (#45). */
+  display: string[][];
   hiddenRows: ReadonlySet<number>;
 }) {
   const t = useT();
@@ -114,7 +118,7 @@ export default function ChartOverlay({
     <>
       {charts.map((chart) => {
         const f = frameOf(chart);
-        const data = chartDataFrom(values, chart.range);
+        const data = chartDataFrom(values, chart.range, dateTextReader(sheet, { values, display }));
         const pieIndex = pieSeriesIndex(data, chart.seriesIndex);
         const legend = legendEntries(chart.kind, data, pieIndex);
         // A pie draws one series; with several to choose from, which one has to be the user's call

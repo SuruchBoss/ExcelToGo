@@ -132,40 +132,77 @@ function sites(file) {
   const source = readFileSync(path.join(ROOT, file), "utf8");
   const ranges = codeRanges(source);
   const found = [];
+  const seen = new Map();
   for (const [from, to] of OPERATORS) {
     let at = source.indexOf(from);
     while (at !== -1) {
       // Word-ish operators must not match inside an identifier (`trueish`, `offset`).
       const wordy = /^[a-z]+$/.test(from.trim());
       const clean = !wordy || !/[\w$]/.test(source[at - 1] ?? " ") && !/[\w$]/.test(source[at + from.length] ?? " ");
-      if (clean && inCode(ranges, at, from.length)) found.push({ file, at, from, to });
+      if (clean && inCode(ranges, at, from.length) && !markedEquivalent(source, at, from, to)) {
+        found.push({ file, at, from, to, key: keyOf(source, file, at, from, to, seen) });
+      }
       at = source.indexOf(from, at + 1);
     }
   }
   return found;
 }
 
-/** mulberry32, the same one the property tests use, so a sample is reproducible from its seed. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+/**
+ * A swap marked, on the line above it, as one no test can notice:
+ *
+ *     // equivalent-mutant: "<" → "<=" — cmp is never 0 here; that case returned a line earlier.
+ *
+ * An *equivalent* mutant changes the code without changing what it computes, so it survives every
+ * suite there could be — and with 32 draws and a 90% floor, four of them in one sample fail the
+ * gate on nothing. Marking one takes a written reason next to the code, where a reviewer sees it,
+ * and excludes only that exact swap on that one line: the line's other operators are still drawn.
+ * The same bargain `check:deps` makes for an accepted advisory.
+ */
+function markedEquivalent(source, at, from, to) {
+  const lineStart = source.lastIndexOf("\n", at - 1) + 1;
+  const prevStart = source.lastIndexOf("\n", lineStart - 2) + 1;
+  const previous = source.slice(prevStart, lineStart);
+  const mark = /\/\/ equivalent-mutant: "([^"]+)" → "([^"]+)" — \S/.exec(previous);
+  return mark !== null && mark[1] === from.trim() && mark[2] === to.trim();
+}
+
+/**
+ * What a site *is*, as opposed to where it is: the file, the text of its line, the swap, and which
+ * occurrence of that same swap on that same line text it is. Nothing positional — so adding a
+ * function to `functions.ts` leaves every other site's key, and so the sample, where it was.
+ */
+function keyOf(source, file, at, from, to, seen) {
+  const lineStart = source.lastIndexOf("\n", at - 1) + 1;
+  const lineEnd = source.indexOf("\n", at);
+  const line = source.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim();
+  const base = `${file}|${line}|${from}|${to}`;
+  const n = (seen.get(base) ?? 0) + 1;
+  seen.set(base, n);
+  return `${base}|${n}`;
 }
 
 function sample(all, count, seed) {
   if (count <= 0 || count >= all.length) return all;
-  const next = rng(seed);
-  const picked = all.slice();
-  // Fisher-Yates with the seeded generator: a stable sample, and a different one per seed.
-  for (let i = picked.length - 1; i > 0; i--) {
-    const j = Math.floor(next() * (i + 1));
-    [picked[i], picked[j]] = [picked[j], picked[i]];
+  // Each site ranked by a seeded hash of its key, not shuffled by position. A shuffle of the whole
+  // list redraws all 32 the moment any engine file gains or loses a site: the first commit to add
+  // date handling to functions.ts turned 31/32 into 22/32 by drawing a different sample, not by
+  // weakening a single test. Ranked by key, an edit only moves the sites it actually touched.
+  return all
+    .map((site) => ({ site, rank: hash(site.key, seed) }))
+    .sort((a, b) => a.rank - b.rank || (a.site.key < b.site.key ? -1 : 1))
+    .slice(0, count)
+    .map((x) => x.site);
+}
+
+/** FNV-1a, 32 bits, with the seed folded in first: small, dependency-free, and stable across runs. */
+function hash(text, seed) {
+  let h = (2166136261 ^ seed) >>> 0;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
   }
-  return picked.slice(0, count);
+  return h;
 }
 
 function suiteFails() {

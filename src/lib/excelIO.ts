@@ -4,6 +4,8 @@
 import { commentKey } from "./cellComments";
 import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { chartDataFrom } from "./charts";
+import { dateKindAt, dateTextReader } from "./dateCells";
+import { DEFAULT_DATE_CODE, isoFromSerial, kindOfDateCode } from "./excelDate";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
 import { colToLetters } from "./formulaEngine/address";
@@ -16,9 +18,12 @@ import { isError } from "./formulaEngine/types";
 import {
   CellAlign,
   CellBorders,
+  CellFormat,
   CellVAlign,
   DEFAULT_FONT_SIZE,
   EXCEL_NUM_FMT,
+  fileDateCode,
+  isDateFormat,
   numberFormatFromExcelNumFmt,
   ptToPx,
   pxToPt,
@@ -85,7 +90,7 @@ function bordersOf(cell: ExcelJS.Cell): CellBorders | undefined {
 function cellValueToRaw(cell: ExcelJS.Cell): string {
   const v = cell.value;
   if (v === null || v === undefined) return "";
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) return rawForDate(v, cell.numFmt);
   if (typeof v !== "object") return String(v);
   if ("formula" in v && typeof v.formula === "string") {
     return `=${v.formula}`;
@@ -104,6 +109,23 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
     return result === undefined || result === null ? "" : String(result);
   }
   return "";
+}
+
+/**
+ * A date cell as the ISO text the app keeps (#45), time included.
+ *
+ * ExcelJS turns a date-formatted serial into a Date at UTC, counting from 1899-12-30 — so the serial
+ * comes back as exactly that difference in days. The kind comes from the value, not the format: a
+ * `dd/mm/yyyy` cell that also holds a time keeps its time, and a time on its own is `09:45` rather
+ * than the `1899-12-30` the old `toISOString().slice(0, 10)` made of it.
+ */
+function rawForDate(d: Date, numFmt: string | undefined): string {
+  const serial = Math.round(((d.getTime() - Date.UTC(1899, 11, 30)) / 86_400_000) * 86_400) / 86_400;
+  const whole = Math.floor(serial);
+  // Midnight in a time-only format is `00:00`, not a date: serial 0 has no day to show.
+  const timeOnly = whole === 0 && (serial !== 0 || (!!numFmt && kindOfDateCode(numFmt) === "time"));
+  const kind = timeOnly ? "time" : serial === whole ? "date" : "datetime";
+  return isoFromSerial(serial, kind);
 }
 
 /**
@@ -505,6 +527,8 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): { sheet: SheetModel; row
           align: align === "left" || align === "center" || align === "right" ? (align as CellAlign) : undefined,
           numberFormat:
             cell.numFmt && cell.numFmt !== "General" ? numberFormatFromExcelNumFmt(cell.numFmt) : undefined,
+          // The file's own date layout (`dd/mm/yyyy`), kept to show and to write back as it was (#45).
+          dateFormat: fileDateCode(cell.numFmt),
           fill: fillColorOf(cell),
           // Only carry a size that differs from Excel's default, so a plain file doesn't end up
           // with an explicit font size on every single cell.
@@ -653,10 +677,19 @@ export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[
   });
 }
 
+/** Whether a cell's format sets anything, so an empty cell that only carries a fill still goes out. */
+function hasAnyFormat(format: CellFormat | undefined): boolean {
+  return !!format && Object.values(format).some((v) => v !== undefined && v !== false);
+}
+
 async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
   for (let r = 0; r < sheet.rows; r++) {
     for (let c = 0; c < sheet.cols; c++) {
       const raw = sheet.cells[r][c];
+      const format = sheet.formats[r]?.[c];
+      // An empty cell with nothing on it stays out of the file: `getCell` creates the row, and a
+      // sheet padded to the grid's size came back with 20 rows where the file had 5 (#45).
+      if (raw === "" && !hasAnyFormat(format)) continue;
       const cell = worksheet.getCell(r + 1, c + 1);
       // A formula goes out as a formula only if this engine can read it. One that does not parse is
       // an error here whatever it would do elsewhere, and the file should not promise more than the
@@ -677,7 +710,6 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         cell.value = literalValue(raw, sheet.formats[r]?.[c]?.numberFormat) as string | number;
       }
 
-      const format = sheet.formats[r]?.[c];
       if (format?.bold || format?.color || format?.fontSize || format?.italic || format?.underline) {
         cell.font = {
           bold: format.bold || undefined,
@@ -691,7 +723,12 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         cell.alignment = { horizontal: format.align, vertical: format.valign };
       }
       if (format?.numberFormat && EXCEL_NUM_FMT[format.numberFormat]) {
-        cell.numFmt = EXCEL_NUM_FMT[format.numberFormat]!;
+        cell.numFmt = format.dateFormat && isDateFormat(format.numberFormat) ? format.dateFormat : EXCEL_NUM_FMT[format.numberFormat]!;
+      } else if (typeof cell.value === "number") {
+        // A date typed as a date goes out as a date cell: the serial, with a date format Excel
+        // recognises (#45). Without one it would open as 45306.
+        const kind = dateKindAt(sheet, r, c);
+        if (kind) cell.numFmt = DEFAULT_DATE_CODE[kind];
       }
       // Text that would read as a number goes out marked as text ("@"), which is what stops Excel
       // itself from turning it back into one the first time somebody edits the cell. After the
@@ -758,9 +795,11 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
 
   writeConditionalFormats(worksheet, sheet);
 
-  worksheet.columns.forEach((col, i) => {
-    col.width = pxToExcelWidth(sheet.colWidths?.[i]) ?? 16;
-  });
+  // Every column of the grid, not just the ones holding something: `getColumn` sets a width without
+  // creating cells, and an empty sheet has no columns of its own to walk.
+  for (let c = 0; c < sheet.cols; c++) {
+    worksheet.getColumn(c + 1).width = pxToExcelWidth(sheet.colWidths?.[c]) ?? 16;
+  }
   sheet.rowHeights?.forEach((px, i) => {
     const pt = pxToPt(px);
     if (pt !== undefined) worksheet.getRow(i + 1).height = pt;
@@ -803,7 +842,7 @@ export interface ExportableSheet {
 async function writeCharts(workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
   for (const chart of sheet.charts ?? []) {
     const anchor = chartAnchorOf(sheet, chart);
-    const data = chartDataFrom(computed.values, chart.range);
+    const data = chartDataFrom(computed.values, chart.range, dateTextReader(sheet, computed));
     const picture = chartToSvg(chart.kind, data, anchor.w, anchor.h, chart.seriesIndex);
     if (!picture) continue;
     try {
@@ -916,7 +955,7 @@ export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promi
   const pending: PendingChart[] = [];
   sheets.forEach(({ sheet, computed }, sheetIndex) => {
     for (const chart of sheet.charts ?? []) {
-      const data = chartDataFrom(computed.values, chart.range);
+      const data = chartDataFrom(computed.values, chart.range, dateTextReader(sheet, computed));
       if (data.series.length === 0) continue;
       const series = seriesRefsFrom(
         data,
