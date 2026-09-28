@@ -1040,7 +1040,7 @@ export default function SpreadsheetGrid() {
         onSelect={setSelection}
       />
 
-      <ChartOverlay sheet={sheet} values={values} hiddenRows={hiddenRows} />
+      <ChartOverlay sheet={sheet} values={values} display={display} hiddenRows={hiddenRows} />
 
       {selectedBlock && (
         <LiveBlockToolbar

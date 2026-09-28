@@ -12,6 +12,7 @@
  * a grid, a pointer or a store. The grid decides *what* was selected and *where* it was dragged to;
  * this decides only what the new cells should say.
  */
+import { dateLiteral, isoFromSerial } from "./excelDate";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 
 /** A value that reads as a number, `1,250` included. */
@@ -126,6 +127,18 @@ export function fillValues({ seed, count, rowOffset, colOffset }: FillRequest): 
       if (gap !== null) {
         const last = numbers[numbers.length - 1] as number;
         for (let i = 0; i < count; i++) out.push(tidy(last + gap * (i + 1)));
+        return out;
+      }
+    }
+
+    // Dates step by day, or by whatever gap the seed has (#45): `2024-01-31` continues into February
+    // rather than to `2024-01-32`, which the suffix rule below would write. Same kind in, same out.
+    const dates = seed.map((v) => dateLiteral(v.trim()));
+    if (dates.every((d) => d !== null) && dates.every((d) => d!.kind === dates[0]!.kind)) {
+      const gap = step(dates.map((d) => d!.serial));
+      if (gap !== null) {
+        const last = dates[dates.length - 1]!.serial;
+        for (let i = 0; i < count; i++) out.push(isoFromSerial(last + gap * (i + 1), dates[0]!.kind));
         return out;
       }
     }

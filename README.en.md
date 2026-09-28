@@ -38,7 +38,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1593%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1613%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -59,7 +59,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1593 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1613 automated tests.
 
 ---
 
@@ -103,7 +103,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1593 passing tests could not catch
+### 🧪 What 1613 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -114,7 +114,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1593 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1613 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -378,7 +378,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1593-case Vitest suite |
+| `npm test` | Run the 1613-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -2360,7 +2360,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1593 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1613 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2651,6 +2651,10 @@ src/
     cellLiteral.ts           # Whether a non-formula cell is a number or text — the one place that decides,
                               # shared by the engine and the .xlsx writer: a leading apostrophe, a
                               # leading zero or twelve-plus digits make it text (tested)
+    excelDate.ts             # Dates as Excel keeps them: 1900-system serials (29 Feb 1900 included),
+                              # the ISO forms read as dates, and Excel date codes like dd/mm/yyyy (tested)
+    dateCells.ts             # Which cells are dates — so charts, pivots and CSV label with the date,
+                              # not its serial
     sheetCompute.ts          # Works out every cell's value, and works out the next one without redoing
                               # the rest — keeps a dependency graph (tested, with a benchmark)
     rowWindow.ts             # Which rows a scrolled grid actually has to put in the DOM, so a
@@ -3324,13 +3328,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1593 cases across 101 files, via Vitest
+npm test      # 1613 cases across 104 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1593 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1613 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -3428,10 +3432,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1593 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1613 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1593 passing tests could not catch](#-what-1593-passing-tests-could-not-catch), repeatable
+> [What 1613 passing tests could not catch](#-what-1613-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3453,6 +3457,8 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
+| `excelDate.test.ts` | 7 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) |
+| `dates.test.ts` | 10 | Dates in a sheet (#45): the issue's table (`=A2-A1` = 36, `=A1+30`, `=A3*24`), YEAR/DATEDIF on serials and ISO text, a sheet saved before the fix opening with dates, charts and CSV using dates as labels, and export as real date cells |
 | `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
 | `executeSource.test.ts` | 47 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, the auth header on every page of its own origin and on no other, a mid-chain 429, and the SSRF guard on the path that actually fetches (including a redirect to a private address) |
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
@@ -3476,6 +3482,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/liveBlockStructure.test.ts` | 8 | Live data and row/column edits (#46), through the real store and then a refresh: the block moves with them, a total under it is not written over, an edit inside it is refused with the reason, deleting its header unlinks it and keeps the values, and undo brings the linked block back |
 | `store/liveEmptyResult.test.ts` | 2 | A source answering with an empty list (#65): the block keeps its last header, the rows under it are cleared, a SUM reads 0 rather than the envelope, and it fills again when rows come back |
 | `store/workbookCompute.test.ts` | 3 | Every path in the store computes with the workbook (#58): a pivot counts a value read from another sheet (175.3, not 105.3), a sort orders cross-sheet values by their numbers, and a guard that fails on any bare `computeSheet` outside the engine |
+| `store/datePivot.test.ts` | 1 | A pivot by day (#45): its rows are headed with dates, not serials |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |

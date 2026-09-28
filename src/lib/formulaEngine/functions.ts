@@ -3,6 +3,7 @@
 
 import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_NUM, ERR_VALUE } from "./types";
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
+import { dateLiteral, partsOfSerial, serialOf } from "../excelDate";
 
 // SUM/AVERAGE/MIN/MAX etc. silently ignore text and blanks found inside a
 // range (matching Excel), but still propagate a genuine formula error and
@@ -40,20 +41,23 @@ function flattenNumbers(args: EvalResult[]): number[] | FormulaError {
  * reading them back with the UTC accessors keeps a date the day it says it is, wherever it is read.
  */
 function parseDateValue(v: FormulaValue): Date | null {
-  if (v instanceof Date) return v;
+  // A date in a cell is its Excel serial now (#45); a number is read as one, as Excel reads it.
+  if (typeof v === "number") return v >= 0 && Number.isFinite(v) ? dateOfSerial(v) : null;
   const text = toDisplayString(v).trim();
   if (text === "") return null;
-  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?$/.exec(text);
-  if (iso) {
-    const [, y, m, d, hh, mm] = iso;
-    const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), Number(hh ?? 0), Number(mm ?? 0)));
-    // Date.UTC rolls 2024-02-31 over into March rather than rejecting it; Excel treats a date that
-    // doesn't exist as an error, and so should this.
-    if (date.getUTCMonth() !== Number(m) - 1 || date.getUTCDate() !== Number(d)) return null;
-    return date;
-  }
+  // ISO text — typed in quotes, or kept as text on purpose — means the same date. A date that does
+  // not exist (2024-02-31) is not one, as in Excel, rather than rolling over into March.
+  const iso = dateLiteral(text.replace("T", " "));
+  if (iso) return dateOfSerial(iso.serial);
+  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(text)) return null;
   const loose = new Date(text);
   return Number.isNaN(loose.getTime()) ? null : loose;
+}
+
+/** A serial as an instant at UTC, so the UTC accessors read back the calendar date it names. */
+function dateOfSerial(serial: number): Date {
+  const p = partsOfSerial(serial);
+  return new Date(Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second));
 }
 
 /** Whole months from one date to another, counting only months that have fully elapsed. */
@@ -644,11 +648,16 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const v = scalarOf(args[0]);
     return toDisplayString(v);
   },
+  // Both are serials (#45), in the reader's own time zone: NOW used to be UTC while TODAY was local,
+  // so in Bangkok between midnight and 7am the two disagreed about the date.
   TODAY: () => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return serialOf(d.getFullYear(), d.getMonth() + 1, d.getDate());
   },
-  NOW: () => new Date().toISOString().slice(0, 16).replace("T", " "),
+  NOW: () => {
+    const d = new Date();
+    return serialOf(d.getFullYear(), d.getMonth() + 1, d.getDate()) + (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86_400;
+  },
   YEAR: (args) => {
     const d = parseDateValue(scalarOf(args[0]));
     return d ? d.getUTCFullYear() : ERR_VALUE;

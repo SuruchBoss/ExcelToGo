@@ -77,6 +77,7 @@ import { getLocale, getMessages } from "@/i18n";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/types";
 import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
+import { dateTextAt, valuesWithIsoDates } from "@/lib/dateCells";
 import { afterWrite, boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, shiftLiveBlocks, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
@@ -403,6 +404,22 @@ interface RenderedPivot {
   cols: number;
 }
 
+/**
+ * The block a pivot reads, as values — except a date, which is grouped by the text the grid shows
+ * (#45). Its value is a serial, and a pivot by day would otherwise have 45306 as a row heading.
+ * Shared by the build and the "source has changed" check, so the two hash the same thing.
+ */
+function pivotSourceRows(sourceSheet: SheetModel, range: PivotSource["range"], sheets: readonly SheetTab[]): FormulaValue[][] {
+  const computed = computeTab(sourceSheet, sheets);
+  const rows: FormulaValue[][] = [];
+  for (let r = range.startRow; r <= range.endRow; r++) {
+    const row: FormulaValue[] = [];
+    for (let c = range.startCol; c <= range.endCol; c++) row.push(dateTextAt(sourceSheet, computed, r, c) ?? computed.values[r]?.[c] ?? null);
+    rows.push(row);
+  }
+  return rows;
+}
+
 function renderPivotSheet(
   sourceSheet: SheetModel,
   range: PivotSource["range"],
@@ -411,14 +428,7 @@ function renderPivotSheet(
   sheets: readonly SheetTab[]
 ): RenderedPivot | null {
   if (range.endRow <= range.startRow) return null;
-  const computed = computeTab(sourceSheet, sheets);
-
-  const rows: FormulaValue[][] = [];
-  for (let r = range.startRow; r <= range.endRow; r++) {
-    const row: FormulaValue[] = [];
-    for (let c = range.startCol; c <= range.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
-    rows.push(row);
-  }
+  const rows = pivotSourceRows(sourceSheet, range, sheets);
 
   const m = getMessages();
   const result = buildPivot(rows, config, {
@@ -1817,7 +1827,8 @@ export const useSheetStore = create<SheetState>()(
           try {
             const tab = activeTab(get());
             const { toCsv, trimGrid, valuesToCsvGrid } = await import("@/lib/csv");
-            const grid = trimGrid(valuesToCsvGrid(computeTab(tab.sheet, get().sheets).values));
+            // Dates go out as ISO text rather than their serials (#45) — see `valuesWithIsoDates`.
+            const grid = trimGrid(valuesToCsvGrid(valuesWithIsoDates(tab.sheet, computeTab(tab.sheet, get().sheets))));
             if (grid.length === 0) {
               alert(getMessages().store.csvEmpty);
               return;
@@ -2024,13 +2035,7 @@ export function selectPivotStatus(s: SheetState): PivotStatus | null {
   const source = s.sheets.find((t) => t.id === spec.sheetId);
   if (!source) return "orphaned";
 
-  const computed = computeTab(source.sheet, s.sheets);
-  const rows: FormulaValue[][] = [];
-  for (let r = spec.range.startRow; r <= spec.range.endRow; r++) {
-    const row: FormulaValue[] = [];
-    for (let c = spec.range.startCol; c <= spec.range.endCol; c++) row.push(computed.values[r]?.[c] ?? null);
-    rows.push(row);
-  }
+  const rows = pivotSourceRows(source.sheet, spec.range, s.sheets);
   return hashValues(rows) === spec.hash ? "fresh" : "stale";
 }
 

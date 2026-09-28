@@ -223,7 +223,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1593 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1613 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -426,7 +426,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1593", label: "automated tests" },
+      { value: "1613", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -866,6 +866,9 @@ export const en: Messages = {
     percent: "Percent (%)",
     currency: "Currency (฿)",
     text: "Text",
+    date: "Date",
+    datetime: "Date and time",
+    time: "Time",
   },
   pivot: {
     title: "Summarise (Pivot)",

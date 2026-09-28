@@ -144,3 +144,14 @@ describe("which block a drag fills", () => {
     expect(fillTargetFor(source, 1, 1)).toBeNull();
   });
 });
+
+describe("dates (#45)", () => {
+  const fill = (seed: string[], count = 3) => fillValues({ seed, count, rowOffset: 1, colOffset: 0 });
+  it("steps a date by day, across the end of the month", () => {
+    expect(fill(["2024-01-30"])).toEqual(["2024-01-31", "2024-02-01", "2024-02-02"]);
+  });
+  it("keeps the gap two dates set, and a time's step", () => {
+    expect(fill(["2024-01-01", "2024-01-08"], 2)).toEqual(["2024-01-15", "2024-01-22"]);
+    expect(fill(["09:00", "09:30"], 2)).toEqual(["10:00", "10:30"]);
+  });
+});

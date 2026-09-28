@@ -4,6 +4,8 @@
 import { commentKey } from "./cellComments";
 import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { chartDataFrom } from "./charts";
+import { dateKindAt, dateTextReader } from "./dateCells";
+import { DEFAULT_DATE_CODE } from "./excelDate";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
 import { colToLetters } from "./formulaEngine/address";
@@ -19,6 +21,7 @@ import {
   CellVAlign,
   DEFAULT_FONT_SIZE,
   EXCEL_NUM_FMT,
+  isDateFormat,
   numberFormatFromExcelNumFmt,
   ptToPx,
   pxToPt,
@@ -691,7 +694,12 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         cell.alignment = { horizontal: format.align, vertical: format.valign };
       }
       if (format?.numberFormat && EXCEL_NUM_FMT[format.numberFormat]) {
-        cell.numFmt = EXCEL_NUM_FMT[format.numberFormat]!;
+        cell.numFmt = format.dateFormat && isDateFormat(format.numberFormat) ? format.dateFormat : EXCEL_NUM_FMT[format.numberFormat]!;
+      } else if (typeof cell.value === "number") {
+        // A date typed as a date goes out as a date cell: the serial, with a date format Excel
+        // recognises (#45). Without one it would open as 45306.
+        const kind = dateKindAt(sheet, r, c);
+        if (kind) cell.numFmt = DEFAULT_DATE_CODE[kind];
       }
       // Text that would read as a number goes out marked as text ("@"), which is what stops Excel
       // itself from turning it back into one the first time somebody edits the cell. After the
@@ -803,7 +811,7 @@ export interface ExportableSheet {
 async function writeCharts(workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, sheet: SheetModel, computed: ComputedSheet) {
   for (const chart of sheet.charts ?? []) {
     const anchor = chartAnchorOf(sheet, chart);
-    const data = chartDataFrom(computed.values, chart.range);
+    const data = chartDataFrom(computed.values, chart.range, dateTextReader(sheet, computed));
     const picture = chartToSvg(chart.kind, data, anchor.w, anchor.h, chart.seriesIndex);
     if (!picture) continue;
     try {
@@ -916,7 +924,7 @@ export async function exportWorkbookToXlsxBlob(sheets: ExportableSheet[]): Promi
   const pending: PendingChart[] = [];
   sheets.forEach(({ sheet, computed }, sheetIndex) => {
     for (const chart of sheet.charts ?? []) {
-      const data = chartDataFrom(computed.values, chart.range);
+      const data = chartDataFrom(computed.values, chart.range, dateTextReader(sheet, computed));
       if (data.series.length === 0) continue;
       const series = seriesRefsFrom(
         data,

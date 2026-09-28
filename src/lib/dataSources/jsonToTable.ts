@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { literalValue } from "../cellLiteral";
+import { dateLiteral } from "../excelDate";
 import { CellValue, TableColumn, TableData } from "./types";
 
 type Json = unknown;
@@ -197,6 +198,9 @@ export function parseCsv(text: string): string[][] {
 function coerce(s: string): CellValue {
   const t = s.trim();
   if (t === "") return null;
+  // A date stays its text: the live block writes it into a cell, which reads it as a date there (#45).
+  // Its serial would land as a bare number.
+  if (dateLiteral(t)) return s;
   const v = literalValue(t);
   return typeof v === "number" ? v : s;
 }
