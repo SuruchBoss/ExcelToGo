@@ -4,7 +4,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ClipboardPaste, Columns3, Copy, Eraser, Rows3, Scissors, Trash2 } from "lucide-react";
+import { CalendarCheck, ClipboardPaste, Columns3, Copy, Eraser, Rows3, Scissors, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useT } from "@/i18n";
 import { formatKey, isAppleKeyboard } from "@/lib/keyboardShortcuts";
@@ -19,6 +19,8 @@ export interface CellMenuActions {
   deleteRow: () => void;
   deleteColumn: () => void;
   clear: () => void;
+  /** Opens "Convert to dates" (#82). */
+  convertDates: () => void;
 }
 
 /**
@@ -135,6 +137,9 @@ export default function CellContextMenu({
       </button>
       <button role="menuitem" onClick={run(actions.insertColumn)} className={item}>
         <Columns3 size={15} aria-hidden /> {t.grid.insertColumnLeft}
+      </button>
+      <button role="menuitem" onClick={run(actions.convertDates)} className={item}>
+        <CalendarCheck size={15} aria-hidden /> {t.convertDates.menu}
       </button>
       {rule}
       <button role="menuitem" onClick={run(actions.clear)} className={item}>

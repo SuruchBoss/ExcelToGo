@@ -25,6 +25,7 @@ import SampleNotice from "@/features/grid/SampleNotice";
 import StartNotice from "@/features/grid/StartNotice";
 import SortWarningDialog from "@/features/grid/SortWarningDialog";
 import OtherTabDialog from "@/features/otherTab/OtherTabDialog";
+import ConvertDatesDialog from "@/features/toolbar/ConvertDatesDialog";
 import ViewOnlyNotice from "@/features/otherTab/ViewOnlyNotice";
 import { useTabLock } from "@/features/otherTab/useTabLock";
 import PivotNotice from "@/features/grid/PivotNotice";
@@ -89,6 +90,8 @@ export default function Home() {
   const sidebarMode = useSheetStore((s) => s.sidebarMode);
   const hasPending = useSheetStore((s) => s.pending !== null);
   const setSidebarMode = useSheetStore((s) => s.setSidebarMode);
+  const convertingDates = useSheetStore((s) => s.convertingDates);
+  const setConvertingDates = useSheetStore((s) => s.setConvertingDates);
   const cancelPending = useSheetStore((s) => s.cancelPending);
   const sidebarVisible = hasPending || sidebarMode !== "none";
   const closeSidebar = () => (hasPending ? cancelPending() : setSidebarMode("none"));
@@ -102,6 +105,7 @@ export default function Home() {
       <LiveAnnouncer />
       <SortWarningDialog />
       <OtherTabDialog />
+      {convertingDates && <ConvertDatesDialog onClose={() => setConvertingDates(false)} />}
       {find.open && <FindPanel onClose={find.close} />}
       <Toolbar />
       <FormatBar />

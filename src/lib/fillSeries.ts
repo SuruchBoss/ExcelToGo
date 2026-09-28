@@ -12,7 +12,7 @@
  * a grid, a pointer or a store. The grid decides *what* was selected and *where* it was dragged to;
  * this decides only what the new cells should say.
  */
-import { dateLiteral, isoFromSerial } from "./excelDate";
+import { type DateKind, dateLiteral, formatSerial, isoFromSerial, THAI_MONTHS } from "./excelDate";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 
 /** A value that reads as a number, `1,250` included. */
@@ -138,7 +138,12 @@ export function fillValues({ seed, count, rowOffset, colOffset }: FillRequest): 
       const gap = step(dates.map((d) => d!.serial));
       if (gap !== null) {
         const last = dates[dates.length - 1]!.serial;
-        for (let i = 0; i < count; i++) out.push(isoFromSerial(last + gap * (i + 1), dates[0]!.kind));
+        // A Buddhist-Era seed goes on in its own layout and calendar (#82): `16/01/2569`, not `2026-01-17`.
+        const be = dates.every((d) => d!.era === "be") ? beCodeLike(seed[seed.length - 1].trim(), dates[0]!.kind) : null;
+        for (let i = 0; i < count; i++) {
+          const serial = last + gap * (i + 1);
+          out.push(be ? formatSerial(serial, be) : isoFromSerial(serial, dates[0]!.kind));
+        }
         return out;
       }
     }
@@ -278,4 +283,22 @@ export function fillWithin(selection: FillTarget, axis: "down" | "right"): { sou
     source: { ...selection, endCol: selection.startCol },
     target: { ...selection, startCol: selection.startCol + 1 },
   };
+}
+
+/**
+ * The format code that writes a date the way a Buddhist-Era seed was written, so what the fill
+ * handle writes reads back as the same kind of date (#82): `15/01/2569` → `dd/mm/bbbb`, `2569-01-15`
+ * → `bbbb-mm-dd`, `15 ม.ค. 2569` → Thai short month, `15 มกราคม 69` → Thai full month, two-digit year.
+ */
+function beCodeLike(text: string, kind: DateKind): string {
+  const time = kind === "datetime" ? " hh:mm" : "";
+  if (/^\d{4}-/.test(text)) return `bbbb-mm-dd${time}`;
+  const thai = /^(\d{1,2})\s*([\u0E00-\u0E7F.]+)\s*(?:[\u0E00-\u0E7F.]+\s*)?(\d+)/.exec(text);
+  if (thai) {
+    const month = THAI_MONTHS.some((name) => text.includes(name)) ? "mmmm" : "mmm";
+    return `[$-41E]d ${month} ${thai[3].length === 2 ? "bb" : "bbbb"}${time}`;
+  }
+  const [day, month] = text.split(/[/-]/);
+  const sep = text.includes("-") ? "-" : "/";
+  return `${day.length === 2 ? "dd" : "d"}${sep}${month.length === 2 ? "mm" : "m"}${sep}bbbb${time}`;
 }

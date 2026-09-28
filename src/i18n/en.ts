@@ -427,7 +427,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1705", label: "automated tests" },
+      { value: "1734", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -722,6 +722,24 @@ export const en: Messages = {
     handedOff: "This tab is view-only now: the workbook was opened for editing in another tab. Everything done here was saved.",
     refused: "Nothing can be changed in this tab. Use this tab instead to edit here.",
   },
+  convertDates: {
+    button: "Convert to dates",
+    menu: "Convert to dates…",
+    hint: "Read the selected text as dates, such as 15/01/69",
+    title: "Convert text to dates",
+    body: "A date like 15/01/69 can be read more than one way — 2569 B.E. or 1969, day first or month first — so it is not guessed. Say how it is written and see the result before anything changes. Cells that cannot be read are left as they are, and one undo puts everything back.",
+    order: "Order",
+    orders: { dmy: "Day/Month/Year", mdy: "Month/Day/Year", ymd: "Year/Month/Day" },
+    calendar: "Years in",
+    calendars: { be: "B.E. (Thai)", ce: "A.D." },
+    preview: "Preview",
+    before: "Now",
+    after: "Becomes",
+    counts: (changed, unreadable) => `${changed} ${changed === 1 ? "cell" : "cells"} will change${unreadable ? ` · ${unreadable} cannot be read (left as they are)` : ""}`,
+    nothing: "Nothing in the selection reads as a date this way",
+    confirm: (changed) => `Convert ${changed} ${changed === 1 ? "cell" : "cells"}`,
+    cancel: "Cancel",
+  },
   newFile: {
     button: "New file",
     hint: "Start a blank sheet (you can undo it)",
@@ -900,6 +918,7 @@ export const en: Messages = {
     currency: "Currency (฿)",
     text: "Text",
     date: "Date",
+    dateBE: "Date (B.E.)",
     datetime: "Date and time",
     time: "Time",
   },
@@ -957,6 +976,10 @@ export const en: Messages = {
     allFiltersCleared: (total) => `Cleared all filters, showing all ${total} rows`,
     pasted: (rows, cols, at) => `Pasted ${rows} rows by ${cols} columns at ${at}`,
     cleared: (range) => `Cleared ${range}`,
+    datesConverted: (changed, unreadable) =>
+      changed === 0
+        ? "No cell could be read as a date this way"
+        : `Converted ${changed} ${changed === 1 ? "cell" : "cells"} to dates${unreadable ? ` · ${unreadable} could not be read and were left as they were` : ""}`,
     filled: (cells, range) => `Filled ${cells} cells, ${range} now selected`,
     replacedOne: (at) => `Replaced in ${at}`,
     replacedAll: (cells) => `Replaced in ${cells} cells`,

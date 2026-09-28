@@ -286,6 +286,7 @@ const W = {
     reportTitle: "รายงานยอดขายประจำเดือน",
     month1: "ม.ค.",
     crashTabs: ["ยอดขาย", "งบประมาณ"],
+    textDates: ["วันเกิด", "15/01/69", "03/05/30", "28/02/2569", "ไม่ทราบ"],
     newItem: "ของหวาน",
     regions: [["ภาค", "ยอดขาย"], ["เหนือ", 1200], ["กลาง", 3400], ["ใต้", 900], ["เหนือ", 2100]],
     rangeName: "ยอดขาย",
@@ -334,6 +335,7 @@ const W = {
     reportTitle: "Monthly sales report",
     month1: "Jan",
     crashTabs: ["Sales", "Budget"],
+    textDates: ["Date of birth", "15/01/69", "03/05/30", "28/02/2569", "unknown"],
     newItem: "Desserts",
     regions: [["Region", "Sales"], ["North", 1200], ["Central", 3400], ["South", 900], ["North", 2100]],
     rangeName: "Sales",
@@ -1351,6 +1353,22 @@ const SCENES = [
       await k.select(1, 1, 8, 1);
       await k.page.locator("[data-grid-scroller]").evaluate((el) => el.scrollTo({ left: 900 }));
       await k.page.getByRole("button", { name: k.t.grid.backToSelection("B2:B9") }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // #82: dates typed as text that nothing reads on its own (`15/01/69`), and the dialog that asks
+    // how to read them — day first, Buddhist years — with the preview of what they become.
+    file: "64-convert-dates.png",
+    async take(k) {
+      await k.open("/app", { width: 1440, height: 860, blank: true });
+      const column = W[k.lang].textDates;
+      for (let r = 0; r < column.length; r++) await k.type(r, 0, column[r]);
+      await k.select(1, 0, column.length - 1, 0);
+      await k.button(k.t.convertDates.button).click();
+      const dialog = k.page.getByRole("dialog", { name: k.t.convertDates.title });
+      await dialog.waitFor();
+      await dialog.getByText("2026-01-15", { exact: false }).waitFor();
       await k.shot(this.file);
     },
   },

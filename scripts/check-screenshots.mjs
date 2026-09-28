@@ -108,6 +108,8 @@ const SHOWS = {
   "58-new-file.png": [],
   "59-back-to-selection.png": [],
   "61-other-tab.png": [],
+  // The convert-to-dates dialog (#82): dates and counts from its own sample, none of them counted figures.
+  "64-convert-dates.png": [],
   "demo.gif": [],
 };
 

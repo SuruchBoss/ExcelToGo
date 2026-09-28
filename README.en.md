@@ -40,7 +40,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1705%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1734%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -61,7 +61,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1705 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1734 automated tests.
 
 ---
 
@@ -105,7 +105,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1705 passing tests could not catch
+### 🧪 What 1734 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -116,7 +116,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1705 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1734 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -269,6 +269,7 @@ the outcome under a double rule like a total.
   - [Fill colour](#-fill-colour)
   - [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros)
   - [Dates and times](#-dates-and-times)
+  - [Buddhist-Era dates](#-buddhist-era-dates)
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
@@ -385,7 +386,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1705-case Vitest suite |
+| `npm test` | Run the 1734-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -393,7 +394,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 33 flows: a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 34 flows: a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -1202,8 +1203,8 @@ on, and an exported file opens in Excel with **date cells** rather than 45306 or
 <p align="center"><img src="public/screenshots/en/56-dates.png" width="700" alt="Dates in a sheet: subtracted into days, a date and time in a column widened to fit, a time on its own, and =DATE(2024,3,1) in the formula bar while the cell shows 2024-03-01 and the format menu reads Date"></p>
 
 - **ISO forms only** (`yyyy-mm-dd`). `03/04/2024` is March in one country and April in another, and a
-  wrong guess moves a date a month without a word, so every other layout stays the text it is
-  (Buddhist-era years and Thai month names are #82).
+  wrong guess moves a date a month without a word, so every other layout stays the text it is —
+  except the Thai forms that cannot be misread; see [Buddhist-Era dates](#-buddhist-era-dates).
 - **Excel's 1900 system**, including the 29 February 1900 that never happened (Excel inherited it from
   Lotus 1-2-3), so a date typed here is the same number in Excel on every day there is.
 - **Opening an `.xlsx`** keeps the time; a time-only cell is `09:45` (it used to become `1899-12-30`),
@@ -1235,15 +1236,62 @@ to pad each sheet with empty rows to the grid's size, so a 5-row sheet came back
 - **Formula results are not all formatted for you.** `=A1+30` with a date in A1 shows the serial until
   you pick "Date" (Excel infers it from the formula; this does not yet). Only formulas starting with
   `TODAY`, `NOW` or `DATE` are formatted automatically.
-- **Other date layouts stay text**, whether typed, pasted, in a CSV or from live data: `15/01/2024`
-  cannot be subtracted until it is rewritten as ISO, or until #82.
+- **Ambiguous date layouts stay text**, whether typed, pasted, in a CSV or from live data: `15/01/2024`
+  cannot be subtracted until the [Convert to dates](#-buddhist-era-dates) command reads it (#82).
 - **A file's date validation rules are not imported.** The app has no rule of that kind yet, so one is
   dropped on open, as before (the ERP template's "after 2020-01-01", for one). The dates in the cells
   are unaffected.
-- A file's date format shows in the Gregorian calendar; a Buddhist-calendar code (`[$-th-TH,107]`) still
-  shows the Common Era year (#82).
 - A date format is a cell format, so it does not sync live between collaborators yet (the existing limit
   on every format). The date itself lives in the cell, so that syncs.
+
+### 📆 Buddhist-Era dates
+
+Thai files very often hold dates as `15/01/2569`, `15 ม.ค. 2569` or `15/01/69` (feedback from real users, #82).
+Read literally, every one of them is 543 years off, and `DATEDIF`, length of service, days overdue and
+sorting by date are all wrong with nothing to say so.
+
+**Read automatically only where they cannot be misread** — the value is the Gregorian date, and the cell
+still shows what was typed (the same rule as #45):
+
+| Typed | Read as | Because |
+|---|---|---|
+| `15/01/2569` · `15-1-2569` · `2569-01-15` · `2569-01-15 13:45` | 15 Jan 2026 | a four-digit year from 2400 to 2700 is the Buddhist Era (and then the day comes first) |
+| `15 ม.ค. 2569` · `15 มกราคม พ.ศ. 2569` · `15 มค 2569` | 15 Jan 2026 | a Thai month name, full or short, with or without its dots |
+| `15 ม.ค. 69` · `15 พ.ค. 30` | 2026-01-15 · 1987-05-15 | two digits beside a Thai month are a Buddhist year (25yy) |
+| `15 ม.ค. 2026` | 2026-01-15 | 1900–2399 beside a Thai month is Gregorian |
+| `2569` · `15/01/69` · `15/01/2024` | text | a bare number is not a date; a two-digit numeric year and a Gregorian `d/m/yyyy` are ambiguous |
+
+`=DATE(2569,1,15)` is still the year 2569, as in Excel. `=DATEDIF(A1,A2,"d")` between a Buddhist and a
+Gregorian date counts the real days, sorting is by time, and dragging `30/01/2569` fills on as `31/01/2569`,
+`01/02/2569` in the same layout.
+
+**`15/01/69` is not guessed.** It could be a birthday in 2530 B.E. or a due date in 2030, and a wrong guess
+is 43 years off with nothing to show it. So there is a **"Convert to dates"** command, like Excel's Text to
+Columns → Date: select the range, right-click, pick the **order** (Day/Month/Year · Month/Day/Year ·
+Year/Month/Day) and the **calendar** (B.E. → 25yy · A.D. → Excel's window, 00–29 as 20yy and 30–99 as
+19yy), and **see a preview** with the number of cells that cannot be read before anything changes. Those
+are left alone; the rest are stored as ISO, and **one undo** puts them all back. It takes a Gregorian
+`d/m/yyyy` too. The same button sits in the format bar beside "Number format" from 1440px up, and in the
+"Tools" sheet on narrower screens.
+
+<p align="center"><img src="public/screenshots/en/64-convert-dates.png" width="820" alt="The Convert text to dates dialog: Day/Month/Year and B.E. picked, a preview showing 15/01/69 becoming 15/1/2569 (2026-01-15), and one cell that cannot be read"></p>
+
+- **A "Date (B.E.)" format** in the number format menu shows `15/1/2569`. A date typed with a Buddhist
+  year, and cells converted from the Buddhist Era, go out to `.xlsx` with the Thai calendar code, so Excel
+  opens them showing the Buddhist year as the grid does.
+- **A file that shows its dates in the Buddhist year shows them that way here.** Every Thai-calendar locale
+  code is read (`[$-107041E]`, `[$-1070000]`, `[$-D07041E]`, `[$-th-TH,107]`), and `bbbb`; a Thai locale
+  (`041E`) shows the month and day names in Thai.
+- **The AI assistant** (with a key) is told the rules: never subtract 543 again, `DATE()` takes the
+  Gregorian year, and text dates are for the convert command.
+
+**Limits:**
+- **The code written out (`[$-107041E]d/m/yyyy;@`) has not yet been checked against a file Thai Excel
+  saved itself.** Reading accepts every form known; writing picks one, and no real file was at hand to
+  compare with.
+- Date text an `.xlsx` stores **as text** stays text, as the file says (the same rule as #45). Formulas
+  still read it as a date, and Convert to dates makes it one.
+- Thai digits (`๑๕/๐๑/๒๕๖๙`) and times written `13.45 น.` are not read yet.
 
 ### 📊 Charts from the sheet
 
@@ -2596,7 +2644,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1705 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1734 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2898,7 +2946,10 @@ src/
                               # shared by the engine and the .xlsx writer: a leading apostrophe, a
                               # leading zero or twelve-plus digits make it text (tested)
     excelDate.ts             # Dates as Excel keeps them: 1900-system serials (29 Feb 1900 included),
-                              # the ISO forms read as dates, and Excel date codes like dd/mm/yyyy (tested)
+                              # the ISO forms read as dates, and Excel date codes like dd/mm/yyyy;
+                              # Buddhist-Era years, Thai month names, the Thai calendar code (#82) (tested)
+    dateConvert.ts           # "Convert to dates" (#82): reads 15/01/69 in the order and calendar a person
+                              # gives, planned before anything changes (tested)
     numberFormatCode.ts      # Excel number-format codes (0%, "$"#,##0.00, #,##0;(#,##0)) shown as Excel does — a file's own formats (#53)
     dateCells.ts             # Which cells are dates — so charts, pivots and CSV label with the date,
                               # not its serial
@@ -3576,20 +3627,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1705 cases across 115 files, via Vitest
+npm test      # 1734 cases across 117 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1705 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1734 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 32 flows in a real browser (needs a build)
+npm run check:e2e   # 34 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3701,10 +3752,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1705 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1734 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1705 passing tests could not catch](#-what-1705-passing-tests-could-not-catch), repeatable
+> [What 1734 passing tests could not catch](#-what-1734-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3727,10 +3778,11 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `structuralShift.test.ts` | 16 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
-| `excelDate.test.ts` | 7 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) |
+| `excelDate.test.ts` | 16 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) · Buddhist-Era dates (#82): every form in the issue as 15 Jan 2026, all twelve Thai months full, short and dotless, a two-digit year beside a Thai month, what must not be guessed (`2569`, `15/01/69`, `15/01/2024`), every Thai-calendar code plus `bbbb` and Thai month names |
+| `dateConvert.test.ts` | 6 | "Convert to dates" (#82): a two-digit B.E. year is 25yy and an A.D. one follows Excel's window, month-first and year-first orders, dates already readable written as ISO, unreadable text left alone, a range planned without empty cells or formulas |
 | `numberFormatCode.test.ts` | 6 | Excel number-format codes (#53): the issue's table (7%, 12.5%, $1,234.50, 1.235, 12,345), the old `0.00"%"` not multiplied, negative/zero sections, currency tags, scaling commas, literals between digits, and the fallback for fractions and scientific codes |
 | `numberFormats.test.ts` | 5 | Percent, currency and decimals through a real .xlsx both ways (#53): a file's codes shown and exported unchanged, the app's Percent ×100 and exported as `0.00%`, and old sheets in the browser and the cloud (format 1) still reading 50.00% |
-| `dates.test.ts` | 14 | Dates in a sheet (#45): the issue's table (`=A2-A1` = 36, `=A1+30`, `=A3*24`), YEAR/DATEDIF on serials and ISO text, a sheet saved before the fix opening with dates, charts and CSV using dates as labels, export as real date cells, import keeping the time and the file's layout (`dd/mm/yyyy`, a time alone, midnight), and the PaynEat ERP import template round-tripped with every sheet's size and every date unchanged |
+| `dates.test.ts` | 19 | Buddhist-Era dates in a sheet (#82): the Gregorian value shown as typed, DATEDIF across B.E. and A.D. with `DATE(2569,…)` still 2569, sorting by time, export with the B.E. code and back, a file's B.E. codes shown as B.E. · Dates in a sheet (#45): the issue's table (`=A2-A1` = 36, `=A1+30`, `=A3*24`), YEAR/DATEDIF on serials and ISO text, a sheet saved before the fix opening with dates, charts and CSV using dates as labels, export as real date cells, import keeping the time and the file's layout (`dd/mm/yyyy`, a time alone, midnight), and the PaynEat ERP import template round-tripped with every sheet's size and every date unchanged |
 | `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
 | `executeSource.test.ts` | 47 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, the auth header on every page of its own origin and on no other, a mid-chain 429, and the SSRF guard on the path that actually fetches (including a redirect to a private address) |
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
@@ -3756,6 +3808,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/workbookCompute.test.ts` | 3 | Every path in the store computes with the workbook (#58): a pivot counts a value read from another sheet (175.3, not 105.3), a sort orders cross-sheet values by their numbers, and a guard that fails on any bare `computeSheet` outside the engine |
 | `store/datePivot.test.ts` | 1 | A pivot by day (#45): its rows are headed with dates, not serials |
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
+| `store/convertDates.test.ts` | 5 | "Convert to dates" and "Date (B.E.)" through the store (#82): converted cells show the Buddhist year while unreadable ones and formulas stay, A.D. month-first, one undo for all, a chosen format kept, the B.E. format shown and switched back |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |
 | `store/sortFormulas.test.ts` | 9 | Formulas sorting with their rows (#48): the QA's minimal case, the sample in both languages sorted both ways with every row's price × qty = total and the grand total unchanged, a rate under the table and another sheet's cell still pointed at, a running total / a total in the range / a `$` row inside it asking first, and sorting when confirmed |
 | `store/viewOnlyTab.test.ts` | 4 | A view-only tab (#47) on the real store: an edit is refused and said so with nothing saved, the selection still moves, the editing tab edits and saves as before, and a tab whose lock has not answered yet edits |
@@ -3921,8 +3974,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now 73 checks — most recently the
-      question a second tab on the same workbook asks, and the notice on a tab that is only looking (#47).
+      configured) and the live-data picker, which needs a source first. Now 75 checks — most recently the
+      Convert to dates dialog (#82), and before it the question a second tab on the same workbook asks, and
+      the notice on a tab that is only looking (#47).
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
       only rules that must hold for every formula, checked against thousands of generated ones with a
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
@@ -3980,7 +4034,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 32 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 34 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -4075,7 +4129,12 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Opening blank, a sample button, and New file** — done (see [A blank start, and New file](#-a-blank-start-and-new-file))
 - [ ] **Date formulas formatted for you** — only `TODAY`/`NOW`/`DATE` today; `=A1+30` shows a number until a format is picked
 - [ ] **Date validation rules** — import and export Excel's date validation (the ERP template uses it); dropped on open today
-- [ ] **Thai dates (#82)** — Buddhist-era years, Thai month names, typed `dd/mm/yyyy`, and a file's Buddhist-calendar format
+- [x] **Thai dates (#82)** — done (see [Buddhist-Era dates](#-buddhist-era-dates)): Buddhist-Era years and Thai months read
+      as Gregorian dates, a Convert to dates command for `15/01/69` and Gregorian `dd/mm/yyyy`, a "Date (B.E.)" format
+      that round-trips through `.xlsx`
+- [ ] **Check the Buddhist-Era code going out against a file Thai Excel saved itself** — `[$-107041E]d/m/yyyy;@` has
+      not been compared with a real one
+- [ ] **Thai digits and times written `13.45 น.`** — not read as dates or times yet
 - [ ] **A CSV field starting with `'`** — on import the first `'` is read as Excel's "the rest is text" marker and
       not shown. A file that means the apostrophe literally (a name like `'s-Hertogenbosch`) loses it for now
 - [x] **The blind usability pass** — [opening a file without losing your work](#-opening-a-file-without-losing-your-work)

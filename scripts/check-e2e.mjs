@@ -906,6 +906,37 @@ const FLOWS = [
     },
   },
   {
+    // #82: Buddhist-Era dates. A typed 15/01/2569 is a date the formulas can use; 15/01/69 waits for
+    // "Convert to dates", reached from the cell menu, which shows what it will do and undoes in one step.
+    name: "a Buddhist-Era date counts, and Convert to dates turns 15/01/69 into one from the cell menu, undone in one step",
+    async run(page) {
+      await typeInCell(page, 0, 0, "15/01/2569");
+      await typeInCell(page, 0, 1, '=DATEDIF(A1,"2026-03-01","d")');
+      const days = (await cell(page, 0, 1).innerText()).trim();
+      const shown = (await cell(page, 0, 0).innerText()).trim();
+      note(days === "45" && shown === "15/01/2569", `15/01/2569 shows as typed and counts as 15 January 2026 (A1 "${shown}", DATEDIF ${days})`);
+
+      await typeInCell(page, 1, 0, "15/01/69");
+      await typeInCell(page, 2, 0, "unknown");
+      await cell(page, 1, 0).click();
+      await cell(page, 2, 0).click({ modifiers: ["Shift"] });
+      await cell(page, 1, 0).click({ button: "right" });
+      await page.getByRole("menuitem", { name: /แปลงเป็นวันที่/ }).click();
+      const dialog = page.getByRole("dialog", { name: /แปลงข้อความเป็นวันที่/ });
+      await dialog.waitFor({ timeout: 5000 });
+      const preview = await dialog.innerText();
+      note(preview.includes("2026-01-15") && /อ่านไม่ออก 1 ช่อง/.test(preview), "the preview shows 15/01/69 as 2026 and one cell it cannot read");
+      await dialog.getByRole("button", { name: /^แปลง 1 ช่อง$/ }).click();
+      const after = [(await cell(page, 1, 0).innerText()).trim(), (await cell(page, 2, 0).innerText()).trim()];
+      note(after.join() === "15/1/2569,unknown", `converted, it shows the Buddhist year and the unreadable cell is untouched (${after.join(", ")})`);
+
+      await cell(page, 3, 0).click();
+      await page.keyboard.press("Control+z");
+      const undone = (await cell(page, 1, 0).innerText()).trim();
+      note(undone === "15/01/69", `one undo puts the text back (A2 "${undone}")`);
+    },
+  },
+  {
     // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
     // recorded, because the promise is not only "it works" but "nothing about it reaches us".
     name: "an API connected from this browser fills the sheet and refreshes, and nothing about it reaches /api/*",
