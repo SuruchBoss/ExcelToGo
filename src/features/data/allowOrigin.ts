@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { originsAllowedAtLoad, readApiOriginsCookie, writeApiOriginsCookie } from "@/lib/apiOrigins";
+import { isOwnOrigin, originsAllowedAtLoad, readApiOriginsCookie, writeApiOriginsCookie } from "@/lib/apiOrigins";
 import { getSaveStatus } from "@/lib/saveHealth";
 import type { BrowserSourceDraft } from "@/store/dataSourceStore";
 
@@ -46,7 +46,7 @@ export const hostOf = (url: string): string => {
 /** Whether this page's CSP was served without the URL's origin, so reaching it takes a reload. */
 export function needsReload(url: string): boolean {
   const origin = originOf(url);
-  return origin !== "" && !originsAllowedAtLoad().includes(origin);
+  return origin !== "" && !isOwnOrigin(origin) && !originsAllowedAtLoad().includes(origin);
 }
 
 /** Adds the origin to the cookie, remembers what to resume, and reloads. False when it may not. */

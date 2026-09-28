@@ -12,7 +12,7 @@ export interface DataSourceConfig {
   id: string;
   name: string;
   type: DataSourceType;
-  /** Absolute URL, or an app-relative path like "/api/demo/sales" (resolved against the request origin). */
+  /** Absolute URL, or an app-relative path like "/api/sample/sales" (resolved against the request origin). */
   url: string;
   method?: "GET" | "POST";
   /** Optional header used for auth, e.g. { name: "Authorization", value: "Bearer ..." }. */

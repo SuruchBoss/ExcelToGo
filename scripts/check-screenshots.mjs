@@ -93,6 +93,8 @@ const SHOWS = {
   "46-guide.png": [],
   "47-browser-source.png": [],
   "48-browser-error.png": [],
+  // The panel's sample APIs, one added by hand: names and buttons, no counted figures.
+  "49-sample-apis.png": [],
   "demo.gif": [],
 };
 

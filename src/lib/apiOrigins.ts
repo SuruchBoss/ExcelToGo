@@ -81,6 +81,15 @@ export function connectSrcExtra(cookieValue: string | undefined | null): string 
  * this answers ("does adding this origin need a reload?").
  */
 let atLoad: string[] | null = null;
+/** This site itself: always reachable through `'self'`, so never a reason to reload or a cookie entry. */
+export function isOwnOrigin(origin: string): boolean {
+  try {
+    return origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 export function originsAllowedAtLoad(): string[] {
   if (atLoad === null) atLoad = readApiOriginsCookie();
   return atLoad;

@@ -7,7 +7,7 @@ import { DataSourceConfig, PublicDataSource, TableData } from "@/lib/dataSources
 import { withSourcesToken } from "@/lib/dataSources/sourcesToken";
 import { BrowserFetchError, BrowserSourceConfig, fetchInBrowser } from "@/lib/dataSources/browserSource";
 import { forgetSecret, readSecret, writeSecret } from "@/lib/dataSources/browserSecrets";
-import { originsAllowedAtLoad, writeApiOriginsCookie } from "@/lib/apiOrigins";
+import { isOwnOrigin, originsAllowedAtLoad, writeApiOriginsCookie } from "@/lib/apiOrigins";
 import { SourceLimitError } from "@/lib/dataSources/fetchLimits";
 import { RateLimitError } from "@/lib/dataSources/rateLimit";
 import { useSheetStore } from "./sheetStore";
@@ -93,7 +93,9 @@ const originOf = (url: string) => {
 
 /** The cookie the proxy reads is exactly the origins of the saved sources (plus one being tested). */
 function syncOriginsCookie(list: BrowserSourceConfig[], extra?: string) {
-  const origins = [...list.map((b) => originOf(b.url)), extra ?? ""].filter(Boolean);
+  // This site's own origin (the sample APIs) is covered by 'self' and stays out of the cookie, so
+  // trying a sample does not change the policy at all.
+  const origins = [...list.map((b) => originOf(b.url)), extra ?? ""].filter((o) => o && !isOwnOrigin(o));
   writeApiOriginsCookie(origins);
 }
 
@@ -121,7 +123,8 @@ const combine = (server: PublicDataSource[], browser: BrowserSourceConfig[]) => 
 async function fetchBrowserSource(b: BrowserSourceConfig): Promise<TableData> {
   const secret = readSecret(b.id);
   if (b.headerName && !secret) throw new BrowserFetchError("needs_secret");
-  if (!originsAllowedAtLoad().includes(originOf(b.url))) throw new BrowserFetchError("needs_reload");
+  const origin = originOf(b.url);
+  if (!isOwnOrigin(origin) && !originsAllowedAtLoad().includes(origin)) throw new BrowserFetchError("needs_reload");
   return fetchInBrowser(b, secret);
 }
 

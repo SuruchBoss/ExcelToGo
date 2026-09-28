@@ -46,11 +46,11 @@ formula palette, AI, live data, conditional formatting, charts, pivots, find/rep
 dialog, the validation, names and comment popovers, the alert shown when a save is refused, the two live-data dialogs (the picker and adding a source), the connect-from-this-browser form and the checklist for IT it shows when a connection fails, and the two phone-only sheets (the menu and cell tools, scanned at 390px only), across `/`, `/app` and `/guide` — 55 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 19 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 20 flow — พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา,
 เดินด้วยคีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, ตัดข้ามชีต, แถบสูตรไม่เขียนค่าค้าง, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
 ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) บันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้, ต่อ API จากเบราว์เซอร์แล้วค่าลงตารางและรีเฟรชเอง โดยไม่มีอะไรเกี่ยวกับมันถึง `/api/*` (และ CSP ของคนที่ไม่เคยเพิ่มแหล่งยังเหมือนเดิมทุกตัวอักษร), API ที่ไม่ตอบ CORS ได้รายการตรวจสำหรับ IT ไม่ใช่ error เปล่า, ไม่มีหน้าไหนเรียกตัวเองว่าเดโมทั้งสองภาษา และที่ 390px ทางไปข้อมูลสดอยู่บนจอและมีชื่อ เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 19 flows — type a formula and watch the value
+`npm run check:e2e` drives the real app in a browser through 20 flows — type a formula and watch the value
 move, export `.xlsx` and import it back, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up), a refused save that is announced while export still works, an API connected from this browser that fills the sheet and refreshes with nothing about it reaching `/api/*` (and the CSP unchanged, character for character, for anyone who never added a source), an API without CORS getting a checklist for IT rather than a bare error, no page calling itself a demo in either language, and at 390px whether the way to live data is on screen and named. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong

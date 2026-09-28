@@ -126,6 +126,17 @@ export const en: Messages = {
         `${headers ? "3" : "2"}) Serve it over https (the site is https, so it cannot call http)\n` +
         `${headers ? "4" : "3"}) If it is on an internal IP: answer Access-Control-Allow-Private-Network: true in the preflight, for Chrome/Edge`,
     },
+    samples: {
+      title: "Try a sample API",
+      lead: "No API of your own yet? Try one of these, whose numbers move on their own — press it and the form fills itself in; then test, save and add it to the sheet yourself, exactly as with a real API.",
+      tryIt: "Try it",
+      added: "Added",
+      items: {
+        sales: { name: "Live sales", hint: "5 products, quantities moving every 5 seconds" },
+        summary: { name: "Today's summary", hint: "Single values, such as today's sales and order count" },
+        orders: { name: "Orders (several pages)", hint: "120 rows, 25 a page — the app follows the pages for you" },
+      },
+    },
     rateLimited: "This source asked to be called less often",
     retryIn: (s) => (s >= 60 ? `retrying in ${Math.ceil(s / 60)} min` : `retrying in ${s}s`),
     tooLarge: (mb) =>
@@ -428,7 +439,7 @@ export const en: Messages = {
     limitsMoreText: "The rest of the limits are written out in the README — including the ones a promo page normally leaves out.",
     limitsMoreCta: "Read every limitation",
     closingTitle: "Use it now — free, nothing to sign up for",
-    closingBody: "This is the real app, not a trial — open it and start on your own work, and connect your own API from the browser so the numbers in the sheet keep themselves up to date.",
+    closingBody: "This is the real app, not a trial — open it and start on your own work, and connect your own API from the browser so the numbers in the sheet keep themselves up to date. No API yet? The live-data panel has three sample APIs to connect first.",
     contact: {
       title: "Contact",
       lead: "A question, a conversation about work, or something broke while you used it — either way reaches me.",
@@ -701,7 +712,7 @@ export const en: Messages = {
       "The URL, the auth header and the data never pass through our server · the header's value is kept in the open tab only, so you enter it again after closing the tab.",
     ],
     browserSteps: [
-      "Open the app → the \"Live data\" tab → \"Connect your API\"",
+      "Open the app → the \"Live data\" tab → \"Connect your API\" (no API yet? press \"Try it\" on a sample API in the same panel and the form fills itself in)",
       "Enter a name, the URL and a header if the API needs one (e.g. Authorization: Bearer …)",
       "Press \"Test\" — the first time you use a new API address the app reloads once to let the browser reach it, then shows rows × columns and the first five rows",
       "Press \"Save and add to the sheet\" and choose the whole table or one value; it refreshes on the schedule you set",

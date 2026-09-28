@@ -143,6 +143,14 @@ export interface Messages {
       copied: string;
       itNote: (appOrigin: string, apiUrl: string, headers: string) => string;
     };
+    /** Three APIs this site serves, to try the browser path on before connecting a real one. */
+    samples: {
+      title: string;
+      lead: string;
+      tryIt: string;
+      added: string;
+      items: Record<"sales" | "summary" | "orders", { name: string; hint: string }>;
+    };
     /** Shown instead of a raw "HTTP 429" when a source asks to be called less often. */
     rateLimited: string;
     retryIn: (seconds: number) => string;
