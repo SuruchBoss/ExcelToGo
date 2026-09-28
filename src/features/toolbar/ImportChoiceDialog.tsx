@@ -3,9 +3,10 @@
 
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 import { FilePlus2, Replace, X } from "lucide-react";
 import { useT } from "@/i18n";
+import { useDialogKeys } from "@/features/a11y/useDialogKeys";
 
 /**
  * Asked before a file is opened over work that is already there.
@@ -33,37 +34,8 @@ export default function ImportChoiceDialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const safeRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    safeRef.current?.focus();
-    return () => opener?.focus?.();
-  }, []);
-
-  // Escape cancels and Tab stays inside, like the app's other dialogs. Capture, so the grid does not
-  // see the key first.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        onCancel();
-        return;
-      }
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const stops = [...panelRef.current.querySelectorAll<HTMLElement>("button")];
-      const first = stops[0];
-      const last = stops[stops.length - 1];
-      if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      } else if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [onCancel]);
+  // Escape cancels, Tab stays inside, and the safe choice has focus from the start.
+  useDialogKeys(panelRef, onCancel, safeRef);
 
   const option =
     "flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600";

@@ -108,7 +108,7 @@ export default function Toolbar() {
         onClick={newFile}
         aria-label={t.newFile.button}
         title={`${t.newFile.button} — ${t.newFile.hint}`}
-        className="hidden min-w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 px-2 py-1.5 text-zinc-700 hover:bg-zinc-50 lg:flex"
+        className="hidden min-w-8 shrink-0 items-center justify-center rounded-md border border-zinc-300 px-1.5 py-1.5 text-zinc-700 hover:bg-zinc-50 lg:flex"
       >
         <FilePlus size={15} />
       </button>
@@ -160,7 +160,9 @@ export default function Toolbar() {
         <FileSpreadsheet size={15} /> {t.toolbar.exportCsv}
       </button>
 
-      <div className="mx-1 hidden h-5 w-px shrink-0 bg-zinc-200 lg:block" />
+      {/* From 1440 only: at 1366 in English the row was 14px over once New file joined it, and
+          this line is the one thing in it that does nothing. */}
+      <div className="mx-1 hidden h-5 w-px shrink-0 bg-zinc-200 min-[1440px]:block" />
 
       <button
         onClick={undoSheet}

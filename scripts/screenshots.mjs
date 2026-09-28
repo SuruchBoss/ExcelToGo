@@ -1279,9 +1279,35 @@ const SCENES = [
     },
   },
   {
+    // Right-click inside a selection: the menu acts on all of it, with each entry's shortcut beside it.
+    file: "54-cell-menu.png",
+    async take(k) {
+      await k.open("/app");
+      await k.select(1, 0, 3, 1);
+      const box = await k.cell(2, 1).boundingBox();
+      await k.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: "right" });
+      await k.page.getByRole("menu").waitFor();
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 900, height: 620 } });
+    },
+  },
+  {
+    // Mid-drag: the edge of column B pulled out, the line on the handle showing which edge it is.
+    file: "55-column-resize.png",
+    async take(k) {
+      await k.open("/app");
+      const grip = await k.page.locator('[data-col-resize="1"]').boundingBox();
+      await k.page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+      await k.page.mouse.down();
+      await k.page.mouse.move(grip.x + grip.width / 2 + 110, grip.y + grip.height / 2, { steps: 8 });
+      await k.settle(200);
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 900, height: 480 } });
+      await k.page.mouse.up();
+    },
+  },
+  {
     // Dates as dates (#45): subtracted into days, a date and time with its column widened to fit,
     // a time on its own, and =DATE formatted as a date by itself — its formula in the bar above.
-    file: "54-dates.png",
+    file: "56-dates.png",
     async take(k) {
       await k.open("/app");
       await startBlank(k);
@@ -1299,7 +1325,7 @@ const SCENES = [
   },
   {
     // What a first visit sees: an empty sheet, and the one button that opens the sample.
-    file: "55-blank-start.png",
+    file: "57-blank-start.png",
     async take(k) {
       await k.open("/app", { blank: true });
       await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 420 } });
@@ -1307,7 +1333,7 @@ const SCENES = [
   },
   {
     // "New file" over work: the question, with exporting first as the answer under the cursor.
-    file: "56-new-file.png",
+    file: "58-new-file.png",
     async take(k) {
       await k.open("/app");
       await k.type(1, 2, "70");

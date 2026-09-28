@@ -38,7 +38,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1638%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1650%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -59,7 +59,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1638 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1650 automated tests.
 
 ---
 
@@ -103,7 +103,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1638 passing tests could not catch
+### 🧪 What 1650 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -114,7 +114,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1638 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1650 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -285,6 +285,8 @@ the outcome under a double rule like a total.
   - [Copy, paste and fill down with a finger](#-copy-paste-and-fill-down-with-a-finger)
   - [Tablets and folding phones](#-tablets-and-folding-phones)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
+  - [Right-click on a cell](#️-right-click-on-a-cell)
+  - [Drag a column wider or narrower](#-drag-a-column-wider-or-narrower)
   - [Merging cells](#-merging-cells)
   - [Sort and filter](#-sort-and-filter)
   - [Pivot (summarise a range)](#-pivot-summarise-a-range)
@@ -380,7 +382,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1638-case Vitest suite |
+| `npm test` | Run the 1650-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -388,7 +390,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 23 flows: opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 26 flows: opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -1103,8 +1105,9 @@ The swatches are the lightest row of Excel's own palette, so a header stays read
 at home there; a colour wheel (`<input type="color">`) on a phone is a small, fiddly target that invites a dark
 fill under dark text.
 
-**Not supported yet:** a colour outside these seven (fills from an imported file still show and export in full) ·
-fills do not yet reach the **PDF export**.
+Fills and text colours **now reach the PDF export too** (see [Export](#-export)).
+
+**Not supported yet:** a colour outside these seven (fills from an imported file still show and export in full).
 
 ### 🔢 Phone numbers and codes keep their zeros
 
@@ -1156,7 +1159,7 @@ on, and an exported file opens in Excel with **date cells** rather than 45306 or
 | `=DATE(2024,1,15)` · `=TODAY()` | a serial | a date, formatted for you while the cell is still General (as Excel does) |
 | `=NOW()` | a serial plus the time | a date and time, in the viewer's own time zone |
 
-<p align="center"><img src="public/screenshots/en/54-dates.png" width="700" alt="Dates in a sheet: subtracted into days, a date and time in a column widened to fit, a time on its own, and =DATE(2024,3,1) in the formula bar while the cell shows 2024-03-01 and the format menu reads Date"></p>
+<p align="center"><img src="public/screenshots/en/56-dates.png" width="700" alt="Dates in a sheet: subtracted into days, a date and time in a column widened to fit, a time on its own, and =DATE(2024,3,1) in the formula bar while the cell shows 2024-03-01 and the format menu reads Date"></p>
 
 - **ISO forms only** (`yyyy-mm-dd`). `03/04/2024` is March in one country and April in another, and a
   wrong guess moves a date a month without a word, so every other layout stays the text it is
@@ -1551,7 +1554,8 @@ mock-up.
 | `Ctrl+Space` / `Shift+Space` | The whole column / the whole row the selection touches; both together, the sheet |
 | **Freeze panes** (format bar) | Everything above and left of the cursor stays put while the rest scrolls. The split lives on the sheet, so it survives a reload, goes into undo, follows a row inserted above it, and travels in the `.xlsx` both ways |
 | `Ctrl+Enter` | Put the cell the cursor is on into everything selected, in one undo step — references shift as they would in a drag-fill, because a formula that kept pointing at the anchor's row would fill a column with the same wrong number |
-| `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | Right/left · down/up |
+| `Tab` / `Shift+Tab` · `Enter` / `Shift+Enter` | Right/left · down/up — **Tab along a row and Enter comes back under the column you started in**, as in Excel, so a table is typed row by row without walking back to the left |
+| `Shift+F10` / the Menu key | The [cell menu](#️-right-click-on-a-cell) for anyone who cannot right-click, opened at the selected cell |
 | `F2` · `Delete` · `Escape` | Edit in place · clear the selection · cancel |
 
 The view **follows the cursor in both axes**, which is not a nicety here: `Ctrl+Down` can move five
@@ -1826,7 +1830,7 @@ of an 844px screen before the grid began. All three are fixed:
 | **Formulas / AI / live data / cloud** | A **tab bar along the bottom with a name on every tab**, where a thumb reaches. A panel rises as a sheet that **stops short of the top**, so the first rows and the selected cell stay in view, and stops above the tab bar, so the next panel is one press away · **starts closed** so the sheet is what you see first |
 | **Top row** | Four things: the name · undo · redo · language — **nothing past the edge**. The rest (import, export, add row/column, connecting an API) is in a **menu** with a name on every line |
 | **Formatting row** | Bold · italic · underline · alignment · colour · **Tools**, which fits 390px. The rest (number format, merge, freeze, sort, rules, charts, pivot) is in a **cell tools sheet**, every button named |
-| **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all · The second tap puts **the caret at the end of the text** rather than selecting it all (the first letter typed used to wipe the cell) |
+| **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all · The second tap puts **the caret at the end of the text** rather than selecting it all (the first letter typed used to wipe the cell) · **Enter moves into the next cell ready to type, and the keyboard stays up** — it used to fold every time, so ten values meant ten taps to reopen it |
 | **Tap targets** | 44×44 everywhere, in both bars (up from 28px — and five format-bar buttons were still only 32px wide until a later measurement caught them) |
 | **Selecting a range** | A **grip on the selection's bottom-right corner**, dragged to pull the range out — its touch target is 44×44 while the dot you see stays small |
 | **Copy / paste / fill down** | **A row of commands above the sheet tabs** — see [Copy, paste and fill down with a finger](#-copy-paste-and-fill-down-with-a-finger) |
@@ -1924,6 +1928,38 @@ boundary picked at a width **measured to fit in both languages**:
 single pixel**, and `check:a11y` checks for sideways scroll at five widths on every push · The first cut moved all
 four file buttons into the menu below 1366px, and e2e went red: at 1280px, the most common laptop width, every
 export would have cost two presses. There was room for the two that get used, so those two came back.
+
+### 🖱️ Right-click on a cell
+
+Right-clicking a cell used to give **the browser's own menu** (Back · Reload · Inspect); the app's menu lived
+only on the row and column headers, which is not where someone from Excel looks first. A cell now has its own:
+**Cut · Copy · Paste · Insert row above · Insert column left · Clear · Delete row · Delete column**.
+
+<p align="center"><img src="public/screenshots/en/54-cell-menu.png" width="640" alt="Right-clicking inside a selection: the cell menu, with each command's shortcut beside it"></p>
+
+- **Right-click inside the selection keeps it**, so the menu acts on all of it, as in Excel · right-click
+  outside selects that cell first
+- **Each command shows its shortcut** (`Ctrl+X` on a PC, `⌘X` on a Mac), so using the menu is how the shortcut gets learned
+- **A real menu to a screen reader** (`role="menu"`): arrows and `Home`/`End` move, `Escape` closes and puts
+  focus back on the grid, and **`Shift+F10` or the Menu key opens it from the keyboard**, at the selected cell
+  rather than wherever the mouse is
+- While a cell is being edited, right-click is still **the browser's menu**, because that is where spelling and paste-as-text live
+
+### 📏 Drag a column wider or narrower
+
+**Drag the right edge of a column header** to resize it · **double-click the edge** to fit the longest thing in
+the column, as in Excel. The width is kept on the sheet, survives a reload and goes out in the `.xlsx` · one
+drag is one undo step, not one per pixel.
+
+<p align="center"><img src="public/screenshots/en/55-column-resize.png" width="640" alt="Column B's edge being dragged wider, a green line marking the edge in hand"></p>
+
+- Widths used to come only from an imported file; nothing in the app could change one, so long text stayed cut with `…`
+- Kept between **40 and 480px** — at its narrowest a column still shows its filter button and a character, so
+  one dragged shut can still be found and dragged open
+- The fit measures **what is displayed**, not the raw text: a formula is as wide as its answer
+- On a touch screen the edge is 16px wide to take a finger
+
+**Not supported yet:** resizing from the keyboard, and dragging a row taller (heights from an imported file still show in full).
 
 ### ➕ Insert/delete rows & columns
 
@@ -2068,7 +2104,7 @@ nothing at stake is the one that teaches people to click through without reading
 
 ### 🆕 A blank start, and New file
 
-<p align="center"><img src="public/screenshots/en/55-blank-start.png" width="700" alt="A first visit: a blank sheet, and the green bar with Try it with sample data"></p>
+<p align="center"><img src="public/screenshots/en/57-blank-start.png" width="700" alt="A first visit: a blank sheet, and the green bar with Try it with sample data"></p>
 
 - **The app opens on a blank sheet**, with a green bar offering **Try it with sample data**: nine sample
   rows in the language on screen, undone with undo. The bar goes the moment the grid holds anything —
@@ -2080,7 +2116,7 @@ nothing at stake is the one that teaches people to click through without reading
   work it asks first, with **Export Excel first** under the cursor (so Enter is the harmless answer);
   confirming leaves one blank sheet, and Ctrl+Z brings the work back. With nothing to lose it does not ask.
 
-<p align="center"><img src="public/screenshots/en/56-new-file.png" width="700" alt="The question before a new file: Export Excel first, Start a new file, or Cancel"></p>
+<p align="center"><img src="public/screenshots/en/58-new-file.png" width="700" alt="The question before a new file: Export Excel first, Start a new file, or Cancel"></p>
 
 **Limits:** on a wide screen New file is an icon only (its name is the tooltip and what a screen reader
 says), because the top row was measured to the pixel at 1280 and 1366 in both languages. Undo lives in
@@ -2116,7 +2152,10 @@ hardly anyone uses.
 - **CSV**: the currently open sheet, as computed values, with the BOM Excel needs to read Thai
   (see [CSV in and out](#-csv-in-and-out)).
 - **PDF**: the currently open sheet only, showing computed values with row/column headers, with the
-  charts following underneath.
+  charts following underneath · **cells keep their fill and text colour** (every cell used to print white,
+  so a sheet with coloured heading bands came out looking unformatted). A heading row given a pale fill
+  gets dark text rather than the PDF heading's white · not yet: bold and italic in the PDF, which would
+  each need another Thai font file embedded.
 
   **Thai reads, because the font goes with it.** jsPDF ships only the standard PDF fonts, and not
   one of them contains a Thai vowel or tone mark — so every Thai label used to come out as
@@ -2369,9 +2408,23 @@ separate sections: the problems had no pictures, and the features never said wha
 they are one: **[six problems a team already pays for](#-problems-it-solves)**, each written as a ledger
 entry — who has it · **what it costs now, in red ink** (the only place the page uses that colour for
 words) · the features that solve it as lines a, b, c, because one problem is usually solved by several
-working together · and **the outcome under a double rule**, the way an account closes its total. Beside
-each, a proof from the running app stays on screen while the entry is read, and opens full size. An
-index of all six sits on top, so the person who runs payroll reaches their problem in one press.
+working together · and **the outcome under a double rule**, the way an account closes its total.
+
+**Third pass: half the length, for people who are not developers.** The six problems were six full-screen
+entries, each with a large screenshot beside it — that section alone was 64% of the page (8,061px on a
+phone) — and the dark "under the hood" band (test counts, what a mocked test missed) sat in the middle, so
+someone looking for a spreadsheet tool scrolled through a developer's story before reaching the limits and
+the contact. Now:
+
+- The six problems are **six cards**, each with the three lines a reader needs to recognise their own
+  situation — the problem · what it costs now (red ink) · the outcome (under the double rule). Who has it,
+  the features that solve it and the proof screenshot **fold under "How it is solved, with a screenshot"**
+  on that card
+- The "under the hood" band **moved to the very end**, after the call to action and the contact, with its
+  long story folded
+- Measured: a phone in Thai **13.9 → 7.6 screens** (English 15.4 → 8.5) · desktop at 1440px 9.4 → 4.3 ·
+  reaching the contact on a phone went from 13.4 screens to 6.3
+- Not a line of it was cut; it is one press away for whoever wants it
 
 <p align="center"><img src="public/screenshots/en/38-landing-problems.png" width="900"></p>
 
@@ -2388,7 +2441,7 @@ figures and formulas still line up in columns in Plex Mono, while Thai words on 
 set in the same family as the body text rather than in the system's default monospace face.
 
 <p align="center"><img src="public/screenshots/en/27-landing-stats.png" width="820"></p>
-<p align="center"><sub>The inverted "Under the hood" band and the <b>Where this stops on purpose</b> section — the front page says where the app stops, and sends the rest of the limits here.</sub></p>
+<p align="center"><sub>The inverted "Under the hood" band — now at the end of the page, after <b>Where this stops on purpose</b> and the contact.</sub></p>
 
 **How to get in touch sits at the foot of the page, beside the button that opens the app** (`/#contact`) —
 email and LinkedIn written as two lines of the ledger like everything above them. The address is
@@ -2433,7 +2486,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1638 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1650 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2637,6 +2690,9 @@ src/
     grid/ChartView.tsx              # The SVG drawing itself (bar/line/pie), sized to the box it is given
     grid/SelectionHandle.tsx        # The corner grip that extends a selection with a finger on touch
     grid/TouchActionBar.tsx         # The touch command row: copy, cut, paste, fill down, clear
+    grid/CellContextMenu.tsx        # The right-click cell menu (role="menu"), also opened by Shift+F10
+    grid/tabReturn.ts               # Tab along a row, Enter comes back under the column it started in
+    a11y/useDialogKeys.ts           # Escape closes · Tab stays inside · focus in and back — shared by the modal dialogs
     grid/ImportNotice.tsx           # Says what an import did, with an Undo button
     grid/CommentPopover.tsx         # The box that writes or clears the selected cell's note
     landing/LiveSheet.tsx           # The real grid in the hero — imports the app's own parser/evaluator,
@@ -3401,20 +3457,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1638 cases across 105 files, via Vitest
+npm test      # 1650 cases across 107 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1638 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1650 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 23 flows in a real browser (needs a build)
+npm run check:e2e   # 26 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3526,10 +3582,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1638 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1650 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1638 passing tests could not catch](#-what-1638-passing-tests-could-not-catch), repeatable
+> [What 1650 passing tests could not catch](#-what-1650-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3795,7 +3851,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 23 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 26 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -3895,19 +3951,20 @@ What's not done yet, and why — to show this is a known gap, not something forg
       with an undo, [touch commands on a phone](#-copy-paste-and-fill-down-with-a-finger), [fill colour](#-fill-colour),
       `Ctrl+B/I/U`, a first language taken from the browser, [a tablet and folding-phone layout](#-tablets-and-folding-phones),
       a reordered AI panel and a Common formulas group · what the same pass found and is still open is below
-- [ ] **`Tab` then `Enter` returns to the starting column**, as in Excel — `Enter` now goes down from the last cell
-      `Tab` reached, so filling a table row by row means walking back by hand
-- [ ] **Drag a column header's edge to resize it** — imported columns keep their widths, but nothing in the app
-      can change one, so long text is cut with `…`
-- [ ] **A right-click menu on cells on a desktop** (copy, paste, insert, delete) — there is only the row/column header one
-- [ ] **Keep the phone keyboard up after Enter** — filling cells one by one on a phone, the keyboard folds at
-      every move and has to be tapped open again
-- [ ] **The connect-an-API and source settings dialogs do not close on `Escape`** — only the close button or a
-      click outside does, unlike every other dialog in the app · found while checking the 1024–1365px layout after merging #110
-- [ ] **Fills in the PDF export**, and **pasting the system clipboard** from the phone command row
-- [ ] **A shorter landing page for people who are not developers** — how it was built (tests, security) is worth
-      a lot to someone reading the code, but someone looking for a spreadsheet scrolls past it before reaching why
-      they should try it · three lines under the start button (free · your file stays on your device · any screen) for now
+- [x] **`Tab` then `Enter` returns to the starting column**, as in Excel — done, both while editing and with a cell
+      only selected (see [The Excel keyboard](#️-the-excel-keyboard))
+- [x] **Drag a column header's edge to resize it** — done, with double-click to fit (see
+      [Drag a column wider or narrower](#-drag-a-column-wider-or-narrower)). Still open: resizing from the keyboard, and dragging a row taller
+- [x] **A right-click menu on cells on a desktop** — done, and `Shift+F10` opens it from the keyboard (see [Right-click on a cell](#️-right-click-on-a-cell)). Still open: comments and formatting in the menu
+- [x] **Keep the phone keyboard up after Enter** — done: Enter goes into the next cell ready to type (see
+      [Works on a phone](#-works-on-a-phone)) · tested in Chromium with touch emulated; still to try on real iOS and Android
+- [x] **The connect-an-API and source settings dialogs close on `Escape` now** — through `useDialogKeys`, the same
+      hook as the import dialog: Escape closes · Tab stays inside · focus goes in on open and back to the button on close
+- [x] **Fills in the PDF export** — done, with text colour. Still open: bold and italic in the PDF
+- [ ] **Pasting the system clipboard** from the phone command row
+- [x] **A shorter landing page for people who are not developers** — done, a phone went 13.9 → 7.6 screens (see
+      [A landing page that explains the app](#-a-landing-page-that-explains-the-app)). Still open: try it on people who
+      are not developers — whether they open the folded cards, or the proof screenshot should sit outside the fold
 - [ ] **Push-based realtime (SSE/WebSocket)** instead of polling, and filtering live data from the UI before placing it
 - [ ] **Working with PaynEat ERP** — agreed, not built (see [docs/payneat-erp.en.md](docs/payneat-erp.en.md)):
       the import template waits on cross-sheet dropdowns read from the right sheet, range references kept

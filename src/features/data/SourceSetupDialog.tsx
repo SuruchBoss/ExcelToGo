@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
 import { DEFAULT_MAX_ROWS } from "@/lib/dataSources/paginate";
@@ -11,6 +11,7 @@ import { isDbType, PublicDataSource, TableData } from "@/lib/dataSources/types";
 import { sqlProblem } from "@/lib/dataSources/sqlGuard";
 import { SourceDraft, useDataSourceStore } from "@/store/dataSourceStore";
 import { useT } from "@/i18n";
+import { useDialogKeys } from "@/features/a11y/useDialogKeys";
 import { partialHintText, sourceErrorText } from "./sourceError";
 
 interface Props {
@@ -45,6 +46,8 @@ const labelCls = "text-xs font-medium text-zinc-600";
 export default function SourceSetupDialog({ source, onClose }: Props) {
   const t = useT();
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogKeys(panelRef, onClose);
   const saveSource = useDataSourceStore((s) => s.saveSource);
   const testSource = useDataSourceStore((s) => s.testSource);
   const [draft, setDraft] = useState<SourceDraft>(() => draftFrom(source));
@@ -99,6 +102,7 @@ export default function SourceSetupDialog({ source, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onMouseDown={onClose}>
       <div
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        ref={panelRef}
         onMouseDown={(e) => e.stopPropagation()}
         // Announced as what it is. Without the role a screen reader heard the page go on as if
         // nothing had opened — found when the screenshot script went looking for the dialog by role.

@@ -39,19 +39,19 @@ for sideways scroll at 360/390/820/1280/1440. Two widths because one was not eno
 desktop width reported zero violations while eight buttons below 640px had no accessible name at all.
 
 ด่านนี้ยัง **เปิดพาเนลขึ้นมาตรวจด้วย** ไม่ใช่สแกนแค่หน้าตอนโหลด — พาเลตสูตร, AI, ข้อมูลสด, conditional
-formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์, หน้าคีย์ลัด, แถบเตือนตอนบันทึกไม่ลง ช่องสีพื้น หน้าต่างถามตอนเปิดไฟล์ทับงาน หน้าต่างถามก่อนเริ่มไฟล์ใหม่ แถบของข้อมูลตัวอย่างหลังกดเปิด สองหน้าต่างของข้อมูลสด (เลือกข้อมูล · เพิ่มแหล่งข้อมูล) ฟอร์มต่อ API จากเบราว์เซอร์กับรายการตรวจสำหรับ IT ที่ขึ้นตอนต่อไม่ติด และสองแผ่นที่มีเฉพาะบนมือถือ (เมนู · เครื่องมือเซลล์ สแกนเฉพาะที่ 390px) บนสามหน้า `/`, `/app`, `/guide` รวม 63 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
+formatting, กราฟ, pivot, ค้นหา/แทนที่, จำกัดค่า, ชื่อช่วง, คอมเมนต์, หน้าคีย์ลัด, แถบเตือนตอนบันทึกไม่ลง ช่องสีพื้น หน้าต่างถามตอนเปิดไฟล์ทับงาน หน้าต่างถามก่อนเริ่มไฟล์ใหม่ แถบของข้อมูลตัวอย่างหลังกดเปิด เมนูคลิกขวาที่เซลล์ การ์ดปัญหาบนหน้า landing ที่กางออก สองหน้าต่างของข้อมูลสด (เลือกข้อมูล · เพิ่มแหล่งข้อมูล) ฟอร์มต่อ API จากเบราว์เซอร์กับรายการตรวจสำหรับ IT ที่ขึ้นตอนต่อไม่ติด และสองแผ่นที่มีเฉพาะบนมือถือ (เมนู · เครื่องมือเซลล์ สแกนเฉพาะที่ 390px) บนสามหน้า `/`, `/app`, `/guide` รวม 67 checks **เพิ่มพาเนลใหม่เมื่อไร เติมใน
 `OPENED_STATES` เมื่อนั้น** และสถานะที่เปิดไม่ขึ้นถือว่าด่านตก ไม่ใช่ข้าม
 The gate also **opens panels before scanning them** rather than only scanning the page as it loads — the
 formula palette, AI, live data, conditional formatting, charts, pivots, find/replace and the shortcut
-dialog, the validation, names and comment popovers, the alert shown when a save is refused, the fill swatches, the dialog asked when a file would open on top of work, the one asked before New file, the sample's notice once it is opened, the two live-data dialogs (the picker and adding a source), the connect-from-this-browser form and the checklist for IT it shows when a connection fails, and the two phone-only sheets (the menu and cell tools, scanned at 390px only), across `/`, `/app` and `/guide` — 63 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
+dialog, the validation, names and comment popovers, the alert shown when a save is refused, the fill swatches, the dialog asked when a file would open on top of work, the one asked before New file, the sample's notice once it is opened, the cell menu, a landing problem card unfolded, the two live-data dialogs (the picker and adding a source), the connect-from-this-browser form and the checklist for IT it shows when a connection fails, and the two phone-only sheets (the menu and cell tools, scanned at 390px only), across `/`, `/app` and `/guide` — 67 checks in all. **A new panel means a new entry in `OPENED_STATES`**, and a state that will not
 open fails the gate rather than being skipped.
 
-`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 23 flow — เปิดมาเป็นตารางว่างและข้อมูลตัวอย่างที่ค้างในเบราว์เซอร์ไม่กลับมา (แต่ถ้าแก้แล้วต้องอยู่) ไฟล์ใหม่ถามก่อนและ Ctrl+Z เอางานคืน, พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, เปิดไฟล์ทับงานแล้วแอปถามก่อน (ตัวเลือกที่ focus อยู่ต้องเก็บงานไว้ และ undo ถอนไฟล์ออกได้) พร้อม `Ctrl+B`,
+`npm run check:e2e` ขับแอปจริงในเบราว์เซอร์ 26 flow — เปิดมาเป็นตารางว่างและข้อมูลตัวอย่างที่ค้างในเบราว์เซอร์ไม่กลับมา (แต่ถ้าแก้แล้วต้องอยู่) ไฟล์ใหม่ถามก่อนและ Ctrl+Z เอางานคืน, พิมพ์สูตรแล้วดูค่าขยับ, ส่งออก `.xlsx` แล้วนำกลับเข้ามา, เปิดไฟล์ทับงานแล้วแอปถามก่อน (ตัวเลือกที่ focus อยู่ต้องเก็บงานไว้ และ undo ถอนไฟล์ออกได้) พร้อม `Ctrl+B`, Tab ตามแถวแล้ว Enter กลับคอลัมน์แรก กับเมนูเซลล์จาก `Shift+F10`, ลากคอลัมน์ให้กว้างแล้ว undo ครั้งเดียวกลับ, Enter บนมือถือเข้าช่องถัดไปโดยคีย์บอร์ดไม่พับ,
 เดินด้วยคีย์บอร์ดล้วน, undo, แก้ต่อหลัง undo การเพิ่มชีต, ตัดข้ามชีต, แถบสูตรไม่เขียนค่าค้าง, "เปลี่ยนอะไรไกลจากเคอร์เซอร์แล้วพูดออกมาไหม", ผู้ช่วย AI (stub route ไว้
 ทั้งกรณีตอบปกติและกรณีโดน rate limit) CSP (header มาจริง, ยิงออกนอก policy ไม่ได้, แอปเองไม่สะดุด) บันทึกไม่ลงแล้วแอปบอกและยังส่งออกได้, ต่อ API จากเบราว์เซอร์แล้วค่าลงตารางและรีเฟรชเอง โดยไม่มีอะไรเกี่ยวกับมันถึง `/api/*` (และ CSP ของคนที่ไม่เคยเพิ่มแหล่งยังเหมือนเดิมทุกตัวอักษร · แท็บใหม่ที่ไม่มีค่า header ขึ้นว่ารอค่า ไม่ใช่เชื่อมต่อไม่ได้), API ที่ไม่ตอบ CORS ได้รายการตรวจสำหรับ IT ไม่ใช่ error เปล่า, ไม่มีหน้าไหนเรียกตัวเองว่าเดโมทั้งสองภาษา และที่ 390px ทางไปข้อมูลสดอยู่บนจอและมีชื่อ และค่าข้ามชีตบนจอยังถูกหลังส่งออก PDF, sort และ undo เกณฑ์เลือก flow มีข้อเดียว:
 **unit test จับได้อยู่แล้วหรือเปล่า** ถ้าจับได้ ไม่ต้องอยู่ที่นี่ ที่เหลือคือรอยต่อ ซึ่งเป็นที่ที่บั๊กของโปรเจกต์นี้อยู่ทุกตัว
-`npm run check:e2e` drives the real app in a browser through 23 flows — opening blank, with a sample an older version saved not coming back (and one edited, staying), New file asking first and Ctrl+Z bringing the work back, type a formula and watch the value
-move, export `.xlsx` and import it back, a file opened on top of work that asks first (the focused choice keeps the work, and undo takes the file back out) along with `Ctrl+B`, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, whether a change away from the cursor is
+`npm run check:e2e` drives the real app in a browser through 26 flows — opening blank, with a sample an older version saved not coming back (and one edited, staying), New file asking first and Ctrl+Z bringing the work back, type a formula and watch the value
+move, export `.xlsx` and import it back, a file opened on top of work that asks first (the focused choice keeps the work, and undo takes the file back out) along with `Ctrl+B`, a row typed with Tab ending with Enter under its first column and the cell menu from `Shift+F10`, a column dragged wider that one undo puts back, Enter on a phone going into the next cell's editor, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, whether a change away from the cursor is
 announced, the AI assistant with its route stubbed (both a normal answer and a rate limit), and the CSP
 (served, blocking exfiltration, and not tripping the app up), a refused save that is announced while export still works, an API connected from this browser that fills the sheet and refreshes with nothing about it reaching `/api/*` (and the CSP unchanged, character for character, for anyone who never added a source; a new tab without the header value says it is waiting, not failing), an API without CORS getting a checklist for IT rather than a bare error, no page calling itself a demo in either language, at 390px whether the way to live data is on screen and named, and cross-sheet values still right on screen after a PDF export, a sort and its undo. Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong
 there. What is left is the seams, which is where every bug in this project has actually lived.
@@ -176,7 +176,27 @@ A survivor that is **equivalent** (the code changes, the result cannot) gets
   "License headers" ใน CI จะแดงถ้าขาด · migration ใน `supabase/migrations/` ได้รับยกเว้น
   Every new source file starts with that copyright and SPDX header; `node scripts/license-headers.mjs --fix`
   adds it, and CI's "License headers" job fails without it. Applied migrations in `supabase/migrations/` are exempt.
-- พัฒนาบนบรานช์ `claude/excel-sheet-ui-builder-8ooz26` และ merge เข้า `main` เฉพาะตอนที่สั่งเท่านั้น
+- พัฒนาบนบรานช์ของ session ตัวเอง (Dev: `claude/excel-sheet-ui-builder-8ooz26`) — ไม่ push ตรงเข้า `main`
+
+### การ merge เข้า main: Dev เปิด PR → PO ตรวจ → owner สั่ง / Merging into main: PR, PO review, owner's word
+
+**ทุก session (Dev, Dev UX, QA, PO) ทำตามลำดับนี้ ไม่มีข้อยกเว้น** — owner ตัดสินเมื่อ 2026-09-28
+Every session — Dev, Dev UX, QA and PO alike — follows this order, with no exceptions. The owner decided it on 2026-09-28.
+
+1. **Dev เปิด PR** จากบรานช์ของตัวเองไป `main` · merge `origin/main` เข้าบรานช์ก่อนเปิด (merge ไม่ rebase) ให้ PR ไม่ conflict ·
+   `npm run verify` เขียวบนผลรวม · แล้วแจ้ง PO — **ห้ามกดปุ่ม merge เอง แม้ CI เขียวและ PR ไม่ conflict**
+   The developer opens a PR from their own branch, merges `origin/main` into it first so it has no conflict, gets
+   `npm run verify` green on the result, and tells the PO. **Never press merge yourself**, even with green CI and no conflict.
+2. **PO ตรวจ**: รัน verify เอง ลองแบบผู้ใช้บน production build (`docs/PO_LESSONS.md` ข้อ 2) แล้วรายงาน owner ว่าผ่านหรือไม่
+   The PO reviews: runs verify, tries the change as a user on a production build, and reports to the owner.
+3. **owner สั่ง merge** แล้ว PO เป็นคน merge ผ่าน PR (merge commit, ไม่ squash) · ไม่มีใคร push ตรงเข้า `main`
+   The owner says merge; the PO then merges through the PR (a merge commit, not a squash). Nobody pushes to `main` directly.
+
+**ทำไม:** `main` deploy ขึ้น Vercel (production) ทันที · merge ก่อน PO ตรวจ = ผู้ใช้เจอก่อนใครตรวจ · เคยเกิดแล้ว: PR #120 ถูก merge
+โดย Dev เองก่อนผลตรวจของ PO ออก ผลตรวจผ่าน แต่ถ้าไม่ผ่าน production ก็เปลี่ยนไปแล้ว
+**Why:** `main` deploys to production the moment it changes, so a merge before review means users see it before anyone
+has checked it. It happened once: PR #120 was merged by its developer before the PO's review finished. The review
+passed that time; had it failed, production would already have changed.
 
 ### ช่องโหว่ความปลอดภัย: รายงานแบบส่วนตัวเท่านั้น / Security findings are reported privately
 

@@ -14,6 +14,7 @@ import type { TableData } from "@/lib/dataSources/types";
 import { BrowserSourceDraft, ErrorDetail, useDataSourceStore } from "@/store/dataSourceStore";
 import { useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
+import { useDialogKeys } from "@/features/a11y/useDialogKeys";
 import { hostOf, needsReload, reloadToAllow } from "./allowOrigin";
 import BrowserSourceError, { BROWSER_CODES } from "./BrowserSourceError";
 import { partialHintText, sourceErrorText } from "./sourceError";
@@ -57,6 +58,8 @@ export default function BrowserSourceDialog({ source, resume, preset, onClose }:
   const t = useT();
   const b = t.data.browser;
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogKeys(panelRef, onClose);
   const saveBrowserSource = useDataSourceStore((s) => s.saveBrowserSource);
   const testBrowserSource = useDataSourceStore((s) => s.testBrowserSource);
   const openPicker = useSheetStore((s) => s.openDataPicker);
@@ -132,6 +135,7 @@ export default function BrowserSourceDialog({ source, resume, preset, onClose }:
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onMouseDown={onClose}>
       <div
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        ref={panelRef}
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

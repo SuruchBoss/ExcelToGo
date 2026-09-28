@@ -291,31 +291,13 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
           <SectionHead n="01" id="pains-title" title={t.landing.painTitle} lead={t.landing.painLead} />
 
-          {/* The index: a reader who manages payroll should reach their problem in one press,
-              not by reading five others first. Hairlines between cells come from the gap showing
-              the rule colour through, so the grid reads as ruled paper at every width. */}
-          <nav aria-label={t.landing.painIndexLabel} className="mt-8">
-            <ol className="grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
-              {t.landing.pains.map((p, i) => (
-                <li key={PAIN_EXHIBITS[i].id} className="bg-white">
-                  <a
-                    href={`#${PAIN_EXHIBITS[i].id}`}
-                    className="flex min-h-11 items-baseline gap-3 px-3 py-3.5 text-[14px] leading-snug text-ink transition-colors hover:bg-band/60 hover:text-ledger-ink"
-                  >
-                    <span aria-hidden className="tabular-nums shrink-0 font-mono text-[11px] text-ref">
-                      {num(i)}
-                    </span>
-                    <span className="min-w-0 flex-1">{p.short}</span>
-                    <span aria-hidden className="shrink-0 font-mono text-[12px] text-ash">
-                      ↓
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-
-          <div className="mt-4">
+          {/* Six cards, not six full-page entries. The problem, what it costs and what changes
+              are the three lines a reader needs to recognise their own situation; "how it is
+              solved" and the screenshot that proves it open under each card for whoever wants
+              them. Laid out as six long entries this section was two-thirds of the page — eight
+              phone screens before the comparison — and a reader who is not a developer met the
+              engine's internals before the reason to try it. */}
+          <div className="mt-8 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
             {t.landing.pains.map((p, i) => {
               const exhibit = PAIN_EXHIBITS[i];
               const src = shotUrl(locale, exhibit.file);
@@ -326,84 +308,79 @@ export default function Landing() {
                   key={exhibit.id}
                   id={exhibit.id}
                   aria-labelledby={titleId}
-                  className="grid scroll-mt-20 items-start gap-8 border-b border-rule py-12 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:gap-12 lg:py-14"
+                  className="flex min-w-0 scroll-mt-20 flex-col border border-rule bg-white"
                 >
-                  {/* Alternate which side the exhibit sits on, but only once there are two columns. */}
-                  <div className={`min-w-0 ${i % 2 === 1 ? "md:order-2" : ""}`}>
+                  <div className="px-5 pt-5">
                     <p className="flex items-center gap-2.5 font-mono text-[11.5px] font-medium text-ref">
                       <span className="h-[7px] w-[7px] shrink-0 bg-ref" aria-hidden />
                       {t.landing.painLabels.problem} {num(i)}
                     </p>
-                    <h3
-                      id={titleId}
-                      className="mt-3 text-[1.3rem] font-semibold leading-[1.42] tracking-[-0.01em] text-ink sm:text-[1.5rem]"
-                    >
+                    <h3 id={titleId} className="mt-2.5 text-[1.1rem] font-semibold leading-[1.45] tracking-[-0.01em] text-ink">
                       {p.title}
                     </h3>
-
-                    {/* Who has it, and what it costs them today. The cost is in red ink — the one
-                        place on the page that colour is used for words — because it is the debit
-                        the rest of the entry is there to clear. */}
-                    <dl className="mt-5 space-y-3 border-l-2 border-ref/35 pl-4">
-                      <div>
-                        <dt className="text-[12px] font-semibold text-ash">{t.landing.painLabels.who}</dt>
-                        <dd className="mt-0.5 text-[14px] leading-relaxed text-ink/80">{p.who}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[12px] font-semibold text-ref">{t.landing.painLabels.cost}</dt>
-                        <dd className="mt-0.5 text-[14.5px] leading-relaxed text-ink">{p.cost}</dd>
-                      </div>
-                    </dl>
-
-                    <h4 className="mt-8 font-mono text-[11.5px] font-medium text-ledger">{t.landing.painLabels.solvedBy}</h4>
-                    {/* Lettered, not numbered: they are lines of one entry, not entries of their own. */}
-                    <ol className="mt-2 border-t border-rule">
-                      {p.solvedBy.map((f, j) => (
-                        <li key={f.name} className="grid grid-cols-[1.4rem_minmax(0,1fr)] gap-x-2 border-b border-rule py-3.5">
-                          <span aria-hidden className="pt-[3px] font-mono text-[11px] text-ledger">
-                            {String.fromCharCode(97 + j)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-[14.5px] font-semibold leading-snug text-ink">{f.name}</p>
-                            <p className="mt-1 text-[13.5px] leading-relaxed text-ash">{f.does}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-
-                    {/* The total line. A double rule over the result is how a ledger closes a column;
-                        here it closes the entry, and it is the line a skimming reader lands on. */}
-                    <div className="mt-6 border-t-[3px] border-double border-ink pt-4">
-                      <p className="font-mono text-[11.5px] font-medium text-ledger">{t.landing.painLabels.outcome}</p>
-                      <p className="mt-1.5 text-[16px] font-semibold leading-[1.6] text-ink sm:text-[17px]">{p.outcome}</p>
-                    </div>
+                    {/* The cost in red ink — the one place on the page that colour is used for words —
+                        because it is the debit the rest of the card is there to clear. */}
+                    <p className="mt-3 text-[12px] font-semibold text-ref">{t.landing.painLabels.cost}</p>
+                    <p className="mt-0.5 text-[14px] leading-relaxed text-ink/85">{p.cost}</p>
                   </div>
 
-                  {/* Sticky on wide screens, so the proof stays beside the entry while it is read. A
-                      whole-app screenshot at column width is too small to read the part that proves
-                      anything, so the exhibit opens at full size — the link's name is the image's alt. */}
-                  <figure className="min-w-0 border border-rule bg-white md:sticky md:top-24">
-                    <a
-                      href={src}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger"
-                    >
-                      <Image
-                        src={src}
-                        width={width}
-                        height={height}
-                        unoptimized={"unoptimized" in exhibit && exhibit.unoptimized}
-                        alt={p.alt}
-                        sizes="(max-width: 768px) 100vw, 620px"
-                        className="h-auto w-full"
-                      />
-                    </a>
-                    {/* Styled as the formula bar, so an exhibit reads as part of the same instrument. */}
-                    <figcaption className="border-t border-rule bg-paper px-3 py-2 font-mono text-[11px] leading-relaxed text-ash">
-                      {p.alt}
-                    </figcaption>
-                  </figure>
+                  {/* The total line: a double rule closes the entry, and it is where a skimming
+                      reader lands. */}
+                  <div className="mx-5 mt-5 border-t-[3px] border-double border-ink pt-3">
+                    <p className="font-mono text-[11.5px] font-medium text-ledger">{t.landing.painLabels.outcome}</p>
+                    <p className="mt-1 text-[15px] font-semibold leading-[1.6] text-ink">{p.outcome}</p>
+                  </div>
+
+                  <details className="group mt-4 border-t border-rule">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-5 py-3 text-[13.5px] font-medium text-ledger hover:bg-band/50 [&::-webkit-details-marker]:hidden">
+                      <span aria-hidden className="font-mono text-[12px] transition-transform group-open:rotate-90">
+                        ›
+                      </span>
+                      {t.landing.painLabels.details}
+                    </summary>
+                    <div className="px-5 pb-5">
+                      <p className="text-[12px] font-semibold text-ash">{t.landing.painLabels.who}</p>
+                      <p className="mt-0.5 text-[13.5px] leading-relaxed text-ink/80">{p.who}</p>
+                      <p className="mt-4 font-mono text-[11.5px] font-medium text-ledger">{t.landing.painLabels.solvedBy}</p>
+                      {/* Lettered, not numbered: they are lines of one entry, not entries of their own. */}
+                      <ol className="mt-1.5 border-t border-rule">
+                        {p.solvedBy.map((f, j) => (
+                          <li key={f.name} className="grid grid-cols-[1.2rem_minmax(0,1fr)] gap-x-2 border-b border-rule py-2.5">
+                            <span aria-hidden className="pt-[3px] font-mono text-[11px] text-ledger">
+                              {String.fromCharCode(97 + j)}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[14px] font-semibold leading-snug text-ink">{f.name}</p>
+                              <p className="mt-0.5 text-[13px] leading-relaxed text-ash">{f.does}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                      {/* A screenshot at card width is too small to read the part that proves
+                          anything, so it opens at full size — the link's name is the image's alt. */}
+                      <figure className="mt-4 border border-rule bg-white">
+                        <a
+                          href={src}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger"
+                        >
+                          <Image
+                            src={src}
+                            width={width}
+                            height={height}
+                            unoptimized={"unoptimized" in exhibit && exhibit.unoptimized}
+                            alt={p.alt}
+                            sizes="(max-width: 768px) 100vw, 400px"
+                            className="h-auto w-full"
+                          />
+                        </a>
+                        <figcaption className="border-t border-rule bg-paper px-3 py-2 font-mono text-[11px] leading-relaxed text-ash">
+                          {p.alt}
+                        </figcaption>
+                      </figure>
+                    </div>
+                  </details>
                 </article>
               );
             })}
@@ -475,50 +452,10 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── 02 · Under the hood — the page's one inverted band ───────────────────────────────── */}
-      <section className="bg-ink">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="02" title={t.landing.statsTitle} inverted />
-          <dl className="mt-10 grid grid-cols-2 gap-y-9 sm:grid-cols-5 sm:gap-y-0">
-            {t.landing.stats.map((s, i, all) => (
-              // Two columns on a phone and five figures leave the last one alone on its row, half
-              // the band empty beside it. Let it take the whole row instead: it is the "0", the
-              // figure the rest of the band is built on, so it is the one worth a line to itself.
-              <div
-                key={s.label}
-                className={`px-1 sm:px-6 ${i > 0 ? "sm:border-l sm:border-white/15" : ""} ${i === 0 ? "sm:pl-0" : ""} ${
-                  i === all.length - 1 && all.length % 2 === 1 ? "col-span-2 border-t border-white/15 pt-9 sm:col-span-1 sm:border-t-0 sm:pt-0" : ""
-                }`}
-              >
-                <dd className="tabular-nums font-mono text-[2.6rem] font-medium leading-none text-white sm:text-[3rem]">{s.value}</dd>
-                <dt className="mt-3.5 text-[12.5px] leading-relaxed text-white/55">{s.label}</dt>
-              </div>
-            ))}
-          </dl>
-
-          {/* The figures above are what a reader can check. This is the one thing they cannot
-              say — that a suite can be green and still be looking the wrong way. It sits on the
-              inverted band with them rather than in the feature list, because it is about how the
-              app was built, not about what it does. */}
-          <div className="mt-14 border-t border-white/15 pt-10 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] md:gap-12">
-            <h3 className="text-[1.15rem] font-semibold leading-[1.45] tracking-[-0.01em] text-white sm:text-[1.3rem]">
-              {t.landing.statsStory.title}
-            </h3>
-            <div className="mt-5 space-y-4 md:mt-0">
-              {t.landing.statsStory.body.map((line) => (
-                <p key={line} className="max-w-2xl text-[14.5px] leading-[1.8] text-white/65">
-                  {line}
-                </p>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 03 · What it can't do ────────────────────────────────────────────────────────────── */}
+      {/* ── 02 · What it can't do ────────────────────────────────────────────────────────────── */}
       <section className="border-b border-rule bg-white">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="03" title={t.landing.limitsTitle} lead={t.landing.limitsLead} />
+          <SectionHead n="02" title={t.landing.limitsTitle} lead={t.landing.limitsLead} />
           <dl className="mt-1">
             {t.landing.limits.map((l, i) => (
               <div
@@ -569,6 +506,53 @@ export default function Landing() {
           <Contact />
         </div>
       </section>
+      {/* ── 03 · Under the hood — the page's one inverted band ─────────────────────────────────
+          Last, after the closing call to action: it is how the app was built, which is worth a
+          lot to a developer reading the code and nothing to someone deciding whether to try a
+          spreadsheet. It used to sit in the middle of the page, between the reasons to try it
+          and the limits, where everyone had to scroll through it. */}
+      <section className="bg-ink">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
+          <SectionHead n="03" title={t.landing.statsTitle} inverted />
+          <dl className="mt-10 grid grid-cols-2 gap-y-9 sm:grid-cols-5 sm:gap-y-0">
+            {t.landing.stats.map((s, i, all) => (
+              // Two columns on a phone and five figures leave the last one alone on its row, half
+              // the band empty beside it. Let it take the whole row instead: it is the "0", the
+              // figure the rest of the band is built on, so it is the one worth a line to itself.
+              <div
+                key={s.label}
+                className={`px-1 sm:px-6 ${i > 0 ? "sm:border-l sm:border-white/15" : ""} ${i === 0 ? "sm:pl-0" : ""} ${
+                  i === all.length - 1 && all.length % 2 === 1 ? "col-span-2 border-t border-white/15 pt-9 sm:col-span-1 sm:border-t-0 sm:pt-0" : ""
+                }`}
+              >
+                <dd className="tabular-nums font-mono text-[2.6rem] font-medium leading-none text-white sm:text-[3rem]">{s.value}</dd>
+                <dt className="mt-3.5 text-[12.5px] leading-relaxed text-white/55">{s.label}</dt>
+              </div>
+            ))}
+          </dl>
+
+          {/* The figures above are what a reader can check. This is the one thing they cannot
+              say — that a suite can be green and still be looking the wrong way. It sits on the
+              inverted band with them rather than in the feature list, because it is about how the
+              app was built, not about what it does. */}
+          <details className="group mt-14 border-t border-white/15 pt-8">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 text-[1.1rem] font-semibold leading-[1.45] tracking-[-0.01em] text-white sm:text-[1.25rem] [&::-webkit-details-marker]:hidden">
+              <span aria-hidden className="font-mono text-[14px] text-[#5ad0a3] transition-transform group-open:rotate-90">
+                ›
+              </span>
+              {t.landing.statsStory.title}
+            </summary>
+            <div className="mt-5 space-y-4 md:pl-7">
+              {t.landing.statsStory.body.map((line) => (
+                <p key={line} className="max-w-3xl text-[14.5px] leading-[1.8] text-white/70">
+                  {line}
+                </p>
+              ))}
+            </div>
+          </details>
+        </div>
+      </section>
+
       </main>
 
       <footer>

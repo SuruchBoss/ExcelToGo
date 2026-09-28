@@ -99,11 +99,13 @@ const SHOWS = {
   "51-touch-actions.png": [],
   "52-fill-colour.png": [],
   "53-tablet-tools.png": [],
+  "54-cell-menu.png": [],
+  "55-column-resize.png": [],
   // Dates typed by hand and one =DATE: the figures are the scene's own, not counted ones.
-  "54-dates.png": [],
+  "56-dates.png": [],
   // The start notice and the New file question: words and buttons, no counted figures.
-  "55-blank-start.png": [],
-  "56-new-file.png": [],
+  "57-blank-start.png": [],
+  "58-new-file.png": [],
   "demo.gif": [],
 };
 
