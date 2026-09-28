@@ -171,7 +171,27 @@ cross means this commit rather than this draw; go looking for new gaps on purpos
   "License headers" ใน CI จะแดงถ้าขาด · migration ใน `supabase/migrations/` ได้รับยกเว้น
   Every new source file starts with that copyright and SPDX header; `node scripts/license-headers.mjs --fix`
   adds it, and CI's "License headers" job fails without it. Applied migrations in `supabase/migrations/` are exempt.
-- พัฒนาบนบรานช์ `claude/excel-sheet-ui-builder-8ooz26` และ merge เข้า `main` เฉพาะตอนที่สั่งเท่านั้น
+- พัฒนาบนบรานช์ของ session ตัวเอง (Dev: `claude/excel-sheet-ui-builder-8ooz26`) — ไม่ push ตรงเข้า `main`
+
+### การ merge เข้า main: Dev เปิด PR → PO ตรวจ → owner สั่ง / Merging into main: PR, PO review, owner's word
+
+**ทุก session (Dev, Dev UX, QA, PO) ทำตามลำดับนี้ ไม่มีข้อยกเว้น** — owner ตัดสินเมื่อ 2026-09-28
+Every session — Dev, Dev UX, QA and PO alike — follows this order, with no exceptions. The owner decided it on 2026-09-28.
+
+1. **Dev เปิด PR** จากบรานช์ของตัวเองไป `main` · merge `origin/main` เข้าบรานช์ก่อนเปิด (merge ไม่ rebase) ให้ PR ไม่ conflict ·
+   `npm run verify` เขียวบนผลรวม · แล้วแจ้ง PO — **ห้ามกดปุ่ม merge เอง แม้ CI เขียวและ PR ไม่ conflict**
+   The developer opens a PR from their own branch, merges `origin/main` into it first so it has no conflict, gets
+   `npm run verify` green on the result, and tells the PO. **Never press merge yourself**, even with green CI and no conflict.
+2. **PO ตรวจ**: รัน verify เอง ลองแบบผู้ใช้บน production build (`docs/PO_LESSONS.md` ข้อ 2) แล้วรายงาน owner ว่าผ่านหรือไม่
+   The PO reviews: runs verify, tries the change as a user on a production build, and reports to the owner.
+3. **owner สั่ง merge** แล้ว PO เป็นคน merge ผ่าน PR (merge commit, ไม่ squash) · ไม่มีใคร push ตรงเข้า `main`
+   The owner says merge; the PO then merges through the PR (a merge commit, not a squash). Nobody pushes to `main` directly.
+
+**ทำไม:** `main` deploy ขึ้น Vercel (production) ทันที · merge ก่อน PO ตรวจ = ผู้ใช้เจอก่อนใครตรวจ · เคยเกิดแล้ว: PR #120 ถูก merge
+โดย Dev เองก่อนผลตรวจของ PO ออก ผลตรวจผ่าน แต่ถ้าไม่ผ่าน production ก็เปลี่ยนไปแล้ว
+**Why:** `main` deploys to production the moment it changes, so a merge before review means users see it before anyone
+has checked it. It happened once: PR #120 was merged by its developer before the PO's review finished. The review
+passed that time; had it failed, production would already have changed.
 
 ### ช่องโหว่ความปลอดภัย: รายงานแบบส่วนตัวเท่านั้น / Security findings are reported privately
 
