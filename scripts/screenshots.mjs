@@ -37,6 +37,7 @@
  *
  * After retaking, look at every image, then `npm run check:screens -- --bless`.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1354,6 +1355,21 @@ const SCENES = [
     },
   },
   {
+    // #47: the sample being edited in one tab, and a second tab opened on it asking first. Opened
+    // with window.open, as a person's second tab would be; it also carries this run's session over,
+    // so the second tab does not start from an emptied browser.
+    file: "61-other-tab.png",
+    async take(k) {
+      await k.open("/app");
+      await k.type(1, 2, "70");
+      const [second] = await Promise.all([k.ctx.waitForEvent("page"), k.page.evaluate(() => window.open("/app"))]);
+      await second.waitForLoadState("networkidle");
+      await second.getByRole("alertdialog", { name: k.t.otherTab.title }).waitFor();
+      k.page = second;
+      await k.shot(this.file);
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {
@@ -1411,7 +1427,7 @@ for (const lang of LANGS) mkdirSync(outDir(lang), { recursive: true });
 
 const M = await loadMessages();
 const stubApi = startStubApi();
-const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ["--font-render-hinting=none"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, env: browserEnv(), args: ["--font-render-hinting=none"] });
 const failed = [];
 
 for (const cloud of [true, false]) {

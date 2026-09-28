@@ -108,6 +108,24 @@ describe("exporting a template back to .xlsx", () => {
     expect(again.cells[5][1]).toBe("=B5*1.07");
   });
 
+  it("keeps a column of width 9, which ExcelJS would leave out as its default (#136)", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Sheet1");
+    ws.getCell("B2").value = new Date(Date.UTC(2026, 8, 28));
+    ws.getCell("B2").numFmt = "dd/mm/yyyy";
+    ws.getColumn(2).width = 9;
+    ws.getColumn(2).numFmt = "dd/mm/yyyy"; // a styled column is written with its width
+    const [{ sheet }] = await importWorkbookFromFile(new File([await wb.xlsx.writeBuffer()], "dates.xlsx"));
+    expect(sheet.colWidths?.[1]).toBe(68);
+
+    const back = await readBack(await exportWorkbookToXlsxBlob(exportable(sheet)));
+    expect(back.getColumn(2).width).toBeCloseTo(9, 2);
+    const [{ sheet: again }] = await importWorkbookFromFile(
+      new File([await (await exportWorkbookToXlsxBlob(exportable(sheet))).arrayBuffer()], "again.xlsx")
+    );
+    expect(again.colWidths?.[1]).toBe(68);
+  });
+
   it("leaves a plain sheet unprotected", async () => {
     const [{ sheet }] = await importWorkbookFromFile(await templateFile({ protect: false }));
     const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(sheet)));

@@ -24,6 +24,9 @@ import SaveFailedNotice from "@/features/grid/SaveFailedNotice";
 import SampleNotice from "@/features/grid/SampleNotice";
 import StartNotice from "@/features/grid/StartNotice";
 import SortWarningDialog from "@/features/grid/SortWarningDialog";
+import OtherTabDialog from "@/features/otherTab/OtherTabDialog";
+import ViewOnlyNotice from "@/features/otherTab/ViewOnlyNotice";
+import { useTabLock } from "@/features/otherTab/useTabLock";
 import PivotNotice from "@/features/grid/PivotNotice";
 import ImportNotice from "@/features/grid/ImportNotice";
 import DataPicker from "@/features/data/DataPicker";
@@ -54,6 +57,7 @@ const noSubscription = () => () => {};
 export default function Home() {
   const t = useT();
   useHydrateSheetStore();
+  useTabLock();
   useServiceWorker();
   useHydrateLocaleStore();
   useSampleFollowsLocale();
@@ -97,12 +101,14 @@ export default function Home() {
       <SkipLink />
       <LiveAnnouncer />
       <SortWarningDialog />
+      <OtherTabDialog />
       {find.open && <FindPanel onClose={find.close} />}
       <Toolbar />
       <FormatBar />
       <FormulaBar />
       <TemplateBar />
       <SaveFailedNotice />
+      <ViewOnlyNotice />
       {showingSample ? <SampleNotice /> : hasWork ? <StorageNotice /> : <StartNotice />}
       <ImportNotice />
       <PivotNotice />

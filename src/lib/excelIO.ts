@@ -803,8 +803,12 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
 
   // Every column of the grid, not just the ones holding something: `getColumn` sets a width without
   // creating cells, and an empty sheet has no columns of its own to walk.
+  // ExcelJS leaves out a column whose width is exactly 9, its own default (#136), and a file without
+  // it opens at Excel's 8.43: 4px narrower, enough to turn a date that fitted into `###`. A hair
+  // over lands on the same 68px in Excel and comes back in as 9.
   for (let c = 0; c < sheet.cols; c++) {
-    worksheet.getColumn(c + 1).width = pxToExcelWidth(sheet.colWidths?.[c]) ?? 16;
+    const width = pxToExcelWidth(sheet.colWidths?.[c]) ?? 16;
+    worksheet.getColumn(c + 1).width = width === 9 ? 9.001 : width;
   }
   sheet.rowHeights?.forEach((px, i) => {
     const pt = pxToPt(px);

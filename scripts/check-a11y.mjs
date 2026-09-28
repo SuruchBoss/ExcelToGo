@@ -28,6 +28,7 @@
  * at 2.62:1, and a scrolling list no keyboard could reach. Neither could ever have been caught by
  * looking at `/app` as it loads, because neither exists until someone presses a button.
  */
+import { browserEnv } from "./browserEnv.mjs";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -369,6 +370,29 @@ const OPENED_STATES = [
     },
   },
   {
+    // #47: a second tab on the same workbook asks before it does anything.
+    name: "open in another tab dialog",
+    path: "/app",
+    async open(page) {
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await second.getByRole("alertdialog").waitFor({ state: "visible", timeout: 10_000 });
+      return second;
+    },
+  },
+  {
+    // …and the tab it took over from says, from then on, that it is only looking.
+    name: "view-only tab notice",
+    path: "/app",
+    async open(page) {
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await second.getByRole("alertdialog").getByRole("button", { name: "ใช้แท็บนี้แทน" }).click();
+      await page.getByRole("status").filter({ hasText: "แท็บนี้ดูอย่างเดียวแล้ว" }).waitFor({ timeout: 10_000 });
+      return page;
+    },
+  },
+  {
     name: "names popover",
     path: "/app",
     async open(page) {
@@ -469,6 +493,8 @@ try {
     // Set CHROME_PATH where Playwright's own download isn't the browser to use; CI installs one
     // and leaves this unset.
     executablePath: process.env.CHROME_PATH || undefined,
+    // A UTF-8 locale, or a Thai file name downloads as "download" (see browserEnv.mjs).
+    env: browserEnv(),
   });
 
   for (const path of PAGES) {
@@ -493,8 +519,9 @@ try {
       await page.goto(ORIGIN + state.path, { waitUntil: "networkidle" });
       let violations = [];
       try {
-        await state.open(page);
-        ({ violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze());
+        // A state may open somewhere else — a second tab (#47) — and hand back the page to scan.
+        const target = (await state.open(page)) ?? page;
+        ({ violations } = await new AxeBuilder({ page: target }).withTags(TAGS).analyze());
         note(violations.length === 0, `axe ${state.name} @${width}: ${violations.length} violations`);
       } catch (err) {
         // A state that cannot be opened is a failure, not a skip: silently checking nothing is how

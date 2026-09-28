@@ -107,6 +107,7 @@ const SHOWS = {
   "57-blank-start.png": [],
   "58-new-file.png": [],
   "59-back-to-selection.png": [],
+  "61-other-tab.png": [],
   "demo.gif": [],
 };
 
