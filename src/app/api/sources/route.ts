@@ -5,24 +5,19 @@ import { createSource, listSources, toPublic } from "@/lib/server/sourceRepo";
 import { authFailureResponse, checkSourcesAuth } from "@/lib/server/sourcesAuth";
 import { parseSourceBody } from "./validate";
 import { DEMO_MODE, demoModeResponse } from "@/lib/demoMode";
-import { DEMO_SOURCES, demoLanguage, withDemoName } from "@/lib/server/demoSources";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  // A public demo lists the three built-ins and nothing else: no token, and no touch of
-  // data/sources.json, which a serverless host mounts read-only anyway.
-  const lang = demoLanguage(new URL(request.url).searchParams.get("lang"));
-  if (DEMO_MODE) return Response.json(DEMO_SOURCES.map((s) => withDemoName(toPublic(s), lang)));
+  // Server sources switched off (#109): nothing to list, and data/sources.json is not touched.
+  if (DEMO_MODE) return demoModeResponse();
   const denied = checkSourcesAuth(request);
   if (denied) return authFailureResponse(denied);
   const sources = await listSources();
-  return Response.json(sources.map((s) => withDemoName(toPublic(s), lang)));
+  return Response.json(sources.map(toPublic));
 }
 
 export async function POST(request: Request) {
-  // Still refused, and this is the load-bearing half: read-only access to a fixed list is only
-  // safe for as long as nothing can add to the list.
   if (DEMO_MODE) return demoModeResponse();
   const denied = checkSourcesAuth(request);
   if (denied) return authFailureResponse(denied);

@@ -125,17 +125,50 @@ export default function Guide() {
           </h1>
           <p className="mt-4 max-w-[62ch] text-[15px] leading-[1.75] text-ash">{g.lead}</p>
 
-          <div className="mt-7 border-l-2 border-ref pl-4">
-            <p className="text-[14.5px] font-semibold text-ink">{g.demoTitle}</p>
-            {g.demoBody.map((line) => (
-              <p key={line} className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-ink/75">
-                {line}
-              </p>
-            ))}
-          </div>
         </div>
 
-        <section aria-labelledby="types" className="pt-12">
+        {/* The way that works on this site comes first (#110): the browser fetches, nothing to
+            install. Running a server is for databases and server-side fetching, and comes after. */}
+        <section aria-labelledby="browser" className="pt-12">
+          <Head id="browser">{g.browserTitle}</Head>
+          {g.browserBody.map((line) => (
+            <p key={line} className="mt-3 max-w-[62ch] text-[14.5px] leading-relaxed text-ink/80">
+              {line}
+            </p>
+          ))}
+          <ol className="mt-4">
+            {g.browserSteps.map((step, i) => (
+              <li key={step} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 border-b border-rule py-3.5">
+                <span aria-hidden className="font-mono text-[12px] font-medium tabular-nums text-ledger">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <p className="max-w-[62ch] text-[14.5px] leading-relaxed text-ink/85">{step}</p>
+              </li>
+            ))}
+          </ol>
+          <Link href="/app" className="mt-5 inline-flex bg-ledger px-4 py-2.5 text-[13.5px] font-medium text-white transition-colors hover:bg-ledger-ink">
+            {g.openApp}
+          </Link>
+        </section>
+
+        <section aria-labelledby="it" className="pt-12">
+          <Head id="it">{g.itTitle}</Head>
+          <p className="mt-3 max-w-[62ch] text-[14.5px] leading-relaxed text-ash">{g.itLead}</p>
+          <ul className="mt-3">
+            {g.itItems.map((item) => (
+              <li key={item} className="border-b border-rule py-3 text-[14px] leading-relaxed text-ink/85">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section aria-labelledby="server" className="pt-14">
+          <Head id="server">{g.serverTitle}</Head>
+          <p className="mt-3 max-w-[62ch] text-[14.5px] leading-relaxed text-ash">{g.serverLead}</p>
+        </section>
+
+        <section aria-labelledby="types" className="pt-10">
           <Head id="types">{g.typesTitle}</Head>
           <p className="mt-3 max-w-[62ch] text-[14.5px] leading-relaxed text-ash">{g.typesLead}</p>
           {/* A list of entries rather than a table: at phone width a four-column table with long

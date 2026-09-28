@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Metadata } from "next";
+import { serverSourcesConfigured } from "@/lib/demoMode";
 import { connection } from "next/server";
 import { IBM_Plex_Sans_Thai, IBM_Plex_Mono } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
@@ -99,6 +100,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="th"
+      // Whether this deployment offers server-side sources at all (#109): only when it set
+      // SOURCES_ADMIN_TOKEN. Read per request, because the gates build once and set the token only
+      // when they start the server. A boolean, never the token.
+      data-server-sources={serverSourcesConfigured() ? "1" : undefined}
       className={`${plexThai.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

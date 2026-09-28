@@ -1,18 +1,14 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { csvToTable, extractRecords, getByPath, jsonToTable, tableFromRecords } from "@/lib/dataSources/jsonToTable";
-import { DEFAULT_MAX_ROWS, MAX_PAGES, nextPageUrl } from "@/lib/dataSources/paginate";
+import { Budget, collectTable, newBudget, readBody } from "@/lib/dataSources/collect";
 import { RateLimitError, readRateLimit } from "@/lib/dataSources/rateLimit";
 import { DataSourceConfig, isDbType, TableData } from "@/lib/dataSources/types";
 import {
   MAX_DELIVERED_BYTES,
-  MAX_RESPONSE_BYTES,
   REQUEST_TIMEOUT_MS,
   SOURCE_TIMED_OUT,
-  SOURCE_TOO_LARGE,
   SourceLimitError,
-  TOTAL_BUDGET_MS,
 } from "@/lib/dataSources/fetchLimits";
 import { executeDbSource } from "./executeDbSource";
 import { assertFetchable } from "./urlGuard";
@@ -24,52 +20,6 @@ export type SourceInput = Pick<
 
 /** Redirect hops followed per request, each one re-checked. */
 const MAX_REDIRECTS = 5;
-
-type FetchedPage = { body: unknown; linkHeader: string | null; records: number };
-
-/**
- * What one refresh may still spend. Shared by every request it makes — the redirects and the pages
- * — so the limits bound the refresh, not each request separately: twenty pages each just under a
- * per-page cap would otherwise add up to twenty times the memory the cap was meant to allow.
- */
-interface Budget {
-  /** `Date.now()` past which nothing more is sent or read. */
-  deadline: number;
-  /** Decompressed body bytes still allowed. */
-  bytesLeft: number;
-}
-
-/**
- * The body, read as a stream and stopped the moment it passes the budget.
- *
- * `res.text()` has no limit: it reads whatever arrives, and `fetch` has already inflated gzip and
- * brotli by then, so a small reply on the wire can be an enormous string in memory. Counting the
- * chunks as they come means a body that is too big costs at most the budget plus one chunk.
- * A declared `content-length` over the budget is refused before a byte is read.
- */
-async function readBody(res: Response, budget: Budget): Promise<string> {
-  const declared = Number(res.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > budget.bytesLeft) {
-    await res.body?.cancel().catch(() => {});
-    throw new SourceLimitError(SOURCE_TOO_LARGE);
-  }
-  if (!res.body) return "";
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  const parts: string[] = [];
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    budget.bytesLeft -= value.byteLength;
-    if (budget.bytesLeft < 0) {
-      await reader.cancel().catch(() => {});
-      throw new SourceLimitError(SOURCE_TOO_LARGE);
-    }
-    parts.push(decoder.decode(value, { stream: true }));
-  }
-  parts.push(decoder.decode());
-  return parts.join("");
-}
 
 /**
  * One request, with the destination checked before it is made and again after every redirect.
@@ -151,20 +101,10 @@ async function fetchPage(
   throw new Error("No response");
 }
 
-function parseBody(text: string): { json: unknown } | { csv: string } {
-  try {
-    return { json: JSON.parse(text) };
-  } catch {
-    // Some "JSON" endpoints are really CSV — be forgiving rather than making the user pick the type.
-    if (text.includes(",") && text.includes("\n")) return { csv: text };
-    throw new Error("Response is not valid JSON");
-  }
-}
-
 /**
  * Fetches a source and normalizes whatever it returns into a TableData. Runs on the server so
  * the auth header never reaches the browser and CORS isn't the user's problem. `origin` lets an
- * app-relative URL ("/api/demo/sales") resolve against the current deployment.
+ * app-relative URL ("/api/sample/sales") resolve against the current deployment.
  *
  * When the first response looks like a list and signals a next page, following pages are fetched
  * and their records appended, up to `maxRows` (and never more than MAX_PAGES requests or the total
@@ -221,87 +161,18 @@ async function collectSource(src: SourceInput, origin: string): Promise<TableDat
   const startUrl = resolved.toString();
   // The origin the source's credential belongs to: its own URL's, never wherever a response points.
   const credentialOrigin = resolved.origin;
-  const budget: Budget = { deadline: Date.now() + TOTAL_BUDGET_MS, bytesLeft: MAX_RESPONSE_BYTES };
-  const first = await fetchPage(startUrl, src, sameOrigin, credentialOrigin, budget);
-  const fetchedAt = new Date().toISOString();
-
-  const parsed = parseBody(first.text);
-  if (src.type === "csv" || "csv" in parsed) {
-    return csvToTable("csv" in parsed ? parsed.csv : first.text, fetchedAt);
-  }
-
-  const scoped = getByPath(parsed.json, src.jsonPath);
-  if (scoped === undefined) throw new Error(`Nothing found at path "${src.jsonPath}"`);
-
-  const maxRows = src.maxRows === undefined ? DEFAULT_MAX_ROWS : src.maxRows;
-  const records = extractRecords(scoped);
-  // No list to page through (a KPI object, a bare value), or paging switched off.
-  if (!records || maxRows <= 0) return jsonToTable(scoped, fetchedAt);
-
-  const firstPageRecords = records.length;
-  const seen = new Set<string>([startUrl]);
-  const all = [...records];
-
-  let page: FetchedPage = { body: parsed.json, linkHeader: first.linkHeader, records: firstPageRecords };
-  let currentUrl = startUrl;
-  let pageCount = 1;
-  let truncated = false;
-  let retryAfterSec: number | undefined;
-
-  for (;;) {
-    // Ask where the next page is first, then decide whether we're allowed to go there. Doing it
-    // in this order is what lets "stopped at exactly maxRows, but more exists" report as truncated.
-    const nxt = nextPageUrl({
-      currentUrl,
-      linkHeader: page.linkHeader,
-      body: page.body,
-      pageRecords: page.records,
-      firstPageRecords,
-    });
-    if (!nxt) break; // Genuinely the last page.
-    // A next page on another origin is not followed at all. A redirect to a CDN is ordinary HTTP;
-    // an API whose pages continue on a different host is not something real APIs do, and the rows
-    // already collected are kept and marked partial rather than fetched from somewhere unvetted.
-    if (new URL(nxt.url).origin !== credentialOrigin) {
-      truncated = true;
-      break;
-    }
-    if (all.length >= maxRows || pageCount >= MAX_PAGES || Date.now() > budget.deadline || seen.has(nxt.url)) {
-      truncated = true; // There is more data; we're choosing to stop.
-      break;
-    }
-
-    seen.add(nxt.url);
-    currentUrl = nxt.url;
-    let next: { text: string; linkHeader: string | null };
-    try {
-      // Paging URLs come from the response body, so they are never treated as same-origin.
-      next = await fetchPage(currentUrl, src, false, credentialOrigin, budget);
-    } catch (err) {
-      // A rate limit partway through is the one failure worth carrying forward rather than just
-      // swallowing: the rows already collected are still good, but the caller has to know to wait
-      // or the next poll walks straight back into the same limit. Running out of time or bytes on
-      // a later page is the same as running out of pages — what was collected is kept, marked
-      // partial.
-      if (err instanceof RateLimitError) retryAfterSec = err.retryAfterSec;
-      truncated = true;
-      break;
-    }
-
-    const nextParsed = parseBody(next.text);
-    if ("csv" in nextParsed) {
-      truncated = true;
-      break;
-    }
-    const nextRecords = extractRecords(getByPath(nextParsed.json, src.jsonPath)) ?? [];
-    pageCount += 1;
-    all.push(...nextRecords);
-    page = { body: nextParsed.json, linkHeader: next.linkHeader, records: nextRecords.length };
-  }
-
-  if (all.length > maxRows) {
-    all.length = maxRows;
-    truncated = true;
-  }
-  return tableFromRecords(all, fetchedAt, { pageCount, truncated: truncated || undefined, retryAfterSec });
+  const budget: Budget = newBudget();
+  // Everything between the requests — pages, budget, rate limit, partial tables — is shared with the
+  // browser's fetcher in `collect.ts`. What is the server's alone is how each request is made:
+  // redirects followed by hand, every destination checked by the private-network guard.
+  return collectTable({
+    type: src.type,
+    jsonPath: src.jsonPath,
+    maxRows: src.maxRows,
+    startUrl,
+    credentialOrigin,
+    budget,
+    // Paging URLs come from the response body, so only the source's own URL may take the fast path.
+    fetchPage: (url, first) => fetchPage(url, src, first && sameOrigin, credentialOrigin, budget),
+  });
 }

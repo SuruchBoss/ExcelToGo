@@ -5,7 +5,8 @@
 ### ▶ [Try it — nothing to install](https://excel-to-go.vercel.app)
 
 Runs in your browser; your data stays on your machine.
-(On the public demo, live data is readable from three built-in sources — [why only three](SECURITY.md).)
+This site is the real app — free, no sign-up, not a trial — and you can [connect your own API from the browser](#from-your-browser-restcsv--works-on-this-site)
+right here, with the URL, the header and the data never passing through our server.
 
 > **Type "total sales for the northern branch" and get an Excel formula back**, with a sentence
 > saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes
@@ -19,8 +20,9 @@ Runs in your browser; your data stays on your machine.
 > third-party library), entirely in your browser — the data never leaves your machine, and there
 > is no account to create.
 >
-> Four things build on that: **[your own API or database feeding the cells](#-live-data-from-an-api--csv-prototype)**, with no script to write, keeping
-> cells current on its own (following paginated APIs and backing off when rate-limited),
+> Four things build on that: **[your own API feeding the cells](#-live-data-from-an-api--csv-prototype)**, with no script to write —
+> [straight from your browser on this site](#from-your-browser-restcsv--works-on-this-site), including APIs behind a VPN or in the office, or a database
+> when you run the app yourself — keeping cells current on its own (following paginated APIs and backing off when rate-limited),
 > **[imported files keeping their look](#-it-looks-like-the-file-you-opened)** (colour bands, large type,
 > borders, merged cells), **[templates read straight out of an Excel file](#-templates-from-an-excel-file)**
 > that already know which cells are yours to fill in, and **[Pivot summaries](#-pivot-summarise-a-range)**
@@ -35,8 +37,8 @@ Runs in your browser; your data stays on your machine.
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
-  <a href="https://excel-to-go.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_try_it-live_demo-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1554%20passing-2F9E44?logo=vitest&logoColor=white">
+  <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1573%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -52,11 +54,12 @@ cell/range references, relative & structural reference adjustment, circular-refe
 workbooks, named ranges (in Thai, substituted at compile time so the dependency graph stays honest), rules on
 what a cell will accept that refuse a value rather than flag it afterwards, conditional formatting that
 re-colours cells from their current values, pivot summaries over a selected range, live data from a REST/CSV
-endpoint or straight from PostgreSQL/MySQL — one saved read-only query, and nobody downstream ever sees SQL —
+endpoint fetched by your own browser (on the public site, nothing to install, nothing through its server) or,
+self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and nobody downstream ever sees SQL —
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1554 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1573 automated tests.
 
 ---
 
@@ -100,7 +103,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1554 passing tests could not catch
+### 🧪 What 1573 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -111,14 +114,14 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1554 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1573 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
 - Half-insert a formula from the palette and **all six sidebar buttons went dead.** They still set
   the mode in the store; a `pending ? … : mode` render just outranked it. Escape did nothing either,
   so the press arrived later, attached to whichever click finally cancelled the formula.
-- The keyword matcher — which on the public demo is not a fallback but the *only* thing anyone sees
+- The keyword matcher — which on the public site, with no key set, is not a fallback but the *only* thing anyone sees
   — answered _"add up all the sales"_ with `=SUM(E2)`, the total of one cell, and _"join the product
   name and the category"_ with `=SUM(E2)` again. The system prompt has forbidden the model from
   substituting like that since the fix above. Nothing had ever told the matcher.
@@ -184,7 +187,7 @@ the outcome under a double rule like a total.
 
 **Solved by**
 
-1. **[Connect an API or a database directly](#-straight-into-a-database-postgresql--mysql)** — Someone technical adds a URL or a PostgreSQL / MySQL connection once. Queries run read-only, and the database itself refuses writes
+1. **[Connect an API from your browser](#from-your-browser-restcsv--works-on-this-site)** — Enter the URL and header once, right on this site; an API behind a VPN works too if your machine can reach it · for [PostgreSQL / MySQL directly](#-straight-into-a-database-postgresql--mysql), run the app on your own server. Queries run read-only, and the database itself refuses writes
 2. **[Press “Insert into sheet”](#-live-data-from-an-api--csv-prototype)** — Users pick a cell and choose the whole table or one summary figure. Values refresh on a schedule and feed formulas like any other cell
 3. **[Pivots and charts that follow the data](#-pivot-summarise-a-range)** — A summary tied to its source refreshes with one press, and [charts](#-charts-from-the-sheet) move the moment the numbers do
 
@@ -375,7 +378,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1554-case Vitest suite |
+| `npm test` | Run the 1573-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -383,7 +386,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 17 flows: formulas, `.xlsx` round trip, an import on top of work that asks first, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, the phone tab bar (needs a build) |
+| `npm run check:e2e` | Drives the real app through 21 flows: formulas, `.xlsx` round trip, an import on top of work that asks first, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar (needs a build) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -415,7 +418,7 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
 
 - **[Vercel](https://vercel.com)** (recommended, easiest): connect this repo to Vercel and deploy. For real
   AI, add an `ANTHROPIC_API_KEY` environment variable under Project Settings → Environment Variables.
-  (On a public demo, also set `NEXT_PUBLIC_DEMO_MODE=1` and the key goes unused — see the note below.)
+  — **if that deployment is open to the public, read the box below first**, because the key will be used for everyone who visits.
 
   **Functions are pinned to `sin1` (Singapore) in [`vercel.json`](vercel.json).** Vercel's default is `iad1`
   (Washington), while both the users and the Supabase database are in Southeast Asia, so every request
@@ -426,38 +429,48 @@ This is a standard Next.js app, so it deploys to any platform that supports Next
   **Do not reach for `export const preferredRegion` in a route file instead** — in this Next.js version it is
   deprecated, and on Vercel it accepts only `'auto'`, `'global'` or `'home'`, so `'sin1'` fails the build.
 
-  **Live data on Vercel has a size limit.** Vercel will not send a function response over 4.5 MB (it
+  **Server-side live data on serverless has a size limit.** Vercel will not send a function response over 4.5 MB (it
   answers 413 instead), so the app sends at most 4 MB of live-data table to the browser per refresh. A
   bigger table arrives with the rows that fit and a warning that it is partial — about 41,800 rows of the
-  demo's shape, about 7,700 of twenty Thai text fields, against the 50,000 the form allows. **Self-hosted
+  sample feed's shape, about 7,700 of twenty Thai text fields, against the 50,000 the form allows. **Self-hosted
   has no 4.5 MB limit**, but the app uses the same 4 MB so one source behaves the same in both places; to
   allow more on your own server, change `MAX_DELIVERED_BYTES` in `src/lib/dataSources/fetchLimits.ts`,
-  the one place it is set.
+  the one place it is set. Live data connected from the browser does not pass through a function, so this
+  4 MB does not apply to it (the same byte and time budget per refresh still does).
 - Self-host with Docker/any Node server: `npm run build` then `npm run start`.
 
 > [!IMPORTANT]
-> **Deploying a public demo? Set `NEXT_PUBLIC_DEMO_MODE=1` as well.**
+> **Before opening a deployment to the public — two variables that, once set, everyone on the site uses too**
 >
-> It switches the live-data feature off on both sides: every `/api/sources*` route answers 403, and the
-> UI stops offering the "Connect new data" button. That API now requires an operator token and refuses to fetch
-> private addresses (see [`SECURITY.md`](SECURITY.md)), but switching it off outright still matches
-> what a demo is for: there is nothing to unlock, and everything left runs in the browser.
+> **`ANTHROPIC_API_KEY`: set on a public deployment, everyone who uses the site uses AI on the deployment
+> owner's key and bill.** `/api/ai/formula` uses the server's key whenever one is set (the same as on your own
+> machine) and takes no authentication by design — the assistant is part of the app, and making a visitor log in
+> to ask a question would be absurd. It is capped at **20 calls a minute per IP**, which slows a careless script,
+> but the IP is read from `x-forwarded-for`, which a client can set to anything — a script that changes it on
+> every call is never limited — and the counters live in the process's memory: separate instances count
+> separately and a serverless cold start forgets them. **That guards against casual abuse, it is not a billing
+> control.**
 >
-> It also matches reality on a serverless host: sources are persisted to `data/sources.json`, and
-> Vercel's filesystem is read-only, so the feature could not work there anyway.
+> The one billing control is **not setting the key on a public deployment.** The local keyword matcher answers
+> instead, for free, and visitors can still bring [their own key](#-bring-your-own-api-key-byok), which goes from
+> their browser straight to Anthropic and never touches this route. That is how this project's public site is meant to run ·
+> `NEXT_PUBLIC_DEMO_MODE=1` used to make the route skip Anthropic even with a key set — **it no longer does**
+> (#109), and [`route.test.ts`](src/app/api/ai/formula/route.test.ts) pins that the old switch no longer hides a
+> configured key.
 >
-> **`ANTHROPIC_API_KEY` and public demos.** `/api/ai/formula` takes no authentication by design —
-> the assistant is part of the app, and making a visitor log in to ask a question would be absurd.
-> It is capped at **20 calls a minute per IP**, which slows a careless script, but the IP is read from
-> `x-forwarded-for`, which a client can set to anything — a script that changes it on every call is
-> never limited — and the counters live in the process's memory: separate instances count separately
-> and a serverless cold start forgets them. **That guards against casual abuse, it is not a billing control.**
+> **`SOURCES_ADMIN_TOKEN`: switches on server-side sources.** With it set, the live-data panel shows a token box,
+> and whoever holds the token can have the server fetch a URL or open a database (behind the SSRF guard — see
+> [`SECURITY.md`](SECURITY.md)). Unset, that part of the UI does not exist and every `/api/sources*` route
+> refuses. Connecting an API from the browser works for everyone with nothing set · server-side sources write to
+> `data/sources.json`, which a serverless host like Vercel cannot write anyway.
 >
-> The billing control is the same switch as above: **`NEXT_PUBLIC_DEMO_MODE=1` makes this route skip
-> Anthropic entirely**, even with a key configured, and fall back to local keyword matching — free,
-> and still useful. [`route.test.ts`](src/app/api/ai/formula/route.test.ts) holds that rule in place.
-> Even so, **not setting the key on a public deployment is still the safest thing to do** — two
-> layers beat one.
+> **`NEXT_PUBLIC_DEMO_MODE`** is still read for older deployments and now means exactly one thing: server-side
+> sources off, even with a token. It has no effect on the assistant and shows users nothing.
+>
+> **Order when deploying this version and removing `NEXT_PUBLIC_DEMO_MODE` from Vercel:** the owner first
+> confirms that **neither `ANTHROPIC_API_KEY` nor `SOURCES_ADMIN_TOKEN` is set** on the public deployment. That
+> variable used to be what made a leftover key or token harmless; now a key takes effect the moment this version
+> deploys, and a token the moment the variable is removed.
 
 ### 🔧 Troubleshooting
 
@@ -518,8 +531,8 @@ for an invisible wrong number.** The rule now forbids substituting an unrelated 
 for a warning instead.
 
 **Then the same mistake turned up in the matcher that answers when there is no key** — which, on the
-public demo, is not a fallback but the only thing anyone ever sees. Two failures, both found by
-using the demo rather than by testing it:
+public site (no key set), is not a fallback but the only thing anyone ever sees. Two failures, both found by
+using the app rather than by testing it:
 
 - Every unmatched question fell through to `SUM`. _"Join the product name and the category"_ came
   back as `=SUM(E2)`. The prompt had forbidden the model from doing this; nobody had told the code.
@@ -543,13 +556,13 @@ costs money).
 
 ### 🔑 Bring your own API key (BYOK)
 
-The assistant answers one of three ways, and the landing page says plainly which one the demo uses:
+The assistant answers one of three ways, and the landing page says plainly which ones the public site uses (the keyword matcher, or your own key):
 
 | Path | When | Answer comes from | Who pays |
 |---|---|---|---|
 | Local keyword matcher | The default | `aiHeuristic.ts` — matches words; **declines when nothing matches** | Nobody |
 | **The real Claude (BYOK)** | The visitor pastes their own API key | `api.anthropic.com`, straight from the browser | **The visitor's own account** |
-| The real Claude (server-side) | The operator sets `ANTHROPIC_API_KEY` | `/api/ai/formula` | Whoever runs the server |
+| The real Claude (server-side) | The operator sets `ANTHROPIC_API_KEY` | `/api/ai/formula` | Whoever runs the server — **for everyone who uses that deployment** ([see the warning](#step-3--deploy-for-real)) |
 
 <p align="center"><img src="public/screenshots/en/33-byok.png" width="560"></p>
 
@@ -576,20 +589,182 @@ second is never called (`hit our own /api/ai/formula: false`); the first arrives
 
 <p align="center"><img src="public/screenshots/en/34-live-data.gif" width="820" alt="Picking a live source, pressing it into the sheet, and the table changing on its own every five seconds"></p>
 
-<sub>Recorded from a production build by `npm run screenshots` — the source in it is one of the built-in samples, the same three the public demo lets anyone try.</sub>
+<sub>Recorded from a production build by `npm run screenshots` — the source in it is one of the sample feeds the app serves itself under `/api/sample/*` (its numbers move every five seconds), added as a server-side source the way an operator adds any other.</sub>
 
 <p align="center"><img src="public/screenshots/en/08-live-data.png" width="820"></p>
 
-Split into two roles so the end user touches as little technology as possible:
+Connect a REST API or a CSV file and the values flow into cells on a schedule, with no script to write.
+There are two ways, and the difference is **who makes the request**:
 
-**1) Tech sets it up once** — "Connect new data" in the **Live data** panel: enter a REST API URL or a CSV/Google
-Sheets link, an auth header if needed, and a refresh interval, then "Test connection" to see how many rows and
-columns come back before saving. Config and credentials live on the server (`data/sources.json`, gitignored)
-and never reach the user's browser; the server does the fetching, so CORS isn't the user's problem.
+| | From your browser | Server-side source |
+|---|---|---|
+| Who fetches | Your own browser | The server running the app |
+| Where it works | Everywhere, including [excel-to-go.vercel.app](https://excel-to-go.vercel.app) — nothing to install | Only on a deployment that sets `SOURCES_ADMIN_TOKEN` (self-hosted) |
+| What it reaches | REST (JSON) and CSV that **your machine** can reach, including APIs behind a VPN or inside the office | REST, CSV/Google Sheets, PostgreSQL, MySQL that **the server** can reach |
+| Where the credential lives | The header value sits in that tab's `sessionStorage` and goes when the tab closes | Encrypted on the server's disk; the browser never sees it |
+| What you need from whom | The API must allow CORS for this site, over https ([what to ask IT for](#what-to-ask-it-for)) | Whoever runs the server sets the env and adds sources |
+
+Once data arrives the two are identical, because both read it with the same code
+(`src/lib/dataSources/collect.ts`) — following pages, the byte and time budget per refresh, backing off on a rate
+limit, saying when a table is only part of the data — and people [put it into the sheet the same way](#putting-it-in-the-sheet--the-same-either-way).
+It is one shared file because with two copies the two paths would one day disagree about what "partial" means.
+
+#### From your browser (REST/CSV) — works on this site
+
+**Live data** → **Connect your API**, then fill in a name · JSON or CSV · the URL · an auth header (name and
+value, if the API needs one) · where the data sits in the JSON (optional; normally found for you) · how many rows
+at most · how often to refresh. **Test** shows rows × columns and the first five rows before anything is saved,
+and **Save and add to the sheet** goes straight on to the picker.
+
+<p align="center"><img src="public/screenshots/en/47-browser-source.png" width="700" alt="The connect-from-this-browser form after a test: 6 rows × 3 columns and the first five rows"></p>
+<p align="center"><sub><b>After a test</b> — 6 rows × 3 columns and the first five rows, before deciding to save</sub></p>
+
+#### Try a sample API
+
+No API of your own yet? The live-data panel has **three sample APIs** served by this site, with numbers that
+move on their own, each in a shape real APIs come in — **Live sales** (a list whose values change every 5
+seconds), **Today's summary** (an object of single values) and **Orders (several pages)** (120 rows, 25 a page,
+to show the pages being followed). **Nothing is added for you**: "Try it" fills in the same form a real API uses,
+and you test, save and put it in the sheet yourself — so trying one is practice for the real thing, not a shortcut
+that only works on samples. They are on the app's own site, which `'self'` in the CSP already covers, so there is
+no reload and nothing goes into the CSP cookie. A sample already connected shows as "Added" instead of inviting a
+duplicate.
+
+<p align="center"><img src="public/screenshots/en/49-sample-apis.png" width="700" alt="The live-data panel: Live sales, connected through Try it, is in the list, and the other two sample APIs still offer Try it"></p>
+<p align="center"><sub><b>Sample APIs in the live-data panel</b> — Try it on Live sales, test, save, and it shows as Added; the other two wait their turn</sub></p>
+
+It works the way draw.io opens a file: **the request goes from your browser straight to the API.** If this
+machine can open the API — on the VPN, in the office, or on the public internet — the app can fetch it, and
+**the URL, the header and the data never pass through our server.** No request to the app's own `/api/*`
+carries any of the three. That is not taken on trust: a `check:e2e` flow records every request the page makes
+to `/api/*` while an API is connected, tested, put in the sheet and left to refresh, and checks that none
+carries the URL, the header or the data.
+
+What is kept where:
+
+| | Kept in | Why |
+|---|---|---|
+| Name, URL, header **name**, JSON path, max rows, refresh interval | This browser's `localStorage` (`etg-browser-sources`) | Not secret; the source is still there in a new tab |
+| The header **value** (e.g. `Bearer …`) | `sessionStorage`, keyed by the source's id — and nowhere else | Gone when the tab closes; the app asks again on the next refresh. A token that outlives the tab is one a shared computer hands to the next person |
+| The workbook, exported files (.xlsx/.csv/.pdf), crash reports, the usage counter, requests to `/api/*` | No header value in any of them | |
+
+The form warns about two things before saving: a URL whose query looks like a token (`token=`, `key=`,
+`apikey=`, `access_token=` …) → move it into the header, because the URL is stored with the settings · a header
+value with characters outside Latin-1 (Thai, or a `…` that came along with a copy) → refused with the reason,
+because `fetch` cannot send one and throws before any request exists. Left alone, that would surface as a
+"cannot connect" nobody could diagnose.
+
+The fetcher (`browserSource.ts`) uses `fetch` with `mode: "cors"`, `credentials: "omit"` (no cookies, so a
+company's single sign-on cookie is never sent by accident) and `cache: "no-store"` · accepts only `https://`
+or `http://localhost` / `http://127.0.0.1` · follows next pages only on the same origin, and sends the header
+only to that origin · **does not use `urlGuard`, deliberately.** That guard exists so nobody can point *our
+server* at *our network*; here the network is the user's own, reached with the user's own permissions, and an
+internal API is what the feature is for, not an attack on anyone. What stands between the page and another
+origin on this path is the browser itself (CORS, mixed content, private-network rules) and the page's CSP,
+which allows only the origins that user has added.
+
+**A new API costs one page reload.** The CSP's `connect-src` is narrow for everyone, because it is what stops
+an injected script from sending [the visitor's own API key](#-bring-your-own-api-key-byok) anywhere else; it
+cannot be opened for everybody for the sake of this feature. So on save the app writes **only the origin** of
+the URL (scheme + host + port, no path, no query) into a cookie, `etg-api-origins`, and `src/proxy.ts` adds that
+origin to *that user's* policy only. A page's policy is fixed when it loads, so a new origin needs one reload:
+the button says so before it is pressed (**"Allow and test"** / **"Save, allow and add to the sheet"**), the app
+reloads for you and picks up where it was — running the test, or opening the picker.
+- **It reloads only if the last autosave succeeded.** Otherwise it tells you to export first, because
+  reloading then would lose whatever is only in memory.
+- Someone who never adds a source gets the same CSP, **character for character** — e2e checks the real header
+  before and after.
+- Deleting the last source for an origin takes that origin out of the cookie.
+- The security trade-off is written down plainly under [Security](#-security--what-was-actually-tested) and in
+  [`SECURITY.md`](SECURITY.md).
+
+#### What to ask IT for
+
+Browsers do not tell a page why a request failed — unreachable, refused by CORS and refused by private-network
+rules all come back as the same `TypeError`, on purpose. So the app says what it actually knows, and where it
+does not know, gives a checklist that can be passed on instead of a guess:
+
+| What happened | What the app says |
+|---|---|
+| The URL is `http://` and not localhost | Before sending: browsers don't let an https page call an http API; ask IT for https |
+| `fetch` failed (unreachable / CORS / private network) | The three-point checklist below, with a **"Copy for IT"** button |
+| 401 / 403 | The API refused the credentials; check the header name and value |
+| 404 / 5xx | The status, and the URL with its query removed |
+| Data came back but is not JSON/CSV, or there is no list at that JSON path | Can't read it as a table; try a JSON path — with the top-level keys that were found |
+| Over the size or time limit for a refresh | The same messages as server-side sources (one set of limits, `fetchLimits.ts`) |
+
+<p align="center"><img src="public/screenshots/en/48-browser-error.png" width="700" alt="An API that does not answer CORS: the form shows a three-point checklist for IT and a Copy for IT button"></p>
+<p align="center"><sub><b>An API that does not answer CORS</b> — a checklist for IT instead of a bare error, and a button to copy it</sub></p>
+
+The checklist (the same text the button copies, with the origin of the site actually open filled in):
+
+1. **Are you on the VPN, and does the URL open in a new tab?** — if it does not open in a tab, the problem is
+   before CORS
+2. **CORS** — the API must answer `Access-Control-Allow-Origin: https://excel-to-go.vercel.app` and allow the
+   header in use (`Access-Control-Allow-Headers`), including on the `OPTIONS` preflight the browser sends first
+3. **An API on an internal IP** — Chrome/Edge may need `Access-Control-Allow-Private-Network: true` on the
+   preflight, or the user allowing local network access when the browser asks. **This point has not yet been
+   tested against a real internal address**, which is why it says "may" rather than "must" · if an internal API
+   behaves differently from this, that is exactly the information still missing
+
+An e2e flow points the form at an API with no CORS and checks that this checklist appears rather than a bare
+error — naming the header IT has to send, with the site's own origin, and asking about the VPN first.
+
+#### Databases / server-side sources (self-host)
+
+A browser cannot connect to PostgreSQL or MySQL directly — a web page cannot open a TCP connection to a database.
+The simplest route is the company's or the ERP's API, the way above. If you want the **server** to do the fetching
+— a [direct database connection](#-straight-into-a-database-postgresql--mysql), a URL and credential hidden from the
+people using the sheet, or somewhere the server can reach and users' machines cannot — run the app on your own
+server (the [in-app guide](#-connect-your-own-data-the-in-app-guide) has a four-step starter kit).
+
+**This part appears in the UI only when the deployment sets `SOURCES_ADMIN_TOKEN`.** The root layout checks on
+every request and marks the page (a yes/no, never the token). Without it there is no token box and no "this
+feature is switched off" message to puzzle over · the server routes still refuse every request without the token
+· `NEXT_PUBLIC_DEMO_MODE=1` is still read for older deployments and now means exactly one thing: server-side
+sources off, even with a token.
+
+It is split into two roles so the end user touches as little technology as possible — **tech sets it up once**:
+"Connect new data" in the **Live data** panel, enter a REST API URL or a CSV/Google Sheets link, an auth header if
+needed, and a refresh interval, then "Test connection" to see how many rows and columns come back before saving.
+Config and credentials live on the server (`data/sources.json`, gitignored) and never reach the user's browser;
+the server does the fetching, so CORS isn't the user's problem · **everyone else** just
+[puts it in the sheet](#putting-it-in-the-sheet--the-same-either-way).
 
 <p align="center"><img src="public/screenshots/en/09-source-setup.png" width="700"></p>
 
-**2) Everyday users: three clicks, no jargon** — no JSON, no API keys, no aggregate function names.
+**It has to be unlocked with the token first** — it tells the *server* to fetch a URL for you, which is a
+capability that needs an owner. With `SOURCES_ADMIN_TOKEN` unset the API answers 403 to everything rather than
+being left open to whoever loads the page.
+
+<p align="center"><img src="public/screenshots/en/24-sources-locked.png" width="820"></p>
+<p align="center"><sub>On a deployment that sets the token — connecting an API from the browser is still the top button, and the server-side token box sits below it</sub></p>
+
+The guards:
+
+| | |
+|---|---|
+| **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
+| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local, unique-local and documentation, and IPv4 carried inside IPv6 as `::ffff:`, `::`, SIIT `::ffff:0:0/96`, NAT64 `64:ff9b::/96` or 6to4 `2002::/16` (unpacked and checked as IPv4) · local-use NAT64 `64:ff9b:1::/48` and Teredo `2001::/32` refused outright |
+| **One refresh has a size and a time limit** | The body is read as a stream and stopped the moment it passes ~49 MB per refresh (every page together, counted after decompression — room for 50,000 rows, measured at 8.1–34.9 MB) · 15 seconds per request, up to the body's last byte · 45 seconds for the whole refresh · on the first page the panel says which limit was hit, in plain words; on a later page the rows already fetched are kept and marked partial · **at most 4 MB goes on to the browser per refresh** (under Vercel's 4.5 MB response limit): a bigger table arrives with the rows that fit, marked partial for its size, never as a 413 · measured on the route's own JSON: the sample feed's shape (7 fields) fits about **41,800 rows**, twenty fields of Thai text about **7,700** · (a source connected from the browser has the same byte and time budget, but no 4 MB leg, since nothing passes through the server) |
+| **A credential stays on its own origin** | The auth header goes only to the scheme, host and port the source was set up with · a redirect elsewhere is followed without it (and it is not put back) · a next-page link to another origin is not followed — the table stops there, marked partial |
+| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear · a database connection string counts as one |
+| **A database query cannot write** | Every query runs in a read-only transaction, so the database itself refuses a write, and `sqlGuard` refuses again at save time · a database on a private address needs its host in `SOURCES_ALLOWED_DB_HOSTS` |
+
+The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
+rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
+metadata service straight through. The address is now unpacked and checked. A later QA pass found it
+still missed NAT64 (`64:ff9b::a9fe:a9fe`) and 6to4 (`2002:a9fe:a9fe::1`) while the docs said "every
+spelling"; both are handled now, and the docs name the forms that are covered instead of saying "every".
+
+**Not fully closed:** the address is checked and then the connection is made, and in between the
+name could be re-resolved to something else. Closing that needs the connection pinned to the checked
+address, which Node's `fetch` does not expose — `SECURITY.md` says so plainly rather than claiming
+the guard is airtight.
+
+#### Putting it in the sheet — the same either way
+
+**Everyday users: three clicks, no jargon** — no JSON, no API keys, no aggregate function names.
 
 | Step | What the user sees |
 |---|---|
@@ -611,39 +786,6 @@ over the very columns the table just landed in. Clicking the block brings up a t
 source it came from and how often it updates, with **Refresh / Change / Remove** — no trip back to the panel.
 
 <p align="center"><img src="public/screenshots/en/11-block-toolbar.png" width="820"></p>
-
-**The feature is locked until you unlock it** — it tells the *server* to fetch a URL for you, which
-is a capability that needs an owner. With `SOURCES_ADMIN_TOKEN` unset the API answers 403 to
-everything rather than being left open to whoever loads the page.
-
-<p align="center"><img src="public/screenshots/en/24-sources-locked.png" width="820"></p>
-
-Under the token box, **"No token yet? How to switch this on"** leads to the [in-app guide](#-connect-your-own-data-the-in-app-guide).
-On the public demo, where the add-a-source button is absent on purpose, the panel shows a box asking
-**"Want to connect your own API or database?"** with a button to the same guide, instead of the single grey
-sentence that used to say only "clone it and run it yourself".
-
-The guards:
-
-| | |
-|---|---|
-| **A token is required** | Unset means off, not open (403) · compared in constant time · held in `sessionStorage`, so closing the browser asks again |
-| **It cannot reach your private network** | **Every address DNS returns** is checked, and re-checked after **every redirect** — loopback, RFC 1918, `169.254.169.254` (metadata on AWS/GCP/Azure), IPv6 link-local, unique-local and documentation, and IPv4 carried inside IPv6 as `::ffff:`, `::`, SIIT `::ffff:0:0/96`, NAT64 `64:ff9b::/96` or 6to4 `2002::/16` (unpacked and checked as IPv4) · local-use NAT64 `64:ff9b:1::/48` and Teredo `2001::/32` refused outright |
-| **One refresh has a size and a time limit** | The body is read as a stream and stopped the moment it passes ~49 MB per refresh (every page together, counted after decompression — room for 50,000 rows, measured at 8.1–34.9 MB) · 15 seconds per request, up to the body's last byte · 45 seconds for the whole refresh · on the first page the panel says which limit was hit, in plain words; on a later page the rows already fetched are kept and marked partial · **at most 4 MB goes on to the browser per refresh** (under Vercel's 4.5 MB response limit): a bigger table arrives with the rows that fit, marked partial for its size, never as a 413 · measured on the route's own JSON: the demo's shape (7 fields) fits about **41,800 rows**, twenty fields of Thai text about **7,700** |
-| **A credential stays on its own origin** | The auth header goes only to the scheme, host and port the source was set up with · a redirect elsewhere is followed without it (and it is not put back) · a next-page link to another origin is not followed — the table stops there, marked partial |
-| **Credentials are encrypted at rest** | AES-256-GCM under `SOURCES_SECRET_KEY` · with no key it refuses to store a credential rather than writing one in the clear · a database connection string counts as one |
-| **A database query cannot write** | Every query runs in a read-only transaction, so the database itself refuses a write, and `sqlGuard` refuses again at save time · a database on a private address needs its host in `SOURCES_ALLOWED_DB_HOSTS` |
-
-The easy one to get wrong, found by testing rather than reasoning: `new URL("http://[::ffff:169.254.169.254]/")`
-rewrites the host as `::ffff:a9fe:a9fe`, so a filter that only knew the dotted form waves the
-metadata service straight through. The address is now unpacked and checked. A later QA pass found it
-still missed NAT64 (`64:ff9b::a9fe:a9fe`) and 6to4 (`2002:a9fe:a9fe::1`) while the docs said "every
-spelling"; both are handled now, and the docs name the forms that are covered instead of saying "every".
-
-**Not fully closed:** the address is checked and then the connection is made, and in between the
-name could be re-resolved to something else. Closing that needs the connection pinned to the checked
-address, which Node's `fetch` does not expose — `SECURITY.md` says so plainly rather than claiming
-the guard is airtight.
 
 **Paginated APIs** — most APIs hand back one page at a time, so a single fetch gets the user the
 first 25 rows and leaves them believing that's all the data. Following pages are therefore fetched
@@ -711,14 +853,38 @@ Behind the scenes:
 - **Drag and drop still works** for people who prefer it, it's just no longer the primary path.
 - The side panel keeps a "Live data in this sheet" list showing what is placed where, each with its own remove
   button.
-- Three demo sources are seeded so it works out of the box: `/api/demo/sales` (a table whose numbers drift
-  every 5s), `/api/demo/summary` (a KPI-style object), and `/api/demo/orders` (**paginated**, 25 rows a page
-  over 120 rows, for exercising the pagination path).
+- **This site's three sample APIs** (`/api/sample/sales`, a table whose numbers drift every 5s;
+  `/api/sample/summary`, a set of single values; and `/api/sample/orders`, **paginated**, 25 rows a page over 120)
+  sit in the live-data panel under **"Try a sample API"** — see [Try a sample API](#try-a-sample-api) above.
+  Nothing is added for you: the server does not seed `data/sources.json`, and a sample is connected by pressing it.
+
+#### Limits
+
+- **No PostgreSQL / MySQL from the browser** — it is not technically possible. Use the company's or the ERP's
+  API instead, or run the app on your own server to use a [server-side source](#databases--server-side-sources-self-host).
+- **No company cookie / single sign-on auth** (`credentials: "include"`) **and no OAuth yet** — only a header
+  you type in.
+- **No "remember the token on this device"** — close the tab and the header value has to be entered again. That
+  is on purpose (see the table above); an opt-in version is on the [roadmap](#-whats-next).
+- **The API has to allow CORS for the site you are on** — the app cannot do that for it. If the API's owner will
+  not, the remaining route is a server-side source.
+- **An `http://` API other than localhost does not work from the https site** — the browser blocks it (mixed
+  content).
+- **Redirects are followed by the browser** — the browser drops `Authorization` on a cross-origin redirect but
+  keeps other custom header names (such as `X-API-Key`), and the API chooses where it redirects. The server-side
+  path follows redirects itself and drops every header name; a page cannot, because it is not allowed to read
+  where a cross-origin redirect goes.
+- **Server-side sources do not work on Vercel** — they are stored in `data/sources.json`, and Vercel's disk is
+  read-only. Run on a VPS, Docker with a volume, or a machine in the office. (Connecting from the browser works on
+  Vercel as normal, because nothing is stored on the server.)
+- **There is no follow-along sample on the site yet** — the three sample sources that used to be put there are
+  gone; a step-by-step sample is on the [roadmap](#-whats-next).
 
 ### 🗄 Straight into a database (PostgreSQL / MySQL)
 
-Identical to a REST source in every way that reaches a user. What the technical person fills in is
-different: instead of a URL, a **connection string and one SQL statement**. Everyone else sees the
+A [server-side source](#databases--server-side-sources-self-host) — it needs the app running on your own server
+with `SOURCES_ADMIN_TOKEN` set, because a browser cannot reach a database directly. Identical to a server-side
+REST source in every way that reaches a user. What the technical person fills in is different: instead of a URL, a **connection string and one SQL statement**. Everyone else sees the
 resulting table exactly as they see any other source — **they never see the SQL**, which is the
 whole reason this feature was split into two roles in the first place.
 
@@ -770,24 +936,26 @@ are tested without one.
 ### 📘 Connect your own data: the in-app guide
 
 **`/guide`** is where the app sends someone who wants their own API or database: from the phone menu,
-from the live-data panel (on the demo and before a token is entered), and from the landing page's footer.
+from the link at the foot of the live-data panel, and from the landing page's footer.
 The answer used to live only in this README, which is where people who already know it come to read. The
 person asking is the one who just looked for it in the app and could not find it.
 
 <p align="center"><img src="public/screenshots/en/46-guide.png" width="820"></p>
 
-Written for the person doing the setup, in the order it has to be done, and **every command block has a copy
-button** (the result is announced through a live region):
+Ordered the way most people need it — the way that works on this site first, running your own server after —
+and **every command block has a copy button** (the result is announced through a live region):
 
 | Part | What is in it |
 |---|---|
-| Why the demo can't do it | The demo is shared; letting people add sources would let anyone point its server at any address |
-| What you can connect | REST API · CSV/Google Sheets · PostgreSQL · MySQL/MariaDB — what each asks for, with an example |
+| Connect an API on this site | Four steps: Live data → Connect your API → Test (a new API reloads the page once) → Save and add to the sheet · the URL, header and data never pass through our server |
+| What to ask IT for | CORS, https and private networks — the same three points the "Copy for IT" button sends |
+| A database, or the server fetching for you | Why a browser cannot reach PostgreSQL/MySQL directly, and when to run the app on your own server |
+| What the server can connect | REST API · CSV/Google Sheets · PostgreSQL · MySQL/MariaDB — what each asks for, with an example |
 | A four-step starter kit | clone and install → `.env.local` (`SOURCES_ADMIN_TOKEN`, `SOURCES_SECRET_KEY`, `SOURCES_ALLOWED_DB_HOSTS`) → run on a server that can write files → unlock and connect in the app |
 | What the app guards, and what is up to you | The token, private networks, encrypted credentials, read-only SQL — and the database role you still have to scope |
 | "Cloud save" is not connecting a database | The cloud tab keeps your workbook on your own Supabase; it has nothing to do with pulling data in |
 
-**Stated on that page, plainly:** live data **does not work on Vercel**, because sources are kept in
+**Stated on that page, plainly:** **server-side** live data does not work on Vercel, because sources are kept in
 `data/sources.json` and Vercel's disk is read-only; it needs a VPS, Docker with a volume, or a machine of
 your own. The page is what this README and `SECURITY.md` already say, in fewer words. When either of those
 changes, it has to follow — and no gate compares them yet.
@@ -841,7 +1009,7 @@ hook, so the two screens may look different but cannot act differently.
 **And now the operator hears about it — if they asked to.** The crash screen got the user's work
 back out and told nobody else, so a bug that only fires on one imported file could run for months
 unnoticed. Set `NEXT_PUBLIC_ERROR_REPORT_URL` to your own collector and both boundaries post a
-report to it; leave it unset — the default, and what the public demo does — and nothing is sent,
+report to it; leave it unset — the default, and what the public site does — and nothing is sent,
 because there is no default endpoint to forget to unset.
 
 This is in tension with the one thing the app promises, so what a report may contain is a fixed
@@ -907,7 +1075,7 @@ The **paint bucket** in the formatting row opens seven swatches and "no fill", a
 it travels with copy/paste and the `.xlsx` export and is one undo step. The bar under the bucket shows the
 selected cell's fill, and the swatch in use is ringed.
 
-<p align="center"><img src="public/screenshots/en/49-fill-colour.png" width="820" alt="The header row tinted light yellow, with the swatches open and the yellow one ringed"></p>
+<p align="center"><img src="public/screenshots/en/52-fill-colour.png" width="820" alt="The header row tinted light yellow, with the swatches open and the yellow one ringed"></p>
 
 **Why swatches and not a colour wheel.** In the blind test, the first thing an Excel user reached for after
 typing a header row was the paint bucket. Imported fills had shown for a long time, but nothing could set one.
@@ -1063,7 +1231,7 @@ signed-out request still gets an empty answer rather than an error.
 - **A workbook written by a newer version is refused rather than half-read**, because half-reading
   it drops whatever the newer format added and the user finds out by noticing work missing.
 
-**Leave it unset** — the default, and what the public demo does — and the button doesn't exist, the
+**Leave it unset** — the default, and what the public site does — and the button doesn't exist, the
 cloud code is unreachable, and the ~250KB Supabase client **is never downloaded**. That was checked
 by counting the chunks the browser actually requests, not assumed.
 
@@ -1645,7 +1813,7 @@ With a mouse these are `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `Ctrl+D` and `Delete`. A ph
 them on and no right-click, and in the blind test "copy *yes* down ten rows" **could not be done at all**. There
 is now a row of five named commands — **Copy · Cut · Paste · Fill down · Clear** — above the sheet tabs.
 
-<p align="center"><img src="public/screenshots/en/48-touch-actions.png" width="320" alt="A phone with five cells of column B selected, and the copy, cut, paste, fill down and clear row above the sheet tabs"></p>
+<p align="center"><img src="public/screenshots/en/51-touch-actions.png" width="320" alt="A phone with five cells of column B selected, and the copy, cut, paste, fill down and clear row above the sheet tabs"></p>
 
 - **A row of its own, not floating** — floating, it sat exactly on the sheet tabs
 - **Shown only where `(pointer: coarse)` matches**, and **gone while the keyboard is up or a panel is open** —
@@ -1670,7 +1838,7 @@ boundary picked at a width **measured to fit in both languages**:
 | **1024–1365px** (tablets sideways, small laptops) | Named panel buttons in the top row · **the menu drops as a panel under its button** · the formatting row keeps B I U, alignment and colour, and **Tools** opens a panel under the bar · from **1280px**, **Import file** and **Export Excel** are back in the row |
 | **1366px and up** | Everything in the row, as before |
 
-<p align="center"><img src="public/screenshots/en/50-tablet-tools.png" width="640" alt="At 1024px the cell tools panel drops from the Tools button, every tool named"></p>
+<p align="center"><img src="public/screenshots/en/53-tablet-tools.png" width="640" alt="At 1024px the cell tools panel drops from the Tools button, every tool named"></p>
 
 **Measured** at 360 / 390 / 640 / 820 / 1024 / 1280 / 1366 / 1440px in Thai and English: **no bar overflows by a
 single pixel**, and `check:a11y` checks for sideways scroll at five widths on every push · The first cut moved all
@@ -1806,7 +1974,7 @@ than stretching the sheet to a million.
 **Importing used to replace the whole workbook at once, without a word.** In the blind test someone opened a
 file to look up one number and lost nearly an hour of typing. Now, when there is work open, the app **asks first**:
 
-<p align="center"><img src="public/screenshots/en/47-import-choice.png" width="820" alt="A dialog asking how the file should open: add its sheets after the current work, or replace the open work"></p>
+<p align="center"><img src="public/screenshots/en/50-import-choice.png" width="820" alt="A dialog asking how the file should open: add its sheets after the current work, or replace the open work"></p>
 
 - **Add as new sheets after your work** — focused from the start, so someone who presses Enter without reading
   loses nothing. A sheet whose name clashes with one already open becomes `Name (2)`, and **the file's own
@@ -2165,7 +2333,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1554 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1573 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2318,6 +2486,8 @@ formulaEngine/ (tokenizer → parser → evaluator → functions)
 src/
   app/manifest.ts            # The web app manifest, so it can go on a home screen
   proxy.ts                   # Mints a CSP nonce per request — the reason script-src has no 'unsafe-inline'
+                              # + adds the origins of the APIs this user connected from the browser to
+                              # connect-src (read from a cookie, through apiOrigins.ts)
   app/
     page.tsx                 # The landing page at / — features, screenshots, and the button into the app
     app/page.tsx             # The app itself at /app — assembles components from store state (holds none)
@@ -2325,16 +2495,19 @@ src/
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
                               # errorResponse.ts: failures → responses; a rate limit keeps a real 429 + its wait
-    api/demo/                # Self-drifting demo endpoints so live data can be tried without a real API
+    api/sample/                # Sample feeds whose numbers drift on their own — used by the screenshots and the
+                              # gates; nothing is wired to them for you
                               # (sales, summary, and orders — paginated at 25 rows a page)
   store/
     sheetStore.ts            # Main Zustand store — sheets (incl. liveBlocks), activeSheetId, per-sheet
                               # selection/filters, the formula panel being filled in, which sidebar is open,
                               # which data picker is raised, plus every action —
                               # wrapped in persist (autosave) + zundo (undo/redo) covering all sheets together
-    dataSourceStore.ts       # Live-data store — the source list, each source's latest table, errors, and a
-                              # per-source backoff (rate-limited, or repeatedly failing → stop calling for a
-                              # while). Neither persisted nor undoable: live data can always be re-fetched
+    dataSourceStore.ts       # Live-data store — the source list (the server's + this browser's), each source's
+                              # latest table, errors, and a per-source backoff (rate-limited, or repeatedly failing
+                              # → stop calling for a while). Browser sources' settings, never the header value, are
+                              # kept in localStorage `etg-browser-sources`; tables are neither persisted nor
+                              # undoable: live data can always be re-fetched
     localeStore.ts           # Separate Zustand store for the selected UI language (th/en) — persisted the
                               # same way, but not tied to the sheet's undo/redo
     cloudStore.ts            # Cloud save (your own Supabase) — the signed-in session, the workbook list,
@@ -2380,7 +2553,13 @@ src/
     data/DataPickerDialog.tsx       # The picker: whole table / single value + preview + target cell + overwrite warning
     data/LiveBlockToolbar.tsx       # Toolbar floating above the selected block: refresh / change / remove
     data/valueLabel.ts              # Turns (column, sum/avg/count) into readable text in the selected language
-    data/SourceSetupDialog.tsx      # Tech-side setup form + "test connection"
+    data/SourceSetupDialog.tsx      # Tech-side setup form for server-side sources + "test connection"
+    data/BrowserSourceDialog.tsx    # The connect-from-this-browser form: test (rows × columns + first 5 rows), then
+                                     # save and add to the sheet
+    data/BrowserSourceError.tsx     # A browser fetch's error messages + the checklist and "Copy for IT" button
+    data/allowOrigin.ts             # The one reload a new API origin costs (only if the last save landed),
+                                     # then picking up where it was
+    data/useServerSources.ts        # Does this deployment offer server-side sources (the mark the root layout sets)
     data/useLiveDataPolling.ts      # Root hook: loads sources + polls each on its own interval
                                      # (a tick landing inside a backoff makes no request at all)
     toolbar/Toolbar.tsx             # The top toolbar · on a phone its panel buttons become a named tab bar
@@ -2451,13 +2630,21 @@ src/
                               # ten-thousand-row sheet does not render ten thousand rows (tested)
     gridNavigation.ts        # Excel's cursor rules — Ctrl+arrow to the edge of the data, Ctrl+End,
                               # Ctrl+A around a block, Page keys measured in pixels (tested)
-    demoMode.ts              # Switch that turns the live-data feature off for a public demo
+    demoMode.ts              # Switch that turns server-side sources off (NEXT_PUBLIC_DEMO_MODE), kept for old
+                              # deployments + serverSourcesConfigured(): is SOURCES_ADMIN_TOKEN set, read per request
+    apiOrigins.ts            # Which origins the CSP takes from the etg-api-origins cookie — each one re-derived
+                              # with new URL(); https or localhost only, no wildcard, at most 20 (tested)
     site.ts                  # The one canonical public URL shared by metadata, sitemap and robots
     thaiMarks.ts             # Finds tone marks stacked on an upper vowel that must be redrawn higher (tested)
     pivot.ts                 # The group-and-summarise engine — pure functions, no sheet or UI (tested)
     xlsxChartXml.ts          # Builds the chart OOXML (chart part + drawing anchor) as pure strings (tested)
     xlsxCharts.ts            # Splices chart parts into the finished .xlsx and wires the rels (tested)
     dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
+    dataSources/collect.ts   # The one source reader, shared by server and browser: pages, byte/time budget, 429,
+                              # partial tables
+    dataSources/browserSource.ts  # Fetching an API from the user's browser: CORS, no cookies, the header only to
+                              # its own origin, plain http off-machine refused before sending, error codes (tested)
+    dataSources/browserSecrets.ts # A browser source's header value — sessionStorage by source id, nowhere else
     server/rateLimiter.ts    # Per-IP ceiling on /api/ai/formula (in-memory fixed window) (tested)
     server/urlGuard.ts       # SSRF guard: checks resolved addresses and every redirect (tested)
     server/dbGuard.ts        # Reads a connection string and refuses a private one unless the operator allowed it (tested)
@@ -2485,7 +2672,8 @@ src/
                               # fetchLimits.ts (the row, byte and time limits per refresh, enforced by the
                               # server and quoted by the panel) — all tested
     server/                  # Server-only: sourceRepo.ts (config + credentials in data/sources.json),
-                              # executeSource.ts (does the actual fetch)
+                              # executeSource.ts (the actual fetch: follows redirects itself, checks every hop,
+                              # and hands the pages to collect.ts)
     excelIO.ts                # Importing/exporting a multi-sheet workbook (.xlsx) via exceljs, with cell formatting
     pdfExport.ts              # PDF export via jspdf + jspdf-autotable (the table, then the charts)
                               # Both are dynamically imported from sheetStore, so exceljs and jspdf
@@ -2886,6 +3074,21 @@ matter for an audience spread across the world and does not matter for this.
 spec. Narrowing the exits is not the same as fixing XSS, and a strict `script-src` makes the
 injection itself much harder without making it impossible.
 
+**The one deliberate exception: APIs a user connects from the browser.** To reach their own API, the page has to
+be allowed to talk to its origin. Rather than opening `connect-src` for everyone, the origin of each source a user
+saves (scheme, host and port only) goes into a first-party cookie, `etg-api-origins` (`Path=/`,
+`SameSite=Strict`, `Secure`, one year), and `src/proxy.ts` reads it on every request and appends **only the
+entries that pass validation** to that user's `connect-src`: exactly `https://host[:port]` or
+`http://localhost[:port]` / `http://127.0.0.1[:port]`, parsed with `new URL()` and re-derived from `.origin` · no
+wildcard, no `*`, no `https:` scheme source, no spaces, `;`, `'` or `,` · at most 20 · anything else dropped
+silently · the fallback header in `next.config.ts` never reads the cookie. Someone who never adds a source gets the
+same policy, character for character ([`apiOrigins.test.ts`](src/lib/apiOrigins.test.ts) pins the validator and
+both policies; e2e checks the real header before and after).
+
+**The trade-off, stated plainly:** a user who adds an API lets this page talk to that origin, and if a script were
+ever injected, it could add an origin to the cookie itself, effective after a reload. This keeps the strict CSP
+for everyone who does not use the feature; it does not fix XSS — which CSP never did (see top-level navigation above).
+
 **Measured, not asserted.** A `fetch` from inside the page to an origin outside the policy is
 refused — `Refused to connect … violates the following Content Security Policy directive` — while
 `api.anthropic.com` raises no violation. And the app runs under the policy without tripping over it
@@ -2922,7 +3125,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 303 security tests
+### 322 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -2932,9 +3135,11 @@ nothing but the anon key, which is the thing that used to work.
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
 | `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
 | `validate.test.ts` | 10 | Which URL shapes are accepted and which paths must be refused · and on the database side: a query that is not a read, a string that is not a connection string, a type and a scheme that disagree |
-| `ai/formula/route.test.ts` | 6 | Demo mode must not reach Anthropic **even with an API key configured**, the local fallback still answers (not a 403), a missing question is a 400 |
+| `ai/formula/route.test.ts` | 6 | The server's key decides, and nothing else: no key means Anthropic is never reached and the local fallback still answers (not a 403), an old `NEXT_PUBLIC_DEMO_MODE` no longer hides a configured key, a missing question is a 400 |
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
-| `demoSources.test.ts` | 9 | Demo mode: the sources it will call are the ones on the list, not the ones a visitor types |
+| `demoSources.test.ts` | 9 | The sample feeds' list: app-relative URLs, no credential, read-only, and an id lookup that matches the whole id, not a prefix |
+| `apiOrigins.test.ts` | 9 | Which origins the CSP takes from the cookie (https or localhost only; no wildcard, scheme source, path or credential; at most 20), the policy unchanged for someone who added nothing, exactly one origin added for someone who did, and no directive or wildcard injected through the cookie |
+| `dataSources/browserSource.test.ts` | 9 | Fetching from the browser: the header only to its own origin, no next page followed off-origin, no cookies, plain http on the network refused before sending, the error codes it can tell apart, a token in the query flagged, a header value `fetch` cannot send refused |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
 | `xlsxFormulaExport.test.ts` | 4 | An exported `.xlsx` holds only formulas the engine can read, whether the sheet came from a CSV or an `.xlsx` · one it cannot read goes out as text and comes back in as text · the cell in the app is unchanged |
 | `dataSources/sqlGuard.test.ts` | 17 | A saved query must be one SELECT: a semicolon hidden in a comment, a string or a dollar-quote, `SELECT … INTO OUTFILE`, `pg_read_file`, and a column called `updated_at` that must not be mistaken for one |
@@ -2947,7 +3152,7 @@ nothing but the anon key, which is the thing that used to work.
 | `errorReport.test.ts` | 20 | A crash reporter in an app that promises your file never leaves: off unless configured, a fixed set of fields, capped sizes, a query string never sent, and keys/tokens/emails/Thai text scrubbed out of the stack — with an ordinary English trace left readable |
 | `cloud/liveMessage.test.ts` | 7 | Messages from other browsers on a live channel: a `row`/`col` that is not a usable index, a value that is not a string, one far larger than a cell, a kind that does not exist — all refused |
 
-Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/xlsxFormulaExport.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
+Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGuard.test.ts src/lib/dataSources/browserSource.test.ts src/lib/apiOrigins.test.ts src/app/api/sources/validate.test.ts src/app/api/ai/formula/ src/lib/byok.test.ts src/lib/csvInjection.test.ts src/lib/xlsxFormulaExport.test.ts src/lib/cloud/ src/lib/errorReport.test.ts`
 
 ### OWASP Top 10, only the categories that actually apply here
 
@@ -2955,7 +3160,7 @@ Run them on their own: `npx vitest run src/lib/server/ src/lib/dataSources/sqlGu
 |---|---|
 | **A01 Broken Access Control** | Every `/api/sources` handler refuses when no token is configured (403) and refuses a wrong one (401) — two distinct states so an operator can tell which happened |
 | **A02 Cryptographic Failures** | Source credentials are AES-256-GCM on disk and masked in every API response |
-| **A04 Insecure Design** | Live data is **off by default**; it takes an env var to switch on. A public demo refuses every write and reads only three hard-coded sources — the visitor picks an id, never a destination |
+| **A04 Insecure Design** | **Server-side** live data is **off by default**; it takes `SOURCES_ADMIN_TOKEN` to switch on, and without it the UI does not show it and every route refuses · connecting an API from the browser has the server fetch nothing for anyone — the request leaves the user's own machine, and the CSP opens only the origins that user added |
 | **A05 Security Misconfiguration** | No `SOURCES_ADMIN_TOKEN` means the API is closed, not open with no password |
 | **A07 Authentication Failures** | The token is compared in full, not by prefix; accepted as a dedicated header or a bearer token |
 | **A10 SSRF** | DNS is resolved and *every* returned address checked; redirects are followed and re-checked here rather than left to `fetch`; origins are compared after resolution |
@@ -2967,11 +3172,13 @@ the one deliberately open endpoint — the assistant is the app's own feature an
 it would be absurd — so it carries a ceiling of 20 requests per minute per IP with `Retry-After`.
 
 That ceiling stops casual abuse; it does not stop a bill. An endpoint with no auth that can call a
-model is the operator's money behind a button anyone can press, so **on a public demo
-(`NEXT_PUBLIC_DEMO_MODE=1`) this route never calls Anthropic at all**, even if the host has an
-`ANTHROPIC_API_KEY` set — it falls through to the local keyword matcher instead. The feature still
-works; what the demo gives up is the model's judgement, not the button. And it is a rule in the code,
-not a rule in whoever configured the host's memory.
+model is the operator's money behind a button anyone can press, and **this route uses the server's
+`ANTHROPIC_API_KEY` whenever one is set.** So the one billing control is not setting a key on a public
+deployment — this project's public site is meant to run without one; the local keyword matcher answers instead, and visitors can
+bring their own key, which goes from the browser straight to Anthropic and never through this route.
+`NEXT_PUBLIC_DEMO_MODE=1` used to cut the model out even with a key set; it no longer does (#109), because the
+public site is no longer a demo and a key someone sets should behave as it does self-hosted. The warning sits where
+the key is configured, in [Step 3](#step-3--deploy-for-real) and in `.env.example`.
 
 ### Checked by hand but not pinned by a test — the difference matters
 
@@ -2988,6 +3195,7 @@ nothing would warn you if a future change broke them:
 - **The rate-limit counters live in one process's memory.** Two instances count separately and a
   serverless cold start forgets everything — a guard against casual abuse, **not a billing control.**
   A real one needs shared storage, which this project deliberately does not have.
+  (What actually controls the bill is not setting `ANTHROPIC_API_KEY` on a public deployment.)
 - **CSV injection is neutralised** (this line used to say it wasn't). Measured before it was fixed: a sheet
   holding `+cmd|'/c calc'!A0` and `@SUM(1+1)*cmd|'/c calc'!A0` exported both of them live, while `=1+1` did
   not survive because this app's own engine had already evaluated it — **the dangerous prefixes are exactly
@@ -3089,27 +3297,31 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1554 cases across 96 files, via Vitest
+npm test      # 1573 cases across 98 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1554 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1573 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 17 flows in a real browser (needs a build)
+npm run check:e2e   # 21 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
 is left is the seams — type a formula and watch the value move on screen · export `.xlsx` through the real
 button and import that file back through the real input, then check that the formula is still a formula and
-the Thai is still Thai · walk the grid on the keyboard alone and watch focus follow the cursor · undo · and
-whether a change away from the cursor is announced at all. Every flow also fails on an uncaught page error,
+the Thai is still Thai · walk the grid on the keyboard alone and watch focus follow the cursor · undo ·
+whether a change away from the cursor is announced at all · an API connected from the browser, against a stand-in
+API on another port, filling the sheet and refreshing on its own while every request to `/api/*` is recorded and
+checked for the URL, the header and the data — with `connect-src` identical to the old one before the source and
+exactly one origin longer after · an API without CORS getting the checklist for IT · and no page (`/`, `/app`,
+`/guide`, both languages) printing the word "demo". Every flow also fails on an uncaught page error,
 because a flow that passes every assertion while the console fills with exceptions React swallowed has not
 passed.
 
@@ -3189,10 +3401,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1554 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1573 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1554 passing tests could not catch](#-what-1554-passing-tests-could-not-catch), repeatable
+> [What 1573 passing tests could not catch](#-what-1573-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3241,6 +3453,8 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `chartGeometry.test.ts` | 14 | The shapes a bar/line/pie is made of: bars inside the plot and scaled to their value, a line broken at a gap, a pie following the chosen series, labels thinning out when the room runs out |
 | `chartImage.test.ts` | 10 | The exported picture: a complete SVG document, the legend carried into it, XML escaping, and null when there is nothing to draw |
 | `conditionalFormat.test.ts` | 33 | Compare/text/rank rules (ties included), colour scales (including an all-equal range), data bars (including negatives), stacked rules, range shifting on insert/delete |
+| `apiOrigins.test.ts` | 9 | Which origins the CSP takes from the cookie (https or localhost only; everything that could widen the policy or end a directive refused), the proxy's policy unchanged for someone who never added a source and one origin longer for someone who did, no directive or wildcard injected |
+| `dataSources/browserSource.test.ts` | 9 | Fetching an API from the browser (stubbed `fetch`): the header only to its own origin, a next page on another origin never followed, JSON and CSV, plain http on the network refused before sending (localhost allowed), the error codes it can tell apart (unreachable/CORS, refused credentials, a status, not a table), header values `fetch` cannot send |
 | `liveBlocks.test.ts` | 15 | Writing/clearing a live block, shrinking extents, sum/avg/count, which value options are offered, region-occupied checks |
 
 CI: `npm run verify` bundles it — `lint` → `check:readme` → `test` → `build` (the build also type-checks the
@@ -3345,13 +3559,35 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Mobile/tablet support** — done (see ✨ Features): a tab bar with a name on every tab, a menu and a
       cell tools sheet instead of rows that scrolled off screen, a second tap edits a cell, 44px targets, and
       a range is dragged out with a finger from a grip on the selection's corner (which scrolls the sheet to meet it)
-- [x] **Finding how to connect an API or database on a phone** — done: the menu's first line, a box on the demo's
-      live-data panel, and the [in-app guide](#-connect-your-own-data-the-in-app-guide)
+- [x] **Finding how to connect an API or database on a phone** — done: the menu's first line, the "Connect your
+      API" button at the top of the live-data panel, and the [in-app guide](#-connect-your-own-data-the-in-app-guide)
+- [x] **Connecting your own API on the public site, from the browser (#110)** — done (see
+      [From your browser](#from-your-browser-restcsv--works-on-this-site)): REST/CSV the user's machine can reach,
+      nothing to install, the URL, header and data never through our server · the CSP opens only the origins that
+      user added · the header value lives only in the tab · an API that cannot be reached gets a checklist for IT
+      instead of a bare error
+- [x] **No more "demo" (#109)** — done: the public site is the app people use; the word is gone from the app,
+      `/guide` and the landing page (an e2e flow checks both languages) · the three sample sources are gone from the
+      UI · server-side sources appear only when `SOURCES_ADMIN_TOKEN` is set · `NEXT_PUBLIC_DEMO_MODE` now means
+      only "server-side sources off" and no longer hides `ANTHROPIC_API_KEY`
+- [ ] **"Remember the token on this device", opt-in** — the header value now goes when the tab closes, which is
+      right for a shared computer and a nuisance on your own. If it is built it has to be opt-in per source, and
+      thought through so it does not simply become `localStorage`
+- [ ] **Company cookie / single sign-on auth** — requests always go with `credentials: "omit"`; `include` would
+      need the API to answer `Access-Control-Allow-Credentials` with no `*` origin. Not designed yet
+- [ ] **OAuth** — not there; only a header you type in
+- [ ] **A follow-along sample** to replace the three sample sources that were removed — the list in
+      `src/lib/server/demoSources.ts` is kept for it
+- [ ] **Private Network Access tested against a real internal IP** on Chrome, Edge and Safari — point three of the
+      checklist for IT has never been tried on a real machine, which is why it says "may"
+- [ ] **PaynEat ERP answering CORS for this site** — the first real case of connecting from the browser; wherever
+      it gets stuck is what the checklist is missing
 - [x] **Italic / underline** — done: long in the model, now with buttons
-- [ ] **Live data on Vercel** — sources are kept in `data/sources.json`, which Vercel cannot write; they need
-      to move into a database (Supabase, which the app already supports) before this can run serverless
+- [ ] **Server-side sources on Vercel** — connecting from the browser works on Vercel now (#110), but server-side
+      sources are still kept in `data/sources.json`, which Vercel cannot write; they need to move into a database
+      (Supabase, which the app already supports) first
 - [ ] **Tell "not switched on on the server" apart from "wrong token"** — the server already answers
-      differently (403 / 401), but the token box shows one message for both; there is a link to the guide under it instead
+      differently (403 / 401), but the token box shows one message for both; there is a link to the guide at the foot of the panel instead
 - [ ] **Ctrl+B / Ctrl+I / Ctrl+U** — the buttons exist, the shortcuts don't yet
 - [ ] **Nothing compares the in-app guide with the README** — when an env var or a step changes, `/guide` has
       to be updated by hand
@@ -3367,7 +3603,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first.
+      configured) and the live-data picker, which needs a source first. Now 55 checks — most recently the
+      connect-from-this-browser form, and the checklist for IT it shows when a connection fails.
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
       only rules that must hold for every formula, checked against thousands of generated ones with a
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
@@ -3422,9 +3659,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       no longer carries `'unsafe-inline'`** — `src/proxy.ts` mints a per-request nonce alongside
       `'strict-dynamic'`. SRI was tried first to keep pages prerendered and does not work: an inline
       script is not a file and cannot be hashed, so the page never hydrated at all. The price is
-      prerendering, measured at +10–15 ms of TTFB. Still open: CSP cannot stop a top-level navigation.
+      prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
+      user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 17 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 21 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -3525,6 +3763,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **A right-click menu on cells on a desktop** (copy, paste, insert, delete) — there is only the row/column header one
 - [ ] **Keep the phone keyboard up after Enter** — filling cells one by one on a phone, the keyboard folds at
       every move and has to be tapped open again
+- [ ] **The connect-an-API and source settings dialogs do not close on `Escape`** — only the close button or a
+      click outside does, unlike every other dialog in the app · found while checking the 1024–1365px layout after merging #110
 - [ ] **Fills in the PDF export**, and **pasting the system clipboard** from the phone command row
 - [ ] **A shorter landing page for people who are not developers** — how it was built (tests, security) is worth
       a lot to someone reading the code, but someone looking for a spreadsheet scrolls past it before reaching why

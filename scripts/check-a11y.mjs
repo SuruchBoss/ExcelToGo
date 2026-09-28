@@ -113,7 +113,33 @@ const OVERFLOW_WIDTHS = requested ? SHARDS[requested] : ALL_OVERFLOW_WIDTHS;
  * and, once they did, that their close button had no name either.
  */
 const SOURCES_TOKEN = randomBytes(12).toString("hex");
+let sampleAdded = false;
+
+/**
+ * The browser-source form (#110), open to everyone with no token. The checklist state points it at
+ * a closed port on this machine, allowed by the page's CSP through the same cookie the app writes,
+ * so the fetch fails the way an unreachable or CORS-refusing API does and the checklist for IT is
+ * what gets scanned.
+ */
+const browserForm = async (page) => {
+  await page.locator('button[aria-label="ข้อมูลสด"]').first().click();
+  await page.getByRole("button", { name: "ต่อ API ของคุณ", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ timeout: 10_000 });
+};
+const CLOSED = "http://127.0.0.1:9";
 const unlockedData = async (page) => {
+  // The server no longer seeds sources of its own (#109), so the picker has one to open: one of the
+  // app's own sample feeds, added the way an operator adds any source. Once is enough — it stays in
+  // this run's scratch data directory for every state after.
+  if (!sampleAdded) {
+    const res = await fetch(ORIGIN + "/api/sources", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-sources-token": SOURCES_TOKEN },
+      body: JSON.stringify({ name: "ยอดขาย", type: "rest", url: "/api/sample/sales", refreshSec: 30 }),
+    });
+    if (!res.ok) throw new Error(`adding a server source failed: ${res.status}`);
+    sampleAdded = true;
+  }
   await page.evaluate((token) => sessionStorage.setItem("exceltogo.sources-token", token), SOURCES_TOKEN);
   await page.reload({ waitUntil: "networkidle" });
   await page.locator('button[aria-label="ข้อมูลสด"]').first().click();
@@ -171,6 +197,27 @@ const OPENED_STATES = [
       await unlockedData(page);
       await page.getByRole("button", { name: /เชื่อมต่อข้อมูลใหม่/ }).click();
       await page.getByRole("dialog").waitFor({ timeout: 10_000 });
+    },
+  },
+  {
+    name: "browser source form",
+    path: "/app",
+    async open(page) {
+      await browserForm(page);
+    },
+  },
+  {
+    name: "browser source checklist for IT",
+    path: "/app",
+    async open(page) {
+      await page.context().addCookies([{ name: "etg-api-origins", value: encodeURIComponent(CLOSED), url: ORIGIN, sameSite: "Strict", secure: true }]);
+      await page.reload({ waitUntil: "networkidle" });
+      await browserForm(page);
+      const d = page.getByRole("dialog");
+      await d.getByRole("textbox").first().fill("สต็อก");
+      await d.getByPlaceholder("https://erp.example.com/api/items").fill(CLOSED + "/items");
+      await d.getByRole("button", { name: "ทดสอบ", exact: true }).click();
+      await d.getByRole("button", { name: "คัดลอกไปส่ง IT" }).waitFor({ timeout: 20_000 });
     },
   },
   {
