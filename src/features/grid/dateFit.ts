@@ -12,6 +12,8 @@
  * Measured with a canvas in the page's own font, cached per text and size — the grid asks for each
  * date cell on every render, and there are only so many distinct dates on a screen.
  */
+import { useSyncExternalStore } from "react";
+
 let ctx: CanvasRenderingContext2D | null | undefined;
 const widths = new Map<string, number>();
 
@@ -29,10 +31,31 @@ function measure(text: string, px: number): number | null {
   return width;
 }
 
+/**
+ * Re-renders its caller once the page's fonts have loaded (#136). A date measured before then is
+ * measured in the fallback font; where that font is narrower than the page's own — on CI's runner,
+ * not on the machine this was written on — the date was judged to fit at full size, the real font
+ * arrived, and it overflowed its cell with nothing left to measure it again. The cache above keeps
+ * no width taken before the fonts load, so one more render is all it takes.
+ */
+const subscribeFonts = (onChange: () => void) => {
+  const fonts = typeof document === "undefined" ? undefined : document.fonts;
+  if (!fonts) return () => {};
+  fonts.addEventListener("loadingdone", onChange);
+  void fonts.ready.then(onChange);
+  return () => fonts.removeEventListener("loadingdone", onChange);
+};
+const fontStatus = () => (typeof document === "undefined" ? "loaded" : (document.fonts?.status ?? "loaded"));
+export function useFontsLoaded(): string {
+  return useSyncExternalStore(subscribeFonts, fontStatus, () => "loaded");
+}
+
 /** The grid's cells are `px-2` (8px either side) with a 1px right border, plus a pixel for rounding. */
 const PADDING = 18;
-/** What is left of a cell squeezed for a date that Excel shows (#136): 2px either side and the border. */
-const TIGHT_PADDING = 5;
+/** What is left of a cell squeezed for a date that Excel shows (#136): 2px either side, the border,
+ *  and a pixel for the gap between the canvas's unrounded advances and the laid-out, hinted glyphs,
+ *  which differs from one machine's fonts to the next. */
+const TIGHT_PADDING = 6;
 
 /**
  * How wide Excel draws a date in Calibri 11 at 100% (#136), in pixels — the font Excel measures

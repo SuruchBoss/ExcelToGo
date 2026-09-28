@@ -850,13 +850,17 @@ const FLOWS = [
       await wb.xlsx.writeFile(file);
       await page.locator('input[type="file"]').setInputFiles(file);
       await page.waitForFunction(() => /2026/.test(document.querySelector('td[data-row="1"][data-col="2"]')?.textContent ?? ""));
+      // As a person sees it: once the page's font is in. The grid fits dates in that font, and has
+      // to fit them again when it arrives — on CI it arrives after the file does.
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(200);
 
       for (const [col, want] of [[1, "28/09/2026"], [2, "2026-09-28"]]) {
         const seen = await cell(page, 1, col).evaluate((td) => {
           const span = td.querySelector("span");
-          return { text: td.innerText.trim(), whole: span.scrollWidth <= span.clientWidth, width: td.offsetWidth };
+          return { text: td.innerText.trim(), whole: span.scrollWidth <= span.clientWidth, width: td.offsetWidth, drawn: `${span.scrollWidth}/${span.clientWidth}px at ${span.style.fontSize || "full size"}` };
         });
-        note(seen.text === want && seen.whole, `${want} shows whole in its ${seen.width}px column (showed "${seen.text}")`);
+        note(seen.text === want && seen.whole, `${want} shows whole in its ${seen.width}px column (showed "${seen.text}", ${seen.drawn})`);
       }
       const narrow = await cell(page, 1, 4).evaluate((td) => ({ text: td.querySelector("span [aria-hidden]")?.textContent, title: td.title }));
       note(narrow.text === "###" && narrow.title.includes("28/09/2026"), `a 40px column is still ### with the date in its tooltip ("${narrow.title}")`);
