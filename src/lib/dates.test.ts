@@ -5,9 +5,9 @@ import ExcelJS from "exceljs";
 import { beforeEach, describe, expect, it } from "vitest";
 import { chartDataFrom } from "./charts";
 import { dateTextReader, valuesWithIsoDates } from "./dateCells";
-import { exportWorkbookToXlsxBlob } from "./excelIO";
+import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
 import { createEmptySheet, setCellRaw, setRangeFormat, SheetModel } from "./sheet";
-import { computeSheet, resetComputeCache } from "./sheetCompute";
+import { computeSheet, createWorkbookResolver, resetComputeCache } from "./sheetCompute";
 import { serialOf } from "./excelDate";
 
 /**
@@ -149,5 +149,102 @@ describe("dates used as labels and written out (#45)", () => {
     expect(ws.getCell("A2").numFmt).toBe("yyyy-mm-dd hh:mm");
     expect(ws.getCell("A3").numFmt).toBe("hh:mm");
     expect(ws.getCell("A4").numFmt).toBe("dd/mm/yyyy");
+  });
+});
+
+/**
+ * Dates through a real .xlsx (#45), both ways. The file is built with ExcelJS the way Excel writes
+ * one: the issue's four cells, and a column with its own `dd/mm/yyyy` layout.
+ */
+describe("dates in and out of an .xlsx (#45)", () => {
+  async function file(): Promise<File> {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Dates");
+    ws.getCell("A1").value = new Date(Date.UTC(2024, 0, 15));
+    ws.getCell("A1").numFmt = "yyyy-mm-dd";
+    ws.getCell("A2").value = new Date(Date.UTC(2024, 1, 20));
+    ws.getCell("A2").numFmt = "mm-dd-yy";
+    ws.getCell("A3").value = new Date(Date.UTC(2024, 0, 15, 14, 30));
+    ws.getCell("A3").numFmt = "yyyy-mm-dd hh:mm";
+    ws.getCell("A4").value = new Date(Date.UTC(1899, 11, 30, 9, 45));
+    ws.getCell("A4").numFmt = "h:mm";
+    ws.getCell("A5").value = new Date(Date.UTC(2026, 9, 2));
+    ws.getCell("A5").numFmt = "dd/mm/yyyy";
+    ws.getCell("A6").value = new Date(Date.UTC(1899, 11, 30));
+    ws.getCell("A6").numFmt = "hh:mm";
+    ws.getCell("B1").value = { formula: "A2-A1", result: 36 };
+    ws.getCell("B2").value = { formula: "A1+30", result: 45336 };
+    ws.getCell("B3").value = { formula: "A3*24", result: 1087358.5 };
+    return new File([await wb.xlsx.writeBuffer()], "dates.xlsx");
+  }
+
+  it("imports dates as dates, keeping the time, and a time-only cell as a time", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await file());
+    expect(sheet.cells.slice(0, 6).map((r) => r[0])).toEqual(["2024-01-15", "2024-02-20", "2024-01-15 14:30", "09:45", "2026-10-02", "00:00"]);
+    const c = computeSheet(sheet);
+    expect(c.values[0][1]).toBe(36);
+    expect(c.values[2][1]).toBeCloseTo(45306 * 24 + 14.5, 6);
+  });
+
+  it("shows a date in the layout the file gave it", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await file());
+    const c = computeSheet(sheet);
+    expect(c.display[4][0]).toBe("02/10/2026");
+    expect(c.display[0][0]).toBe("2024-01-15");
+    // Excel's built-in short date follows the reader's locale; here it reads as the app's default.
+    expect(c.display[1][0]).toBe("2024-02-20");
+  });
+
+  it("goes back out as the same dates, times and layouts", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await file());
+    const blob = await exportWorkbookToXlsxBlob([{ name: "Dates", sheet, computed: computeSheet(sheet) }]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    const ws = wb.worksheets[0];
+    expect(ws.getCell("A1").value).toEqual(new Date(Date.UTC(2024, 0, 15)));
+    expect(ws.getCell("A3").value).toEqual(new Date(Date.UTC(2024, 0, 15, 14, 30)));
+    expect(ws.getCell("A4").value).toEqual(new Date(Date.UTC(1899, 11, 30, 9, 45)));
+    expect(ws.getCell("A5").value).toEqual(new Date(Date.UTC(2026, 9, 2)));
+    expect(ws.getCell("A5").numFmt).toBe("dd/mm/yyyy");
+  });
+});
+
+/**
+ * The PaynEat ERP's own import template, round-tripped the way its users will (#45, PO's criteria):
+ * open it, fill one cell, export, and read the file back. Every sheet keeps its size, and every date
+ * cell is still a date, with the same value. The template carries expiry dates in
+ * `OpeningBalance!F`, formatted `yyyy-mm-dd`. (Its date validation rule is not carried: the app has no
+ * date rule yet, so it is dropped on import as before — a gap of its own, not this test's.)
+ */
+describe("the PaynEat ERP template round-trips its dates (#45)", () => {
+  it("keeps every sheet's size and every date, after an edit and an export", async () => {
+    const { readFileSync } = await import("node:fs");
+    const bytes = readFileSync(new URL("./fixtures/payneat-erp-sample-import-template.xlsx", import.meta.url));
+    const original = new ExcelJS.Workbook();
+    await original.xlsx.load(new Uint8Array(bytes).buffer);
+
+    const sheets = await importWorkbookFromFile(new File([bytes], "sample-import-template.xlsx"));
+    const balances = sheets.find((s) => s.name === "OpeningBalance")!;
+    balances.sheet = setCellRaw(balances.sheet, 1, 2, "42");
+    const resolver = createWorkbookResolver(sheets);
+    const blob = await exportWorkbookToXlsxBlob(sheets.map((s) => ({ ...s, computed: computeSheet(s.sheet, resolver) })));
+    const back = new ExcelJS.Workbook();
+    await back.xlsx.load(await blob.arrayBuffer());
+
+    let dates = 0;
+    for (const ws of original.worksheets) {
+      const out = back.getWorksheet(ws.name)!;
+      expect(out.rowCount, ws.name).toBe(ws.rowCount);
+      expect(out.columnCount, ws.name).toBe(ws.columnCount);
+      ws.eachRow((row) =>
+        row.eachCell((cell) => {
+          if (!(cell.value instanceof Date)) return;
+          dates++;
+          expect(out.getCell(cell.address).value, `${ws.name}!${cell.address}`).toEqual(cell.value);
+        })
+      );
+    }
+    expect(dates).toBe(4);
+    expect(back.getWorksheet("OpeningBalance")!.getCell("C2").value).toBe(42);
   });
 });
