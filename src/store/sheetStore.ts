@@ -76,7 +76,7 @@ import { getLocale, getMessages } from "@/i18n";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/types";
 import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
-import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, writeLiveBlock } from "@/lib/liveBlocks";
+import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, shiftLiveBlocks, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
 export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "pivot" | "cloud" | "none";
@@ -490,6 +490,19 @@ function refusedStructuralChange(sheet: SheetModel): boolean {
   return true;
 }
 
+/** A row or column inserted or deleted inside a live block is refused, and said so (#46). */
+function refusedByLiveBlock(s: SheetState, axis: Axis, index: number, delta: 1 | -1): boolean {
+  if (shiftLiveBlocks(activeTab(s).liveBlocks ?? [], axis, index, delta)) return false;
+  alert(getMessages().data.blockStructure);
+  return true;
+}
+
+/** Said with the edit when it ended a block's link: the values stay, but they stop updating. */
+function unlinkedNote(s: SheetState, axis: Axis, index: number, delta: 1 | -1): string {
+  const gone = shiftLiveBlocks(activeTab(s).liveBlocks ?? [], axis, index, delta)?.unlinked ?? [];
+  return gone.map((b) => ` · ${getMessages().data.blockUnlinked(cellRef(b.anchorRow, b.anchorCol))}`).join("");
+}
+
 function applySelectionFormat(sheet: SheetModel, selection: SelectionRect, patch: Partial<CellFormat>): SheetModel {
   return setRangeFormat(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, patch);
 }
@@ -554,9 +567,15 @@ function structuralOp(
   // `shiftFreeze` after `edit`, not inside it: the row/column helpers know nothing about panes,
   // and a split left on its old index would cut the sheet in the wrong place — quietly, since
   // nothing on screen says which row the split is *supposed* to be.
+  // Live blocks move with their cells too (#46); callers have already refused an edit inside one.
+  const shifted = shiftLiveBlocks(activeTab(s).liveBlocks ?? [], axis, opIndex, delta);
   const edited = s.sheets.map((t) =>
     t.id === s.activeSheetId
-      ? { ...t, sheet: withShiftedValidation(shiftFreeze(edit(t.sheet), axis, opIndex, delta), axis, opIndex, delta) }
+      ? {
+          ...t,
+          sheet: withShiftedValidation(shiftFreeze(edit(t.sheet), axis, opIndex, delta), axis, opIndex, delta),
+          ...(t.liveBlocks && shifted ? { liveBlocks: shifted.blocks } : {}),
+        }
       : t
   );
   const fixed = shiftOtherSheetsForStructuralOp(edited, activeName, axis, opIndex, delta);
@@ -863,11 +882,12 @@ export const useSheetStore = create<SheetState>()(
             const { sheet } = activeTab(s);
             if (refusedStructuralChange(sheet)) return {};
             const selection = activeSelectionOf(s);
+            if (refusedByLiveBlock(s, "row", selection.anchorRow, -1)) return {};
             const next = deleteRow(sheet, selection.anchorRow);
             return {
               sheets: structuralOp(s, "row", selection.anchorRow, -1, () => next),
               selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
-              ...say(getMessages().live.rowDeleted(selection.anchorRow + 1)),
+              ...say(getMessages().live.rowDeleted(selection.anchorRow + 1) + unlinkedNote(s, "row", selection.anchorRow, -1)),
             };
           }),
 
@@ -876,17 +896,18 @@ export const useSheetStore = create<SheetState>()(
             const { sheet } = activeTab(s);
             if (refusedStructuralChange(sheet)) return {};
             const selection = activeSelectionOf(s);
+            if (refusedByLiveBlock(s, "col", selection.anchorCol, -1)) return {};
             const next = deleteColumn(sheet, selection.anchorCol);
             return {
               sheets: structuralOp(s, "col", selection.anchorCol, -1, () => next),
               selectionBySheetId: { ...s.selectionBySheetId, [s.activeSheetId]: clampSelectionToBounds(next, selection) },
-              ...say(getMessages().live.columnDeleted(colToLetters(selection.anchorCol))),
+              ...say(getMessages().live.columnDeleted(colToLetters(selection.anchorCol)) + unlinkedNote(s, "col", selection.anchorCol, -1)),
             };
           }),
 
         insertRowAtSelection: () =>
           set((s) =>
-            refusedStructuralChange(activeTab(s).sheet)
+            refusedStructuralChange(activeTab(s).sheet) || refusedByLiveBlock(s, "row", activeSelectionOf(s).anchorRow, 1)
               ? {}
               : {
                   sheets: structuralOp(s, "row", activeSelectionOf(s).anchorRow, 1, (sheet) =>
@@ -898,7 +919,7 @@ export const useSheetStore = create<SheetState>()(
 
         insertColumnAtSelection: () =>
           set((s) =>
-            refusedStructuralChange(activeTab(s).sheet)
+            refusedStructuralChange(activeTab(s).sheet) || refusedByLiveBlock(s, "col", activeSelectionOf(s).anchorCol, 1)
               ? {}
               : {
                   sheets: structuralOp(s, "col", activeSelectionOf(s).anchorCol, 1, (sheet) =>

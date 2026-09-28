@@ -51,6 +51,9 @@ export interface Messages {
     cloudShort: string;
   };
   data: {
+    /** A row or column inserted or deleted inside a live block (#46), and what deleting its first one does. */
+    blockStructure: string;
+    blockUnlinked: (at: string) => string;
     title: string;
     subtitle: string;
     addSource: string;
