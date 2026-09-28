@@ -794,6 +794,50 @@ const FLOWS = [
       note(!(await dialog.isVisible()) && after === before, `Escape leaves the sheet as it was (A2 "${after}")`);
     },
   },
+  ...[1280, 390].map((width) => ({
+    // #136: a file whose date columns are Excel's default width shows its dates, because Excel does.
+    // The grid's font is wider than Calibri, so the date is drawn smaller in its cell; the column
+    // keeps the file's width, and `###` stays for a column Excel cannot fit the date in either.
+    name: `dates in Excel's default column width show as dates, not ### (${width}px)`,
+    width,
+    touch: width < 640,
+    async run(page, { tmp }) {
+      const { default: ExcelJS } = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Sheet1");
+      const when = new Date(Date.UTC(2026, 8, 28, 14, 30));
+      [["B", "dd/mm/yyyy"], ["C", "yyyy-mm-dd"], ["D", "hh:mm"], ["E", "dd/mm/yyyy"]].forEach(([col, fmt]) => {
+        ws.getColumn(col).numFmt = fmt;
+        ws.getCell(`${col}1`).value = fmt;
+        ws.getCell(`${col}2`).value = when;
+      });
+      ws.getColumn("E").width = 5; // 40px: narrower than Calibri's 68px for this date
+      const file = join(tmp, `dates-${width}.xlsx`);
+      await wb.xlsx.writeFile(file);
+      await page.locator('input[type="file"]').setInputFiles(file);
+      await page.waitForFunction(() => /2026/.test(document.querySelector('td[data-row="1"][data-col="2"]')?.textContent ?? ""));
+
+      for (const [col, want] of [[1, "28/09/2026"], [2, "2026-09-28"]]) {
+        const seen = await cell(page, 1, col).evaluate((td) => {
+          const span = td.querySelector("span");
+          return { text: td.innerText.trim(), whole: span.scrollWidth <= span.clientWidth, width: td.offsetWidth };
+        });
+        note(seen.text === want && seen.whole, `${want} shows whole in its ${seen.width}px column (showed "${seen.text}")`);
+      }
+      const narrow = await cell(page, 1, 4).evaluate((td) => ({ text: td.querySelector("span [aria-hidden]")?.textContent, title: td.title }));
+      note(narrow.text === "###" && narrow.title.includes("28/09/2026"), `a 40px column is still ### with the date in its tooltip ("${narrow.title}")`);
+
+      if (width >= 640) {
+        const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: label.exportExcel }).click()]);
+        const out = join(tmp, `dates-${width}-out.xlsx`);
+        await download.saveAs(out);
+        const back = new ExcelJS.Workbook();
+        await back.xlsx.readFile(out);
+        const widths = ["B", "C", "E"].map((col) => Math.round(back.worksheets[0].getColumn(col).width * 100) / 100);
+        note(widths.join() === "9,9,5", `export keeps the file's column widths (B, C, E: ${widths.join(", ")})`);
+      }
+    },
+  })),
   {
     // A Thai sheet name has to arrive as a Thai file name. It also guards this gate: Chromium under
     // a POSIX locale names such a file "download", which is how QA's round 2 filed a bug that was

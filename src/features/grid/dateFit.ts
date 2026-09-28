@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Whether a date fits its column, for the grid's `###` (#45).
+ * Whether a date fits its column, for the grid's `###` (#45) — judged by Excel's font (#136).
  *
  * Every other value in the grid may end in an ellipsis. A date may not: `2024-01-1…` reads as a
  * date, just the wrong one, and on a phone that was the date column of every file. So a date that
@@ -31,9 +31,44 @@ function measure(text: string, px: number): number | null {
 
 /** The grid's cells are `px-2` (8px either side) with a 1px right border, plus a pixel for rounding. */
 const PADDING = 18;
+/** What is left of a cell squeezed for a date that Excel shows (#136): 2px either side and the border. */
+const TIGHT_PADDING = 5;
 
-/** True unless the text is known not to fit; a browser that cannot measure gets the text. */
-export function dateFits(text: string, columnPx: number, fontPx: number): boolean {
+/**
+ * How wide Excel draws a date in Calibri 11 at 100% (#136), in pixels — the font Excel measures
+ * column widths in. The grid's own font is wider, so "does it fit here" and "does it fit in Excel"
+ * are different questions, and the second is the one a file was made to answer. Advance widths are
+ * Carlito's, which is metric-compatible with Calibri, at 11pt/96dpi rounded the way a hinted font
+ * lands on whole pixels: digits 7 (Excel's own "maximum digit width"), `/` 6, `-` 4.
+ */
+const CALIBRI_11: Record<string, number> = { "/": 6, "-": 4, ":": 4, ".": 4, ",": 4, " ": 3 };
+export function excelTextWidth(text: string, fontPt = 11): number {
+  let px = 0;
+  for (const ch of text) px += /\d/.test(ch) ? 7 : (CALIBRI_11[ch] ?? (/[A-Z]/.test(ch) ? 8 : 7));
+  return (px * fontPt) / 11;
+}
+
+/**
+ * How a date is drawn in a column (#45, #136): `1` in the grid's own font, a factor below 1 to draw it
+ * smaller when Excel would show it here but the grid's font does not fit, or `null` for `###`.
+ *
+ * `###` needs the date to be wider than the whole column even in Calibri. Excel's exact line sits a
+ * few pixels inside that — its cell margins — and cannot be reproduced without its rasteriser, so
+ * the doubt goes to the date: a date drawn a little small is still the right date, while a `###`
+ * where Excel shows one makes a good file look broken. A width-9 column (68px) holds `28/09/2026`.
+ *
+ * Squeezing the one cell rather than widening the column keeps the sheet's geometry the file's: the
+ * widths written back on export, where charts sit, and what every other cell looks like are all as
+ * they came.
+ */
+export function dateScale(ownWidth: number, excelWidth: number, columnPx: number): number | null {
+  if (ownWidth <= columnPx - PADDING) return 1;
+  if (excelWidth > columnPx) return null;
+  return Math.min(1, (columnPx - TIGHT_PADDING) / ownWidth);
+}
+
+/** `dateScale` for a date on screen; a browser that cannot measure gets the text as it is. */
+export function dateFit(text: string, columnPx: number, fontPx: number, fontPt = 11): number | null {
   const width = measure(text, fontPx);
-  return width === null || width <= columnPx - PADDING;
+  return width === null ? 1 : dateScale(width, excelTextWidth(text, fontPt), columnPx);
 }
