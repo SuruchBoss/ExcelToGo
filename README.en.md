@@ -38,7 +38,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1625%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1632%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -59,7 +59,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1625 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1632 automated tests.
 
 ---
 
@@ -103,7 +103,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1625 passing tests could not catch
+### 🧪 What 1632 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -114,7 +114,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1625 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1632 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -266,6 +266,7 @@ the outcome under a double rule like a total.
   - [Cell formatting](#-cell-formatting)
   - [Fill colour](#-fill-colour)
   - [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros)
+  - [Dates and times](#-dates-and-times)
   - [Charts from the sheet](#-charts-from-the-sheet)
   - [Conditional formatting](#-conditional-formatting)
   - [Cell comments](#-cell-comments)
@@ -378,7 +379,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1625-case Vitest suite |
+| `npm test` | Run the 1632-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1134,11 +1135,62 @@ always stored as typed, so the zeros come back the moment they are opened.
   CSV converts it to a number itself and drops the zero. That is out of our hands (CSV has nowhere to say what
   type a field is); use `.xlsx`, or Excel's Data → From Text.
 - **What was already lost stays lost** — an `.xlsx` exported or imported before the fix holds `812345678` as a
-  number, with no zero to give back. Live data from a CSV source still converts to numbers too (#36).
+  number, with no zero to give back. (Live data from a CSV source follows the same rule since #36.)
 - **`=SUM(A1:A3)` over text still adds up number-looking text**, where Excel gives 0 — that is #38, separate
   because it changes the totals of sheets that already exist.
 - "Text" is a cell format, so like every format it does not sync live while co-editing; an apostrophe is part of
   the cell, so it does.
+
+### 📅 Dates and times
+
+Type `2024-01-15` and you get **a date**, not text that looks like one. Its value is the serial Excel
+uses (`2024-01-15` is 45306, noon is .5), so `=A2-A1` is a count of days, `=A1+30` is the date a month
+on, and an exported file opens in Excel with **date cells** rather than 45306 or text.
+
+| Typed | Value | Shown |
+|---|---|---|
+| `2024-01-15` | 45306 | `2024-01-15` |
+| `2024-01-15 14:30` | 45306.6042 | `2024-01-15 14:30` |
+| `09:45` | 0.40625 | `09:45` |
+| `=DATE(2024,1,15)` · `=TODAY()` | a serial | a date, formatted for you while the cell is still General (as Excel does) |
+| `=NOW()` | a serial plus the time | a date and time, in the viewer's own time zone |
+
+<p align="center"><img src="public/screenshots/en/54-dates.png" width="700" alt="Dates in a sheet: subtracted into days, a date and time in a column widened to fit, a time on its own, and =DATE(2024,3,1) in the formula bar while the cell shows 2024-03-01 and the format menu reads Date"></p>
+
+- **ISO forms only** (`yyyy-mm-dd`). `03/04/2024` is March in one country and April in another, and a
+  wrong guess moves a date a month without a word, so every other layout stays the text it is
+  (Buddhist-era years and Thai month names are #82).
+- **Excel's 1900 system**, including the 29 February 1900 that never happened (Excel inherited it from
+  Lotus 1-2-3), so a date typed here is the same number in Excel on every day there is.
+- **Opening an `.xlsx`** keeps the time; a time-only cell is `09:45` (it used to become `1899-12-30`),
+  and a cell the file formats as `dd/mm/yyyy` shows that way and goes back out as `dd/mm/yyyy`.
+- **Exporting `.xlsx`** writes real date cells with a date format. **CSV** writes ISO text
+  (`2024-01-15`): a CSV is read by programs, and ISO is the one form none of them misreads.
+- **Charts and pivots** label with the date as the grid shows it, not 45306. **Sorting** is by time.
+  **Dragging the fill handle** from `2024-01-15`, `2024-01-16` carries on a day at a time.
+- The **number format** menu has "Date", "Date and time" and "Time"; any number can be shown as a
+  date, and the choice round-trips through `.xlsx`.
+- **A date is never cut off.** A column too narrow for it shows `###`, as Excel does, rather than
+  `2024-01-1…`, which reads as a date — just the wrong one. The whole date stays in the tooltip and in
+  what a screen reader hears. Typing a date and time into a column still at its default width widens it.
+
+Round-tripped against the PaynEat ERP's real import template: open, edit one cell, export, reopen with
+ExcelJS. Every sheet keeps its row and column count and every date cell keeps its value (the writer used
+to pad each sheet with empty rows to the grid's size, so a 5-row sheet came back with 20).
+
+**Limits:**
+- **Formula results are not all formatted for you.** `=A1+30` with a date in A1 shows the serial until
+  you pick "Date" (Excel infers it from the formula; this does not yet). Only formulas starting with
+  `TODAY`, `NOW` or `DATE` are formatted automatically.
+- **Other date layouts stay text**, whether typed, pasted, in a CSV or from live data: `15/01/2024`
+  cannot be subtracted until it is rewritten as ISO, or until #82.
+- **A file's date validation rules are not imported.** The app has no rule of that kind yet, so one is
+  dropped on open, as before (the ERP template's "after 2020-01-01", for one). The dates in the cells
+  are unaffected.
+- A file's date format shows in the Gregorian calendar; a Buddhist-calendar code (`[$-th-TH,107]`) still
+  shows the Common Era year (#82).
+- A date format is a cell format, so it does not sync live between collaborators yet (the existing limit
+  on every format). The date itself lives in the cell, so that syncs.
 
 ### 📊 Charts from the sheet
 
@@ -1736,7 +1788,7 @@ was true, and the app still could not open on a train — the document was local
 was not. A fair thing for someone to hold against it.
 
 A service worker now caches the app itself, and a manifest lets it go on a home screen. Install it
-and `/app` opens with no network at all: the grid, the engine, the 64 functions, import and export,
+and `/app` opens with no network at all: the grid, the engine, the 65 functions, import and export,
 and whatever was autosaved in `localStorage`.
 
 **What the caching policy is, and why each part of it:**
@@ -2360,7 +2412,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1625 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1632 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2747,7 +2799,7 @@ flowchart LR
     Raw["Raw formula text<br/>e.g. =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>splits into tokens"]
     Tok --> Par["parser.ts<br/>builds an AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>walks the AST to compute a result"]
-    Eval -->|"calls"| Fn["functions.ts<br/>64 functions"]
+    Eval -->|"calls"| Fn["functions.ts<br/>65 functions"]
     Eval -->|"getCell(row, col)"| Sheet[("other cells' values/formulas<br/>in the sheet")]
     Sheet -.-> Eval
     Eval --> Result["a number/text value,<br/>or a FormulaError"]
@@ -2862,8 +2914,8 @@ thing:
 
 ### Supported functions
 
-The drag-and-drop palette shows only the **32 most commonly used** formulas, but the engine itself supports
-**64 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
+The drag-and-drop palette shows only the **37 most commonly used** formulas, but the engine itself supports
+**65 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
 `=YEAR(...)`, `=PROPER(...)`):
 
 | Category | In the palette (37) | Also available by typing |
@@ -2872,7 +2924,7 @@ The drag-and-drop palette shows only the **32 most commonly used** formulas, but
 | Statistics | `AVERAGE` `COUNT` `COUNTA` `MIN` `MAX` `COUNTIF` `AVERAGEIF` `COUNTIFS` `AVERAGEIFS` | `COUNTBLANK` `RANK` `RANK.EQ` |
 | Logic | `IF` `IFERROR` `AND` `OR` | `NOT` `IFNA` |
 | Text | `CONCATENATE` `UPPER` `LOWER` `TRIM` `LEFT` `RIGHT` | `CONCAT` `MID` `LEN` `PROPER` `TEXT` `TEXTJOIN` `SUBSTITUTE` `FIND` `SEARCH` `CHAR` `CODE` |
-| Date | `TODAY` `NOW` `DATEDIF` | `DAY` `MONTH` `YEAR` |
+| Date | `TODAY` `NOW` `DATEDIF` | `DATE` `DAY` `MONTH` `YEAR` |
 | Lookup | `VLOOKUP` `XLOOKUP` `INDEX` `MATCH` | — |
 | Arrays | `SEQUENCE` `TRANSPOSE` `UNIQUE` `SORT` `FILTER` | — |
 
@@ -3166,9 +3218,9 @@ nothing but the anon key, which is the thing that used to work.
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
 | `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
 | `validate.test.ts` | 10 | Which URL shapes are accepted and which paths must be refused · and on the database side: a query that is not a read, a string that is not a connection string, a type and a scheme that disagree |
-| `ai/formula/route.test.ts` | 6 | The server's key decides, and nothing else: no key means Anthropic is never reached and the local fallback still answers (not a 403), an old `NEXT_PUBLIC_DEMO_MODE` no longer hides a configured key, a missing question is a 400 |
+| `ai/formula/route.test.ts` | 7 | The server's key decides, and nothing else: no key means Anthropic is never reached and the local fallback still answers (not a 403), an old `NEXT_PUBLIC_DEMO_MODE` no longer hides a configured key, a missing question is a 400 |
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
-| `demoSources.test.ts` | 9 | The sample feeds' list: app-relative URLs, no credential, read-only, and an id lookup that matches the whole id, not a prefix |
+| `demoSources.test.ts` | 15 | The sample feeds' list: app-relative URLs, no credential, read-only, and an id lookup that matches the whole id, not a prefix |
 | `apiOrigins.test.ts` | 9 | Which origins the CSP takes from the cookie (https or localhost only; no wildcard, scheme source, path or credential; at most 20), the policy unchanged for someone who added nothing, exactly one origin added for someone who did, and no directive or wildcard injected through the cookie |
 | `dataSources/browserSource.test.ts` | 10 | Fetching from the browser: the header only to its own origin, no next page followed off-origin, no cookies, plain http on the network refused before sending, the error codes it can tell apart, a token in the query flagged, a header value `fetch` cannot send refused |
 | `csvInjection.test.ts` | 11 | Every DDE payload has to leave unable to run, from the export button and the crash rescue alike · negative numbers, Thai text and blanks must be untouched |
@@ -3328,13 +3380,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1625 cases across 104 files, via Vitest
+npm test      # 1632 cases across 105 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1625 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1632 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -3453,37 +3505,37 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1625 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1632 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1625 passing tests could not catch](#-what-1625-passing-tests-could-not-catch), repeatable
+> [What 1632 passing tests could not catch](#-what-1632-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
 |---|---|---|
-| `tokenizer.test.ts` | 8 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
-| `property.test.ts` | 8 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
+| `tokenizer.test.ts` | 10 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
+| `property.test.ts` | 9 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
 | `xlsxFormulaExport.test.ts` | 4 | An exported `.xlsx` holds only formulas the engine can read: `=1+1` from a CSV is still a formula, one the engine cannot read goes out as text, on both the CSV → xlsx and xlsx → xlsx paths · opening that file again keeps it text |
-| `arrayFormulas.test.ts` | 21 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
+| `arrayFormulas.test.ts` | 27 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
 | `sheetCodec.test.ts` | 12 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
 | `saveHealth.test.ts` | 9 | A save the browser refuses becomes a status rather than an exception, "full" told apart from "disabled" in every spelling browsers use, the last good save left in place, recovery the moment a save lands, and listeners told when the status changes rather than on every keystroke |
 | `saveFailed.test.ts` | 3 | The real store over a full storage: edits still land in memory, **export still produces a file** (the bug PaynEat ERP's large template hit was a silent Export button), and the status clearing once a save lands again |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 122 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `functions.test.ts` | 136 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
-| `shift.test.ts` | 8 | Relative reference shifting on copy/paste; absolute references staying put |
-| `structuralShift.test.ts` | 15 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
+| `shift.test.ts` | 10 | Relative reference shifting on copy/paste; absolute references staying put |
+| `structuralShift.test.ts` | 16 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
 | `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
 | `excelDate.test.ts` | 7 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) |
-| `dates.test.ts` | 10 | Dates in a sheet (#45): the issue's table (`=A2-A1` = 36, `=A1+30`, `=A3*24`), YEAR/DATEDIF on serials and ISO text, a sheet saved before the fix opening with dates, charts and CSV using dates as labels, and export as real date cells |
+| `dates.test.ts` | 14 | Dates in a sheet (#45): the issue's table (`=A2-A1` = 36, `=A1+30`, `=A3*24`), YEAR/DATEDIF on serials and ISO text, a sheet saved before the fix opening with dates, charts and CSV using dates as labels, export as real date cells, import keeping the time and the file's layout (`dd/mm/yyyy`, a time alone, midnight), and the PaynEat ERP import template round-tripped with every sheet's size and every date unchanged |
 | `paginate.test.ts` | 19 | Detecting the next page from a Link header / next field / cursor / a URL param, stopping on an explicit null, refusing non-link values |
 | `executeSource.test.ts` | 47 | The real fetch loop (stubbed fetch): row limits, the 20-page ceiling, loop guards, a failing mid-chain page, column union across pages, the auth header on every page of its own origin and on no other, a mid-chain 429, and the SSRF guard on the path that actually fetches (including a redirect to a private address) |
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
-| `sheetMerges.test.ts` | 15 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
+| `sheetMerges.test.ts` | 35 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
 | `excelIO.test.ts` | 51 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form), cross-sheet dropdowns read from the sheet the rule names (quoted names, a hidden sheet, a missing one, and the PaynEat ERP draft-0 template) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
@@ -3504,10 +3556,11 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/liveEmptyResult.test.ts` | 2 | A source answering with an empty list (#65): the block keeps its last header, the rows under it are cleared, a SUM reads 0 rather than the envelope, and it fills again when rows come back |
 | `store/workbookCompute.test.ts` | 3 | Every path in the store computes with the workbook (#58): a pivot counts a value read from another sheet (175.3, not 105.3), a sort orders cross-sheet values by their numbers, and a guard that fails on any bare `computeSheet` outside the engine |
 | `store/datePivot.test.ts` | 1 | A pivot by day (#45): its rows are headed with dates, not serials |
+| `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
-| `gridGeometry.test.ts` | 18 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there, anchor↔pixel round trips |
+| `gridGeometry.test.ts` | 24 | Pixel positions of rows and columns (including widths/heights from an import), filtered-out rows taking no height, where a new chart lands and how it steps clear of one already there, anchor↔pixel round trips |
 | `chartGeometry.test.ts` | 14 | The shapes a bar/line/pie is made of: bars inside the plot and scaled to their value, a line broken at a gap, a pie following the chosen series, labels thinning out when the room runs out |
 | `chartImage.test.ts` | 10 | The exported picture: a complete SVG document, the legend carried into it, XML escaping, and null when there is nothing to draw |
 | `conditionalFormat.test.ts` | 33 | Compare/text/rank rules (ties included), colour scales (including an all-equal range), data bars (including negatives), stacked rules, range shifting on insert/delete |
@@ -3807,7 +3860,12 @@ What's not done yet, and why — to show this is a known gap, not something forg
       computes, by one rule the `.xlsx` writer shares (see
       [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros))
 - [ ] **`SUM`/`AVERAGE`/`COUNT` skip text in a range, as Excel does (#38)** — today number-looking text is added in
-- [ ] **Live CSV data uses the same rule (#36)** — `literalValue` is exported and waiting to be called
+- [x] **Live CSV data uses the same rule (#36)** — done: leading zeros in live CSV data stay
+- [x] **Dates are dates (#45)** — done (see [Dates and times](#-dates-and-times)): Excel serials, times kept
+      on import, real date cells on export, a file's own layout shown as the file has it, and `###` rather than a cut-off date
+- [ ] **Date formulas formatted for you** — only `TODAY`/`NOW`/`DATE` today; `=A1+30` shows a number until a format is picked
+- [ ] **Date validation rules** — import and export Excel's date validation (the ERP template uses it); dropped on open today
+- [ ] **Thai dates (#82)** — Buddhist-era years, Thai month names, typed `dd/mm/yyyy`, and a file's Buddhist-calendar format
 - [ ] **A CSV field starting with `'`** — on import the first `'` is read as Excel's "the rest is text" marker and
       not shown. A file that means the apostrophe literally (a name like `'s-Hertogenbosch`) loses it for now
 - [x] **The blind usability pass** — [opening a file without losing your work](#-opening-a-file-without-losing-your-work)

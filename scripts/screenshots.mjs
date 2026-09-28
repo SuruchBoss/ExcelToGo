@@ -1271,6 +1271,25 @@ const SCENES = [
     },
   },
   {
+    // Dates as dates (#45): subtracted into days, a date and time with its column widened to fit,
+    // a time on its own, and =DATE formatted as a date by itself — its formula in the bar above.
+    file: "54-dates.png",
+    async take(k) {
+      await k.open("/app");
+      await startBlank(k);
+      const head = k.lang === "th" ? ["สั่งของ", "ส่งถึง", "ใช้เวลา (วัน)", "นัดรับ", "เปิดร้าน"] : ["Ordered", "Delivered", "Days taken", "Pickup", "Opens"];
+      for (const [c, text] of head.entries()) await k.type(0, c, text);
+      const rows = [
+        ["2024-01-15", "2024-02-20", "=B2-A2", "2024-01-15 14:30", "09:45"],
+        ["=DATE(2024,3,1)", "2024-03-31", "=B3-A3", "2024-03-02 09:00", "10:30"],
+      ];
+      for (const [r, row] of rows.entries()) for (const [c, text] of row.entries()) await k.type(r + 1, c, text);
+      await k.cell(2, 0).click();
+      await k.settle(300);
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 420 } });
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {

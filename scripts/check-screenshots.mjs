@@ -99,6 +99,8 @@ const SHOWS = {
   "51-touch-actions.png": [],
   "52-fill-colour.png": [],
   "53-tablet-tools.png": [],
+  // Dates typed by hand and one =DATE: the figures are the scene's own, not counted ones.
+  "54-dates.png": [],
   "demo.gif": [],
 };
 

@@ -656,6 +656,23 @@ describe("logical values inside a range", () => {
  * A test written because a mutant survived is worth more than one written because a function
  * existed — it covers a specific way of being wrong that nothing else was watching.
  */
+describe("DATE (#45)", () => {
+  it("builds Excel's serial, rolling a month or day over the way Excel does", () => {
+    expect(calc("DATE(2024,1,15)")).toBe(45306);
+    expect(calc("DATE(2024,14,1)")).toBe(serialOf(2025, 2, 1));
+    expect(calc("DATE(2024,3,0)")).toBe(serialOf(2024, 2, 29));
+    expect(calc("DATE(2024,1,15)-DATE(2023,12,31)")).toBe(15);
+    expect(calc("DATE(124,1,1)")).toBe(serialOf(2024, 1, 1)); // a year under 1900 counts from 1900
+    expect(calc("YEAR(DATE(2024,1,15))")).toBe(2024);
+  });
+
+  it("refuses a year out of range, and passes an error through", () => {
+    expect(isError(calc("DATE(-1,1,1)"))).toBe(true);
+    expect(isError(calc("DATE(10000,1,1)"))).toBe(true);
+    expect(isError(calc('DATE("x",1,1)'))).toBe(true);
+  });
+});
+
 describe("gaps the mutation gate found", () => {
   it("COUNT wants text that is a number, not merely text that is present", () => {
     // `v.trim() !== "" && !Number.isNaN(Number(v))` turned into `||` and nothing noticed, because

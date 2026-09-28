@@ -658,6 +658,22 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const d = new Date();
     return serialOf(d.getFullYear(), d.getMonth() + 1, d.getDate()) + (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86_400;
   },
+  /**
+   * DATE(year, month, day) — the serial of that day, as Excel builds it (#45). A month or day past
+   * its end rolls over (`DATE(2024,14,1)` is February 2025, `DATE(2024,3,0)` the last of
+   * February), and a year under 1900 counts from 1900, both as Excel does. Before 1900 is #NUM!.
+   */
+  DATE: (args) => {
+    const parts = [0, 1, 2].map((i) => toNumber(scalarOf(args[i])));
+    for (const p of parts) if (isError(p)) return p;
+    const [given, month, day] = (parts as number[]).map(Math.trunc);
+    if (given < 0 || given > 9999) return ERR_NUM;
+    const year = given < 1900 ? given + 1900 : given;
+    const d = new Date(Date.UTC(2000, 0, 1));
+    d.setUTCFullYear(year, month - 1, day);
+    const serial = serialOf(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+    return serial < 1 || serial > 2_958_465 ? ERR_NUM : serial;
+  },
   YEAR: (args) => {
     const d = parseDateValue(scalarOf(args[0]));
     return d ? d.getUTCFullYear() : ERR_VALUE;

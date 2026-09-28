@@ -43,6 +43,8 @@ import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gri
 import ChartOverlay from "./ChartOverlay";
 import SelectionHandle from "./SelectionHandle";
 import FillHandle from "./FillHandle";
+import { dateFits } from "./dateFit";
+import { dateKindAt } from "@/lib/dateCells";
 
 
 export default function SpreadsheetGrid() {
@@ -667,6 +669,16 @@ export default function SpreadsheetGrid() {
               // no code — the raw text stops being empty and the anchor refuses on the next pass.
               const spilledFrom = spill.get(packCell(r, c));
               const isSpilled = spilledFrom !== undefined && spilledFrom !== packCell(r, c);
+              // A date that does not fit is `###`, never a cut-off date (#45).
+              const tooNarrow =
+                !merge &&
+                typeof value === "number" &&
+                dateKindAt(sheet, r, c) !== null &&
+                !dateFits(
+                  display[r]?.[c] ?? "",
+                  sheet.colWidths?.[c] ?? COL_WIDTH,
+                  14 * ((format?.fontSize ?? DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE)
+                );
               return (
                 <td
                   key={c}
@@ -813,7 +825,9 @@ export default function SpreadsheetGrid() {
                       ? t.data.liveCellTitle(sourceNameOf(block.sourceId))
                       : locked
                         ? t.template.lockedCell
-                        : cellRef(r, c)
+                        : tooNarrow
+                          ? `${cellRef(r, c)} · ${display[r]?.[c]}`
+                          : cellRef(r, c)
                   }
                 >
                   {editingHere && choices ? (
@@ -875,7 +889,14 @@ export default function SpreadsheetGrid() {
                           textAlign: format?.align,
                         }}
                       >
-                        {display[r]?.[c]}
+                        {tooNarrow ? (
+                          <>
+                            <span aria-hidden>###</span>
+                            <span className="sr-only">{display[r]?.[c]}</span>
+                          </>
+                        ) : (
+                          display[r]?.[c]
+                        )}
                       </span>
                     </div>
                   )}

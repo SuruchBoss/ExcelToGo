@@ -77,7 +77,7 @@ import { getLocale, getMessages } from "@/i18n";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/types";
 import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
-import { dateTextAt, valuesWithIsoDates } from "@/lib/dateCells";
+import { dateTextAt, valuesWithIsoDates, withFormulaDateFormat, withRoomForDateTime } from "@/lib/dateCells";
 import { afterWrite, boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, shiftLiveBlocks, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
@@ -801,7 +801,11 @@ export const useSheetStore = create<SheetState>()(
             // Once per page load, whatever the formula was — the count is "somebody used the
             // engine", and what they typed is none of its business.
             if (raw.startsWith("=") && raw.length > 1) countUsage("formula_entered");
-            return { sheets: withActiveSheet(s, (tab) => setCellRaw(tab.sheet, row, col, raw)) };
+            return {
+              sheets: withActiveSheet(s, (tab) =>
+                withRoomForDateTime(withFormulaDateFormat(setCellRaw(tab.sheet, row, col, raw), raw, row, col), raw, col)
+              ),
+            };
           }),
 
         /** Applies a rule to the selection, or clears it when `rule` is undefined. */
@@ -1478,7 +1482,10 @@ export const useSheetStore = create<SheetState>()(
 
         setNumberFormat: (numberFormat) =>
           set((s) => ({
-            sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, { numberFormat })),
+            // A layout a file brought in (`dd/mm/yyyy`) goes with it: picking "date" means the app's own.
+            sheets: updateActiveSheet(s, (sheet, selection) =>
+              applySelectionFormat(sheet, selection, { numberFormat, dateFormat: undefined })
+            ),
           })),
 
         /**
@@ -1680,8 +1687,8 @@ export const useSheetStore = create<SheetState>()(
             return;
           }
           set((s) => ({
-            sheets: updateActiveSheet(s, (sheet, selection) =>
-              applyFormula(sheet, body, {
+            sheets: updateActiveSheet(s, (sheet, selection) => {
+              const written = applyFormula(sheet, body, {
                 scope: pending.scope,
                 anchorRow: pending.anchorRow,
                 anchorCol: pending.anchorCol,
@@ -1691,8 +1698,18 @@ export const useSheetStore = create<SheetState>()(
                   endRow: selection.endRow,
                   endCol: selection.endCol,
                 },
-              })
-            ),
+              });
+              const { anchorRow: r, anchorCol: c, scope } = pending;
+              const [r0, c0, r1, c1] =
+                scope === "row"
+                  ? [r, 0, r, sheet.cols - 1]
+                  : scope === "column"
+                    ? [0, c, sheet.rows - 1, c]
+                    : scope === "selection"
+                      ? [selection.startRow, selection.startCol, selection.endRow, selection.endCol]
+                      : [r, c, r, c];
+              return withFormulaDateFormat(written, `=${body}`, r0, c0, r1, c1);
+            }),
             pending: null,
             ...say(getMessages().live.formulaInserted(`=${body}`, cellRef(pending.anchorRow, pending.anchorCol))),
           }));
@@ -1704,7 +1721,12 @@ export const useSheetStore = create<SheetState>()(
             const sel = activeSelectionOf(s);
             return {
               sheets: updateActiveSheet(s, (sheet, selection) =>
-                setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw)
+                withFormulaDateFormat(
+                  setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw),
+                  raw,
+                  selection.anchorRow,
+                  selection.anchorCol
+                )
               ),
               ...say(getMessages().live.formulaInserted(raw, cellRef(sel.anchorRow, sel.anchorCol))),
             };
