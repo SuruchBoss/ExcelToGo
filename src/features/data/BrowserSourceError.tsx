@@ -61,7 +61,9 @@ export default function BrowserSourceError({
   const [copied, setCopied] = useState(false);
   if (code !== "network") {
     const text = browserErrorText(code, detail, url, t);
-    return text ? <p className="text-xs text-red-700">{text}</p> : null;
+    // Waiting on the person (#115) reads as a note, not an error.
+    const waiting = code === "needs_secret" || code === "needs_reload";
+    return text ? <p className={waiting ? "text-xs text-amber-900" : "text-xs text-red-700"}>{text}</p> : null;
   }
 
   const appOrigin = typeof window === "undefined" ? "" : window.location.origin;

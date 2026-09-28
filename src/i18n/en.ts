@@ -111,6 +111,8 @@ export const en: Messages = {
       keysFound: (keys) => `Top-level keys found: ${keys}`,
       needsSecret: "Enter the header value again — it is kept only in the open tab, so it went when the tab closed, as intended",
       needsReload: (host) => `Reload once to let this browser reach ${host}`,
+      waitingSecret: "Waiting for header",
+      waitingReload: "Needs a reload",
       networkTitle: "Couldn't reach the API — the browser doesn't say exactly why, so check these",
       networkChecks: (appOrigin, headers) => [
         "Are you on the VPN, and does this URL open in a new tab?",

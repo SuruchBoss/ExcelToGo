@@ -382,7 +382,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 31/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 20 flows: formulas, `.xlsx` round trip, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar (needs a build) |
+| `npm run check:e2e` | Drives the real app through 20 flows: formulas, `.xlsx` round trip, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -633,7 +633,7 @@ What is kept where:
 | | Kept in | Why |
 |---|---|---|
 | Name, URL, header **name**, JSON path, max rows, refresh interval | This browser's `localStorage` (`etg-browser-sources`) | Not secret; the source is still there in a new tab |
-| The header **value** (e.g. `Bearer …`) | `sessionStorage`, keyed by the source's id — and nowhere else | Gone when the tab closes; the app asks again on the next refresh. A token that outlives the tab is one a shared computer hands to the next person |
+| The header **value** (e.g. `Bearer …`) | `sessionStorage`, keyed by the source's id — and nowhere else | Gone when the tab closes; the app asks again on the next refresh. A token that outlives the tab is one a shared computer hands to the next person. A new tab without the value shows an amber **"Waiting for header"** label with a button to enter it — not "Connection failed", because nothing is broken |
 | The workbook, exported files (.xlsx/.csv/.pdf), crash reports, the usage counter, requests to `/api/*` | No header value in any of them | |
 
 The form warns about two things before saving: a URL whose query looks like a token (`token=`, `key=`,

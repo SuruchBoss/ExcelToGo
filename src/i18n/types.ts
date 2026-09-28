@@ -137,6 +137,9 @@ export interface Messages {
       keysFound: (keys: string) => string;
       needsSecret: string;
       needsReload: (host: string) => string;
+      /** The card's label while a source waits on the person, not on the API (#115). */
+      waitingSecret: string;
+      waitingReload: string;
       networkTitle: string;
       networkChecks: (appOrigin: string, headers: string) => string[];
       copyForIt: string;

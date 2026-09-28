@@ -111,6 +111,8 @@ export const th: Messages = {
       keysFound: (keys) => `คีย์ระดับบนสุดที่เจอ: ${keys}`,
       needsSecret: "ใส่ค่า header อีกครั้ง — ค่านี้เก็บไว้เฉพาะแท็บที่เปิดอยู่ ปิดแท็บแล้วจึงหายไปตามที่ตั้งใจ",
       needsReload: (host) => `ต้องโหลดหน้าใหม่หนึ่งครั้งเพื่ออนุญาตให้เบราว์เซอร์ต่อ ${host}`,
+      waitingSecret: "รอค่า header",
+      waitingReload: "ต้องโหลดหน้าใหม่",
       networkTitle: "ต่อ API ไม่ติด — เบราว์เซอร์ไม่บอกเหตุผลที่แน่ชัด ลองตรวจตามนี้",
       networkChecks: (appOrigin, headers) => [
         "ต่อ VPN แล้วหรือยัง และเปิด URL นี้ในแท็บใหม่ได้ไหม",
