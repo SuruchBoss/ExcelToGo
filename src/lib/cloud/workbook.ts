@@ -9,9 +9,11 @@
  * has a database.
  */
 import { SheetTab } from "@/store/sheetStore";
+import { withLegacyPercent } from "@/lib/sheetCodec";
 
 /** Bumped when the stored shape changes in a way an older app couldn't read. */
-export const WORKBOOK_FORMAT = 1;
+/** 2: percent is Excel's ×100 (#53); a format-1 row's percent cells are read as they looked. */
+export const WORKBOOK_FORMAT = 2;
 
 export interface CloudWorkbookRow {
   id: string;
@@ -118,7 +120,7 @@ export function readWorkbook(data: unknown): SheetTab[] | null {
   const body = data as Partial<CloudWorkbookRow["data"]>;
   if (typeof body.format !== "number" || body.format > WORKBOOK_FORMAT) return null;
   if (!Array.isArray(body.sheets) || body.sheets.length === 0) return null;
-  return body.sheets;
+  return body.format < 2 ? body.sheets.map((tab) => ({ ...tab, sheet: withLegacyPercent(tab.sheet) })) : body.sheets;
 }
 
 /**

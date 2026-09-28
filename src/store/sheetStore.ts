@@ -31,6 +31,7 @@ import {
   deleteColumn,
   deleteRow,
   detectSortRange,
+  sortRisks,
   getCellFormat,
   insertColumnBefore,
   insertRowBefore,
@@ -46,7 +47,7 @@ import {
   sortRange,
   toTsv,
 } from "@/lib/sheet";
-import { fromStorage, PackedSheet, toStorage } from "@/lib/sheetCodec";
+import { fromStorage, PackedSheet, toStorage, withLegacyPercent } from "@/lib/sheetCodec";
 import { guardedStorage } from "@/lib/saveHealth";
 import { autoChartAnchor, MAX_COL_WIDTH, MIN_COL_WIDTH } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
@@ -343,7 +344,14 @@ interface SheetState {
   pasteAtSelection: (externalText?: string) => void;
   clearClipboard: () => void;
 
-  sortSelection: (ascending: boolean) => void;
+  /**
+   * Sorts the rows around the selection. When a formula in them points at another row (#48), it
+   * records `sortWarning` and does nothing until asked again with `force`.
+   */
+  sortSelection: (ascending: boolean, force?: boolean) => void;
+  /** Set while a sort waits on the question "these formulas point at other rows — sort anyway?". */
+  sortWarning: { ascending: boolean; formulas: number } | null;
+  dismissSortWarning: () => void;
   setColumnFilter: (col: number, values: string[]) => void;
   clearColumnFilter: (col: number) => void;
   clearAllFilters: () => void;
@@ -1261,15 +1269,24 @@ export const useSheetStore = create<SheetState>()(
 
         clearClipboard: () => set({ clipboard: null }),
 
-        sortSelection: (ascending) =>
+        sortWarning: null,
+        dismissSortWarning: () => set({ sortWarning: null }),
+
+        sortSelection: (ascending, force = false) =>
           set((s) => {
             if (refusedStructuralChange(activeTab(s).sheet)) return {};
+            const sheet = activeTab(s).sheet;
+            const selection = activeSelectionOf(s);
+            const computed = computeTab(sheet, s.sheets);
+            const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
+            // Asked first, not refused: sometimes a running total is meant to be re-run on new
+            // rows. But a sort that silently gives each row another row's numbers is how #48 cost
+            // a tester 2,710 baht, so it is never silent.
+            const risks = force ? [] : sortRisks(sheet, range);
+            if (risks.length > 0) return { sortWarning: { ascending, formulas: risks.length } };
             return {
-            sheets: updateActiveSheet(s, (sheet, selection) => {
-              const computed = computeTab(sheet, s.sheets);
-              const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
-              return sortRange(sheet, computed, range, selection.anchorCol, ascending);
-            }),
+            sortWarning: null,
+            sheets: updateActiveSheet(s, (current) => sortRange(current, computed, range, selection.anchorCol, ascending)),
             // Rows move under a cursor that stays put — the change nobody watching the cell would
             // notice, which is exactly what the live region is for.
             ...say(getMessages().live.sorted(colToLetters(activeSelectionOf(s).anchorCol), ascending)),
@@ -1534,9 +1551,9 @@ export const useSheetStore = create<SheetState>()(
 
         setNumberFormat: (numberFormat) =>
           set((s) => ({
-            // A layout a file brought in (`dd/mm/yyyy`) goes with it: picking "date" means the app's own.
+            // A code a file brought in (`dd/mm/yyyy`, `0%`) goes with it: picking a format means the app's own.
             sheets: updateActiveSheet(s, (sheet, selection) =>
-              applySelectionFormat(sheet, selection, { numberFormat, dateFormat: undefined })
+              applySelectionFormat(sheet, selection, { numberFormat, dateFormat: undefined, numFmtCode: undefined })
             ),
           })),
 
@@ -1930,6 +1947,14 @@ export const useSheetStore = create<SheetState>()(
     ),
     {
       name: "exceltogo-sheet-v2",
+      // 1: percent is Excel's ×100 (#53). A save from before has its percent cells read as they
+      // looked — see `withLegacyPercent`.
+      version: 1,
+      migrate: (persisted, version) => {
+        const p = persisted as { sheets?: StoredTab[] } | undefined;
+        if (version >= 1 || !p?.sheets) return persisted as never;
+        return { ...p, sheets: p.sheets.map((tab) => ({ ...tab, sheet: withLegacyPercent(tab.sheet) })) } as never;
+      },
       // Guarded: a save that does not fit the quota becomes a status the app shows, not an
       // exception thrown out of whatever action happened to trigger it. See `saveHealth.ts`.
       storage: createJSONStorage(() => guardedStorage(localStorage)),

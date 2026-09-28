@@ -732,6 +732,68 @@ const FLOWS = [
     },
   },
   {
+    // #53: Percent is Excel's now (×100). What a unit test cannot reach is the store's migration
+    // running on a real autosave: a cell saved as "50, Percent" by the version before must still read
+    // 50.00%, not 5000%, while choosing Percent now gives Excel's.
+    name: "a percent saved before #53 still reads the same, and Percent is Excel's now",
+    // 1440: from 1366 the number format menu sits in the row rather than in the tools panel.
+    width: 1440,
+    async run(page) {
+      await page.evaluate(() => {
+        const sheet = { rows: 30, cols: 10, cells: { "0,0": "50", "1,0": "0.25" }, formats: { "0,0": { numberFormat: "percent" } } };
+        localStorage.setItem("exceltogo-sheet-v2", JSON.stringify({ state: { sheets: [{ id: "old", name: "Sheet1", sheet }], activeSheetId: "old" }, version: 0 }));
+      });
+      await page.reload({ waitUntil: "networkidle" });
+      const a1 = (await cell(page, 0, 0).innerText()).trim();
+      note(a1 === "50.00%", `the old save's 50 in Percent still reads 50.00% (A1 "${a1}")`);
+
+      await cell(page, 1, 0).click();
+      await page.getByRole("combobox", { name: "รูปแบบตัวเลข" }).first().selectOption("percent");
+      const a2 = (await cell(page, 1, 0).innerText()).trim();
+      note(a2 === "25.00%", `0.25 given Percent now reads 25.00%, as in Excel (A2 "${a2}")`);
+    },
+  },
+  {
+    // #48: on the sample every visitor sees, sorting used to leave 8 of 9 totals reading another
+    // row's price and quantity while the grand total still added up. Driven through the real
+    // buttons in both languages; then a sort that cannot keep its formulas right has to ask first.
+    name: "sorting the sample keeps every row's total its own, and a risky sort asks first",
+    width: 1440,
+    async run(page) {
+      const num = async (r, c) => Number((await cell(page, r, c).innerText()).replace(/[^\d.-]/g, ""));
+      for (const lang of ["th", "en"]) {
+        await page.evaluate((l) => {
+          localStorage.clear();
+          localStorage.setItem("exceltogo-locale", JSON.stringify({ state: { locale: l }, version: 0 }));
+        }, lang);
+        await page.reload({ waitUntil: "networkidle" });
+        await page.getByRole("button", { name: lang === "th" ? "ลองกับข้อมูลตัวอย่าง" : "Try it with sample data", exact: true }).click();
+        await cell(page, 1, 2).click();
+        await page.getByTitle(lang === "th" ? "เรียงจากมากไปน้อย (Z-A, 9-0)" : "Sort descending (Z-A, 9-0)").click();
+        let wrong = 0;
+        for (let r = 1; r <= 9; r++) if ((await num(r, 2)) * (await num(r, 3)) !== (await num(r, 4))) wrong++;
+        const prices = [];
+        for (let r = 1; r <= 9; r++) prices.push(await num(r, 2));
+        const sorted = prices.every((p, i) => i === 0 || prices[i - 1] >= p);
+        note(sorted && wrong === 0, `${lang}: sorted by price, every row's total is its own price × quantity (${wrong} wrong)`);
+        note((await num(11, 4)) === 7495, `${lang}: the grand total is unchanged (${await num(11, 4)})`);
+      }
+
+      // The grand total caught in the range: the sort asks, Cancel has focus, and Escape changes nothing.
+      const before = (await cell(page, 1, 0).innerText()).trim();
+      await cell(page, 0, 0).click();
+      await cell(page, 11, 4).click({ modifiers: ["Shift"] });
+      await page.getByTitle("Sort ascending (A-Z, 0-9)").click();
+      const dialog = page.getByRole("alertdialog");
+      await dialog.waitFor({ timeout: 5000 });
+      const focused = await page.evaluate(() => document.activeElement?.textContent?.trim());
+      note(focused === "Cancel", `a sort over the grand total asks first, with Cancel focused ("${focused}")`);
+      await page.keyboard.press("Escape");
+      const after = (await cell(page, 1, 0).innerText()).trim();
+      note(!(await dialog.isVisible()) && after === before, `Escape leaves the sheet as it was (A2 "${after}")`);
+    },
+  },
+  {
     // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
     // recorded, because the promise is not only "it works" but "nothing about it reaches us".
     name: "an API connected from this browser fills the sheet and refreshes, and nothing about it reaches /api/*",

@@ -550,6 +550,13 @@ export interface Messages {
     text: string;
     openSample: string;
   };
+  /** Asked before a sort that would give formulas another row's numbers (#48). */
+  sortWarning: {
+    title: string;
+    body: (formulas: number) => string;
+    sortAnyway: string;
+    cancel: string;
+  };
   /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
   newFile: {
     button: string;

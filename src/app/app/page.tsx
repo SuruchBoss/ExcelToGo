@@ -23,6 +23,7 @@ import StorageNotice from "@/features/grid/StorageNotice";
 import SaveFailedNotice from "@/features/grid/SaveFailedNotice";
 import SampleNotice from "@/features/grid/SampleNotice";
 import StartNotice from "@/features/grid/StartNotice";
+import SortWarningDialog from "@/features/grid/SortWarningDialog";
 import PivotNotice from "@/features/grid/PivotNotice";
 import ImportNotice from "@/features/grid/ImportNotice";
 import DataPicker from "@/features/data/DataPicker";
@@ -95,6 +96,7 @@ export default function Home() {
     <div className="flex h-dvh flex-col bg-zinc-50 max-lg:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
       <SkipLink />
       <LiveAnnouncer />
+      <SortWarningDialog />
       {find.open && <FindPanel onClose={find.close} />}
       <Toolbar />
       <FormatBar />
