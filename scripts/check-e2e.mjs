@@ -851,6 +851,16 @@ const FLOWS = [
       const sample = page.getByRole("button", { name: label.trySales });
       if (!(await sample.isVisible().catch(() => false))) await page.getByRole("button", { name: label.liveData }).first().click();
       note(await sample.isDisabled(), "the sample now shows as added instead of inviting a duplicate");
+
+      // #122: the picker closes on Escape and gives focus back to the button that opened it.
+      const insertButton = page.getByRole("button", { name: label.insert }).first();
+      await insertButton.focus();
+      await page.keyboard.press("Enter");
+      await page.getByRole("dialog").waitFor({ timeout: 5000 });
+      await page.keyboard.press("Escape");
+      const closed = (await page.getByRole("dialog").count()) === 0;
+      const back = await page.evaluate(() => document.activeElement?.textContent?.trim() ?? "");
+      note(closed && /ใส่ลงตาราง|Insert/.test(back), `the picker closes on Escape and focus returns to its button ("${back}")`);
     },
   },
   {
@@ -879,17 +889,41 @@ const FLOWS = [
     // — a cell being edited and a cell only selected — actually go through it.
     name: "a row typed with Tab ends with Enter under its first column, and the cell menu opens from the keyboard",
     async run(page) {
+      // #102's own test: three rows of four, typed with Tab and Enter only, come out a rectangle.
       await cell(page, 2, 1).click();
-      for (const v of ["a", "b"]) {
-        await page.keyboard.type(v);
-        await page.keyboard.press("Tab");
+      for (const r of [1, 2, 3]) {
+        for (const c of ["a", "b", "c"]) {
+          await page.keyboard.type(`${c}${r}`);
+          await page.keyboard.press("Tab");
+        }
+        await page.keyboard.type(`d${r}`);
+        await page.keyboard.press("Enter");
       }
-      await page.keyboard.type("c");
+      const grid = await page.evaluate(() =>
+        [2, 3, 4].map((r) => [1, 2, 3, 4].map((c) => document.querySelector(`td[data-row="${r}"][data-col="${c}"]`)?.innerText.trim()).join(","))
+      );
+      note(
+        grid.join(" | ") === "a1,b1,c1,d1 | a2,b2,c2,d2 | a3,b3,c3,d3",
+        `3 rows × 4 columns by Tab…Enter land as a rectangle, not a staircase (${grid.join(" | ")})`
+      );
+
+      // Tab at the last column used to stay put, so the next value typed over the one just entered.
+      const lastCol = await page.evaluate(() => Math.max(...[...document.querySelectorAll("thead th[aria-colindex]")].map((th) => Number(th.getAttribute("aria-colindex")))) - 2);
+      await cell(page, 8, lastCol).click();
+      await page.keyboard.type("edge");
+      await page.keyboard.press("Tab");
+      await page.keyboard.type("past");
       await page.keyboard.press("Enter");
-      await page.keyboard.type("next");
-      await page.keyboard.press("Enter");
-      const landed = (await cell(page, 3, 1).innerText()).trim();
-      note(landed === "next", `after Tab, Tab, Enter the next row starts back in column B (B4 showed "${landed}")`);
+      const edge = (await cell(page, 8, lastCol).innerText()).trim();
+      const past = (await cell(page, 8, lastCol + 1).innerText()).trim();
+      note(edge === "edge" && past === "past", `Tab at the last column grows the sheet instead of typing over it ("${edge}" then "${past}")`);
+
+      // A toolbar button no longer keeps focus: Bold, then an arrow, and the cursor moves.
+      await cell(page, 5, 1).click();
+      await page.getByRole("button", { name: /^(ตัวหนา|Bold)$/ }).click();
+      await page.keyboard.press("ArrowDown");
+      const at = await page.evaluate(() => document.activeElement?.closest("td")?.getAttribute("data-row"));
+      note(at === "6", `after pressing Bold the arrow keys still move the cursor (focus on row ${at})`);
 
       // Shift+F10: the menu a mouse gets on right-click, for a keyboard. Copy from it, paste from it.
       await cell(page, 2, 1).click();
@@ -901,7 +935,7 @@ const FLOWS = [
       await cell(page, 6, 4).click({ button: "right" });
       await page.getByRole("menu").getByRole("menuitem", { name: /วาง|Paste/ }).click();
       const pasted = (await cell(page, 6, 4).innerText()).trim();
-      note(pasted === "a", `copy and paste from the menu work (E7 showed "${pasted}")`);
+      note(pasted === "a1", `copy and paste from the menu work (E7 showed "${pasted}")`);
     },
   },
   {

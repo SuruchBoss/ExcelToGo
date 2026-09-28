@@ -35,9 +35,11 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
+// Trimmed to what a visitor without their own API key actually gets (#125): a suggested formula,
+// which the app marks as a keyword guess, not a promise that it works.
 const DESCRIPTION =
-  "พิมพ์ว่าอยากได้อะไรเป็นภาษาไทย แล้วได้สูตร Excel กลับมาพร้อมคำอธิบาย กดปุ่มเดียวใส่ลงเซลล์ — หรือเลือกจากสูตรพร้อมใช้ 32 แบบ แล้วลากเลือกช่วงเซลล์แทนการพิมพ์ที่อยู่ เปิดไฟล์ .xlsx เดิมได้ ไม่ต้องสมัคร ไม่ต้องอัปโหลด";
-const TITLE = "ExcelToGo — พิมพ์เป็นภาษาไทย แล้วได้สูตร Excel ที่ใช้ได้จริง";
+  "ตาราง Excel ในเบราว์เซอร์ พิมพ์บอกสิ่งที่อยากได้แล้วได้สูตรแนะนำพร้อมคำอธิบาย (ไม่มี key แอปจะเดาจากคำสำคัญและบอกว่าเป็นการเดา · ใส่ API key ของคุณเองเพื่อคำตอบจาก AI) — หรือเลือกจากสูตรพร้อมใช้ 37 แบบ เปิดไฟล์ .xlsx เดิมได้ ไม่ต้องสมัคร ไม่ต้องอัปโหลด";
+const TITLE = "ExcelToGo — ตาราง Excel ในเบราว์เซอร์ พิมพ์บอกแล้วได้สูตรแนะนำ";
 
 export const metadata: Metadata = {
   // Absolute URLs in the Open Graph tags need a base, and og:image is resolved against it — without

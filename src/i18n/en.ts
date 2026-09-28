@@ -223,14 +223,15 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1650 tests",
+    eyebrow: "A spreadsheet in your browser · no syntax to memorise · Thai and English",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
     ctaPrimary: "Open the app",
     ctaSecondary: "View the code on GitHub",
-    ctaNote:
-      "Free, nothing to sign up for · the formula helper answers from a local keyword matcher straight away, or paste your own Anthropic API key in the app for the real Claude; the request goes from your browser straight to Anthropic.",
+    aiNote:
+      "Try it without a key: the app guesses a formula from keywords and always says it's a guess — check before you use it. Add your own API key for real AI answers (it stays in your browser, never on our server).",
+    ctaNote: "Free, nothing to sign up for",
     benefits: ["Nothing to install", "Your file stays on your device", "Works on a phone, a tablet or a computer"],
     screenshotAlt: "The main ExcelToGo screen",
     demo: {
