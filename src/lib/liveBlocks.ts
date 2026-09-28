@@ -20,6 +20,9 @@ export interface LiveBlock {
    *  fewer rows/columns can clear what the previous one left behind. */
   rows: number;
   cols: number;
+  /** The header a table block last wrote. An empty result keeps it: a header with no rows under it,
+   *  not a block wiped without a word (#65). */
+  header?: string[];
 }
 
 function cellText(v: CellValue): string {
@@ -47,8 +50,14 @@ export function liveBlockCells(block: LiveBlock, table: TableData): string[][] {
   if (block.kind === "value") {
     return [[cellText(aggregateColumn(table, block.column ?? "", block.aggregate ?? "first"))]];
   }
-  const header = table.columns.map((c) => c.label);
+  const header = table.columns.length > 0 ? table.columns.map((c) => c.label) : (block.header ?? []);
   return [header, ...table.rows.map((r) => r.map(cellText))];
+}
+
+/** The block after a write: its new extent, and the header to keep for an empty result (#65). */
+export function afterWrite(block: LiveBlock, table: TableData, written: { rows: number; cols: number }): LiveBlock {
+  const header = block.kind === "table" && table.columns.length > 0 ? table.columns.map((c) => c.label) : block.header;
+  return { ...block, rows: written.rows, cols: written.cols, ...(header ? { header } : {}) };
 }
 
 function ensureSize(sheet: SheetModel, rows: number, cols: number): SheetModel {

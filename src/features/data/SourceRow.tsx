@@ -53,7 +53,9 @@ export default function SourceRow({ source, onUse, onEdit }: Props) {
   // waiting for, in a neutral colour, rather than "connection failed" beside "loading…".
   const waiting = source.local && (error === "needs_secret" || error === "needs_reload") ? error : null;
   const size = table
-    ? table.rows.length > 1
+    ? table.rows.length === 0
+      ? t.data.noRows
+      : table.rows.length > 1
       ? t.data.itemCount(table.rows.length, table.columns.length)
       : t.data.valueCount(table.columns.length)
     : error

@@ -29,6 +29,17 @@ describe("jsonToTable", () => {
     expect(t.columns[1].label).toBe("customer › address › city");
   });
 
+  it("reads an empty list inside an envelope as no rows, not as one row of envelope fields (#65)", () => {
+    const t = jsonToTable({ ok: true, page: 99, page_size: 25, total: 120, items: [], next: null });
+    expect(t.rows).toEqual([]);
+    expect(t.columns).toEqual([]);
+    expect(jsonToTable({ meta: { page: 3 }, data: { items: [] } }).rows).toEqual([]);
+  });
+
+  it("still reads an object with no list at all as one row, as before", () => {
+    expect(jsonToTable({ today_total: 1234, orders: 7, tags: ["a", "b"] }).rows).toEqual([[1234, 7, "a, b"]]);
+  });
+
   it("treats a single object as a one-row table", () => {
     const t = jsonToTable({ today_total: 1234, orders: 7 });
     expect(t.rows).toEqual([[1234, 7]]);

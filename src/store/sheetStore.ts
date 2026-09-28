@@ -76,7 +76,7 @@ import { getLocale, getMessages } from "@/i18n";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/types";
 import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
-import { boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, shiftLiveBlocks, writeLiveBlock } from "@/lib/liveBlocks";
+import { afterWrite, boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, shiftLiveBlocks, writeLiveBlock } from "@/lib/liveBlocks";
 import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
 
 export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "pivot" | "cloud" | "none";
@@ -1532,7 +1532,7 @@ export const useSheetStore = create<SheetState>()(
               if (table) {
                 const written = writeLiveBlock(sheet, block, liveBlockCells(block, table));
                 sheet = written.sheet;
-                block = { ...block, rows: written.rows, cols: written.cols };
+                block = afterWrite(block, table, written);
               }
               return { ...tab, sheet, liveBlocks: [...(tab.liveBlocks ?? []), block] };
             }),
@@ -1549,7 +1549,7 @@ export const useSheetStore = create<SheetState>()(
               if (table) {
                 const written = writeLiveBlock(sheet, next, liveBlockCells(next, table));
                 sheet = written.sheet;
-                next = { ...next, rows: written.rows, cols: written.cols };
+                next = afterWrite(next, table, written);
               }
               return { ...tab, sheet, liveBlocks: tab.liveBlocks!.map((b) => (b.id === blockId ? next : b)) };
             }),
@@ -1594,7 +1594,7 @@ export const useSheetStore = create<SheetState>()(
                   if (b.sourceId !== sourceId) return b;
                   const written = writeLiveBlock(sheet, b, liveBlockCells(b, table));
                   sheet = written.sheet;
-                  return { ...b, rows: written.rows, cols: written.cols };
+                  return afterWrite(b, table, written);
                 });
                 return { ...tab, sheet, liveBlocks };
               }),

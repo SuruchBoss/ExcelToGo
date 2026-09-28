@@ -54,6 +54,8 @@ export interface Messages {
     /** A row or column inserted or deleted inside a live block (#46), and what deleting its first one does. */
     blockStructure: string;
     blockUnlinked: (at: string) => string;
+    /** A source that answered with an empty list (#65). */
+    noRows: string;
     title: string;
     subtitle: string;
     addSource: string;
