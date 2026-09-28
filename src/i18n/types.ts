@@ -232,6 +232,8 @@ export interface Messages {
     ctaPrimary: string;
     ctaSecondary: string;
     ctaNote: string;
+    /** Three answers a first visit is looking for — free? private? on my phone? — under the buttons. */
+    benefits: string[];
     screenshotAlt: string;
     /** Copy for the live, editable sheet in the hero. The figures live in the component — they are
      *  the same in every language — so only the labels a reader parses are here. */
@@ -583,6 +585,22 @@ export interface Messages {
     copyFailed: string;
     codeLabel: string;
   };
+  /** The question asked before a file is opened over work, and the notice after it. */
+  importChoice: {
+    title: string;
+    body: (sheets: number) => string;
+    append: string;
+    appendHint: string;
+    replace: string;
+    replaceHint: (sheets: number) => string;
+    cancel: string;
+    doneAppend: (sheets: number) => string;
+    doneReplace: (sheets: number) => string;
+    undo: string;
+    dismiss: string;
+  };
+  /** The copy / paste / fill row shown where the pointer is a finger. */
+  touchBar: { label: string; copy: string; cut: string; paste: string; fillDown: string; clear: string };
   /** The phone's tab bar and the menu sheet its last tab opens. */
   menu: {
     navLabel: string;
@@ -609,6 +627,11 @@ export interface Messages {
     underlineTitle: string;
     alignTitle: { left: string; center: string; right: string };
     colorTitle: string;
+    /** The paint bucket: background colour of the selection, as a few swatches. */
+    fillTitle: string;
+    fillShort: string;
+    fillNone: string;
+    fillColors: Record<"yellow" | "green" | "blue" | "orange" | "red" | "purple" | "grey", string>;
     sortAscTitle: string;
     sortDescTitle: string;
     numberFormatTitle: string;
@@ -762,6 +785,8 @@ export interface Messages {
     searchPlaceholder: string;
     notFound: string;
     allCategory: string;
+    /** The everyday handful — SUM, AVERAGE, IF, SUMIF, VLOOKUP — that the list now starts with. */
+    commonCategory: string;
   };
   categories: Record<CategoryKey, string>;
   paramPanel: {
@@ -785,6 +810,10 @@ export interface Messages {
     textareaPlaceholder: string;
     askButton: string;
     heuristicNote: string;
+    /** On a keyword guess, above the formula. */
+    guessBadge: string;
+    /** Under a suggestion when the cell it would go in already holds something. */
+    overwriteWarning: (address: string) => string;
     connectionError: string;
     /** Shown when the server refuses because this browser has asked too often. */
     rateLimited: (seconds: number) => string;

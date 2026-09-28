@@ -141,14 +141,15 @@ export default function SelectionHandle({
       onPointerUp={end}
       onPointerCancel={end}
       title={t.grid.extendSelection}
-      // The grip itself is 10px so it doesn't hide the cell corner, inside a 36px target that a
-      // fingertip can actually land on.
-      className="absolute z-10 flex h-9 w-9 touch-none items-center justify-center"
-      style={{ left: left - 18, top: top - 18 }}
+      // The grip is 14px so it can be seen without hiding the cell corner, inside a 44px target —
+      // the size WCAG asks of anything a finger presses. It was 10px in a 36px target, and the blind
+      // test read it as "a 7px blue dot" that had to be hit exactly.
+      className="absolute z-10 flex h-11 w-11 touch-none items-center justify-center"
+      style={{ left: left - 22, top: top - 22 }}
     >
       <span
         className={
-          "h-2.5 w-2.5 rounded-full border-2 border-white bg-blue-600 shadow " +
+          "h-3.5 w-3.5 rounded-full border-2 border-white bg-blue-600 shadow " +
           (dragging ? "scale-150 transition-transform" : "")
         }
       />

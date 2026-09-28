@@ -95,6 +95,10 @@ const SHOWS = {
   "48-browser-error.png": [],
   // The panel's sample APIs, one added by hand: names and buttons, no counted figures.
   "49-sample-apis.png": [],
+  "50-import-choice.png": [],
+  "51-touch-actions.png": [],
+  "52-fill-colour.png": [],
+  "53-tablet-tools.png": [],
   "demo.gif": [],
 };
 

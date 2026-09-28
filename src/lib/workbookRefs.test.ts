@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { createEmptySheet, setCellRaw } from "./sheet";
-import { renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "./workbookRefs";
+import { renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "./workbookRefs";
 
 const withFormula = (body: string) => setCellRaw(createEmptySheet(), 0, 0, body);
 const a1 = (s: { cells: string[][] }) => s.cells[0][0];
@@ -98,5 +98,43 @@ describe("renaming a sheet", () => {
   it("does not mistake a sheet name inside a string for a reference", () => {
     const tabs = [{ name: "Main", sheet: withFormula('=IF(A1="Sheet2","yes","no")') }];
     expect(a1(renameSheetInFormulas(tabs, "Sheet2", "X")[0])).toBe('=IF(A1="Sheet2","yes","no")');
+  });
+});
+
+describe("a file opened beside the work already there", () => {
+  it("keeps names that do not collide as they are", () => {
+    const out = renameIncomingToFit(["ต.ค."], [{ name: "Sales", sheet: withFormula("=1") }]);
+    expect(out.map((t) => t.name)).toEqual(["Sales"]);
+  });
+
+  it("renames the incoming sheet, and its own file's formulas follow it", () => {
+    const out = renameIncomingToFit(
+      ["Sheet1"],
+      [
+        { name: "Sheet1", sheet: withFormula("=1") },
+        { name: "Summary", sheet: withFormula("=SUM(Sheet1!A1:A3)") },
+      ]
+    );
+    expect(out.map((t) => t.name)).toEqual(["Sheet1 (2)", "Summary"]);
+    expect(a1(out[1].sheet)).toBe("=SUM('Sheet1 (2)'!A1:A3)");
+  });
+
+  it("never renames onto a name the same file already uses", () => {
+    const out = renameIncomingToFit(["Sheet1"], [
+      { name: "Sheet1", sheet: withFormula("=1") },
+      { name: "Sheet1 (2)", sheet: withFormula("=1") },
+    ]);
+    expect(out.map((t) => t.name)).toEqual(["Sheet1 (3)", "Sheet1 (2)"]);
+  });
+
+  it("matches names the way Excel does, ignoring case, and keeps within 31 characters", () => {
+    const long = "ยอดขายรายเดือนของสาขาภาคเหนือทั้งหมด".slice(0, 31);
+    const out = renameIncomingToFit(["SHEET1", long], [
+      { name: "sheet1", sheet: withFormula("=1") },
+      { name: long, sheet: withFormula("=1") },
+    ]);
+    expect(out[0].name).toBe("sheet1 (2)");
+    expect(out[1].name.length).toBeLessThanOrEqual(31);
+    expect(out[1].name.endsWith(" (2)")).toBe(true);
   });
 });
