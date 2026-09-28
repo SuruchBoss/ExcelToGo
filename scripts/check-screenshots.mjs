@@ -99,6 +99,8 @@ const SHOWS = {
   "51-touch-actions.png": [],
   "52-fill-colour.png": [],
   "53-tablet-tools.png": [],
+  "54-cell-menu.png": [],
+  "55-column-resize.png": [],
   "demo.gif": [],
 };
 

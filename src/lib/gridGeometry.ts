@@ -17,6 +17,14 @@ import { SheetRange } from "./sheetRange";
 export const ROW_HEADER_WIDTH = 48;
 export const COL_WIDTH = 112;
 export const ROW_HEIGHT = 32;
+/**
+ * How narrow and how wide a dragged column may go. The floor keeps the filter button and one
+ * character on screen, so a column dragged shut can still be found and dragged open again; the
+ * ceiling is about four default columns, past which a single column pushes the rest of the sheet
+ * off even a wide monitor.
+ */
+export const MIN_COL_WIDTH = 40;
+export const MAX_COL_WIDTH = 480;
 
 export function columnWidth(sheet: SheetModel, col: number): number {
   return sheet.colWidths?.[col] ?? COL_WIDTH;

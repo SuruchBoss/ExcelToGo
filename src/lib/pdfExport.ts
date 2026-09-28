@@ -11,6 +11,7 @@ import { THAI_FONT_NAME, registerThaiFont } from "./pdfFont";
 import { planThaiMarks } from "./thaiMarks";
 import { pageLabel, pageSetupFor } from "./pageSetup";
 import { ComputedSheet, SheetModel } from "./sheet";
+import type { CellFormat } from "./cellFormat";
 import { downloadBlob } from "./excelIO";
 
 /**
@@ -136,6 +137,31 @@ async function addCharts(doc: jsPDF, sheet: SheetModel, computed: ComputedSheet,
   }
 }
 
+type Rgb = [number, number, number];
+
+/** `#rgb` or `#rrggbb` as the numbers jsPDF wants; anything else is no colour rather than black. */
+export function hexToRgb(hex: string | undefined): Rgb | undefined {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex?.trim() ?? "");
+  if (!m) return undefined;
+  const h = m[1].length === 3 ? m[1].replace(/./g, (d) => d + d) : m[1];
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as Rgb;
+}
+
+/**
+ * What a cell's own formatting adds to its box in the PDF: the fill it was given and its text
+ * colour. The export used to print every cell white on white, so a sheet with coloured heading
+ * bands — the first thing anyone formats — came out of "Export PDF" looking unformatted.
+ *
+ * Only what jsPDF can draw with the one Thai font registered: colours, not bold or italic, which
+ * would each need a font file of their own. A heading row filled by the person also gets dark text,
+ * so the export's own white-on-blue heading does not put white text on their pale yellow.
+ */
+export function pdfCellStyle(format: CellFormat | undefined, heading = false): { fillColor?: Rgb; textColor?: Rgb } {
+  const fillColor = hexToRgb(format?.fill);
+  const textColor = hexToRgb(format?.color) ?? (heading && fillColor ? ([24, 24, 27] as Rgb) : undefined);
+  return { ...(fillColor && { fillColor }), ...(textColor && { textColor }) };
+}
+
 export async function exportSheetToPdf(
   sheet: SheetModel,
   computed: ComputedSheet,
@@ -179,6 +205,15 @@ export async function exportSheetToPdf(
     styles: { fontSize: setup.fontSize, cellPadding: 2, font },
     headStyles: { fillColor: [37, 99, 235], font },
     columnStyles: { 0: { fontStyle: "bold", fillColor: [243, 244, 246], font } },
+    // The sheet's own fills and text colours, cell by cell. Column 0 is the row numbers and head
+    // row 0 the column letters, which are the export's rather than the sheet's.
+    didParseCell: (data) => {
+      if (data.column.index === 0) return;
+      const inHead = data.section === "head";
+      if (inHead && data.row.index === 0) return;
+      const r = inHead ? data.row.index - 1 : data.row.index + setup.headerRows;
+      Object.assign(data.cell.styles, pdfCellStyle(sheet.formats[r]?.[data.column.index - 1], inHead));
+    },
     // A twelve-page export used to be twelve loose sheets with nothing on them to say which came
     // first. Drawn per page rather than after the fact, which is the only moment jsPDF will say
     // which page it is on.

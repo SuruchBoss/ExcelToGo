@@ -166,9 +166,14 @@ async function typeThaiInCell(page, row, col, text) {
 }
 
 /** A fresh app with nothing carried over from the flow before. */
-async function freshPage(browser, width = 1280) {
+async function freshPage(browser, width = 1280, touch = false) {
   // Thai, fixed: a first visit takes the browser's language now, and several flows read Thai text.
-  const ctx = await browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true, locale: "th-TH" });
+  const ctx = await browser.newContext({
+    viewport: { width, height: 900 },
+    acceptDownloads: true,
+    locale: "th-TH",
+    ...(touch && { hasTouch: true, isMobile: true }),
+  });
   const page = await ctx.newPage();
   await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
   await page.evaluate(() => window.localStorage.clear());
@@ -806,6 +811,89 @@ const FLOWS = [
     },
   },
   {
+    // Typing a table the Excel way: Tab across a row, Enter at its end, and the cursor is back under
+    // the first column. `tabReturn.test.ts` covers the arithmetic; this asks whether both key paths
+    // — a cell being edited and a cell only selected — actually go through it.
+    name: "a row typed with Tab ends with Enter under its first column, and the cell menu opens from the keyboard",
+    async run(page) {
+      await page.getByRole("button", { name: /^(เริ่มจากตารางเปล่า|Start from a blank sheet)$/ }).click();
+      await cell(page, 2, 1).click();
+      for (const v of ["a", "b"]) {
+        await page.keyboard.type(v);
+        await page.keyboard.press("Tab");
+      }
+      await page.keyboard.type("c");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("next");
+      await page.keyboard.press("Enter");
+      const landed = (await cell(page, 3, 1).innerText()).trim();
+      note(landed === "next", `after Tab, Tab, Enter the next row starts back in column B (B4 showed "${landed}")`);
+
+      // Shift+F10: the menu a mouse gets on right-click, for a keyboard. Copy from it, paste from it.
+      await cell(page, 2, 1).click();
+      await page.keyboard.press("Shift+F10");
+      const menu = page.getByRole("menu");
+      await menu.waitFor({ timeout: 5000 });
+      note(await page.evaluate(() => document.activeElement?.getAttribute("role") === "menuitem"), "the menu takes focus on its first item");
+      await menu.getByRole("menuitem", { name: /คัดลอก|Copy/ }).click();
+      await cell(page, 6, 4).click({ button: "right" });
+      await page.getByRole("menu").getByRole("menuitem", { name: /วาง|Paste/ }).click();
+      const pasted = (await cell(page, 6, 4).innerText()).trim();
+      note(pasted === "a", `copy and paste from the menu work (E7 showed "${pasted}")`);
+    },
+  },
+  {
+    // The model has carried column widths since imports kept them; the drag is new. What a unit test
+    // cannot see is the handle: that it sits on the header edge, that dragging it does not select
+    // the column underneath, and that the whole drag is one undo step rather than one per pixel.
+    name: "a column dragged wider stays wider, and one undo puts it back",
+    async run(page) {
+      const header = page.locator('thead th[aria-colindex="3"]');
+      const before = (await header.boundingBox()).width;
+      const grip = await page.locator('[data-col-resize="1"]').boundingBox();
+      await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(grip.x + grip.width / 2 + 90, grip.y + grip.height / 2, { steps: 6 });
+      await page.mouse.up();
+      const after = (await header.boundingBox()).width;
+      note(after - before > 60, `the column is wider after the drag (${Math.round(before)} → ${Math.round(after)}px)`);
+      const selected = await page.evaluate(() => document.querySelectorAll('td[aria-selected="true"]').length);
+      note(selected <= 1, `grabbing the edge did not select the column (${selected} cells selected)`);
+
+      // Undo first: its history lives in memory, and a reload starts it over.
+      await cell(page, 0, 0).click();
+      await page.keyboard.press("Control+z");
+      const undone = (await header.boundingBox()).width;
+      note(Math.abs(undone - before) < 2, `one undo puts it back (${Math.round(undone)}px)`);
+      await page.keyboard.press("Control+y");
+      await page.reload({ waitUntil: "networkidle" });
+      const kept = (await page.locator('thead th[aria-colindex="3"]').boundingBox()).width;
+      note(Math.abs(kept - after) < 2, `redone, the width survives a reload (${Math.round(kept)}px)`);
+    },
+  },
+  {
+    // On a phone every Enter used to close the editor, and with it the keyboard: a column of ten
+    // values was ten taps to reopen it. Only a browser can say what has focus after the key.
+    name: "on a phone, Enter goes straight into the next cell's editor",
+    width: 390,
+    touch: true,
+    async run(page) {
+      await page.getByRole("button", { name: /^(เริ่มจากตารางเปล่า|Start from a blank sheet)$/ }).click();
+      await cell(page, 1, 1).tap();
+      await cell(page, 1, 1).tap();
+      await cell(page, 1, 1).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("one");
+      await page.keyboard.press("Enter");
+      await cell(page, 2, 1).locator("input").waitFor({ timeout: 5000 });
+      const focused = await page.evaluate(() => document.activeElement?.closest("td")?.getAttribute("data-row"));
+      note(focused === "2", `after Enter the editor on the next row has focus (row ${focused})`);
+      await page.keyboard.insertText("two");
+      await page.keyboard.press("Enter");
+      const values = [(await cell(page, 1, 1).innerText()).trim(), (await cell(page, 2, 1).innerText()).trim()];
+      note(values[0] === "one" && values[1] === "two", `both values landed without a tap in between (${values.join(", ")})`);
+    },
+  },
+  {
     // The report this came from: on a phone, the person who wrote the app could not find where to
     // connect an API. The panel switches were a scrolling row of unnamed icons, and the rest of the
     // row was past the edge. A unit test cannot see a layout, so this is the one place that asks
@@ -864,7 +952,7 @@ try {
 
   for (const flow of FLOWS) {
     console.log(`\n${flow.name}`);
-    const { ctx, page } = await freshPage(browser, flow.width);
+    const { ctx, page } = await freshPage(browser, flow.width, flow.touch);
     const errors = [];
     page.on("pageerror", (err) => errors.push(String(err).split("\n")[0]));
     try {
