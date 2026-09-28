@@ -539,6 +539,24 @@ export interface Messages {
      *  four-line banner before the first row is the cost this avoids. */
     tip: string;
     startBlank: string;
+    /** Announced when the sample opens. */
+    opened: string;
+  };
+  /** Shown on a workbook with nothing in it yet — the way in for somebody who wants to try first. */
+  startNotice: {
+    text: string;
+    openSample: string;
+  };
+  /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
+  newFile: {
+    button: string;
+    hint: string;
+    title: string;
+    body: (sheets: number) => string;
+    exportFirst: string;
+    confirm: string;
+    cancel: string;
+    started: string;
   };
   storageNotice: {
     /** Shown once inside the app: work lives in this browser only. The README saying so is no

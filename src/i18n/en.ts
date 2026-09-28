@@ -223,7 +223,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1632 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1638 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -426,7 +426,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1632", label: "automated tests" },
+      { value: "1638", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -699,6 +699,22 @@ export const en: Messages = {
     text: "This is sample data, not something you left behind.",
     tip: "Change a price and watch the Total column and the grand total move, or try Pivot and Chart on it.",
     startBlank: "Start from a blank sheet",
+    opened: "Sample data opened — undo to go back to the blank sheet",
+  },
+  startNotice: {
+    text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
+    openSample: "Try it with sample data",
+  },
+  newFile: {
+    button: "New file",
+    hint: "Start a blank sheet (you can undo it)",
+    title: "Start a new file?",
+    body: (sheets) =>
+      `The ${sheets === 1 ? "sheet" : `${sheets} sheets`} open now will be replaced by a blank one. Undo brings ${sheets === 1 ? "it" : "them"} back, but to keep a copy as a file, export first.`,
+    exportFirst: "Export Excel first",
+    confirm: "Start a new file",
+    cancel: "Cancel",
+    started: "New file started — undo to get your work back",
   },
   storageNotice: {
     text: "Your work is saved in this browser only — never uploaded. Clearing your browser data or moving to another device loses it, so use \"Export Excel\" to keep a copy.",

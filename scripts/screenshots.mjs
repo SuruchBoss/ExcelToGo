@@ -152,7 +152,7 @@ function sceneKit(browser, lang, M) {
      * default: from 1366 the whole format row is on screen, and below it most of the row folds into
      * the tools panel, which is a picture of its own (53) rather than the backdrop for every other.
      */
-    async open(route = "/app", { width = 1440, height = 860, scale = 2, touch = false, unlocked = false, prepare } = {}) {
+    async open(route = "/app", { width = 1440, height = 860, scale = 2, touch = false, unlocked = false, prepare, blank = false } = {}) {
       const ctx = await browser.newContext({
         viewport: { width, height },
         deviceScaleFactor: scale,
@@ -178,6 +178,12 @@ function sceneKit(browser, lang, M) {
       await delay(300);
       kit.page = page;
       kit.ctx = ctx;
+      // The app opens blank. Most scenes are pictures of the sample, so they open it the way a
+      // person does, with the button on the start notice; `blank: true` keeps the empty sheet.
+      if (route === "/app" && !blank) {
+        await page.getByRole("button", { name: t.startNotice.openSample, exact: true }).click();
+        await delay(300);
+      }
       return page;
     },
     cell: (r, c) => kit.page.locator(`td[data-row="${r}"][data-col="${c}"]`),
@@ -1043,6 +1049,8 @@ const SCENES = [
       await k.open("/app", {
         width: 960,
         height: 900,
+        // A saved workbook opens as itself; there is no sample to offer over it.
+        blank: true,
         prepare: (page) =>
           page.addInitScript(
             ({ first, second, header }) => {
@@ -1287,6 +1295,25 @@ const SCENES = [
       await k.cell(2, 0).click();
       await k.settle(300);
       await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 420 } });
+    },
+  },
+  {
+    // What a first visit sees: an empty sheet, and the one button that opens the sample.
+    file: "55-blank-start.png",
+    async take(k) {
+      await k.open("/app", { blank: true });
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 420 } });
+    },
+  },
+  {
+    // "New file" over work: the question, with exporting first as the answer under the cursor.
+    file: "56-new-file.png",
+    async take(k) {
+      await k.open("/app");
+      await k.type(1, 2, "70");
+      await k.button(k.t.newFile.button).click();
+      await k.page.getByRole("dialog", { name: k.t.newFile.title }).waitFor();
+      await k.shot(this.file);
     },
   },
   {

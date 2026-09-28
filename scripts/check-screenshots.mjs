@@ -101,6 +101,9 @@ const SHOWS = {
   "53-tablet-tools.png": [],
   // Dates typed by hand and one =DATE: the figures are the scene's own, not counted ones.
   "54-dates.png": [],
+  // The start notice and the New file question: words and buttons, no counted figures.
+  "55-blank-start.png": [],
+  "56-new-file.png": [],
   "demo.gif": [],
 };
 

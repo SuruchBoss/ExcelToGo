@@ -74,7 +74,7 @@ import { checkValue, ruleAt, shiftValidation, ValidationRule, withValidation } f
 import { nameKey, nameProblem, refForSelection, shiftNames, withName, withoutName, type NameProblem } from "@/lib/namedRanges";
 import { countUsage } from "@/lib/usage";
 import { getLocale, getMessages } from "@/i18n";
-import { DEFAULT_LOCALE, type Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n/types";
 import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
 import { dateTextAt, valuesWithIsoDates, withFormulaDateFormat, withRoomForDateTime } from "@/lib/dateCells";
@@ -240,9 +240,18 @@ interface SheetState {
 
   setActiveSheet: (id: string) => void;
   addSheet: () => void;
-  /** Throws away the sample workbook and starts from one empty sheet. Only reachable while the
-   *  sample is untouched, so there is nothing of the user's to lose. */
+  /**
+   * One empty sheet in place of the whole workbook: "New file", and "start blank" on the sample.
+   * In the undo history, so Ctrl+Z brings back what was there. The toolbar asks first when there
+   * is work to lose (`selectHasWork`); this does not ask, because the store is not where questions go.
+   */
   startBlank: () => void;
+  /**
+   * The sample workbook in the language on screen, in place of an empty one. The app opens blank:
+   * a grid full of somebody else's coffee prices read as data left behind, and the first thing a
+   * person does is their own work. The sample is one press away for anybody who wants to try first.
+   */
+  openSample: () => void;
   /**
    * Swaps the sample for the one in this language. Does nothing once anything has been touched:
    * the sample is the only content the app may replace on its own, because it is the only content
@@ -544,7 +553,7 @@ type StoredTab = Omit<SheetTab, "sheet"> & { sheet: PackedSheet | SheetModel };
  * sample from somebody's work (see below), and each language needs an identity of its own.
  */
 const SAMPLES: Record<Locale, SheetModel> = { th: seedSample("th"), en: seedSample("en") };
-const initialTab = newTab("Sheet1", SAMPLES[DEFAULT_LOCALE]);
+const initialTab = newTab("Sheet1");
 
 /**
  * Is the workbook still exactly what the app opened with — the sample, untouched?
@@ -565,6 +574,14 @@ export type ImportMode = "append" | "replace";
 export function selectHasWork(s: SheetState): boolean {
   if (selectShowingSample(s)) return false;
   return s.sheets.some((t) => t.sheet.cells.some((row) => row.some((v) => v !== "" && v !== undefined)));
+}
+
+/** Whether an autosave is one tab holding the untouched sample, in either language. */
+export function isStoredSample(stored: StoredTab[]): boolean {
+  if (stored.length !== 1 || stored[0].liveBlocks?.length) return false;
+  // Through the codec both ways, so a save from before the packed format compares the same.
+  const saved = JSON.stringify(toStorage(fromStorage(stored[0].sheet)));
+  return Object.values(SAMPLES).some((sample) => JSON.stringify(toStorage(sample)) === saved);
 }
 
 export function selectShowingSample(s: SheetState): boolean {
@@ -742,7 +759,12 @@ export const useSheetStore = create<SheetState>()(
 
         startBlank: () => {
           const tab = newTab("Sheet1");
-          set({ sheets: [tab], activeSheetId: tab.id });
+          set({ sheets: [tab], activeSheetId: tab.id, ...say(getMessages().newFile.started) });
+        },
+
+        openSample: () => {
+          const tab = newTab("Sheet1", SAMPLES[getLocale()]);
+          set({ sheets: [tab], activeSheetId: tab.id, ...say(getMessages().sampleNotice.opened) });
         },
 
         showSampleIn: (locale) => {
@@ -1899,6 +1921,10 @@ export const useSheetStore = create<SheetState>()(
         const p = persisted as { sheets?: StoredTab[]; activeSheetId?: string } | undefined;
         const stored = p?.sheets;
         if (!stored || stored.length === 0) return current;
+        // The sample, saved exactly as the app used to open it, is not somebody's work: every
+        // visitor before the app opened blank has it in their browser, and it is what "left over
+        // in the cells" meant. Exactly — one change of any kind and it is theirs, and stays.
+        if (isStoredSample(stored)) return current;
         // `fromStorage` reads both shapes: what `partialize` writes now, and the dense grid that
         // is sitting in somebody's browser from the version before it. Dropping those would be
         // losing their work to save bytes.

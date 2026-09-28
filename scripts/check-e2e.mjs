@@ -688,6 +688,45 @@ const FLOWS = [
     },
   },
   {
+    // The app opens blank, and the sample is one press away. What only a browser can say: the
+    // sample an older version autosaved into localStorage is not brought back on the next visit,
+    // while one changed cell makes it somebody's work that is. And "New file" over that work asks,
+    // with exporting first under the cursor, and the undo shortcut brings the work back.
+    name: "a visit opens blank, a saved sample is not restored, and New file asks and undoes",
+    async run(page) {
+      const text = async (r, c) => (await cell(page, r, c).innerText()).trim();
+      const openSample = page.getByRole("button", { name: "ลองกับข้อมูลตัวอย่าง", exact: true });
+      note((await text(0, 0)) === "" && (await openSample.isVisible()), "a first visit is an empty sheet with the sample on offer");
+
+      await openSample.click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() !== "");
+      note((await text(0, 0)) !== "", `the button opens the sample (A1 "${await text(0, 0)}")`);
+
+      await page.waitForTimeout(300);
+      await page.reload({ waitUntil: "networkidle" });
+      note((await text(0, 0)) === "", "the untouched sample, autosaved, opens blank on the next visit");
+
+      await openSample.click();
+      await typeInCell(page, 1, 2, "70");
+      await page.waitForTimeout(300);
+      await page.reload({ waitUntil: "networkidle" });
+      note((await text(1, 2)) === "70", `one changed cell makes it work that is kept (C2 "${await text(1, 2)}")`);
+
+      await page.getByRole("button", { name: "ไฟล์ใหม่", exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: "เริ่มไฟล์ใหม่?" });
+      await dialog.waitFor({ timeout: 5000 });
+      const focused = await page.evaluate(() => document.activeElement?.textContent?.trim() ?? "");
+      note(focused === "ส่งออก Excel ก่อน", `New file asks over work, with export first under the cursor ("${focused}")`);
+      await dialog.getByRole("button", { name: "เริ่มไฟล์ใหม่", exact: true }).click();
+      note((await text(1, 2)) === "" && (await text(0, 0)) === "", "confirming leaves one empty sheet");
+
+      await cell(page, 0, 0).click();
+      await page.keyboard.press("Control+z");
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="2"]')?.innerText.trim() === "70", null, { timeout: 5000 }).catch(() => {});
+      note((await text(1, 2)) === "70", `Ctrl+Z brings the work back (C2 "${await text(1, 2)}")`);
+    },
+  },
+  {
     // #110: the visitor's own API, fetched by the visitor's browser. Every request the page makes is
     // recorded, because the promise is not only "it works" but "nothing about it reaches us".
     name: "an API connected from this browser fills the sheet and refreshes, and nothing about it reaches /api/*",

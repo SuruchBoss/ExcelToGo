@@ -289,12 +289,11 @@ const OPENED_STATES = [
   },
   {
     // Only asked when opening a file would land on top of work, so the state needs work first:
-    // the sample does not count, a typed cell in a blank sheet does. The file goes in through the
-    // same hidden input the Import button clicks — a native picker is not something a page can drive.
+    // the app opens blank, and a typed cell is work. The file goes in through the same hidden
+    // input the Import button clicks — a native picker is not something a page can drive.
     name: "import choice dialog",
     path: "/app",
     async open(page) {
-      await page.getByRole("button", { name: "เริ่มจากตารางเปล่า", exact: true }).click();
       await page.locator('td[data-row="0"][data-col="0"]').click();
       // ASCII: Thai goes in through insertText, which fires no keydown, so the cell never opens.
       await page.keyboard.type("work");
@@ -305,6 +304,33 @@ const OPENED_STATES = [
         buffer: Buffer.from("a,b\n1,2\n"),
       });
       await page.getByRole("dialog", { name: "เปิดไฟล์นี้อย่างไร" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    // The app opens blank now, so the page scan sees the start notice; the sample's own notice is
+    // only on screen once somebody asks for the sample.
+    name: "sample opened",
+    path: "/app",
+    async open(page) {
+      await page.getByRole("button", { name: "ลองกับข้อมูลตัวอย่าง", exact: true }).click();
+      await page.getByRole("button", { name: "เริ่มจากตารางเปล่า", exact: true }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    // Asked only over work. From 1024px it is the icon in the top row; below that, a line in the menu.
+    name: "new file dialog",
+    path: "/app",
+    async open(page) {
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      await page.keyboard.type("work");
+      await page.keyboard.press("Enter");
+      const icon = page.getByRole("button", { name: "ไฟล์ใหม่", exact: true });
+      if (await icon.isVisible().catch(() => false)) await icon.click();
+      else {
+        await page.getByRole("button", { name: "เมนู", exact: true }).click();
+        await page.getByRole("button", { name: /^ไฟล์ใหม่/ }).click();
+      }
+      await page.getByRole("dialog", { name: "เริ่มไฟล์ใหม่?" }).waitFor({ state: "visible", timeout: 10_000 });
     },
   },
   {
