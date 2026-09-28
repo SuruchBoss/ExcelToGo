@@ -40,6 +40,12 @@ import AxeBuilder from "@axe-core/playwright";
 const PORT = Number(process.env.A11Y_PORT || 3123);
 const ORIGIN = `http://localhost:${PORT}`;
 const PAGES = ["/", "/app", "/guide"];
+/**
+ * The browser's language, fixed. A first visit now takes the language the browser asks for, and
+ * the selectors below are the Thai names — so the gate says which language it scans rather than
+ * inheriting whatever the machine running it is set to.
+ */
+const LOCALE = "th-TH";
 /** The phone width the labels vanish at, and a desktop width where they don't. */
 const ALL_AXE_WIDTHS = [390, 1280];
 /** Narrowest phone still worth supporting, two tablet-ish sizes, two desktops. */
@@ -271,6 +277,37 @@ const OPENED_STATES = [
     },
   },
   {
+    // Anchored to its button like the validation popover, and reached the same way on a phone —
+    // through the cell tools sheet — so it gets the same `reveal` first.
+    name: "fill colour popover",
+    path: "/app",
+    async open(page) {
+      await reveal(page, 'button[title="สีพื้นเซลล์"]');
+      await page.locator('button[title="สีพื้นเซลล์"]').first().click();
+      await page.getByRole("dialog", { name: "สีพื้นเซลล์" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    // Only asked when opening a file would land on top of work, so the state needs work first:
+    // the sample does not count, a typed cell in a blank sheet does. The file goes in through the
+    // same hidden input the Import button clicks — a native picker is not something a page can drive.
+    name: "import choice dialog",
+    path: "/app",
+    async open(page) {
+      await page.getByRole("button", { name: "เริ่มจากตารางเปล่า", exact: true }).click();
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      // ASCII: Thai goes in through insertText, which fires no keydown, so the cell never opens.
+      await page.keyboard.type("work");
+      await page.keyboard.press("Enter");
+      await page.locator('input[type="file"]').first().setInputFiles({
+        name: "incoming.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("a,b\n1,2\n"),
+      });
+      await page.getByRole("dialog", { name: "เปิดไฟล์นี้อย่างไร" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
     name: "names popover",
     path: "/app",
     async open(page) {
@@ -375,7 +412,7 @@ try {
 
   for (const path of PAGES) {
     for (const width of AXE_WIDTHS) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: LOCALE });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + path, { waitUntil: "networkidle" });
       const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
@@ -390,7 +427,7 @@ try {
 
   for (const state of OPENED_STATES) {
     for (const width of AXE_WIDTHS.filter((w) => !state.widths || state.widths.includes(w))) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: LOCALE });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + state.path, { waitUntil: "networkidle" });
       let violations = [];
@@ -413,7 +450,7 @@ try {
 
   for (const path of PAGES) {
     for (const width of OVERFLOW_WIDTHS) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: LOCALE });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + path, { waitUntil: "networkidle" });
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);

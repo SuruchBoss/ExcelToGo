@@ -10,10 +10,18 @@ import { useT } from "@/i18n";
 import { CategoryKey } from "@/i18n/types";
 import clsx from "clsx";
 
+/**
+ * What someone who "doesn't write formulas" reaches for, in the order they reach for it. The catalog
+ * is ordered by kind, which put SEQUENCE, TRANSPOSE, UNIQUE and SORT on top and SUM sixth; in the
+ * blind test that read as "this is for experts". Order here is presentation only — the catalog and
+ * everything that counts it are unchanged.
+ */
+const COMMON = ["SUM", "AVERAGE", "COUNT", "IF", "SUMIF", "VLOOKUP", "XLOOKUP"];
+
 export default function FormulaPalette() {
   const t = useT();
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<CategoryKey | "all">("all");
+  const [activeCategory, setActiveCategory] = useState<CategoryKey | "all" | "common">("all");
   const selection = useSheetStore(selectActiveSelection);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
   const catalog = useMemo(() => getFormulaCatalog(t), [t]);
@@ -22,8 +30,15 @@ export default function FormulaPalette() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return catalog.filter((f) => {
-      if (activeCategory !== "all" && f.categoryKey !== activeCategory) return false;
+    const common = (id: string) => COMMON.indexOf(id);
+    const ordered = [...catalog].sort((a, b) => {
+      const ra = common(a.id) === -1 ? COMMON.length : common(a.id);
+      const rb = common(b.id) === -1 ? COMMON.length : common(b.id);
+      return ra - rb;
+    });
+    return ordered.filter((f) => {
+      if (activeCategory === "common" && common(f.id) === -1) return false;
+      if (activeCategory !== "all" && activeCategory !== "common" && f.categoryKey !== activeCategory) return false;
       if (!q) return true;
       return (
         f.name.toLowerCase().includes(q) ||
@@ -46,7 +61,7 @@ export default function FormulaPalette() {
         className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-500"
       />
       <div className="flex flex-wrap gap-1">
-        {(["all", ...CATEGORY_KEYS] as const).map((cat) => (
+        {(["all", "common", ...CATEGORY_KEYS] as const).map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
@@ -55,7 +70,7 @@ export default function FormulaPalette() {
               activeCategory === cat ? "bg-emerald-700 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
             )}
           >
-            {cat === "all" ? t.palette.allCategory : t.categories[cat]}
+            {cat === "all" ? t.palette.allCategory : cat === "common" ? t.palette.commonCategory : t.categories[cat]}
           </button>
         ))}
       </div>

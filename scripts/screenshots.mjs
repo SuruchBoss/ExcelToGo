@@ -147,8 +147,12 @@ function sceneKit(browser, lang, M) {
   const kit = {
     lang,
     t,
-    /** A fresh visitor: empty storage, the language already chosen, nothing else. */
-    async open(route = "/app", { width = 1360, height = 860, scale = 2, touch = false, unlocked = false, prepare } = {}) {
+    /**
+     * A fresh visitor: empty storage, the language already chosen, nothing else. 1440 wide by
+     * default: from 1366 the whole format row is on screen, and below it most of the row folds into
+     * the tools panel, which is a picture of its own (53) rather than the backdrop for every other.
+     */
+    async open(route = "/app", { width = 1440, height = 860, scale = 2, touch = false, unlocked = false, prepare } = {}) {
       const ctx = await browser.newContext({
         viewport: { width, height },
         deviceScaleFactor: scale,
@@ -651,6 +655,8 @@ const SCENES = [
       await k.button(k.t.toolbar.askAi).first().click();
       const key = process.env.SCREENSHOT_ANTHROPIC_KEY;
       if (key) {
+        // The key settings are folded under the answer now; open them the way a person would.
+        await k.button(k.t.ai.byok.title).click();
         await k.page.locator("#byok-key").fill(key);
         await k.button(k.t.ai.byok.save).click();
       }
@@ -876,7 +882,7 @@ const SCENES = [
       await k.page.getByRole("button", { name: k.t.grid.insertRowAbove }).first().click();
       await k.cell(1, 6).click();
       await k.scrollHome();
-      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1360, height: 560 } });
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 560 } });
     },
   },
   {
@@ -911,7 +917,7 @@ const SCENES = [
       await k.type(12, 0, W[k.lang].reportTitle);
       await k.select(12, 0, 12, 4);
       await k.button(k.t.merge.join).click();
-      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1360, height: 640 } });
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 640 } });
     },
   },
   {
@@ -941,6 +947,7 @@ const SCENES = [
     async take(k) {
       await k.open("/app", { scale: 2.5 });
       await k.button(k.t.toolbar.askAi).first().click();
+      await k.button(k.t.ai.byok.title).click();
       await k.page.locator("#byok-key").fill("sk-ant-api03-demo-not-a-real-key-000000001234");
       await k.button(k.t.ai.byok.save).click();
       const panel = k.page.locator("div.rounded-md.border", { has: k.page.getByText(k.t.ai.byok.title, { exact: true }) }).first();
@@ -1123,7 +1130,7 @@ const SCENES = [
       await k.type(6, 1, `=SUM(${w.rangeName})`);
       await k.cell(6, 1).click();
       await k.button(k.t.names.short).click();
-      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1360, height: 600 } });
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 600 } });
     },
   },
   {
@@ -1214,10 +1221,61 @@ const SCENES = [
     },
   },
   {
+    // A file opened on top of work: the question that replaced a silent overwrite, with the safe
+    // answer already under the cursor.
+    file: "50-import-choice.png",
+    async take(k) {
+      await k.open("/app");
+      await k.type(1, 2, "70");
+      await k.page.locator('input[type="file"]').first().setInputFiles({
+        name: k.lang === "th" ? "ยอดขาย-กันยายน.csv" : "sales-september.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("a,b\n1,2\n"),
+      });
+      await k.page.getByRole("dialog", { name: k.t.importChoice.title }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // A phone, a column of cells selected: copy, cut, paste, fill down and clear, with no keyboard.
+    file: "51-touch-actions.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await k.select(1, 1, 5, 1);
+      await k.page.getByRole("toolbar", { name: k.t.touchBar.label }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // The header row tinted, and the swatches open again with that tint marked as the current one.
+    file: "52-fill-colour.png",
+    async take(k) {
+      await k.open("/app");
+      await k.select(0, 0, 0, 4);
+      await k.byTitle(k.t.formatBar.fillTitle).click();
+      await k.button(k.t.formatBar.fillColors.yellow).click();
+      await k.byTitle(k.t.formatBar.fillTitle).click();
+      await k.page.getByRole("dialog", { name: k.t.formatBar.fillTitle }).waitFor();
+      await k.shot(this.file, { clip: { x: 0, y: 0, width: 1440, height: 420 } });
+    },
+  },
+  {
+    // A tablet, or a folding phone opened out: one row of formatting, and the rest as a panel that
+    // drops under it instead of a row that scrolls off the edge.
+    file: "53-tablet-tools.png",
+    async take(k) {
+      await k.open("/app", { width: 1024, height: 768, touch: true });
+      await k.page.getByRole("button", { name: k.t.formatBar.tools }).click();
+      await k.page.getByRole("dialog", { name: k.t.formatBar.toolsTitle }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {
-      await k.open("/app", { width: 1180, height: 640, scale: 1.5 });
+      // 1366: the narrowest width where Pivot is a button in the row rather than in the tools panel.
+      await k.open("/app", { width: 1366, height: 640, scale: 1.5 });
       const frames = [];
       // Scrolled home first: clicking a toolbar button scrolls the toolbar to it, which at this
       // width pushes the name off the left edge of every frame after.

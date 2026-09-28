@@ -170,7 +170,8 @@ async function typeThaiInCell(page, row, col, text) {
 
 /** A fresh app with nothing carried over from the flow before. */
 async function freshPage(browser, width = 1280) {
-  const ctx = await browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true });
+  // Thai, fixed: a first visit takes the browser's language now, and several flows read Thai text.
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true, locale: "th-TH" });
   const page = await ctx.newPage();
   await page.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
   await page.evaluate(() => window.localStorage.clear());
@@ -645,6 +646,43 @@ const FLOWS = [
       await typeInCell(page, 0, 1, "fits again");
       const gone = await alert.waitFor({ state: "detached", timeout: 5000 }).then(() => true, () => false);
       note(gone, "the alert goes away once a save lands again");
+    },
+  },
+  {
+    // The blind test's worst moment: someone opened a file to look something up and lost an hour of
+    // typing, because an import replaced the workbook without a word. The store tests cover what
+    // "append" builds; this asks the seam — does the file input actually stop and ask, does the
+    // choice the dialog puts under the cursor keep the work, and does undo take the file back out.
+    name: "opening a file on top of work asks first, and keeping both keeps both",
+    async run(page) {
+      // G3: outside the sample's table, whose header row is already drawn heavier.
+      await typeInCell(page, 2, 6, "keep-me");
+      await page.keyboard.press("ArrowUp");
+      const weightOf = () => cell(page, 2, 6).evaluate((td) => getComputedStyle(td.querySelector("span") ?? td).fontWeight);
+      const before = await weightOf();
+      await page.keyboard.press("Control+b");
+      const weight = await weightOf();
+      note(Number(weight) === 700 && Number(before) < 700, `Ctrl+B makes the cell bold without opening it (font-weight ${before} → ${weight})`);
+
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "incoming.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("incoming,1\n"),
+      });
+      const dialog = page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ });
+      await dialog.waitFor({ timeout: 5000 });
+      note(true, "the file waits for a choice instead of replacing the workbook");
+
+      // Enter takes whatever has focus, which is what someone who does not read the dialog does.
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "incoming");
+      await page.getByText("Sheet1", { exact: true }).first().click();
+      const kept = (await cell(page, 2, 6).innerText()).trim();
+      note(kept === "keep-me", `the default choice keeps the work in its own tab (G3 showed "${kept}")`);
+
+      await page.getByRole("status").getByRole("button", { name: /^(ย้อนกลับ|Undo)$/ }).click();
+      const tabs = await page.getByText("incoming", { exact: true }).count();
+      note(tabs === 0, `undo on the notice takes the file's sheet back out (${tabs} left)`);
     },
   },
   {

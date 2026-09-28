@@ -89,13 +89,13 @@ export default function FindPanel({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    // On a phone it spans the width just under the top row: pinned top-right it lay over the
+    // Below 1024px it spans the width just under the top row: pinned top-right it lay over the
     // language button and left a sliver of it showing, a target too small to press on purpose and
     // easy to press by accident.
     <div
       role="dialog"
       aria-labelledby={titleId}
-      className="absolute right-3 top-3 z-40 w-[min(22rem,calc(100vw-1.5rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl max-sm:inset-x-2 max-sm:top-[3.5rem] max-sm:w-auto"
+      className="absolute right-3 top-3 z-40 w-[min(22rem,calc(100vw-1.5rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl max-lg:inset-x-2 max-lg:top-[3.5rem] max-lg:w-auto"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 id={titleId} className="flex items-center gap-1.5 text-xs font-semibold text-zinc-800">
