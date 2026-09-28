@@ -7,7 +7,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { colToLetters, getComment } from "@/lib/sheet";
 import { cellRef } from "@/lib/formulaEngine/address";
 import { FormulaError } from "@/lib/formulaEngine/types";
-import { normalizeSelection, singleCellSelection } from "@/types/sheet-ui";
+import { normalizeSelection, singleCellSelection, type SelectionRect } from "@/types/sheet-ui";
+import { awaitsOperand } from "./openFormula";
 import {
   selectActiveSelection,
   selectActiveSheet,
@@ -41,13 +42,19 @@ import { packCell } from "@/lib/formulaEngine/formulaProgram";
 import { rowOffsets, rowWindow, scrollToShowRow } from "@/lib/rowWindow";
 import { blockAround, jumpToEdge, pageStep, rowEnd, usedBounds } from "@/lib/gridNavigation";
 import ChartOverlay from "./ChartOverlay";
-import SelectionHandle from "./SelectionHandle";
+import SelectionHandle, { useCoarsePointer } from "./SelectionHandle";
 import FillHandle from "./FillHandle";
 import { dateFits } from "./dateFit";
 import { dateKindAt } from "@/lib/dateCells";
 import { afterEnter, afterTab, type TabRun } from "./tabReturn";
 import CellContextMenu from "./CellContextMenu";
 
+
+/** Half the selection grip's 44px target: the room a flush right edge needs on a touch screen. */
+const GRIP_ROOM = 22;
+
+const selectionKey = (s: { startRow: number; startCol: number; endRow: number; endCol: number }) =>
+  `${s.startRow},${s.startCol},${s.endRow},${s.endCol}`;
 
 export default function SpreadsheetGrid() {
   const t = useT();
@@ -63,6 +70,7 @@ export default function SpreadsheetGrid() {
   const toggleUnderline = useSheetStore((s) => s.toggleUnderline);
   const setColumnWidth = useSheetStore((s) => s.setColumnWidth);
   const addColumn = useSheetStore((s) => s.addColumn);
+  const growColumnsTo = useSheetStore((s) => s.growColumnsTo);
   const copySelection = useSheetStore((s) => s.copySelection);
   const cutSelection = useSheetStore((s) => s.cutSelection);
   const pasteAtSelection = useSheetStore((s) => s.pasteAtSelection);
@@ -191,6 +199,11 @@ export default function SpreadsheetGrid() {
     return undefined;
   };
 
+  /** A selection made whole on purpose (a row header, a column header, select-all), and the axes the
+   *  view should not chase for it. Matched by the selection's corners, so it cannot leak onto a
+   *  later selection made some other way. */
+  const holdView = useRef<{ key: string; x: boolean; y: boolean } | null>(null);
+  const coarse = useCoarsePointer();
   // Follow the cursor.
   //
   // Two reasons, and the second one is not optional: a row outside the window is not in the DOM at
@@ -200,23 +213,33 @@ export default function SpreadsheetGrid() {
   //
   // Keyed on the corner the keyboard is dragging rather than the anchor, so Shift+Down keeps the
   // growing edge on screen instead of the end it is growing away from.
+  //
+  // Except along an axis the selection covers end to end because it was asked for whole: a tap on
+  // row header 1 selected A1:J1, the far corner was J, and the view jumped to H–J with the data
+  // off the left edge (#127). The row is already on screen; nothing sideways needs to move.
   const focusRow = selection.anchorRow === selection.startRow ? selection.endRow : selection.startRow;
   const focusCol = selection.anchorCol === selection.startCol ? selection.endCol : selection.startCol;
   useLayoutEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-    const top = scrollToShowRow(offsets, focusRow, container.scrollTop, container.clientHeight, ROW_HEIGHT);
+    const current = selectActiveSelection(useSheetStore.getState());
+    const held = holdView.current?.key === selectionKey(current) ? holdView.current : null;
+    const top = held?.y ? null : scrollToShowRow(offsets, focusRow, container.scrollTop, container.clientHeight, ROW_HEIGHT);
 
     const left = columnLeft(sheet, focusCol);
     const right = left + columnWidth(sheet, focusCol);
     let nextLeft: number | null = null;
     // ROW_HEADER_WIDTH, because the row numbers are sticky and float over the left of the scroller.
-    if (left < container.scrollLeft + ROW_HEADER_WIDTH) nextLeft = Math.max(0, left - ROW_HEADER_WIDTH);
-    else if (right > container.scrollLeft + container.clientWidth) nextLeft = right - container.clientWidth;
+    if (held?.x) nextLeft = null;
+    else if (left < container.scrollLeft + ROW_HEADER_WIDTH) nextLeft = Math.max(0, left - ROW_HEADER_WIDTH);
+    // On a touch screen, half a grip's width more: the selection grip is centred on the cell's
+    // corner, so a cell scrolled exactly flush with the right edge left half of it off screen and a
+    // finger landed on the border instead (#127).
+    else if (right > container.scrollLeft + container.clientWidth) nextLeft = right - container.clientWidth + (coarse ? GRIP_ROOM : 0);
 
     if (top === null && nextLeft === null) return;
     container.scrollTo({ top: top ?? container.scrollTop, left: nextLeft ?? container.scrollLeft });
-  }, [focusRow, focusCol, offsets, sheet]);
+  }, [focusRow, focusCol, offsets, sheet, coarse]);
   // Recomputed from values, not stored: that is the whole point — edit a number and its colour
   // follows on the same render.
   const cfVisuals = useMemo(
@@ -283,6 +306,57 @@ export default function SpreadsheetGrid() {
   const inSelection = (r: number, c: number) =>
     r >= selection.startRow && r <= selection.endRow && c >= selection.startCol && c <= selection.endCol;
   const widthOf = (c: number) => (resizing?.col === c ? resizing.width : sheet.colWidths?.[c] ?? COL_WIDTH);
+
+  // ── The sheet runs to the edge of the screen ──────────────────────────────────────────────
+  //
+  // A new sheet is ten columns, and on a wide screen it used to stop at J with a blank band to
+  // its right — which read as "the sheet ends here" to someone who had never been told about Tab
+  // at the last column or the "+ column" button. The columns past the last one are drawn empty up
+  // to the edge, the way Excel always shows more, and a click on one grows the sheet to it. They
+  // are drawn, not added: an export still holds only the columns that exist.
+  const [gridWidth, setGridWidth] = useState(0);
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const measure = () => setGridWidth(container.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+  let usedWidth = ROW_HEADER_WIDTH;
+  for (let c = 0; c < sheet.cols; c++) usedWidth += widthOf(c);
+  // None on a template, whose shape is fixed, and none where the sheet already fills the screen.
+  const ghostCols = sheet.template ? 0 : Math.max(0, Math.ceil((gridWidth - usedWidth) / COL_WIDTH));
+  const growInto = (row: number, col: number) => {
+    growColumnsTo(col + 1);
+    setSelection(singleCellSelection(row, col));
+  };
+  const ghostHeaders = Array.from({ length: ghostCols }, (_, i) => (
+    <th
+      key={`ghost-${i}`}
+      aria-hidden
+      className="sticky top-0 z-20 border-b border-r border-zinc-200 bg-zinc-100 text-xs font-semibold text-zinc-600"
+      style={{ width: COL_WIDTH, minWidth: COL_WIDTH, height: ROW_HEIGHT }}
+    >
+      {colToLetters(sheet.cols + i)}
+    </th>
+  ));
+  const ghostCells = (r: number) =>
+    Array.from({ length: ghostCols }, (_, i) => (
+      <td
+        key={`ghost-${i}`}
+        aria-hidden
+        data-ghost-col={sheet.cols + i}
+        onMouseDown={(e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          growInto(r, sheet.cols + i);
+        }}
+        className="border-b border-r border-zinc-200 bg-white"
+        style={{ width: COL_WIDTH, minWidth: COL_WIDTH }}
+      />
+    ));
 
   const startResize = (e: React.PointerEvent, c: number) => {
     e.preventDefault();
@@ -490,10 +564,14 @@ export default function SpreadsheetGrid() {
     setSelection(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
   };
 
+  const selectWhole = (next: SelectionRect, x: boolean, y: boolean) => {
+    holdView.current = { key: selectionKey(next), x, y };
+    setSelection(next);
+  };
   const selectWholeRow = (row: number) =>
-    setSelection({ anchorRow: row, anchorCol: 0, startRow: row, startCol: 0, endRow: row, endCol: sheet.cols - 1 });
+    selectWhole({ anchorRow: row, anchorCol: 0, startRow: row, startCol: 0, endRow: row, endCol: sheet.cols - 1 }, true, false);
   const selectWholeColumn = (col: number) =>
-    setSelection({ anchorRow: 0, anchorCol: col, startRow: 0, startCol: col, endRow: sheet.rows - 1, endCol: col });
+    selectWhole({ anchorRow: 0, anchorCol: col, startRow: 0, startCol: col, endRow: sheet.rows - 1, endCol: col }, false, true);
 
   const { menu: contextMenu, open: openHeaderMenu, close: closeHeaderMenu } = useHeaderContextMenu((type, index) => {
     if (type === "row") selectWholeRow(index);
@@ -671,14 +749,18 @@ export default function SpreadsheetGrid() {
         const target = alreadyBlock
           ? { startRow: 0, startCol: 0, endRow: sheet.rows - 1, endCol: sheet.cols - 1 }
           : block;
-        setSelection({
-          anchorRow: target.startRow,
-          anchorCol: target.startCol,
-          startRow: target.startRow,
-          startCol: target.startCol,
-          endRow: target.endRow,
-          endCol: target.endCol,
-        });
+        selectWhole(
+          {
+            anchorRow: target.startRow,
+            anchorCol: target.startCol,
+            startRow: target.startRow,
+            startCol: target.startCol,
+            endRow: target.endRow,
+            endCol: target.endCol,
+          },
+          true,
+          true
+        );
         e.preventDefault();
         break;
       }
@@ -1052,6 +1134,7 @@ export default function SpreadsheetGrid() {
                 </td>
               );
             })}
+            {ghostCells(r)}
           </tr>
   );
   const isInSelection = (row: number, col: number) =>
@@ -1073,9 +1156,19 @@ export default function SpreadsheetGrid() {
     // Focus lands here instead, which survives any amount of the sheet being recycled.
     <div
       ref={scrollRef}
+      data-grid-scroller
       className="relative h-full overflow-auto bg-white"
       tabIndex={-1}
       onKeyDown={handleKeyDown}
+      // A click or tap anywhere on the grid while the cell's editor holds a formula waiting for an
+      // address (`=`, `=SUM(`) used to save that half-formula over the cell (#99). Stopped here, on
+      // the way down, so neither the cell's own mousedown nor the editor's blur ever sees it.
+      onMouseDownCapture={(e) => {
+        if (!editing || !awaitsOperand(editing.value)) return;
+        if ((e.target as HTMLElement).closest("input, select")) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       {/*
         `role="grid"`, and the row/column counts that go with it.
@@ -1184,6 +1277,7 @@ export default function SpreadsheetGrid() {
                 />
               </th>
             ))}
+            {ghostHeaders}
           </tr>
         </thead>
         <tbody>
@@ -1191,13 +1285,13 @@ export default function SpreadsheetGrid() {
           {/* One row standing in for everything scrolled past that is not already frozen above. */}
           {padAfterFrozen > 0 && (
             <tr aria-hidden>
-              <td colSpan={sheet.cols + 1} style={{ height: padAfterFrozen, padding: 0, border: 0 }} />
+              <td colSpan={sheet.cols + 1 + ghostCols} style={{ height: padAfterFrozen, padding: 0, border: 0 }} />
             </tr>
           )}
           {visibleRows.map(renderRow)}
           {window_.bottomPad > 0 && (
             <tr aria-hidden>
-              <td colSpan={sheet.cols + 1} style={{ height: window_.bottomPad, padding: 0, border: 0 }} />
+              <td colSpan={sheet.cols + 1 + ghostCols} style={{ height: window_.bottomPad, padding: 0, border: 0 }} />
             </tr>
           )}
         </tbody>

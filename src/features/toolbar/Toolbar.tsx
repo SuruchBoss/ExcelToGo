@@ -3,8 +3,8 @@
 
 "use client";
 
-import { useRef, useState } from "react";
-import { FilePlus, FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, Save, Database, Cloud, Menu } from "lucide-react";
+import { useRef, useState, useSyncExternalStore } from "react";
+import { FilePlus, FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, CircleCheck, TriangleAlert, Database, Cloud, Menu } from "lucide-react";
 import clsx from "clsx";
 import { selectHasWork, useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
@@ -12,6 +12,7 @@ import { keepGridFocus } from "./keepGridFocus";
 import LanguageToggle from "./LanguageToggle";
 import Link from "next/link";
 import { isCloudConfigured } from "@/lib/cloud/config";
+import { getSaveStatus, subscribeSaveStatus } from "@/lib/saveHealth";
 import MobileMenu from "./MobileMenu";
 import { useKeyboardOpen } from "./useKeyboardOpen";
 import ImportChoiceDialog from "./ImportChoiceDialog";
@@ -56,6 +57,7 @@ export default function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const busy = useSheetStore((s) => s.busy);
+  const saveStatus = useSyncExternalStore(subscribeSaveStatus, getSaveStatus, () => "ok" as const);
   const sidebarMode = useSheetStore((s) => s.sidebarMode);
   const hasPending = useSheetStore((s) => s.pending !== null);
   const importFromFile = useSheetStore((s) => s.importFromFile);
@@ -94,6 +96,33 @@ export default function Toolbar() {
       <Link href="/" title={t.landing.home} className="mr-2 shrink-0 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}
       </Link>
+      {/* Where a document app says it saved: beside the name, as a status rather than a control. It
+          sat at the head of the panel buttons with a floppy disk — the icon of a Save *button* — and
+          read as a button that did nothing, alone on the wrong side of a gap. A tick says it is
+          done; amber and different words when the browser refused the last save. The word only from
+          2xl, as before: below that the row overflowed a 1366px laptop in English. The icon stays,
+          and the word stays for a screen reader. `relative` because `sr-only` is absolute — without
+          a positioned parent the hidden word widened the page by 86px at 820. */}
+      {busy ? (
+        <span className="-ml-1 mr-2 hidden shrink-0 text-xs text-zinc-500 lg:inline">{busy}</span>
+      ) : (
+        <span
+          title={saveStatus === "ok" ? t.toolbar.autosaveTitle : t.toolbar.autosaveFailed}
+          className={clsx(
+            "relative -ml-1 mr-2 hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs lg:flex",
+            saveStatus === "ok" ? "text-zinc-500" : "font-medium text-amber-800"
+          )}
+        >
+          {saveStatus === "ok" ? (
+            <CircleCheck size={13} aria-hidden className="text-emerald-600" />
+          ) : (
+            <TriangleAlert size={13} aria-hidden />
+          )}
+          <span className="sr-only 2xl:not-sr-only">
+            {saveStatus === "ok" ? t.toolbar.autosaveLabel : t.toolbar.autosaveFailed}
+          </span>
+        </span>
+      )}
       {/* On a phone the row is the brand, then undo, redo and the language — nothing that scrolls
           out of sight. The busy message lives here too, since the tab bar has no room for words
           that are not tab names. */}
@@ -109,9 +138,9 @@ export default function Toolbar() {
         onClick={newFile}
         aria-label={t.newFile.button}
         title={`${t.newFile.button} — ${t.newFile.hint}`}
-        className="hidden min-w-8 shrink-0 items-center justify-center rounded-md border border-zinc-300 px-1.5 py-1.5 text-zinc-700 hover:bg-zinc-50 lg:flex"
+        className="hidden min-w-8 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-zinc-300 px-1.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 lg:flex min-[1440px]:px-2.5"
       >
-        <FilePlus size={15} />
+        <FilePlus size={15} /> <span className="hidden min-[1440px]:inline">{t.newFile.button}</span>
       </button>
       <button
         onClick={() => fileInputRef.current?.click()}
@@ -216,19 +245,6 @@ export default function Toolbar() {
           keyboardOpen && "max-lg:hidden"
         )}
       >
-        {busy ? (
-          <span className="hidden text-xs text-zinc-500 lg:inline">{busy}</span>
-        ) : (
-          // The word only from 2xl up. Below that the row overflowed a 1366px laptop by 41px in
-          // English — enough to push the language toggle, the one control a reader of the wrong
-          // language is looking for, half off the edge. The icon stays, and the word stays for a
-          // screen reader, which never had a width to run out of.
-          // `relative` because `sr-only` is `position: absolute`: without a positioned parent the
-          // hidden word escaped the toolbar's own scroll box and widened the page by 86px at 820.
-          <span title={t.toolbar.autosaveTitle} className="relative hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs text-zinc-500 lg:flex">
-            <Save size={13} aria-hidden /> <span className="sr-only 2xl:not-sr-only">{t.toolbar.autosaveLabel}</span>
-          </span>
-        )}
         <button onClick={() => toggleSidebar("palette")} aria-label={t.toolbar.formulas} aria-pressed={paletteOpen} className={navButton(paletteOpen)}>
           <span className={navIcon(paletteOpen)}>
             <Sigma size={17} className="lg:size-[15px]" />

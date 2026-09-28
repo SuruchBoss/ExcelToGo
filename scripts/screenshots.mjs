@@ -1343,6 +1343,17 @@ const SCENES = [
     },
   },
   {
+    // A phone with the selection swiped off to the left, and the chip that brings it back (#127).
+    file: "59-back-to-selection.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await k.select(1, 1, 8, 1);
+      await k.page.locator("[data-grid-scroller]").evaluate((el) => el.scrollTo({ left: 900 }));
+      await k.page.getByRole("button", { name: k.t.grid.backToSelection("B2:B9") }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {

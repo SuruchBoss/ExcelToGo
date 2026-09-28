@@ -8,6 +8,7 @@ import FormatBar from "@/features/toolbar/FormatBar";
 import FormulaBar from "@/features/grid/FormulaBar";
 import TemplateBar from "@/features/grid/TemplateBar";
 import SpreadsheetGrid from "@/features/grid/SpreadsheetGrid";
+import BackToSelection from "@/features/grid/BackToSelection";
 import SheetTabs from "@/features/grid/SheetTabs";
 import TouchActionBar from "@/features/grid/TouchActionBar";
 import FormulaPalette from "@/features/formulas/FormulaPalette";
@@ -107,8 +108,9 @@ export default function Home() {
       <PivotNotice />
       <div className="flex min-h-0 flex-1 gap-3 p-2 sm:p-3">
         <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white outline-none">
-          <div className="min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1">
             <SpreadsheetGrid />
+            <BackToSelection />
           </div>
           <TouchActionBar />
           <SheetTabs />
