@@ -81,8 +81,11 @@ had never tried the headline feature on production, and had never asked the owne
 - **ห้าม `pkill -f next-server`** มันฆ่าคำสั่งของตัวเองด้วย (ชื่อ process มีคำนั้นอยู่ในบรรทัดคำสั่ง) · หยุด server ด้วย PID ที่ถือพอร์ต
 - worktree ที่ `node_modules` เป็น symlink ออกนอก worktree ทำให้ Turbopack build ล้ม · รันด่าน build/a11y/e2e ใน checkout หลักแทน
 - เครื่องของ agent อาจเข้า `vercel.com` / `vercel.app` ไม่ได้ · รู้ไว้ก่อน แล้วขอ owner ช่วยตรวจ production ตั้งแต่ต้น (ข้อ 2)
+- **merge ผ่าน PR เสมอ** (เปิด PR → รอ CI → merge ด้วยปุ่มหรือเครื่องมือ GitHub) ไม่ push ตรงเข้า `main` · ตัวตรวจความปลอดภัยของ
+  Claude Code เคยบล็อก `git push origin HEAD:main` เพราะ `main` deploy ขึ้น Vercel ทันที · PR ยังให้ CI รันและมีบันทึกว่าอะไรเข้า `main` เมื่อไร
 - Operational: never `pkill -f next-server` (it kills your own command); a worktree with a symlinked `node_modules`
-  breaks the Turbopack build; the agent's machine may not reach Vercel — plan to ask the owner for production checks.
+  breaks the Turbopack build; the agent's machine may not reach Vercel — plan to ask the owner for production checks;
+  merge through a PR, never a direct push to `main` (it deploys, and a direct push has been blocked for exactly that).
 
 ---
 
@@ -92,3 +95,4 @@ had never tried the headline feature on production, and had never asked the owne
 |---|---|---|
 | 2026-09-27 | ประกาศว่าพร้อมให้คนนอกใช้ ทั้งที่ฟีเจอร์หลัก (ต่อ API/ข้อมูลของตัวเอง) ถูกปิดบน production · ไม่เคยถาม owner ว่าแอปสร้างมาเพื่ออะไร · เกือบเสนอย้ายฟีเจอร์นั้นเข้าเมนู | 1, 2, 3, 6 |
 | 2026-09-27 | handoff มีตัวเลขผิด (11 vs 12 หลัก) และอ้างเลข issue ผิด | 4 |
+| 2026-09-28 | push ตรงเข้า `main` ถูกบล็อกว่าเป็นการ deploy production · เปลี่ยนเป็นเปิด PR (#112) แล้ว merge | 7 |
