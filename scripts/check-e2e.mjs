@@ -387,6 +387,15 @@ const FLOWS = [
       await page.keyboard.insertText("ยอดขายเดือนนี้");
       await page.keyboard.press("Enter");
       note((await at(14, 1)) === "ยอดขายเดือนนี้", `Thai typed into the bar lands in B15 (showed "${await at(14, 1)}")`);
+
+      // While the cell's own editor is open the bar shows what is typed there, as Excel's does —
+      // it showed the saved cell, so its placeholder, while `=SUM(` was typed in the cell. Shown
+      // only: Escape still leaves the cell as it was.
+      await cell(page, 16, 1).click();
+      await page.keyboard.type("=SUM(");
+      note((await bar.inputValue()) === "=SUM(", `the bar shows what the cell's editor holds (showed "${await bar.inputValue()}")`);
+      await page.keyboard.press("Escape");
+      note((await at(16, 1)) === "" && (await bar.inputValue()) === "", `and Escape writes nothing (B17 "${await at(16, 1)}", bar "${await bar.inputValue()}")`);
     },
   },
   {
@@ -1204,6 +1213,8 @@ const FLOWS = [
       await touch("touchEnd", x, endY);
       await page.waitForTimeout(150);
       note((await editor.inputValue()) === "=SUM(B3:B4", `the pointed cell's grip widens it into a range (${await editor.inputValue()})`);
+      const shown = await page.getByPlaceholder(/SUM\(A1:A10\)/).inputValue();
+      note(shown === "=SUM(B3:B4", `the formula bar shows the formula as it is typed (${shown})`);
       const focused = await page.evaluate(() => document.activeElement?.tagName);
       note(focused === "INPUT", `the editor kept focus through taps and the drag, so the keyboard stays up (${focused})`);
 

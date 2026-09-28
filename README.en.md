@@ -1978,6 +1978,9 @@ and `:` two layers down. Now, while the cell's editor or the formula bar holds a
 - **A bar above the keyboard** shows the formula being typed, in the one place always on screen, with
   `( ) , : + −`, **Done** (which closes missing brackets, as Excel does: `=SUM(C2:C10` saves as
   `=SUM(C2:C10)`) and ✕ to cancel (the cell keeps what it had).
+- **The formula bar at the top shows what is typed in the cell too**, as Excel's does, with a finger or a mouse. It
+  used to show the cell as saved, so only its placeholder while a formula was typed in the cell. It only
+  shows: Escape still leaves the cell as it was.
 - Meanwhile the format row, the sheet tabs and the copy/paste row step aside, so as much of the grid as
   possible shows above the keyboard.
 

@@ -12,7 +12,7 @@ import { precedentsOf } from "@/lib/precedents";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { FormulaBarDraft, formulaBarCellKey, formulaBarShown, formulaBarWrite } from "./formulaBarDraft";
 import { awaitsOperand } from "./openFormula";
-import { lastPressWasTouch, noteFormulaText, pointingFormula, registerFormulaEditor, unregisterFormulaEditor } from "./pointing";
+import { lastPressWasTouch, noteFormulaText, pointingFormula, registerFormulaEditor, unregisterFormulaEditor, usePointingStore } from "./pointing";
 
 /**
  * Always-visible bar showing the selected cell's address and raw content (a formula or a
@@ -47,6 +47,11 @@ export default function FormulaBar() {
   // and then again from the input's own blur, and the second call may still hold the first one's
   // closure. Clearing this on the first commit is what makes the second write nothing.
   const draftRef = useRef<FormulaBarDraft | null>(null);
+  // What the cell's own editor holds while it is open, as Excel's bar shows it. The bar used to
+  // show the cell as saved — empty, so its placeholder — while `=SUM(` was typed in the cell, and
+  // the cell's editor is too narrow to hold a formula (PO's check of #142 at 390px). Shown only:
+  // focusing the bar closes the cell's editor first, and what the bar writes is its own draft.
+  const cellEditing = usePointingStore((s) => (s.editor?.input.closest("td") ? s.text : null));
 
   const commit = () => {
     const pending = draftRef.current;
@@ -113,7 +118,7 @@ export default function FormulaBar() {
       <span className="shrink-0 text-xs italic text-zinc-500">fx</span>
       <input
         ref={inputRef}
-        value={formulaBarShown(draft, cellKey, raw)}
+        value={cellEditing ?? formulaBarShown(draft, cellKey, raw)}
         onChange={(e) => {
           draftRef.current = { cellKey, text: e.target.value };
           setDraft(draftRef.current);
