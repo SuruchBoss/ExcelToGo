@@ -23,6 +23,7 @@ import {
   cloneSheet,
   ClipboardBlock,
   computeSheet,
+  type ComputedSheet,
   createWorkbookResolver,
   type CrossSheetResolver,
   copyRange,
@@ -406,10 +407,11 @@ function renderPivotSheet(
   sourceSheet: SheetModel,
   range: PivotSource["range"],
   config: PivotConfig,
-  sourceSheetId: string
+  sourceSheetId: string,
+  sheets: readonly SheetTab[]
 ): RenderedPivot | null {
   if (range.endRow <= range.startRow) return null;
-  const computed = computeSheet(sourceSheet);
+  const computed = computeTab(sourceSheet, sheets);
 
   const rows: FormulaValue[][] = [];
   for (let r = range.startRow; r <= range.endRow; r++) {
@@ -1210,7 +1212,7 @@ export const useSheetStore = create<SheetState>()(
             if (refusedStructuralChange(activeTab(s).sheet)) return {};
             return {
             sheets: updateActiveSheet(s, (sheet, selection) => {
-              const computed = computeSheet(sheet);
+              const computed = computeTab(sheet, s.sheets);
               const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
               return sortRange(sheet, computed, range, selection.anchorCol, ascending);
             }),
@@ -1223,7 +1225,7 @@ export const useSheetStore = create<SheetState>()(
         setColumnFilter: (col, values) =>
           set((s) => {
             const next = { ...s.filtersBySheetId[s.activeSheetId], [col]: values };
-            const { display } = computeSheet(activeTab(s).sheet);
+            const { display } = computeTab(activeTab(s).sheet, s.sheets);
             return {
               filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: next },
               // Counted through the same function the grid hides rows with, rather than a second
@@ -1245,7 +1247,7 @@ export const useSheetStore = create<SheetState>()(
         clearAllFilters: () =>
           set((s) => ({
             filtersBySheetId: { ...s.filtersBySheetId, [s.activeSheetId]: {} },
-            ...say(getMessages().live.allFiltersCleared(computeSheet(activeTab(s).sheet).display.length)),
+            ...say(getMessages().live.allFiltersCleared(computeTab(activeTab(s).sheet, s.sheets).display.length)),
           })),
 
         toggleBold: () =>
@@ -1296,7 +1298,7 @@ export const useSheetStore = create<SheetState>()(
             endRow: selection.endRow,
             endCol: selection.endCol,
           };
-          const out = renderPivotSheet(source.sheet, range, config, source.id);
+          const out = renderPivotSheet(source.sheet, range, config, source.id, s.sheets);
           if (!out) return false;
 
           const m = getMessages();
@@ -1327,7 +1329,7 @@ export const useSheetStore = create<SheetState>()(
           const source = s.sheets.find((t) => t.id === spec.sheetId);
           if (!source) return false;
 
-          const out = renderPivotSheet(source.sheet, spec.range, spec.config, spec.sheetId);
+          const out = renderPivotSheet(source.sheet, spec.range, spec.config, spec.sheetId, s.sheets);
           if (!out) return false;
           set({
             sheets: s.sheets.map((t) => (t.id === target.id ? { ...t, sheet: out.sheet } : t)),
@@ -1772,7 +1774,8 @@ export const useSheetStore = create<SheetState>()(
           countUsage("file_exported");
           set({ busy: getMessages().store.busyExportingXlsx });
           try {
-            const sheets = get().sheets.map((t) => ({ name: t.name, sheet: t.sheet, computed: computeSheet(t.sheet) }));
+            const all = get().sheets;
+            const sheets = all.map((t) => ({ name: t.name, sheet: t.sheet, computed: computeTab(t.sheet, all) }));
             const { exportWorkbookToXlsxBlob, downloadBlob } = await import("@/lib/excelIO");
             const blob = await exportWorkbookToXlsxBlob(sheets);
             downloadBlob(blob, "ExcelToGo.xlsx");
@@ -1790,7 +1793,7 @@ export const useSheetStore = create<SheetState>()(
           try {
             const tab = activeTab(get());
             const { exportSheetToPdf } = await import("@/lib/pdfExport");
-            await exportSheetToPdf(tab.sheet, computeSheet(tab.sheet), tab.name, getLocale());
+            await exportSheetToPdf(tab.sheet, computeTab(tab.sheet, get().sheets), tab.name, getLocale());
           } finally {
             set({ busy: null });
           }
@@ -1809,7 +1812,7 @@ export const useSheetStore = create<SheetState>()(
           try {
             const tab = activeTab(get());
             const { toCsv, trimGrid, valuesToCsvGrid } = await import("@/lib/csv");
-            const grid = trimGrid(valuesToCsvGrid(computeSheet(tab.sheet).values));
+            const grid = trimGrid(valuesToCsvGrid(computeTab(tab.sheet, get().sheets).values));
             if (grid.length === 0) {
               alert(getMessages().store.csvEmpty);
               return;
@@ -1928,12 +1931,24 @@ export function useComputedSheet() {
   // Against the whole workbook, because a formula may name another tab. Memoised on `sheets` as
   // well as `sheet`: editing a sheet this one reads leaves this one's object identical, and
   // recomputing only when the visible sheet changes is exactly how a stale number stays on screen.
-  return useMemo(() => computeSheet(sheet, createWorkbookResolver(sheets)), [sheet, sheets]);
+  return useMemo(() => computeTab(sheet, sheets), [sheet, sheets]);
 }
 
 /** The resolver for the workbook as it is right now — for the places outside React that compute. */
 export function workbookResolver(s: SheetState): CrossSheetResolver {
   return createWorkbookResolver(s.sheets);
+}
+
+/**
+ * A sheet's values as the grid shows them: computed against the whole workbook (#58).
+ *
+ * The one way the store, the panels and the exports compute a sheet. Each of them used to call
+ * `computeSheet(sheet)` bare, so a formula reading another tab was `#REF!` in the CSV, the PDF, the
+ * pivot, the sort and the filter's announcement while the grid showed its number. A guard test
+ * fails on any new bare call outside the engine.
+ */
+export function computeTab(sheet: SheetModel, sheets: readonly SheetTab[]): ComputedSheet {
+  return computeSheet(sheet, createWorkbookResolver(sheets as SheetTab[]));
 }
 
 export function useSelectionAddress() {
@@ -1959,6 +1974,7 @@ export interface AIContext {
  */
 export function useAIContext(): AIContext {
   const sheet = useSheetStore(selectActiveSheet);
+  const sheets = useSheetStore((s) => s.sheets);
   const selection = useSheetStore(selectActiveSelection);
   return useMemo(() => {
     const address = selectionToAddress(selection);
@@ -1967,7 +1983,7 @@ export function useAIContext(): AIContext {
     // "drop a header that sits on top of numbers" rule never fired, and the range came back as
     // E1:E10 with the word "รวม" inside it. SUM ignores text, so the total was right and the range
     // was wrong — the kind of bug that survives because the number on screen looks fine.
-    const { display } = computeSheet(sheet);
+    const { display } = computeTab(sheet, sheets);
     const valueAt = (r: number, c: number) => display[r]?.[c] ?? "";
     const bounds = { rows: sheet.rows, cols: sheet.cols };
     const headers = headerRow(valueAt, bounds);
@@ -1978,7 +1994,7 @@ export function useAIContext(): AIContext {
       ? rangeRefString(run.startRow, selection.anchorCol, run.endRow, selection.anchorCol)
       : address;
     return { address, range, headers };
-  }, [sheet, selection]);
+  }, [sheet, sheets, selection]);
 }
 
 const EMPTY_FORMAT: CellFormat = {};
@@ -2003,7 +2019,7 @@ export function selectPivotStatus(s: SheetState): PivotStatus | null {
   const source = s.sheets.find((t) => t.id === spec.sheetId);
   if (!source) return "orphaned";
 
-  const computed = computeSheet(source.sheet);
+  const computed = computeTab(source.sheet, s.sheets);
   const rows: FormulaValue[][] = [];
   for (let r = spec.range.startRow; r <= spec.range.endRow; r++) {
     const row: FormulaValue[] = [];

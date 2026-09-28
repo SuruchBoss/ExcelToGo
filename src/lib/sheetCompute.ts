@@ -159,7 +159,7 @@ interface Snapshot {
  * Asking the resolver recomputes those sheets, transitively, which is the point — it is cheap
  * because every step of it is identity-cached and memoised for the life of the resolver.
  */
-function externalsStale(snap: Snapshot, resolver: CrossSheetResolver | undefined): boolean {
+function externalsStale(snap: Pick<Snapshot, "externals">, resolver: CrossSheetResolver | undefined): boolean {
   if (snap.externals.size === 0) return false;
   if (!resolver) return true;
   for (const [name, seen] of snap.externals) {
@@ -179,8 +179,17 @@ function externalsStale(snap: Snapshot, resolver: CrossSheetResolver | undefined
 const HISTORY = 4;
 const snapshots: Snapshot[] = [];
 
-/** Repeat calls with the identical sheet object — a re-render — cost nothing. */
-const byIdentity = new WeakMap<SheetModel, ComputedSheet>();
+/**
+ * Repeat calls with the identical sheet object — a re-render — cost nothing.
+ *
+ * The result travels with what it read from other sheets, so it can be checked against the rest of
+ * the workbook for as long as it is cached — not only while its snapshot is still in `snapshots`.
+ * It used to hold the result alone, and a sheet computed bare (an export, a sort) handed its `#REF!`
+ * to the grid's next call with a resolver once four other sheets had pushed the snapshot out (#95).
+ * Only the externals, not the whole snapshot: undo history keeps old sheets alive, and their graphs
+ * with them would be memory spent on nothing.
+ */
+const byIdentity = new WeakMap<SheetModel, Pick<Snapshot, "result" | "externals">>();
 
 /**
  * Above this many changed cells, rebuilding the graph costs more than recomputing. Bulk edits
@@ -644,7 +653,7 @@ function incrementalCompute(
 function remember(snap: Snapshot): ComputedSheet {
   snapshots.unshift(snap);
   if (snapshots.length > HISTORY) snapshots.length = HISTORY;
-  byIdentity.set(snap.sheet, snap.result);
+  byIdentity.set(snap.sheet, { result: snap.result, externals: snap.externals });
   return snap.result;
 }
 
@@ -659,11 +668,10 @@ export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): 
   // The identity cache has to be asked about the rest of the workbook too. A sheet whose own cells
   // are untouched is still out of date when a sheet it reads has moved, and this fast path is
   // exactly where that would be missed — the object is the same, so nothing else would notice.
-  const byIdentitySnap = snapshots.find((s) => s.sheet === sheet);
   const hit = byIdentity.get(sheet);
-  if (hit && !(byIdentitySnap && externalsStale(byIdentitySnap, resolver))) {
+  if (hit && !externalsStale(hit, resolver)) {
     computeStats.identity++;
-    return hit;
+    return hit.result;
   }
 
   for (let i = 0; i < snapshots.length; i++) {

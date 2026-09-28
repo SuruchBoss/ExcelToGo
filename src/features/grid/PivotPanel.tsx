@@ -8,8 +8,7 @@ import clsx from "clsx";
 import { Table2 } from "lucide-react";
 import { PIVOT_AGGS, PivotAgg } from "@/lib/pivot";
 import { rangeRefString } from "@/lib/formulaEngine/address";
-import { computeSheet } from "@/lib/sheet";
-import { selectActiveSelection, selectActiveSheet, useSheetStore } from "@/store/sheetStore";
+import { computeTab, selectActiveSelection, selectActiveSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 
 /**
@@ -26,6 +25,7 @@ import { useT } from "@/i18n";
 export default function PivotPanel() {
   const t = useT();
   const sheet = useSheetStore(selectActiveSheet);
+  const sheets = useSheetStore((s) => s.sheets);
   const selection = useSheetStore(selectActiveSelection);
   const buildPivotSheet = useSheetStore((s) => s.buildPivotSheet);
 
@@ -36,7 +36,7 @@ export default function PivotPanel() {
   const [problem, setProblem] = useState<string | null>(null);
 
   // Header labels, read live so switching selection re-reads them without a button press.
-  const computed = computeSheet(sheet);
+  const computed = computeTab(sheet, sheets);
   const width = selection.endCol - selection.startCol + 1;
   const fields = Array.from({ length: width }, (_, i) => {
     const text = computed.display[selection.startRow]?.[selection.startCol + i] ?? "";
