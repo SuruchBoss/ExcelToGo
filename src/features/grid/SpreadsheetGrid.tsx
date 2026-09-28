@@ -797,7 +797,8 @@ export default function SpreadsheetGrid() {
                       display[r]?.[c] ?? "",
                       sheet.colWidths?.[c] ?? COL_WIDTH,
                       14 * ((format?.fontSize ?? DEFAULT_FONT_SIZE) / DEFAULT_FONT_SIZE),
-                      format?.fontSize ?? DEFAULT_FONT_SIZE
+                      format?.fontSize ?? DEFAULT_FONT_SIZE,
+                      { bold: Boolean(format?.bold || cf?.bold), italic: Boolean(format?.italic) }
                     )
                   : 1;
               const tooNarrow = dateScale === null;
