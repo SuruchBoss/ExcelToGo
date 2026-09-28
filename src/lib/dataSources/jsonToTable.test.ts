@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
+import { computeSheet, createEmptySheet } from "../sheet";
+import { liveBlockCells, writeLiveBlock } from "../liveBlocks";
 import { csvToTable, getByPath, jsonToTable, parseCsv } from "./jsonToTable";
 
 describe("jsonToTable", () => {
@@ -27,6 +29,17 @@ describe("jsonToTable", () => {
     const t = jsonToTable([{ customer: { name: "A", address: { city: "BKK" } }, total: 10 }]);
     expect(t.columns.map((c) => c.key)).toEqual(["customer.name", "customer.address.city", "total"]);
     expect(t.columns[1].label).toBe("customer › address › city");
+  });
+
+  it("reads an empty list inside an envelope as no rows, not as one row of envelope fields (#65)", () => {
+    const t = jsonToTable({ ok: true, page: 99, page_size: 25, total: 120, items: [], next: null });
+    expect(t.rows).toEqual([]);
+    expect(t.columns).toEqual([]);
+    expect(jsonToTable({ meta: { page: 3 }, data: { items: [] } }).rows).toEqual([]);
+  });
+
+  it("still reads an object with no list at all as one row, as before", () => {
+    expect(jsonToTable({ today_total: 1234, orders: 7, tags: ["a", "b"] }).rows).toEqual([[1234, 7, "a, b"]]);
   });
 
   it("treats a single object as a one-row table", () => {
@@ -73,5 +86,20 @@ describe("CSV", () => {
       ["นม", 25],
     ]);
     expect(t.columns[1].numeric).toBe(true);
+  });
+
+  it("keeps codes as text by the same rule the grid uses, and numbers as numbers (#36)", () => {
+    const t = csvToTable("code,phone,id,price,delta\n001,0812345678,1234567890123,12.5,-3");
+    expect(t.rows).toEqual([["001", "0812345678", "1234567890123", 12.5, -3]]);
+    expect(t.columns.map((c) => c.numeric)).toEqual([false, false, false, true, true]);
+  });
+
+  it("the codes reach the sheet with their zeros, through a live block (#36)", () => {
+    const t = csvToTable("branch,sales\n007,1200\n012,900");
+    const block = { id: "b", sourceId: "s", anchorRow: 0, anchorCol: 0, kind: "table" as const, rows: 0, cols: 0 };
+    const sheet = writeLiveBlock(createEmptySheet(4, 3), block, liveBlockCells(block, t)).sheet;
+    const values = computeSheet(sheet).values;
+    expect([values[1][0], values[2][0]]).toEqual(["007", "012"]);
+    expect([values[1][1], values[2][1]]).toEqual([1200, 900]);
   });
 });

@@ -1,6 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
+import { literalValue } from "../cellLiteral";
 import { CellValue, TableColumn, TableData } from "./types";
 
 type Json = unknown;
@@ -45,6 +46,32 @@ function findLargestRecordArray(json: Json): Record_[] | null {
   return best;
 }
 
+/** Every array in a wrapped payload, looking through nested objects but not into the arrays. */
+function arraysIn(json: Record_): Json[][] {
+  const out: Json[][] = [];
+  const queue: Json[] = [json];
+  let guard = 0;
+  while (queue.length && guard++ < 5000) {
+    const cur = queue.shift();
+    if (Array.isArray(cur)) out.push(cur);
+    else if (isRecord(cur)) queue.push(...Object.values(cur));
+  }
+  return out;
+}
+
+/**
+ * An envelope with no records in it, only empty lists — the shape of an API's last page, or of a
+ * search with no results (#65). One empty list is where the records would have been: zero rows. More
+ * than one is a guess this does not make, since picking the wrong one reads another list's emptiness
+ * as this one's; `"ambiguous"` lets the caller say so. Anything else (a KPI object, say) is `null`.
+ */
+export function emptyListIn(json: Json): "one" | "ambiguous" | null {
+  if (!isRecord(json) || findLargestRecordArray(json)) return null;
+  const lists = arraysIn(json);
+  if (!lists.some((l) => l.length === 0)) return null;
+  return lists.length === 1 ? "one" : "ambiguous";
+}
+
 function toCell(v: Json): CellValue {
   if (v === null || v === undefined) return null;
   if (typeof v === "number" || typeof v === "boolean" || typeof v === "string") return v;
@@ -83,7 +110,9 @@ function labelFor(key: string): string {
 export function extractRecords(json: Json): Record_[] | null {
   if (isRecordArray(json)) return json;
   if (Array.isArray(json)) return json.map((v) => ({ value: v }));
-  return isRecord(json) ? findLargestRecordArray(json) : null;
+  if (!isRecord(json)) return null;
+  // No records at all but one empty list: that list is the records, and there are none (#65).
+  return findLargestRecordArray(json) ?? (emptyListIn(json) === "one" ? [] : null);
 }
 
 /** Flattens a list of records into a rectangular table whose columns are the union of their keys. */
@@ -160,11 +189,16 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
+/**
+ * A CSV field is text until it reads as a number — by the grid's own rule (#36), not `Number()`, so
+ * a branch code `007` or a phone number keeps its zeros instead of arriving as `7`. `literalValue`
+ * imports only types, so the server's copy of this file pulls in nothing from the browser side.
+ */
 function coerce(s: string): CellValue {
   const t = s.trim();
   if (t === "") return null;
-  const n = Number(t);
-  return Number.isNaN(n) ? s : n;
+  const v = literalValue(t);
+  return typeof v === "number" ? v : s;
 }
 
 /** First CSV line is treated as the header. */

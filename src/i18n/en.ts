@@ -30,6 +30,9 @@ export const en: Messages = {
     cloudShort: "Cloud save",
   },
   data: {
+    blockStructure: "Rows and columns can't be inserted or deleted inside live data — the next refresh would write over them. Do it outside the live data, or press \"Remove\" on its bar first",
+    blockUnlinked: (at) => `The live data at ${at} is unlinked: its values stay but no longer update`,
+    noRows: "No rows — the API returned an empty list",
     title: "Live data",
     subtitle: "Pick the data you want and insert it — it keeps itself up to date automatically",
     addSource: "Connect new data",
@@ -111,6 +114,8 @@ export const en: Messages = {
       keysFound: (keys) => `Top-level keys found: ${keys}`,
       needsSecret: "Enter the header value again — it is kept only in the open tab, so it went when the tab closed, as intended",
       needsReload: (host) => `Reload once to let this browser reach ${host}`,
+      waitingSecret: "Waiting for header",
+      waitingReload: "Needs a reload",
       networkTitle: "Couldn't reach the API — the browser doesn't say exactly why, so check these",
       networkChecks: (appOrigin, headers) => [
         "Are you on the VPN, and does this URL open in a new tab?",
@@ -218,7 +223,7 @@ export const en: Messages = {
     },
   },
   landing: {
-    eyebrow: "No syntax to memorise · hand-written engine · 1573 tests",
+    eyebrow: "No syntax to memorise · hand-written engine · 1593 tests",
     headline: "Describe what you want. Get an Excel formula that works",
     subheadline:
       "Type “total sales for the northern branch” and you get a formula back, with a sentence saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes first. Or skip the typing entirely: pick from 37 ready-made formulas and drag across the cells instead of typing addresses.",
@@ -421,8 +426,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "64", label: "engine functions" },
-      { value: "1573", label: "automated tests" },
-      { value: "322", label: "security tests" },
+      { value: "1593", label: "automated tests" },
+      { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",

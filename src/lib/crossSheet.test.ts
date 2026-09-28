@@ -170,3 +170,39 @@ describe("cycles that span sheets", () => {
     expect(at(computeSheet(main, resolver), "A1")).toBe("10");
   });
 });
+
+/**
+ * A result worked out without the workbook must never be handed to a caller that has it (#95).
+ *
+ * The identity cache kept only the result, and could check it against the rest of the workbook
+ * only while the sheet's snapshot was still in the four-deep history. An export or a sort computed
+ * the summary sheet bare — `#REF!` for every cross-sheet cell — and a few sheets later the grid,
+ * asking with a resolver, was given that same `#REF!` back. The PO's probe, verbatim.
+ */
+describe("a bare compute does not poison the cache (#95)", () => {
+  it("gives the resolver-backed answer after a bare compute has fallen out of the history", () => {
+    const sales = sheetOf({ A1: "42" });
+    const summary = sheetOf({ A1: "=Sales!A1*2" });
+    const tabs = [
+      { name: "Sales", sheet: sales },
+      { name: "Summary", sheet: summary },
+    ];
+    expect(at(computeSheet(summary, createWorkbookResolver(tabs)), "A1")).toBe("84");
+    expect(at(computeSheet(summary), "A1")).toBe("#REF!");
+    for (let i = 0; i < 5; i++) computeSheet(sheetOf({ A1: String(i) }));
+    expect(at(computeSheet(summary, createWorkbookResolver(tabs)), "A1")).toBe("84");
+  });
+
+  it("and the other way round: a sheet computed with the workbook, then asked bare, is not wrong either", () => {
+    const sales = sheetOf({ A1: "42" });
+    const summary = sheetOf({ A1: "=Sales!A1*2" });
+    const tabs = [
+      { name: "Sales", sheet: sales },
+      { name: "Summary", sheet: summary },
+    ];
+    computeSheet(summary, createWorkbookResolver(tabs));
+    for (let i = 0; i < 5; i++) computeSheet(sheetOf({ A1: String(i) }));
+    expect(at(computeSheet(summary), "A1")).toBe("#REF!");
+    expect(at(computeSheet(summary, createWorkbookResolver(tabs)), "A1")).toBe("84");
+  });
+});
