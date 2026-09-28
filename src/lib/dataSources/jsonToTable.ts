@@ -1,6 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
+import { literalValue } from "../cellLiteral";
 import { CellValue, TableColumn, TableData } from "./types";
 
 type Json = unknown;
@@ -188,11 +189,16 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
+/**
+ * A CSV field is text until it reads as a number — by the grid's own rule (#36), not `Number()`, so
+ * a branch code `007` or a phone number keeps its zeros instead of arriving as `7`. `literalValue`
+ * imports only types, so the server's copy of this file pulls in nothing from the browser side.
+ */
 function coerce(s: string): CellValue {
   const t = s.trim();
   if (t === "") return null;
-  const n = Number(t);
-  return Number.isNaN(n) ? s : n;
+  const v = literalValue(t);
+  return typeof v === "number" ? v : s;
 }
 
 /** First CSV line is treated as the header. */

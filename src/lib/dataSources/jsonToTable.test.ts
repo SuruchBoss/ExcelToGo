@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
+import { computeSheet, createEmptySheet } from "../sheet";
+import { liveBlockCells, writeLiveBlock } from "../liveBlocks";
 import { csvToTable, getByPath, jsonToTable, parseCsv } from "./jsonToTable";
 
 describe("jsonToTable", () => {
@@ -84,5 +86,20 @@ describe("CSV", () => {
       ["นม", 25],
     ]);
     expect(t.columns[1].numeric).toBe(true);
+  });
+
+  it("keeps codes as text by the same rule the grid uses, and numbers as numbers (#36)", () => {
+    const t = csvToTable("code,phone,id,price,delta\n001,0812345678,1234567890123,12.5,-3");
+    expect(t.rows).toEqual([["001", "0812345678", "1234567890123", 12.5, -3]]);
+    expect(t.columns.map((c) => c.numeric)).toEqual([false, false, false, true, true]);
+  });
+
+  it("the codes reach the sheet with their zeros, through a live block (#36)", () => {
+    const t = csvToTable("branch,sales\n007,1200\n012,900");
+    const block = { id: "b", sourceId: "s", anchorRow: 0, anchorCol: 0, kind: "table" as const, rows: 0, cols: 0 };
+    const sheet = writeLiveBlock(createEmptySheet(4, 3), block, liveBlockCells(block, t)).sheet;
+    const values = computeSheet(sheet).values;
+    expect([values[1][0], values[2][0]]).toEqual(["007", "012"]);
+    expect([values[1][1], values[2][1]]).toEqual([1200, 900]);
   });
 });
