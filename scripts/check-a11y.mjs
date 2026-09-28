@@ -424,6 +424,60 @@ const OPENED_STATES = [
       await page.locator("#cell-tools[role=dialog]").waitFor({ state: "visible", timeout: 10_000 });
     },
   },
+  // Where "saved in this browser only" went once it has been read (#129): the save status on the
+  // top bar, with the whole text and the export behind it.
+  {
+    name: "save status popover",
+    path: "/app",
+    async open(page) {
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      await page.keyboard.type("work");
+      await page.keyboard.press("Enter");
+      await page.getByRole("button", { name: /^บันทึกอัตโนมัติ/ }).click();
+      await page.getByRole("dialog", { name: "บันทึกในเบราว์เซอร์นี้เท่านั้น" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  // The file-open message, now a toast over the foot of the grid rather than a band above it.
+  {
+    name: "import toast",
+    path: "/app",
+    async open(page) {
+      await page.locator('input[type="file"]').first().setInputFiles({
+        name: "incoming.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("a,b\n1,2\n"),
+      });
+      await page.getByRole("status").filter({ hasText: "เปิดไฟล์แล้ว" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  // Short screens fold the bars together (#129, UX-13): a phone on its side, and a phone at 200%
+  // zoom — where the bottom bar's words also used to push the page 130px sideways.
+  {
+    name: "short screen",
+    path: "/app",
+    widths: [390],
+    viewport: { width: 844, height: 390 },
+    touch: true,
+    async open(page) {
+      await page.locator('td[data-row="0"][data-col="0"]').waitFor({ timeout: 10_000 });
+      await page.getByRole("navigation").getByRole("button", { name: "สูตร", exact: true }).waitFor({ timeout: 10_000 });
+    },
+  },
+  {
+    name: "phone at 200% zoom",
+    path: "/app",
+    widths: [390],
+    viewport: { width: 195, height: 422 },
+    touch: true,
+    async open(page) {
+      await page.locator('td[data-row="0"][data-col="0"]').waitFor({ timeout: 10_000 });
+      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      if (scrollWidth > 195) throw new Error(`the page scrolls sideways (scrollWidth ${scrollWidth})`);
+      // Undo has to be on screen before the top bar is scrolled: a phone has no Ctrl+Z (PO, #129).
+      const undo = await page.getByRole("button", { name: /^เลิกทำ/ }).boundingBox();
+      if (!undo || undo.x < 0 || undo.x + undo.width > 195) throw new Error(`Undo is off screen (${undo && Math.round(undo.x + undo.width)}px)`);
+    },
+  },
   // Touch-only as well: both bars answer a finger on the grid, and a mouse never sees them.
   {
     name: "pointing bar",
@@ -545,11 +599,14 @@ try {
   for (const state of OPENED_STATES) {
     for (const width of AXE_WIDTHS.filter((w) => !state.widths || state.widths.includes(w))) {
       // `touch`: states that only exist for a finger — the pointing and picking bars (#99, #138).
+      // `viewport`: a state that is about a screen's shape rather than its width (#129). It runs in
+      // the half its `widths` names, and is reported at its own size.
       const ctx = await browser.newContext({
-        viewport: { width, height: 900 },
+        viewport: state.viewport ?? { width, height: 900 },
         locale: LOCALE,
         ...(state.touch && { hasTouch: true, isMobile: true }),
       });
+      const at = state.viewport ? `${state.viewport.width}x${state.viewport.height}` : width;
       const page = await ctx.newPage();
       await page.goto(ORIGIN + state.path, { waitUntil: "networkidle" });
       let violations = [];
@@ -557,11 +614,11 @@ try {
         // A state may open somewhere else — a second tab (#47) — and hand back the page to scan.
         const target = (await state.open(page)) ?? page;
         ({ violations } = await new AxeBuilder({ page: target }).withTags(TAGS).analyze());
-        note(violations.length === 0, `axe ${state.name} @${width}: ${violations.length} violations`);
+        note(violations.length === 0, `axe ${state.name} @${at}: ${violations.length} violations`);
       } catch (err) {
         // A state that cannot be opened is a failure, not a skip: silently checking nothing is how
         // a gate goes green over a thing it stopped looking at.
-        note(false, `axe ${state.name} @${width}: could not open it — ${String(err.message).split("\n")[0]}`);
+        note(false, `axe ${state.name} @${at}: could not open it — ${String(err.message).split("\n")[0]}`);
       }
       for (const v of violations) {
         console.log(`        [${v.impact}] ${v.id} — ${v.help} (${v.nodes.length} node(s))`);

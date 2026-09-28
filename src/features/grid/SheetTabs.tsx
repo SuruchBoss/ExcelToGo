@@ -10,6 +10,7 @@ import { useT } from "@/i18n";
 import ShortcutsButton from "@/features/help/ShortcutsButton";
 import { usePointingActive } from "./PointingBar";
 import clsx from "clsx";
+import { isCloudConfigured } from "@/lib/cloud/config";
 
 export default function SheetTabs() {
   const t = useT();
@@ -32,7 +33,14 @@ export default function SheetTabs() {
   if (pointing) return null;
 
   return (
-    <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-zinc-200 bg-zinc-50 px-2 py-1.5">
+    // On a short screen from 640px wide the panel icons sit at the right end of this row (#129), so
+    // the tabs stop short of them: four icons, or five with the cloud one.
+    <div
+      className={clsx(
+        "flex shrink-0 items-center gap-1 overflow-x-auto border-t border-zinc-200 bg-zinc-50 px-2 py-0.5 sm:py-1.5 max-lg:short:min-h-11 max-lg:short:py-0.5",
+        isCloudConfigured() ? "sm:max-lg:short:pr-[14.5rem]" : "sm:max-lg:short:pr-[11.75rem]"
+      )}
+    >
       {sheets.map((tab) => (
         <div
           key={tab.id}
