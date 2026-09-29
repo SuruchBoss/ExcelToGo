@@ -185,10 +185,11 @@ A survivor that is **equivalent** (the code changes, the result cannot) gets
   adds it, and CI's "License headers" job fails without it. Applied migrations in `supabase/migrations/` are exempt.
 - พัฒนาบนบรานช์ของ session ตัวเอง (Dev: `claude/excel-sheet-ui-builder-8ooz26`) — ไม่ push ตรงเข้า `main`
 
-### การ merge เข้า main: Dev เปิด PR → PO ตรวจ → owner สั่ง / Merging into main: PR, PO review, owner's word
+### การ merge เข้า main: Dev เปิด PR → PO ตรวจ → PO merge / Merging into main: PR, PO review, PO merges
 
-**ทุก session (Dev, Dev UX, QA, PO) ทำตามลำดับนี้ ไม่มีข้อยกเว้น** — owner ตัดสินเมื่อ 2026-09-28
-Every session — Dev, Dev UX, QA and PO alike — follows this order, with no exceptions. The owner decided it on 2026-09-28.
+**ทุก session (Dev, Dev UX, QA, PO) ทำตามลำดับนี้ ไม่มีข้อยกเว้น** — owner ตัดสินเมื่อ 2026-09-28 · ปรับข้อ 3 เมื่อ 2026-09-29
+Every session — Dev, Dev UX, QA and PO alike — follows this order, with no exceptions. The owner decided it on 2026-09-28
+and changed step 3 on 2026-09-29.
 
 1. **Dev เปิด PR** จากบรานช์ของตัวเองไป `main` · merge `origin/main` เข้าบรานช์ก่อนเปิด (merge ไม่ rebase) ให้ PR ไม่ conflict ·
    `npm run verify` เขียวบนผลรวม · แล้วแจ้ง PO — **ห้ามกดปุ่ม merge เอง แม้ CI เขียวและ PR ไม่ conflict**
@@ -196,14 +197,27 @@ Every session — Dev, Dev UX, QA and PO alike — follows this order, with no e
    `npm run verify` green on the result, and tells the PO. **Never press merge yourself**, even with green CI and no conflict.
 2. **PO ตรวจ**: รัน verify เอง ลองแบบผู้ใช้บน production build (`docs/PO_LESSONS.md` ข้อ 2) แล้วรายงาน owner ว่าผ่านหรือไม่
    The PO reviews: runs verify, tries the change as a user on a production build, and reports to the owner.
-3. **owner สั่ง merge** แล้ว PO เป็นคน merge ผ่าน PR (merge commit, ไม่ squash) · ไม่มีใคร push ตรงเข้า `main`
-   The owner says merge; the PO then merges through the PR (a merge commit, not a squash). Nobody pushes to `main` directly.
+3. **PO merge เองเมื่อตรวจผ่าน** ผ่าน PR (merge commit, ไม่ squash) โดยใส่ `expectedHeadSha` เป็น commit ที่ตรวจจริง ·
+   แล้วรายงาน owner ว่า merge อะไรไป · ไม่มีใคร push ตรงเข้า `main`
+   The PO merges once the review passes, through the PR (a merge commit, not a squash), pinned to the exact commit it
+   reviewed, and reports to the owner what went in. Nobody pushes to `main` directly.
+   - **ยังต้องถาม owner ก่อน merge** เมื่อ PR: เปลี่ยน CSP/การป้องกัน/สิ่งที่ `SECURITY.md` สัญญาไว้ · ย้ายข้อมูลผู้ใช้หรือเปลี่ยนสิ่งที่ส่งออกนอกเครื่อง ·
+     ต้องตั้งค่า env บน Vercel · หรือ PO ตรวจแล้วมีข้อที่ยอมรับไว้ (ผ่านแบบมีเงื่อนไข) ซึ่ง owner ควรรู้ก่อน
+     **Still ask the owner first** when a PR changes the CSP, a guard or a promise in `SECURITY.md`; moves user data or
+     changes what leaves the device; needs a Vercel env change; or passes review with a caveat the owner should hear first.
+   - Dev/Dev UX ยังห้ามกด merge เองเหมือนเดิม · Developers still never merge their own PRs.
 
 **ทำไม:** `main` deploy ขึ้น Vercel (production) ทันที · merge ก่อน PO ตรวจ = ผู้ใช้เจอก่อนใครตรวจ · เคยเกิดแล้ว: PR #120 ถูก merge
 โดย Dev เองก่อนผลตรวจของ PO ออก ผลตรวจผ่าน แต่ถ้าไม่ผ่าน production ก็เปลี่ยนไปแล้ว
 **Why:** `main` deploys to production the moment it changes, so a merge before review means users see it before anyone
 has checked it. It happened once: PR #120 was merged by its developer before the PO's review finished. The review
 passed that time; had it failed, production would already have changed.
+
+**ทำไมข้อ 3 เปลี่ยน:** owner บอกว่า "Merge หน้าที่คุณ ทำเลย" (2026-09-29) · สิ่งที่กันไม่ให้ผู้ใช้เจอก่อนตรวจคือการตรวจของ PO
+ไม่ใช่ขั้นรอคำสั่ง · ขั้นรอเพิ่มแค่เวลาที่ PR ค้าง และ PR ที่ค้างคือต้นเหตุของ conflict ทุกรอบ (ตัวเลข ภาพ README)
+**Why step 3 changed:** the owner said merging is the PO's job (2026-09-29). What keeps users from seeing unreviewed
+work is the review, not the wait for a word; the wait only added time for PRs to sit, and sitting PRs are what caused
+every round of count, picture and README conflicts.
 
 ### ช่องโหว่ความปลอดภัย: รายงานแบบส่วนตัวเท่านั้น / Security findings are reported privately
 
