@@ -1425,6 +1425,35 @@ const SCENES = [
     },
   },
   {
+    // A phone on its side (#129, UX-13): the top bar and the formula bar in one row, the sheet tabs
+    // and the panel icons in another, and the grid between them — it showed no rows at all.
+    file: "64-short-screen.png",
+    async take(k) {
+      await k.open("/app", { width: 844, height: 390, scale: 2, touch: true });
+      await fingerTap(k, 4, 2);
+      await k.shot(this.file);
+    },
+  },
+  {
+    // Where "saved in this browser only" went (#129): one line in the visit of the first edit, then
+    // the save status on the top bar — a dot until a copy is exported, the whole text behind it.
+    file: "65-save-status.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      // An empty cell: a finger opens the editor with the caret at the end, so typing into a
+      // price would append to it (45 became 4550 in the first take).
+      await fingerTap(k, 12, 2);
+      await fingerTap(k, 12, 2);
+      await k.cell(12, 2).locator("input").waitFor({ timeout: 5000 });
+      await k.page.keyboard.insertText("50");
+      await k.page.keyboard.press("Enter");
+      await k.page.keyboard.press("Escape");
+      await k.page.getByRole("button", { name: new RegExp(`^${k.t.toolbar.autosaveLabel}`) }).tap();
+      await k.page.getByRole("dialog", { name: k.t.storageNotice.title }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {

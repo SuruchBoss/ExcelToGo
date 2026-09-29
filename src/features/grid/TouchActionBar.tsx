@@ -46,7 +46,8 @@ export default function TouchActionBar() {
     <div
       role="toolbar"
       aria-label={t.touchBar.label}
-      className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-t border-zinc-200 bg-white px-1"
+      // Folded on a short screen: its actions are in the cell menu, a long press away (#129).
+      className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-t border-zinc-200 bg-white px-1 max-lg:short:hidden"
     >
       <button onClick={copySelection} className={button}>
         <Copy size={16} aria-hidden /> {t.touchBar.copy}
