@@ -40,7 +40,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1717%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1756%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -61,7 +61,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1717 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1756 automated tests.
 
 ---
 
@@ -105,7 +105,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1717 passing tests could not catch
+### 🧪 What 1756 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -116,7 +116,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1717 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1756 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -387,7 +387,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1717-case Vitest suite |
+| `npm test` | Run the 1756-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -395,7 +395,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 34 flows: a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 37 flows: a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -2689,7 +2689,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1717 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1756 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3672,20 +3672,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1717 cases across 116 files, via Vitest
+npm test      # 1756 cases across 119 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1717 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1756 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 34 flows in a real browser (needs a build)
+npm run check:e2e   # 37 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3797,10 +3797,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1717 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1756 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1717 passing tests could not catch](#-what-1717-passing-tests-could-not-catch), repeatable
+> [What 1756 passing tests could not catch](#-what-1756-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4020,9 +4020,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now 75 checks — most recently the
-      notice on a tab that edits again because the other closed (#146), and before it the question a second
-      tab on the same workbook asks, and the notice on a tab that is only looking (#47).
+      configured) and the live-data picker, which needs a source first. Now 81 checks — most recently the
+      notice on a tab that edits again because the other closed (#146), the rescue screen after a crash (#145)
+      and the Convert to dates dialog (#82), and before them the question a second tab on the same workbook
+      asks, and the notice on a tab that is only looking (#47).
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
       only rules that must hold for every formula, checked against thousands of generated ones with a
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
@@ -4080,7 +4081,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 34 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 37 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

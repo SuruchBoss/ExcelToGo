@@ -427,7 +427,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1717", label: "automated tests" },
+      { value: "1756", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
