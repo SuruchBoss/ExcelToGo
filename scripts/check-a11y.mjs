@@ -452,6 +452,36 @@ const OPENED_STATES = [
       await page.locator("#cell-tools[role=dialog]").waitFor({ state: "visible", timeout: 10_000 });
     },
   },
+  // Touch-only as well: both bars answer a finger on the grid, and a mouse never sees them.
+  {
+    name: "pointing bar",
+    path: "/app",
+    widths: [390],
+    touch: true,
+    async open(page) {
+      const cell = (r, c) => page.locator(`td[data-row="${r}"][data-col="${c}"]`);
+      await cell(1, 1).tap();
+      await cell(1, 1).tap();
+      await cell(1, 1).locator("input").waitFor({ timeout: 10_000 });
+      await page.keyboard.insertText("=");
+      const box = await cell(3, 2).boundingBox();
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await page.getByRole("toolbar", { name: "ปุ่มสำหรับพิมพ์สูตร" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
+    name: "picking bar",
+    path: "/app",
+    widths: [390],
+    touch: true,
+    async open(page) {
+      await page.locator('td[data-row="5"][data-col="1"]').tap();
+      await page.getByRole("button", { name: "สูตร", exact: true }).last().tap();
+      await page.locator('[role="button"][aria-label^="SUM"]').first().tap();
+      await page.getByRole("button", { name: "เลือกช่วงจากตาราง", exact: true }).tap();
+      await page.getByRole("region", { name: "เลือกช่วงจากตาราง" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
   {
     name: "phone menu",
     path: "/app",
@@ -542,7 +572,12 @@ try {
 
   for (const state of OPENED_STATES) {
     for (const width of AXE_WIDTHS.filter((w) => !state.widths || state.widths.includes(w))) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: LOCALE });
+      // `touch`: states that only exist for a finger — the pointing and picking bars (#99, #138).
+      const ctx = await browser.newContext({
+        viewport: { width, height: 900 },
+        locale: LOCALE,
+        ...(state.touch && { hasTouch: true, isMobile: true }),
+      });
       const page = await ctx.newPage();
       await page.goto(ORIGIN + state.path, { waitUntil: "networkidle" });
       let violations = [];

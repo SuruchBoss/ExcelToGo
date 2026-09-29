@@ -81,6 +81,10 @@ const connectSrcOf = (header) => header.split(";").map((d) => d.trim()).find((d)
 
 /** Every visible label exists in both languages, and the default depends on what is in storage. */
 const label = {
+  formulas: /^(สูตร|Formulas)$/,
+  pointingKeys: /^(ปุ่มสำหรับพิมพ์สูตร|Formula keys)$/,
+  pointingDone: /^(เสร็จ|Done)$/,
+  pickRange: /^(เลือกช่วงจากตาราง|Pick a range from the table)$/,
   useHere: /^(ใช้แท็บนี้แทน|Use this tab instead)$/,
   exportExcel: /^(ส่งออก Excel|Export Excel)$/,
   importFile: /^(นำเข้าไฟล์|Import file)$/,
@@ -385,6 +389,15 @@ const FLOWS = [
       await page.keyboard.insertText("ยอดขายเดือนนี้");
       await page.keyboard.press("Enter");
       note((await at(14, 1)) === "ยอดขายเดือนนี้", `Thai typed into the bar lands in B15 (showed "${await at(14, 1)}")`);
+
+      // While the cell's own editor is open the bar shows what is typed there, as Excel's does —
+      // it showed the saved cell, so its placeholder, while `=SUM(` was typed in the cell. Shown
+      // only: Escape still leaves the cell as it was.
+      await cell(page, 16, 1).click();
+      await page.keyboard.type("=SUM(");
+      note((await bar.inputValue()) === "=SUM(", `the bar shows what the cell's editor holds (showed "${await bar.inputValue()}")`);
+      await page.keyboard.press("Escape");
+      note((await at(16, 1)) === "" && (await bar.inputValue()) === "", `and Escape writes nothing (B17 "${await at(16, 1)}", bar "${await bar.inputValue()}")`);
     },
   },
   {
@@ -1266,7 +1279,8 @@ const FLOWS = [
       const back = await cell(page, 1, 2).boundingBox();
       note(back !== null && back.x > 0 && back.x < 390, `the chip brings the selection back on screen (C2 at x ${back && Math.round(back.x)})`);
 
-      // #99's stopgap, both editors: a tap on another cell while the draft is `=` saves nothing.
+      // #99, both editors: a tap on another cell while the draft is `=` never saves the draft over
+      // the cell. (Since the pointing bar the tap also puts the address in; the next flow checks that.)
       await cell(page, 3, 1).tap();
       await cell(page, 3, 1).tap();
       await cell(page, 3, 1).locator("input").waitFor({ timeout: 5000 });
@@ -1275,6 +1289,8 @@ const FLOWS = [
       await page.waitForTimeout(100);
       const stillEditing = await cell(page, 3, 1).locator("input").count();
       note(stillEditing === 1, "a tap on C6 while B4 holds `=` leaves B4's editor open");
+      const pointedInto = await cell(page, 3, 1).locator("input").inputValue();
+      note(pointedInto === "=C6", `and puts C6 into the formula (${pointedInto})`);
       await page.keyboard.press("Escape");
       note((await cell(page, 3, 1).innerText()).trim() === "", "and B4 was not written");
 
@@ -1291,6 +1307,101 @@ const FLOWS = [
       await page.waitForTimeout(100);
       note((await cell(page, 4, 1).innerText()).trim() === "keep", "`=` in the formula bar and a tap on C7: B5 still says keep");
       note((await nameBox()).trim() === "B5", "and the selection did not move to the tapped cell");
+      await page.keyboard.press("Escape");
+    },
+  },
+  {
+    // #99 and #138: a formula built by tapping on a phone. The seams are all a finger's — a tap
+    // that must not take focus from the editor, a grip that edits text instead of the selection,
+    // a bar above a keyboard whose keys must not close it, and a form that has to get out of the
+    // grid's way and come back with what was picked.
+    name: "on a phone, tapped cells go into a formula, Done saves it closed, and ⌖ picks from the grid",
+    width: 390,
+    touch: true,
+    async run(page) {
+      const tapCell = async (r, c) => {
+        const box = await cell(page, r, c).boundingBox();
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        await page.waitForTimeout(120);
+      };
+      for (const [r, v] of [[1, "10"], [2, "20"], [3, "30"]]) {
+        await tapCell(r, 1);
+        await tapCell(r, 1);
+        await cell(page, r, 1).locator("input").waitFor({ timeout: 5000 });
+        await page.keyboard.insertText(v);
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+      }
+
+      await tapCell(4, 1);
+      await tapCell(4, 1);
+      const editor = cell(page, 4, 1).locator("input");
+      await editor.waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("=SUM(");
+      const bar = page.getByRole("toolbar", { name: label.pointingKeys });
+      await bar.waitFor({ timeout: 5000 });
+      note(true, "typing = on a phone brings up the pointing bar");
+      // Done ran off a 360px screen (PO's check of #144): the bar clips its own overflow, so nothing
+      // scrolls sideways and no other gate sees it.
+      for (const width of [360, 320]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.waitForTimeout(150);
+        const outside = await bar.locator("button").evaluateAll((buttons) =>
+          buttons.filter((b) => {
+            const r = b.getBoundingClientRect();
+            return r.left < 0 || r.right > window.innerWidth;
+          }).length
+        );
+        note(outside === 0, `every button of the pointing bar is on screen at ${width}px (${outside} past the edge)`);
+      }
+      await page.setViewportSize({ width: 390, height: 900 });
+      await page.waitForTimeout(150);
+      await tapCell(1, 1);
+      await tapCell(2, 1);
+      note((await editor.inputValue()) === "=SUM(B3", `a second tap replaces the first address (${await editor.inputValue()})`);
+
+      const grip = await page.locator('[role="slider"]').first().boundingBox();
+      const to = await cell(page, 3, 1).boundingBox();
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+      const x = grip.x + grip.width / 2;
+      const y = grip.y + grip.height / 2;
+      const endY = to.y + to.height / 2;
+      await touch("touchStart", x, y);
+      for (let i = 1; i <= 10; i++) {
+        await touch("touchMove", x, y + ((endY - y) * i) / 10);
+        await page.waitForTimeout(16);
+      }
+      await touch("touchEnd", x, endY);
+      await page.waitForTimeout(150);
+      note((await editor.inputValue()) === "=SUM(B3:B4", `the pointed cell's grip widens it into a range (${await editor.inputValue()})`);
+      const shown = await page.getByPlaceholder(/SUM\(A1:A10\)/).inputValue();
+      note(shown === "=SUM(B3:B4", `the formula bar shows the formula as it is typed (${shown})`);
+      const focused = await page.evaluate(() => document.activeElement?.tagName);
+      note(focused === "INPUT", `the editor kept focus through taps and the drag, so the keyboard stays up (${focused})`);
+
+      await bar.getByRole("button", { name: label.pointingDone }).tap();
+      await page.waitForTimeout(150);
+      const raw = await page.getByPlaceholder(/SUM\(A1:A10\)/).inputValue();
+      note(raw === "=SUM(B3:B4)", `Done saves the formula with its bracket closed (${raw})`);
+      note((await cell(page, 4, 1).innerText()).trim() === "50", `and B5 shows 50`);
+
+      // ⌖ on a phone: the form folds into a bar and the grid above it can be tapped.
+      await tapCell(5, 1);
+      note(!(await bar.isVisible()), "and the pointing bar goes with the editor");
+      await page.getByRole("button", { name: label.formulas }).last().tap();
+      await page.locator('[role="button"][aria-label^="SUM"]').first().tap();
+      await page.getByRole("button", { name: label.pickRange }).tap();
+      const picking = page.getByRole("region", { name: label.pickRange });
+      await picking.waitFor({ timeout: 5000 });
+      note(!(await page.locator("aside").isVisible()), "⌖ folds the form away so the grid can be tapped");
+      await tapCell(1, 1);
+      const chip = (await picking.locator("[aria-live]").innerText()).trim();
+      note(chip === "B2", `a tap on the grid is picked into the field (${chip})`);
+      await picking.getByRole("button", { name: /^(ใช้|Use) / }).tap();
+      const field = await page.locator("aside input").first().inputValue();
+      note(field === "B2", `Use opens the form again with the pick in it (${field})`);
+      await page.keyboard.press("Escape");
     },
   },
   {

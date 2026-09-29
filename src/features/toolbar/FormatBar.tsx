@@ -32,6 +32,7 @@ import { ruleAt } from "@/lib/dataValidation";
 import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import { keepGridFocus } from "./keepGridFocus";
+import { usePointingActive } from "@/features/grid/PointingBar";
 import CommentPopover from "@/features/grid/CommentPopover";
 import ValidationPopover from "@/features/grid/ValidationPopover";
 import NamesPopover from "@/features/grid/NamesPopover";
@@ -133,7 +134,10 @@ export default function FormatBar() {
   // Formatting is the least-used of the three, so the whole row folds away — hiding only its
   // contents saved 14px and not one extra row, which is decoration rather than a fix.
   const open = useSheetStore((s) => s.formatBarOpen);
-  if (!open) return null;
+  // While a formula is pointed at on a phone the row steps aside: nothing on it applies to a
+  // formula half typed, and above a keyboard every row of the grid counts (#99).
+  const pointing = usePointingActive();
+  if (!open || pointing) return null;
 
 
   return (
