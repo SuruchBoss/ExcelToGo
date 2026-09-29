@@ -583,6 +583,12 @@ export interface Messages {
     /** Shown once inside the app: work lives in this browser only. The README saying so is no
      *  help to someone who has already typed an afternoon's work into the grid. */
     text: string;
+    /** The one line shown in the visit of the first edit (#129). The whole of `text` is one press
+     *  away, behind the save status on the top bar. */
+    short: string;
+    /** The save status's popover: its heading, and its note until a copy has been exported. */
+    title: string;
+    noCopyYet: string;
     dismiss: string;
   };
   saveFailed: {
@@ -665,9 +671,9 @@ export interface Messages {
     addColumn: string;
   };
   formatBar: {
-    /** Collapses the formatting row to give the grid back its vertical space. */
-    hide: string;
-    show: string;
+    /** The brush that folds the formatting row away and back: one name whichever way it is, with
+     *  `aria-pressed` saying which (PO, #129 — it stands in for the design's "Aa" on short screens). */
+    toggle: string;
     label: string;
     boldTitle: string;
     italicTitle: string;

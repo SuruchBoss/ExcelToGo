@@ -427,7 +427,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1747", label: "automated tests" },
+      { value: "1751", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -735,6 +735,9 @@ export const en: Messages = {
   },
   storageNotice: {
     text: "Your work is saved in this browser only — never uploaded. Clearing your browser data or moving to another device loses it, so use \"Export Excel\" to keep a copy.",
+    short: "Saved in this browser only — export a file to keep a copy",
+    title: "Saved in this browser only",
+    noCopyYet: "No copy exported yet",
     dismiss: "Dismiss",
   },
   saveFailed: {
@@ -868,8 +871,7 @@ export const en: Messages = {
     addColumn: "Add a column",
   },
   formatBar: {
-    hide: "Hide the formatting bar",
-    show: "Show the formatting bar",
+    toggle: "Cell format",
     label: "Format:",
     boldTitle: "Bold",
     italicTitle: "Italic",

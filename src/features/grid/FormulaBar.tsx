@@ -114,7 +114,7 @@ export default function FormulaBar() {
   }, [raw, sheet.names, t.formulaBar]);
 
   return (
-    <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4">
+    <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 max-lg:short:py-1 sm:max-lg:short:border-b-0 sm:max-lg:short:pl-0">
       <span className="w-16 shrink-0 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-center text-xs font-medium text-zinc-600">
         {address}
       </span>
@@ -159,7 +159,7 @@ export default function FormulaBar() {
         placeholder={t.formulaBar.placeholder}
         readOnly={bound || looking}
         title={bound ? t.data.liveCellReadOnly : undefined}
-        className={`flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-emerald-500 ${bound ? "bg-emerald-50 text-emerald-800" : ""}`}
+        className={`min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm outline-none focus:border-emerald-500 ${bound ? "bg-emerald-50 text-emerald-800" : ""}`}
       />
       {reads && (
         // The same answer as the amber outline on the grid, in words.
@@ -179,7 +179,9 @@ export default function FormulaBar() {
           on the row it hides would take the way back with it. */}
       <button
         onClick={toggleFormatBar}
-        title={formatBarOpen ? t.formatBar.hide : t.formatBar.show}
+        aria-label={t.formatBar.toggle}
+        aria-pressed={formatBarOpen}
+        title={t.formatBar.toggle}
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
           formatBarOpen ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-300 text-zinc-500 hover:bg-zinc-50"
         }`}

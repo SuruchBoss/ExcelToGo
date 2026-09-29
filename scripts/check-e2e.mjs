@@ -109,7 +109,26 @@ const label = {
   cellTools: /^(เครื่องมือเซลล์|Cell tools)$/,
   italic: /^(ตัวเอียง|Italic)$/,
   chart: /^(กราฟ|Chart)$/,
+  appendSheets: /^(เพิ่มเป็นชีตใหม่|Add as new sheets)/,
+  savedHere: /^(งานบันทึกไว้ในเบราว์เซอร์นี้เท่านั้น|Saved in this browser only)/,
+  saveStatus: /^(บันทึกอัตโนมัติ|Autosaved)/,
+  noCopyYet: /(ยังไม่เคยส่งออกสำเนา|No copy exported yet)/,
+  undo: /^(เลิกทำ|Undo) \(/,
+  formatToggle: /^(รูปแบบเซลล์|Cell format)$/,
+  cellMenu: /^(เมนูเซลล์|Cell menu)$/,
+  fillDown: /^(เติมลงล่าง|Fill down)/,
 };
+
+/** Rows of the grid wholly on screen, under its header and above whatever ends it. */
+const rowsOnScreen = (page) =>
+  page.evaluate(() => {
+    const grid = document.querySelector('[role="grid"]').closest(".overflow-auto").getBoundingClientRect();
+    const head = document.querySelector("thead").getBoundingClientRect().bottom;
+    return [...document.querySelectorAll("tbody tr")].filter((tr) => {
+      const r = tr.getBoundingClientRect();
+      return r.top >= head - 1 && r.bottom <= Math.min(grid.bottom, innerHeight) + 1;
+    }).length;
+  });
 
 const failures = [];
 const note = (ok, text, detail) => {
@@ -177,10 +196,10 @@ async function typeThaiInCell(page, row, col, text) {
 }
 
 /** A fresh app with nothing carried over from the flow before. */
-async function freshPage(browser, width = 1280, touch = false) {
+async function freshPage(browser, width = 1280, touch = false, height = 900) {
   // Thai, fixed: a first visit takes the browser's language now, and several flows read Thai text.
   const ctx = await browser.newContext({
-    viewport: { width, height: 900 },
+    viewport: { width, height },
     acceptDownloads: true,
     locale: "th-TH",
     ...(touch && { hasTouch: true, isMobile: true }),
@@ -1405,6 +1424,128 @@ const FLOWS = [
     },
   },
   {
+    // #129: after an edit and a file opened on a phone, two bands took 170px and left ten rows.
+    name: "on a phone after opening a file: one message at a time, twelve rows, a swipe that scrolls, and the storage note on the top bar (#129)",
+    width: 390,
+    height: 844,
+    touch: true,
+    async run(page) {
+      const tapCell = async (r, c) => {
+        const box = await cell(page, r, c).boundingBox();
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        await page.waitForTimeout(120);
+      };
+      const edit = async (r, c, text) => {
+        await tapCell(r, c);
+        await tapCell(r, c);
+        await cell(page, r, c).locator("input").waitFor({ timeout: 5000 });
+        await page.keyboard.insertText(text);
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+      };
+      await edit(0, 0, "work");
+      const line = page.getByText(label.savedHere);
+      await line.waitFor({ timeout: 5000 });
+      const lineHeight = Math.round((await line.boundingBox()).height);
+      note(lineHeight <= 20, `"saved in this browser only" is one line (${lineHeight}px)`);
+
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "incoming.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("a,b,c,d,e,f,g,h,i,j\n1,2,3,4,5,6,7,8,9,10\n"),
+      });
+      await page.getByRole("button", { name: label.appendSheets }).tap();
+      const toast = page.getByRole("status").filter({ hasText: /(เพิ่ม 1 ชีต|Added 1 sheet)/ });
+      await toast.waitFor({ timeout: 5000 });
+      const scroller = page.locator('[role="grid"]').locator("xpath=ancestor::div[contains(@class,'overflow-auto')][1]");
+      const gridTop = (await scroller.boundingBox()).y;
+      note((await toast.boundingBox()).y > gridTop, "the file's message floats over the grid instead of pushing it down");
+      const rows = await rowsOnScreen(page);
+      note(rows >= 12, `at least twelve rows are on screen after the file opens (${rows})`);
+
+      // A swipe that starts on the message's words still reaches the grid under it.
+      const words = await toast.locator("p").boundingBox();
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+      const x = words.x + words.width / 2;
+      const y = words.y + words.height / 2;
+      const before = await scroller.evaluate((el) => el.scrollLeft);
+      await touch("touchStart", x, y);
+      for (let i = 1; i <= 10; i++) {
+        await touch("touchMove", x - 15 * i, y);
+        await page.waitForTimeout(16);
+      }
+      await touch("touchEnd", x - 150, y);
+      await page.waitForTimeout(300);
+      const after = await scroller.evaluate((el) => el.scrollLeft);
+      note(after > before + 50, `a sideways swipe scrolls the grid while the message shows (${before} → ${after})`);
+
+      await scroller.evaluate((el) => (el.scrollLeft = 0));
+      await edit(3, 0, "next");
+      note(!(await toast.isVisible()), "the next edit takes the message away");
+
+      const status = page.getByRole("button", { name: label.saveStatus });
+      note(label.noCopyYet.test(await status.getAttribute("aria-label")), "the save status on the top bar says no copy has been exported yet");
+      await status.tap();
+      const about = page.getByRole("dialog", { name: /^(บันทึกในเบราว์เซอร์นี้เท่านั้น|Saved in this browser only)$/ });
+      await about.waitFor({ timeout: 5000 });
+      await Promise.all([page.waitForEvent("download"), about.getByRole("button", { name: label.exportExcel }).tap()]);
+      await page.waitForTimeout(200);
+      note(!label.noCopyYet.test(await status.getAttribute("aria-label")), "and stops saying so once a copy has been exported");
+
+      // The next visit: a tab of its own shares the browser's storage, not this visit's.
+      const next = await page.context().newPage();
+      await next.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await next.locator('td[data-row="0"][data-col="0"]').waitFor();
+      await next.waitForTimeout(300);
+      note(!(await next.getByText(label.savedHere).isVisible()), "a later visit shows no band for it — the top bar holds it");
+      await next.close();
+    },
+  },
+  {
+    // #129 / UX-13: on its side a phone showed no rows at all under six stacked bars.
+    name: "on a phone on its side: two rows of bars, six rows of grid, a long press opens the cell menu (#129)",
+    width: 844,
+    height: 390,
+    touch: true,
+    async run(page) {
+      const undo = await page.getByRole("button", { name: label.undo }).boundingBox();
+      const fx = await page.getByPlaceholder(label.formulaBar).boundingBox();
+      note(Math.abs(undo.y + undo.height / 2 - (fx.y + fx.height / 2)) < 12, "the formula bar shares the top row with undo");
+      const formulas = await page.getByRole("navigation").getByRole("button", { name: label.formulas }).boundingBox();
+      const addSheet = await page.getByRole("button", { name: label.addSheet }).boundingBox();
+      note(
+        Math.abs(formulas.y + formulas.height / 2 - (addSheet.y + addSheet.height / 2)) < 12,
+        "the panel icons share the bottom row with the sheet tabs"
+      );
+      const rows = await rowsOnScreen(page);
+      note(rows >= 6, `at least six rows of grid are on screen (${rows})`);
+
+      note(!(await page.getByRole("button", { name: label.italic }).isVisible()), "the formatting row starts folded");
+      const brush = page.getByRole("button", { name: label.formatToggle });
+      note((await brush.getAttribute("title")) !== null && (await brush.getAttribute("aria-pressed")) === "false", "the brush is named, has a tooltip, and says the row is folded");
+      await brush.tap();
+      await page.getByRole("button", { name: label.italic }).waitFor({ timeout: 5000 });
+      note(true, "and the brush opens it");
+      await brush.tap();
+
+      // The touch bar is folded here; its actions are in the cell menu, a long press away.
+      const box = await cell(page, 2, 1).boundingBox();
+      const cdp = await page.context().newCDPSession(page);
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      await page.waitForTimeout(700);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      const menu = page.getByRole("menu", { name: label.cellMenu });
+      await menu.waitFor({ timeout: 5000 });
+      note(await menu.getByRole("menuitem", { name: label.fillDown }).isVisible(), "a long press on a cell opens the cell menu, fill down included");
+      const pressed = await cell(page, 2, 1).getAttribute("aria-selected");
+      note(pressed === "true", `and the pressed cell is the one it acts on (aria-selected ${pressed})`);
+      await page.keyboard.press("Escape");
+    },
+  },
+  {
     // The report this came from: on a phone, the person who wrote the app could not find where to
     // connect an API. The panel switches were a scrolling row of unnamed icons, and the rest of the
     // row was past the edge. A unit test cannot see a layout, so this is the one place that asks
@@ -1512,7 +1653,7 @@ try {
 
   for (const flow of only ? FLOWS.filter((f) => f.name.includes(only)) : FLOWS) {
     console.log(`\n${flow.name}`);
-    const { ctx, page } = await freshPage(browser, flow.width, flow.touch);
+    const { ctx, page } = await freshPage(browser, flow.width, flow.touch, flow.height);
     const errors = [];
     page.on("pageerror", (err) => errors.push(String(err).split("\n")[0]));
     try {

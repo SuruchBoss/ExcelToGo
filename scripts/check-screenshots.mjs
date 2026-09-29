@@ -111,6 +111,8 @@ const SHOWS = {
   "61-other-tab.png": [],
   "62-picking-bar.png": [],
   "63-ai-declined.png": [],
+  "64-short-screen.png": [],
+  "65-save-status.png": [],
   "demo.gif": [],
 };
 
