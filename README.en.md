@@ -2193,8 +2193,11 @@ cell still measures from its top-left corner.
 
 ### 🔤 Sort and filter
 
-- **Sort** (A-Z/Z-A): selecting a single cell auto-detects the surrounding table bounds, and skips the header
-  row automatically if it detects text sitting above numeric data.
+- **Sort** (A-Z/Z-A): selecting a single cell auto-detects the surrounding table bounds, and **the header stays on
+  top whichever way you sort** (#49). The top row is a header when it holds no numbers and something says it is a
+  different kind of row: numbers under it in *any* column, a label over a column still empty, or bold/fill where the
+  next row has none. It used to look only at the sorted column, and only for text over numbers, so sorting a names
+  column Z→A put "Name" at the bottom (A→Z only looked right because "N" sorts before lowercase letters).
 - **A formula moves with its row** (#48): `=C2*D2` sorted to row 5 becomes `=C5*D5`, so every row still multiplies
   **its own** price by its own quantity. Sorting used to move the formula text unchanged; on the sample, 8 of 9 rows
   then read another row's price and quantity while the grand total still added up, so nobody saw it. References to
@@ -2206,9 +2209,16 @@ cell still measures from its top-left corner.
   any spreadsheet's sort. Excel sorts it without a word; this asks first, with **Cancel** focused, and "Sort anyway"
   still there for whoever means it. Undo always takes a sort back.
 - **Filter**: the funnel icon on each column header lets you check/uncheck which values to show, hiding rows instantly.
+- **Under a filter, actions touch only the rows on screen** (#50), as in Excel: Delete, copy, cut, Ctrl+Enter, Ctrl+D
+  and drag-fill skip the rows the filter hides. A copy pastes the visible rows together, each row's formulas moving by
+  that row's own distance. Deleting a visible range used to empty the hidden rows too, with nothing on screen to say so.
 
 **Limits:** a formula *outside* the range pointing at a single cell inside it (`=E5` under the table) still points at
-that cell after the sort, without a question. Named ranges in a formula are not counted when deciding to ask.
+that cell after the sort, without a question. Named ranges in a formula are not counted when deciding to ask. **A plain
+list of words** (one column, nothing bold) has nothing to set its first row apart, so that row is sorted too — select
+just the rows to sort to be exact (Excel guesses the same way). **Pasting** into a filtered range still pastes
+contiguously over hidden rows (Excel pastes the same way). Bold, colours and number formats still reach hidden rows:
+no value is lost, but their look changes.
 
 ### 🧮 Pivot (summarise a range)
 
@@ -3856,7 +3866,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 12 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 16 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
-| `sheetSort.test.ts` | 7 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) |
+| `sheetSort.test.ts` | 13 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) · The header stays on top either way (#49): numbers under a word in any column, a label over an empty column, bold, a row with a number is not a header, a plain word list sorts whole |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
 | `excelDate.test.ts` | 7 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) |
 | `numberFormatCode.test.ts` | 6 | Excel number-format codes (#53): the issue's table (7%, 12.5%, $1,234.50, 1.235, 12,345), the old `0.00"%"` not multiplied, negative/zero sections, currency tags, scaling commas, literals between digits, and the fallback for fractions and scientific codes |
@@ -3888,7 +3898,8 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/datePivot.test.ts` | 1 | A pivot by day (#45): its rows are headed with dates, not serials |
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |
-| `store/sortFormulas.test.ts` | 9 | Formulas sorting with their rows (#48): the QA's minimal case, the sample in both languages sorted both ways with every row's price × qty = total and the grand total unchanged, a rate under the table and another sheet's cell still pointed at, a running total / a total in the range / a `$` row inside it asking first, and sorting when confirmed |
+| `store/sortFormulas.test.ts` | 10 | Formulas sorting with their rows (#48): the QA's minimal case, the sample in both languages sorted both ways with every row's price × qty = total and the grand total unchanged, a rate under the table and another sheet's cell still pointed at, a running total / a total in the range / a `$` row inside it asking first, and sorting when confirmed · Z→A on a text column keeps the header and asks nothing (#49 with #48) |
+| `store/filteredSelection.test.ts` | 7 | Under a filter, only the rows on screen (#50): Delete, copy (formulas follow their own row), cut, Ctrl+Enter, Ctrl+D skip hidden rows; with no filter every row is acted on as before |
 | `store/viewOnlyTab.test.ts` | 4 | A view-only tab (#47) on the real store: an edit is refused and said so with nothing saved, the selection still moves, the editing tab edits and saves as before, and a tab whose lock has not answered yet edits |
 | `store/aiQuestions.test.ts` | 24 | The testers' real questions (#62–#64) on the real sample in both languages, from the context the panel sends through the matcher and the placement to the value in the cell: the right function ("the total amount of money" is SUM, "account" is not a count), conditions sent to the SUMIF/COUNTIF/AVERAGEIF form, per-row formulas on the cursor's row, a column's total under the column rather than over E5, no formula that reads itself, and help that gives no wrong directions |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
