@@ -22,11 +22,24 @@ export default function SheetTabs() {
   const deleteSheet = useSheetStore((s) => s.deleteSheet);
 
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  // The rule a typed name broke (#54). The editor stays open with it, so the name can be fixed
+  // where it was typed rather than lost to a tab that quietly kept its old one.
+  const [refusal, setRefusal] = useState<string | null>(null);
   // Out of the way while a formula is pointed at on a phone, like the format row (#99).
   const pointing = usePointingActive();
 
   const commitRename = () => {
-    if (renaming) renameSheet(renaming.id, renaming.name);
+    if (!renaming) return;
+    const problem = renameSheet(renaming.id, renaming.name);
+    if (problem) {
+      setRefusal(t.sheetTabs.nameProblem[problem](renaming.name.trim()));
+      return;
+    }
+    setRefusal(null);
+    setRenaming(null);
+  };
+  const cancelRename = () => {
+    setRefusal(null);
     setRenaming(null);
   };
 
@@ -54,18 +67,34 @@ export default function SheetTabs() {
           )}
         >
           {renaming?.id === tab.id ? (
-            <input
-              autoFocus
-              value={renaming.name}
-              onChange={(e) => setRenaming({ id: tab.id, name: e.target.value })}
-              onBlur={commitRename}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitRename();
-                else if (e.key === "Escape") setRenaming(null);
-              }}
-              className="w-24 rounded border border-emerald-400 px-1 text-sm outline-none"
-            />
+            <>
+              <input
+                autoFocus
+                value={renaming.name}
+                aria-label={t.sheetTabs.renameLabel}
+                aria-invalid={refusal ? true : undefined}
+                aria-describedby={refusal ? "sheet-name-refusal" : undefined}
+                onChange={(e) => {
+                  setRenaming({ id: tab.id, name: e.target.value });
+                  setRefusal(null);
+                }}
+                onBlur={commitRename}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename();
+                  else if (e.key === "Escape") cancelRename();
+                }}
+                className={clsx(
+                  "w-24 rounded border px-1 text-sm outline-none",
+                  refusal ? "border-red-500" : "border-emerald-400"
+                )}
+              />
+              {refusal && (
+                <span id="sheet-name-refusal" role="alert" className="max-w-xs whitespace-normal text-xs text-red-700">
+                  {refusal}
+                </span>
+              )}
+            </>
           ) : (
             <span className="cursor-pointer select-none">{tab.name}</span>
           )}
