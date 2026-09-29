@@ -11,6 +11,7 @@ export const th: Messages = {
     skipToContent: "ข้ามไปยังเนื้อหาหลัก",
     languageToggleLabel: "EN",
     languageToggleTitle: "เปลี่ยนเป็นภาษาอังกฤษ",
+    heading: "แก้ไฟล์ Excel ในเบราว์เซอร์",
   },
   toolbar: {
     importFile: "นำเข้าไฟล์",
@@ -426,7 +427,7 @@ export const th: Messages = {
     stats: [
       { value: "37", label: "สูตรพร้อมใช้" },
       { value: "65", label: "ฟังก์ชันในเอนจิน" },
-      { value: "1721", label: "เทสต์อัตโนมัติ" },
+      { value: "1733", label: "เทสต์อัตโนมัติ" },
       { value: "323", label: "เทสต์ด้านความปลอดภัย" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],

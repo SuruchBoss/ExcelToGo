@@ -89,20 +89,20 @@ const imageSize = (file) => {
   if (buf.toString("ascii", 0, 3) === "GIF") return [buf.readUInt16LE(6), buf.readUInt16LE(8)];
   return null;
 };
-const landing = read("src/app/page.tsx");
+const landing = read("src/features/landing/LandingPage.tsx");
 const exhibits = [...landing.matchAll(/file: "([\w.-]+\.(?:png|gif))", size: \{ th: \[(\d+), (\d+)\], en: \[(\d+), (\d+)\] \}/g)];
-if (exhibits.length === 0) fail("src/app/page.tsx: found no exhibits — has the PAIN_EXHIBITS shape changed?");
+if (exhibits.length === 0) fail("src/features/landing/LandingPage.tsx: found no exhibits — has the PAIN_EXHIBITS shape changed?");
 for (const [, name, thW, thH, enW, enH] of exhibits) {
   for (const [set, w, h] of [["", thW, thH], ["en", enW, enH]]) {
     referenced[set].add(name);
     const rel = `public/screenshots/${set ? `${set}/` : ""}${name}`;
     if (!fs.existsSync(path.join(ROOT, rel))) {
-      fail(`src/app/page.tsx: shows ${rel}, which doesn't exist`);
+      fail(`src/features/landing/LandingPage.tsx: shows ${rel}, which doesn't exist`);
       continue;
     }
     const size = imageSize(path.join(ROOT, rel));
     if (size && (size[0] !== Number(w) || size[1] !== Number(h))) {
-      fail(`src/app/page.tsx: says ${rel} is ${w}×${h}, but the file is ${size[0]}×${size[1]}`);
+      fail(`src/features/landing/LandingPage.tsx: says ${rel} is ${w}×${h}, but the file is ${size[0]}×${size[1]}`);
     }
   }
 }
