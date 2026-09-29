@@ -97,3 +97,4 @@ had never tried the headline feature on production, and had never asked the owne
 | 2026-09-27 | handoff มีตัวเลขผิด (11 vs 12 หลัก) และอ้างเลข issue ผิด | 4 |
 | 2026-09-28 | push ตรงเข้า `main` ถูกบล็อกว่าเป็นการ deploy production · เปลี่ยนเป็นเปิด PR (#112) แล้ว merge | 7 |
 | 2026-09-28 | Dev UX merge #120 เองก่อนผลตรวจของ PO ออก (ผลผ่าน แต่ production เปลี่ยนก่อนตรวจ) · owner ยืนยันกติกา "Dev เปิด PR → PO ตรวจ → owner สั่ง merge" และเขียนลง `AGENTS.md` หัวข้อ "การ merge เข้า main" | 2, 7 |
+| 2026-09-29 | owner มอบให้ PO merge เองเมื่อตรวจผ่าน ("Merge หน้าที่คุณ ทำเลย") · ยกเว้น PR ที่แตะ CSP/การป้องกัน/ข้อมูลที่ออกนอกเครื่อง/env ของ Vercel หรือผ่านแบบมีเงื่อนไข ยังต้องถามก่อน · merge โดยใส่ `expectedHeadSha` ของ commit ที่ตรวจจริงเสมอ · ประกาศสปรินต์สุดท้ายก่อนพัก (`status:sprint-final`) | 2, 7 |
