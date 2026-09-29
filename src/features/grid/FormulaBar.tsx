@@ -13,6 +13,7 @@ import { precedentsOf } from "@/lib/precedents";
 import { cellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { FormulaBarDraft, formulaBarCellKey, formulaBarShown, formulaBarWrite } from "./formulaBarDraft";
 import { awaitsOperand } from "./openFormula";
+import { lastPressWasTouch, noteFormulaText, pointingFormula, registerFormulaEditor, unregisterFormulaEditor, usePointingStore } from "./pointing";
 
 /**
  * Always-visible bar showing the selected cell's address and raw content (a formula or a
@@ -49,6 +50,11 @@ export default function FormulaBar() {
   // and then again from the input's own blur, and the second call may still hold the first one's
   // closure. Clearing this on the first commit is what makes the second write nothing.
   const draftRef = useRef<FormulaBarDraft | null>(null);
+  // What the cell's own editor holds while it is open, as Excel's bar shows it. The bar used to
+  // show the cell as saved — empty, so its placeholder — while `=SUM(` was typed in the cell, and
+  // the cell's editor is too narrow to hold a formula (PO's check of #142 at 390px). Shown only:
+  // focusing the bar closes the cell's editor first, and what the bar writes is its own draft.
+  const cellEditing = usePointingStore((s) => (s.editor?.input.closest("td") ? s.text : null));
 
   const commit = () => {
     const pending = draftRef.current;
@@ -65,6 +71,9 @@ export default function FormulaBar() {
   useEffect(() => {
     function handleWindowMouseDown(e: MouseEvent) {
       if (document.activeElement !== inputRef.current || e.target === inputRef.current) return;
+      // A finger on the grid while a formula is open is pointing, not leaving: the grid puts the
+      // cell's address into this bar and the bar keeps its draft (#99).
+      if (pointingFormula() && lastPressWasTouch() && (e.target as HTMLElement).closest?.('[role="grid"]')) return;
       // `=` typed here and then a tap on a cell saved `=` over the selected cell and moved on — on
       // the sample sheet it wrote over "Mains" (#99). While the formula is still waiting for an
       // address the grid ignores the tap and the bar keeps its draft and its keyboard.
@@ -112,12 +121,31 @@ export default function FormulaBar() {
       <span className="shrink-0 text-xs italic text-zinc-500">fx</span>
       <input
         ref={inputRef}
-        value={formulaBarShown(draft, cellKey, raw)}
+        value={cellEditing ?? formulaBarShown(draft, cellKey, raw)}
         onChange={(e) => {
           draftRef.current = { cellKey, text: e.target.value };
           setDraft(draftRef.current);
+          noteFormulaText(e.currentTarget, e.target.value);
         }}
-        onBlur={commit}
+        onFocus={(e) =>
+          registerFormulaEditor({
+            input: e.currentTarget,
+            commit: (text) => {
+              draftRef.current = { cellKey, text };
+              commit();
+              inputRef.current?.blur();
+            },
+            cancel: () => {
+              draftRef.current = null;
+              setDraft(null);
+              inputRef.current?.blur();
+            },
+          })
+        }
+        onBlur={(e) => {
+          unregisterFormulaEditor(e.currentTarget);
+          commit();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             commit();

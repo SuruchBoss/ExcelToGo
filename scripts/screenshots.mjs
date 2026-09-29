@@ -586,6 +586,31 @@ async function gif(frames, out, width) {
 
 // ── The scenes ──────────────────────────────────────────────────────────────────────────────────
 // In the order the files are numbered. `cloud: true` needs the build with cloud save configured.
+/** A finger's tap on a cell's middle — not a locator's, which scrolls the cell into view first. */
+async function fingerTap(k, r, c) {
+  const box = await k.cell(r, c).boundingBox();
+  await k.page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  await delay(150);
+}
+
+/** The blue grip dragged by a finger down to (r, c), the way the e2e drags it. */
+async function fingerDrag(k, r, c) {
+  const grip = await k.page.locator('[role="slider"]').first().boundingBox();
+  const to = await k.cell(r, c).boundingBox();
+  const cdp = await k.page.context().newCDPSession(k.page);
+  const touch = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+  const x = grip.x + grip.width / 2;
+  const y = grip.y + grip.height / 2;
+  const endY = to.y + to.height / 2;
+  await touch("touchStart", x, y);
+  for (let i = 1; i <= 12; i++) {
+    await touch("touchMove", x, y + ((endY - y) * i) / 12);
+    await delay(16);
+  }
+  await touch("touchEnd", x, endY);
+  await delay(200);
+}
+
 const SCENES = [
   {
     file: "01-overview.png",
@@ -1351,6 +1376,36 @@ const SCENES = [
       await k.select(1, 1, 8, 1);
       await k.page.locator("[data-grid-scroller]").evaluate((el) => el.scrollTo({ left: 900 }));
       await k.page.getByRole("button", { name: k.t.grid.backToSelection("B2:B9") }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // A phone mid-formula (#99): `=SUM(` typed in C12, C2 tapped and its grip dragged to C10.
+    file: "60-pointing-bar.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await fingerTap(k, 11, 2);
+      await fingerTap(k, 11, 2);
+      await k.cell(11, 2).locator("input").waitFor({ timeout: 5000 });
+      await k.page.keyboard.insertText("=SUM(");
+      await fingerTap(k, 1, 2);
+      await fingerDrag(k, 9, 2);
+      await k.page.getByRole("toolbar", { name: k.t.pointing.label }).waitFor();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // ⌖ on a phone (#138): the SUM form folded into a bar while C2:C10 is picked on the grid.
+    file: "62-picking-bar.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      await fingerTap(k, 11, 2);
+      await k.page.getByRole("button", { name: k.t.toolbar.formulas, exact: true }).last().tap();
+      await k.page.locator('[role="button"][aria-label^="SUM"]').first().tap();
+      await k.page.getByRole("button", { name: k.t.paramPanel.pickRangeTitle, exact: true }).tap();
+      await fingerTap(k, 1, 2);
+      await fingerDrag(k, 9, 2);
+      await k.page.getByRole("region", { name: k.t.paramPanel.pickingBarLabel }).waitFor();
       await k.shot(this.file);
     },
   },

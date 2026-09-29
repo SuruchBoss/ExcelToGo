@@ -820,6 +820,8 @@ export interface Messages {
     deleteColumn: string;
     /** The touch grip that pulls a selection out to a range. */
     extendSelection: string;
+    /** The cell's own editor, named for a screen reader: "Edit B2". */
+    editorLabel: (address: string) => string;
     /** The chip that brings a selection scrolled off screen back into view, e.g. "Back to B2:B9". */
     backToSelection: (address: string) => string;
     /** The mouse grip on the same corner, which continues the selection instead. */
@@ -852,6 +854,23 @@ export interface Messages {
     cancel: string;
     insert: string;
     pickRangeTitle: string;
+    /** The picking hint on a touch screen, where there is no clicking. */
+    pickingHintTouch: string;
+    /** The bar the form folds into while a range is picked on a phone (#138). */
+    pickingBarLabel: string;
+    pickUse: (address: string) => string;
+    pickBack: string;
+    /** In the bar's chip before anything is picked. */
+    pickNothing: string;
+  };
+  /** The pointing bar above the keyboard while a formula is typed on a phone (#99). */
+  pointing: {
+    label: string;
+    hint: string;
+    added: (address: string) => string;
+    done: string;
+    cancel: string;
+    keys: { open: string; close: string; comma: string; colon: string; plus: string; minus: string };
   };
   ai: {
     title: string;
