@@ -36,6 +36,7 @@ import LiveAnnouncer from "@/features/a11y/LiveAnnouncer";
 import FindPanel from "@/features/search/FindPanel";
 import { useFindDialog } from "@/features/search/useFindDialog";
 import SkipLink from "@/features/a11y/SkipLink";
+import { CrashTest } from "@/features/crash/crashTest";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import {
@@ -112,6 +113,7 @@ export default function Home() {
     // sheet tabs sat under the bar whenever it was showing. The bottom padding is the tab bar's
     // height — below 1024px the panel switches are pinned there (see Toolbar).
     <div className="flex h-dvh flex-col bg-zinc-50 max-lg:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+      <CrashTest />
       <SkipLink />
       <LiveAnnouncer />
       <SortWarningDialog />

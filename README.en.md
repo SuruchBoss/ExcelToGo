@@ -1059,6 +1059,14 @@ so it is styled inline in a system font. A fallback that still depends on a styl
 more thing that can fail at the moment everything else already has. The behaviour is shared through one
 hook, so the two screens may look different but cannot act differently.
 
+**The screen has gates now** (#145). It used to be reached by saving work in an old format the app could
+not read; once #139 taught the app to read it, the screenshot scene stopped reaching the screen, and no
+gate had ever opened it. The app now has its own crash test (`features/crash/crashTest.ts`), which throws
+while rendering only when **the browser is driven by automation** (`navigator.webdriver`) **and** the tab
+asks for it through `sessionStorage` — no browser a person uses can set it off. The e2e gate crashes the
+app and checks that this screen appears, that the file it offers holds the work, and that Try again comes
+back to the sheet; the a11y gate scans it at both widths. Both fail if the screen does not appear.
+
 **And now the operator hears about it — if they asked to.** The crash screen got the user's work
 back out and told nobody else, so a bug that only fires on one imported file could run for months
 unnoticed. Set `NEXT_PUBLIC_ERROR_REPORT_URL` to your own collector and both boundaries post a
@@ -3756,6 +3764,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `saveFailed.test.ts` | 3 | The real store over a full storage: edits still land in memory, **export still produces a file** (the bug PaynEat ERP's large template hit was a silent Export button), and the status clearing once a save lands again |
 | `tabLock.test.ts` | 13 | One editing tab (#47) over fake Web Locks and BroadcastChannel: the first tab edits and a second asks, View only takes nothing, taking over has the old tab commit before the new one reads the save, taking it back, a closed editing tab letting a tab that was looking or still asking edit by itself after reading the save, with no press (#146), one of two looking tabs editing, the tab that pressed going ahead of tabs already waiting, one tab still editing when the one that asked closes before its turn, the tab taken over from getting it back when that one closes, and no Web Locks or a refused lock meaning editing as before |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
+| `crash/crashTest.test.ts` | 4 | The crash the gates use to reach the rescue screen (#145): only an automated browser that asked for it crashes · a browser a person uses never does, whatever its storage holds · automation that did not ask does not · storage that cannot be read does not |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
 | `functions.test.ts` | 136 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |

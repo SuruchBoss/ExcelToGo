@@ -407,6 +407,22 @@ const OPENED_STATES = [
     },
   },
   {
+    // The screen that holds someone's work after a crash (#145), set off by the app's crash test,
+    // which only a browser driven like this one can ask for. A cell is typed first so the screen has
+    // a file to offer; without one it would skip the part most worth scanning.
+    name: "crash rescue screen",
+    path: "/app",
+    async open(page) {
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      await page.keyboard.type("rescued");
+      await page.keyboard.press("Enter");
+      await page.evaluate(() => sessionStorage.setItem("exceltogo:crash-test", "1"));
+      await page.reload({ waitUntil: "networkidle" });
+      await page.getByRole("heading", { level: 1, name: /มีบางอย่างพัง/ }).waitFor({ timeout: 10_000 });
+      await page.getByRole("button", { name: /Sheet1/ }).waitFor({ timeout: 10_000 });
+    },
+  },
+  {
     name: "names popover",
     path: "/app",
     async open(page) {
