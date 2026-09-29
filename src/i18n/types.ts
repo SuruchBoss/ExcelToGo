@@ -180,6 +180,8 @@ export interface Messages {
       area: (rows: number, cols: number) => string;
       areaOverwrite: (rows: number, cols: number) => string;
       invalidCell: string;
+      /** A single value with no number to pick yet: Insert would write a blank (#126). */
+      nothingToPick: string;
       insert: string;
       cancel: string;
     };

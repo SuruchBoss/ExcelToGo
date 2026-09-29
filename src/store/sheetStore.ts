@@ -1671,6 +1671,10 @@ export const useSheetStore = create<SheetState>()(
           set((s) => ({ sidebarMode: s.sidebarMode === mode && !s.pending ? "none" : mode, pending: null })),
 
         addLiveBlock: (input, table) => {
+          // A single value with no column shows nothing, and writing it replaced the cell with a
+          // blank that every refresh wrote again (#126). The picker no longer offers it; this is
+          // the backstop for any other caller.
+          if (input.kind === "value" && !input.column) return;
           // Dropping a live block is the act; the refresh that follows it every few seconds is
           // not, and counting those would measure the poller rather than the person.
           countUsage("live_data_inserted");
@@ -1689,7 +1693,9 @@ export const useSheetStore = create<SheetState>()(
           }));
         },
 
-        replaceLiveBlock: (blockId, input, table) =>
+        replaceLiveBlock: (blockId, input, table) => {
+          // The same backstop as `addLiveBlock` (#126): nothing to show is not a replacement.
+          if (input.kind === "value" && !input.column) return;
           set((s) => ({
             sheets: s.sheets.map((tab) => {
               const old = tab.liveBlocks?.find((b) => b.id === blockId);
@@ -1703,7 +1709,8 @@ export const useSheetStore = create<SheetState>()(
               }
               return { ...tab, sheet, liveBlocks: tab.liveBlocks!.map((b) => (b.id === blockId ? next : b)) };
             }),
-          })),
+          }));
+        },
 
         removeLiveBlock: (blockId) =>
           set((s) => ({

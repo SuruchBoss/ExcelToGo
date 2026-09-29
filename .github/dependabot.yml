@@ -7,11 +7,24 @@ updates:
     open-pull-requests-limit: 5
     groups:
       # One PR per ecosystem rather than a dozen: CI runs the full suite on each, and a grouped
-      # bump is far likelier to actually get reviewed than five separate ones.
+      # bump is far likelier to actually get reviewed than five separate ones. Minor and patch
+      # only (#73): a group once carried four majors at once (TS 7, ESLint 10, Vitest 5,
+      # @types/node 26), failed on every Node version and had to be closed. A major arrives as a
+      # PR of its own, so the one that breaks is the one that is named.
       dev-dependencies:
         dependency-type: development
+        update-types: ["minor", "patch"]
       production-dependencies:
         dependency-type: production
+        update-types: ["minor", "patch"]
+    ignore:
+      # Held, not forgotten (#73): typescript-eslint, through eslint-config-next, requires
+      # TypeScript < 6.1, and eslint-config-next's React, import and jsx-a11y plugins do not
+      # support ESLint 10 yet. Lift each line when that blocker moves.
+      - dependency-name: "typescript"
+        versions: [">=7"]
+      - dependency-name: "eslint"
+        versions: [">=10"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
