@@ -4027,8 +4027,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now 73 checks — most recently the
-      question a second tab on the same workbook asks, and the notice on a tab that is only looking (#47).
+      configured) and the live-data picker, which needs a source first. Now 83 checks — most recently the
+      sheet-name editor saying why Excel would refuse a name (#54).
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
       only rules that must hold for every formula, checked against thousands of generated ones with a
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
