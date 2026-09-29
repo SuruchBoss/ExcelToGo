@@ -86,12 +86,18 @@ export default function SaveStatus() {
         // row scrolls there, and what must be on screen before any scroll is Undo — a phone has no
         // Ctrl+Z to fall back on (PO, #129).
         className={clsx(
-          "relative -ml-1 mr-1 flex min-h-11 min-w-11 max-[359px]:order-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 text-xs hover:bg-zinc-100 lg:mr-2 lg:min-h-0 lg:min-w-0 lg:py-1",
+          // From 1024px it takes the old status's footprint exactly (a 13px icon, no padding): the
+          // row was measured to the pixel at 1366 and 1440 in English, and 14px more made it scroll.
+          "relative -ml-1 mr-1 flex min-h-11 min-w-11 max-[359px]:order-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 text-xs hover:bg-zinc-100 lg:mr-2 lg:min-h-0 lg:min-w-0 lg:px-0 lg:py-1",
           ok ? "text-zinc-500" : "font-medium text-amber-800"
         )}
       >
         <span className="relative">
-          {ok ? <CircleCheck size={15} aria-hidden className="text-emerald-600" /> : <TriangleAlert size={15} aria-hidden />}
+          {ok ? (
+            <CircleCheck size={15} aria-hidden className="text-emerald-600 lg:size-[13px]" />
+          ) : (
+            <TriangleAlert size={15} aria-hidden className="lg:size-[13px]" />
+          )}
           {dot && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white" />}
         </span>
         <span aria-hidden className="hidden 2xl:inline">
