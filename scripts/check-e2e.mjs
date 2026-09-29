@@ -588,6 +588,35 @@ const FLOWS = [
     },
   },
   {
+    name: "Delete on a filtered range leaves the rows the filter hid (#50)",
+    async run(page) {
+      // The unit tests cover the store. What only a browser shows is the whole path: the funnel on
+      // the column header, rows gone from the grid, a Shift+click selection that spans them, the key.
+      const rows = [["Region", "Sales"], ["North", "10"], ["South", "2"], ["North", "30"], ["South", "4"], ["North", "50"]];
+      for (const [r, row] of rows.entries()) for (const [c, v] of row.entries()) await typeInCell(page, r, c, v);
+
+      await page.locator("thead").getByTitle("กรองข้อมูลคอลัมน์นี้").first().click();
+      await page.getByRole("checkbox", { name: "South" }).uncheck();
+      await page.getByRole("button", { name: "ตกลง", exact: true }).click();
+      await cell(page, 2, 1).waitFor({ state: "detached", timeout: 5000 }).catch(() => {});
+      const hiddenNow = !(await cell(page, 2, 1).isVisible());
+      note(hiddenNow, "the filter hides South's rows");
+
+      await cell(page, 1, 1).click();
+      await cell(page, 5, 1).click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Delete");
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="1"]')?.innerText.trim() === "");
+
+      await page.locator("thead").getByTitle("กรองข้อมูลคอลัมน์นี้").first().click();
+      await page.getByRole("button", { name: "ล้างตัวกรอง", exact: true }).click();
+      await cell(page, 2, 1).waitFor({ state: "visible", timeout: 5000 });
+      const after = await page.evaluate(() =>
+        [1, 2, 3, 4, 5].map((r) => document.querySelector(`td[data-row="${r}"][data-col="1"]`)?.innerText.trim() ?? "?")
+      );
+      note(after.join(",") === ",2,,4,", "after clearing the filter, the hidden rows still hold 2 and 4", after.join(","));
+    },
+  },
+  {
     name: "the cloud client is built, and never downloaded",
     async run(page) {
       // The README says a deployment with no cloud configured never downloads the ~250KB Supabase
