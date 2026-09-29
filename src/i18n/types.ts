@@ -567,6 +567,9 @@ export interface Messages {
     viewing: string;
     handedOff: string;
     refused: string;
+    /** The editing tab closed or left, and this one edits now with its latest save (#146). */
+    freed: string;
+    dismiss: string;
   };
   /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
   newFile: {

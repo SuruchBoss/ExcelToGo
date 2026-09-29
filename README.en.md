@@ -1019,11 +1019,19 @@ changes, it has to follow — and no gate compares them yet.
     and says so; this tab opens from that save, so not a cell is lost. The same button takes it back.
   - **View only** — this tab shows the latest work and follows what the other tab saves, but cannot change
     it (trying says why).
-  A view-only tab fetches no live data and has no undo history of its own. It runs on the browser's Web
-  Locks, so closing the editing tab frees the workbook at once, with no timeout to wait out. **Limits:** a
+  A view-only tab fetches no live data and has no undo history of its own.
+- **Close the editing tab and the one you are looking at carries on** (#146). A view-only tab used to keep
+  saying the workbook was being edited in another tab after that tab had gone, and refused typing until its
+  button was pressed. Now every tab that is not editing keeps a Web Lock request waiting: when the editing tab
+  closes, crashes or leaves the app, the browser hands the lock to the first one waiting — no polling, no
+  timeout — which **reads the latest save first**, then edits and says **"The other tab closed — you can edit
+  here now"**. With several tabs looking, one edits and the rest keep looking, and what they say is true again.
+  A tab that presses "Use this tab instead" goes ahead of tabs that were already waiting.
+- **Limits:** a
   browser without Web Locks (Safari before 15.4) behaves as before — every tab edits and the last save
   wins; and text left in the formula bar without Enter when another tab takes over is not saved, as with
-  clicking away from the formula bar at any time.
+  clicking away from the formula bar at any time. A cell still being typed in a tab that is closed goes with
+  that tab, as closing a tab always does, so the tab that carries on has everything saved but that cell.
 
 <p align="center"><img src="public/screenshots/en/61-other-tab.png" width="700" alt="A second tab asking because the workbook is open in another tab: View only, or Use this tab instead"></p>
 
@@ -3746,7 +3754,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `sheetCodec.test.ts` | 12 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
 | `saveHealth.test.ts` | 9 | A save the browser refuses becomes a status rather than an exception, "full" told apart from "disabled" in every spelling browsers use, the last good save left in place, recovery the moment a save lands, and listeners told when the status changes rather than on every keystroke |
 | `saveFailed.test.ts` | 3 | The real store over a full storage: edits still land in memory, **export still produces a file** (the bug PaynEat ERP's large template hit was a silent Export button), and the status clearing once a save lands again |
-| `tabLock.test.ts` | 7 | One editing tab (#47) over fake Web Locks and BroadcastChannel: the first tab edits and a second asks, View only takes nothing, taking over has the old tab commit before the new one reads the save, taking it back, a closed editing tab freeing the workbook at once, and no Web Locks or a refused lock meaning editing as before |
+| `tabLock.test.ts` | 13 | One editing tab (#47) over fake Web Locks and BroadcastChannel: the first tab edits and a second asks, View only takes nothing, taking over has the old tab commit before the new one reads the save, taking it back, a closed editing tab letting a tab that was looking or still asking edit by itself after reading the save, with no press (#146), one of two looking tabs editing, the tab that pressed going ahead of tabs already waiting, one tab still editing when the one that asked closes before its turn, the tab taken over from getting it back when that one closes, and no Web Locks or a refused lock meaning editing as before |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
@@ -3950,8 +3958,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now 73 checks — most recently the
-      question a second tab on the same workbook asks, and the notice on a tab that is only looking (#47).
+      configured) and the live-data picker, which needs a source first. Now 75 checks — most recently the
+      notice on a tab that edits again because the other closed (#146), and before it the question a second
+      tab on the same workbook asks, and the notice on a tab that is only looking (#47).
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
       only rules that must hold for every formula, checked against thousands of generated ones with a
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
