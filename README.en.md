@@ -4,6 +4,8 @@
 
 ### ▶ [Try it — nothing to install](https://excel-to-go.vercel.app)
 
+**Status (Sep 2026):** closing a last set of fixes before new features pause ([the list](https://github.com/SuruchBoss/ExcelToGo/issues?q=label%3Astatus%3Asprint-final)). After that the app stays free and open as it is, and [bug reports](https://github.com/SuruchBoss/ExcelToGo/issues) and security ([SECURITY.md](SECURITY.md)) are still looked after.
+
 Runs in your browser; your data stays on your machine.
 This site is the real app — free, no sign-up, not a trial — and you can [connect your own API from the browser](#from-your-browser-restcsv--works-on-this-site)
 right here, with the URL, the header and the data never passing through our server.
