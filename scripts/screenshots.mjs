@@ -1359,7 +1359,7 @@ const SCENES = [
   {
     // #82: dates typed as text that nothing reads on its own (`15/01/69`), and the dialog that asks
     // how to read them — day first, Buddhist years — with the preview of what they become.
-    file: "64-convert-dates.png",
+    file: "66-convert-dates.png",
     async take(k) {
       await k.open("/app", { width: 1440, height: 860, blank: true });
       const column = W[k.lang].textDates;

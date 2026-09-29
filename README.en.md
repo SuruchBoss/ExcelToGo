@@ -1274,7 +1274,7 @@ are left alone; the rest are stored as ISO, and **one undo** puts them all back.
 `d/m/yyyy` too. The same button sits in the format bar beside "Number format" from 1440px up, and in the
 "Tools" sheet on narrower screens.
 
-<p align="center"><img src="public/screenshots/en/64-convert-dates.png" width="820" alt="The Convert text to dates dialog: Day/Month/Year and B.E. picked, a preview showing 15/01/69 becoming 15/1/2569 (2026-01-15), and one cell that cannot be read"></p>
+<p align="center"><img src="public/screenshots/en/66-convert-dates.png" width="820" alt="The Convert text to dates dialog: Day/Month/Year and B.E. picked, a preview showing 15/01/69 becoming 15/1/2569 (2026-01-15), and one cell that cannot be read"></p>
 
 - **A "Date (B.E.)" format** in the number format menu shows `15/1/2569`. A date typed with a Buddhist
   year, and cells converted from the Buddhist Era, go out to `.xlsx` with the Thai calendar code, so Excel
