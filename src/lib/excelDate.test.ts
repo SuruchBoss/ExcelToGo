@@ -76,3 +76,73 @@ describe("showing a serial the way a format code says", () => {
     expect(isoFromSerial(0.40625, "time")).toBe("09:45");
   });
 });
+
+/**
+ * Buddhist-Era dates (#82). Thai files write 2569 for 2026, often with the month in Thai. Read
+ * literally, every date is 543 years off, and DATEDIF, ages and overdue days are all wrong.
+ */
+describe("a Buddhist-Era date is the Gregorian date it means (#82)", () => {
+  const jan15 = serialOf(2026, 1, 15);
+
+  it("reads every form the issue lists as 15 January 2026", () => {
+    for (const text of ["15/01/2569", "15-1-2569", "2569-01-15", "15 ม.ค. 2569", "15 มกราคม พ.ศ. 2569", "15 มค 2569", "15 ม.ค. 69", "15 มกราคม 2569", "15ม.ค.2569"]) {
+      expect(dateLiteral(text), text).toEqual({ serial: jan15, kind: "date", era: "be" });
+    }
+    expect(dateLiteral("2569-01-15 13:45"), "with a time").toEqual({ serial: jan15 + (13 * 60 + 45) / 1440, kind: "datetime", era: "be" });
+    expect(dateLiteral("15/01/2569 08:30")?.kind).toBe("datetime");
+  });
+
+  it("a two-digit year beside a Thai month is Buddhist; a four-digit one below 2400 is Gregorian", () => {
+    expect(dateLiteral("15 พ.ค. 30")?.serial).toBe(serialOf(1987, 5, 15));
+    expect(dateLiteral("15 ม.ค. 2026")).toEqual({ serial: jan15, kind: "date" });
+    expect(dateLiteral("15 ม.ค. ค.ศ. 2026")?.serial).toBe(jan15);
+  });
+
+  it("knows all twelve months, full and short, with and without the dots", () => {
+    const full = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+    const short = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    for (let m = 1; m <= 12; m++) {
+      const want = serialOf(2026, m, 1);
+      expect(dateLiteral(`1 ${full[m - 1]} 2569`)?.serial, full[m - 1]).toBe(want);
+      expect(dateLiteral(`1 ${short[m - 1]} 2569`)?.serial, short[m - 1]).toBe(want);
+      expect(dateLiteral(`1 ${short[m - 1].replace(/\./g, "")} 2569`)?.serial, short[m - 1]).toBe(want);
+    }
+  });
+
+  it("guesses nothing: 2569 alone, 15/01/69, a Gregorian d/m/yyyy and a date that does not exist stay text", () => {
+    for (const text of ["2569", "15/01/69", "15/01/2024", "01/15/2026", "31/02/2569", "15 ม.ค.", "ม.ค. 2569", "15 มกรา 2569", "15/01/2800"]) {
+      expect(dateLiteral(text), text).toBeNull();
+    }
+  });
+});
+
+describe("a Buddhist-Era format shows the year Thai Excel does (#82)", () => {
+  const jan15 = serialOf(2026, 1, 15);
+
+  it("the Thai calendar's locale tag, as a number or by name, shows the year 543 higher", () => {
+    expect(formatSerial(jan15, "[$-107041E]d/m/yyyy;@")).toBe("15/1/2569");
+    expect(formatSerial(jan15, "[$-1070000]dd/mm/yyyy")).toBe("15/01/2569");
+    expect(formatSerial(jan15, "[$-D07041E]d/mm/yy")).toBe("15/01/69");
+    expect(formatSerial(jan15, "[$-th-TH,107]d/m/yyyy")).toBe("15/1/2569");
+  });
+
+  it("bbbb is the Buddhist year in any code", () => {
+    expect(formatSerial(jan15, "dd/mm/bbbb")).toBe("15/01/2569");
+    expect(formatSerial(jan15, "d/m/bb")).toBe("15/1/69");
+  });
+
+  it("a Thai locale shows Thai month and day names; a Gregorian Thai one keeps the year", () => {
+    expect(formatSerial(jan15, "[$-107041E]d mmmm yyyy")).toBe("15 มกราคม 2569");
+    expect(formatSerial(jan15, "[$-107041E]d mmm yy")).toBe("15 ม.ค. 69");
+    expect(formatSerial(jan15, "[$-41E]dddd d mmm yyyy")).toBe("พฤหัสบดี 15 ม.ค. 2026");
+  });
+
+  it("other locale tags change nothing", () => {
+    expect(formatSerial(jan15, "[$-409]d-mmm-yyyy")).toBe("15-Jan-2026");
+    expect(formatSerial(jan15, "[$-F800]dddd, mmmm dd, yyyy")).toBe("Thursday, January 15, 2026");
+  });
+
+  it("the Buddhist codes count as date codes", () => {
+    for (const code of ["[$-107041E]d/m/yyyy;@", "dd/mm/bbbb", "[$-th-TH,107]d/m/yyyy"]) expect(isDateFormatCode(code), code).toBe(true);
+  });
+});

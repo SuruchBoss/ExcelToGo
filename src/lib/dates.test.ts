@@ -8,7 +8,8 @@ import { dateTextReader, valuesWithIsoDates } from "./dateCells";
 import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
 import { createEmptySheet, setCellRaw, setRangeFormat, SheetModel } from "./sheet";
 import { computeSheet, createWorkbookResolver, resetComputeCache } from "./sheetCompute";
-import { serialOf } from "./excelDate";
+import { BE_DATE_CODE, serialOf } from "./excelDate";
+import { sortRange } from "./sheetSort";
 
 /**
  * Dates in a sheet (#45), through the engine as a cell sees it.
@@ -246,5 +247,74 @@ describe("the PaynEat ERP template round-trips its dates (#45)", () => {
     }
     expect(dates).toBe(4);
     expect(back.getWorksheet("OpeningBalance")!.getCell("C2").value).toBe(42);
+  });
+});
+
+/**
+ * Buddhist-Era dates in a sheet (#82): typed or pasted as `15/01/2569`, they are the Gregorian date
+ * they mean, so the arithmetic, DATEDIF and sorting are right, and the cell still shows what was typed.
+ */
+describe("a Buddhist-Era date in a sheet (#82)", () => {
+  it("holds the Gregorian serial and still shows what was typed", () => {
+    const s = sheetWith({ A1: "15/01/2569", A2: "15 ม.ค. 69", A3: "2569-01-15 13:45" });
+    expect(at(s, "A1")).toEqual({ value: serialOf(2026, 1, 15), display: "15/01/2569" });
+    expect(at(s, "A2")).toEqual({ value: serialOf(2026, 1, 15), display: "15 ม.ค. 69" });
+    expect(at(s, "A3").value).toBeCloseTo(serialOf(2026, 1, 15) + (13 * 60 + 45) / 1440, 10);
+  });
+
+  it("DATEDIF between a Buddhist and a Gregorian date counts the real days; =DATE(2569,…) is still year 2569", () => {
+    const s = sheetWith({
+      A1: "15/01/2569",
+      A2: "2026-03-01",
+      A3: "1 มีนาคม 2569",
+      B1: '=DATEDIF(A1,A2,"d")',
+      B2: "=A3-A2",
+      B3: "=YEAR(A1)",
+      B4: "=YEAR(DATE(2569,1,15))",
+      B5: '=DATEDIF("15/01/2569","15 ก.พ. 2569","d")',
+    });
+    expect(at(s, "B1").value).toBe(45);
+    expect(at(s, "B2").value).toBe(0);
+    expect(at(s, "B3").value).toBe(2026);
+    expect(at(s, "B4").value).toBe(2569);
+    expect(at(s, "B5").value).toBe(31);
+  });
+
+  it("sorts by the real date, whichever calendar each was typed in", () => {
+    const s = sheetWith({ A1: "1 ก.พ. 2569", A2: "2025-12-31", A3: "15/01/2569", A4: "2026-01-01" });
+    const sorted = sortRange(s, computeSheet(s), { startRow: 0, endRow: 3, startCol: 0, endCol: 0 }, 0, true);
+    expect(sorted.cells.slice(0, 4).map((r) => r[0])).toEqual(["2025-12-31", "2026-01-01", "15/01/2569", "1 ก.พ. 2569"]);
+  });
+
+  it("goes out to Excel showing the Buddhist year, and a Buddhist format comes back in as one", async () => {
+    const s = sheetWith({ A1: "15/01/2569", A2: "2026-01-15", A3: "15/01/2569 08:30" });
+    const blob = await exportWorkbookToXlsxBlob([{ name: "BE", sheet: s, computed: computeSheet(s) }]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    const ws = wb.worksheets[0];
+    expect(ws.getCell("A1").value).toEqual(new Date(Date.UTC(2026, 0, 15)));
+    expect(ws.getCell("A1").numFmt).toBe(BE_DATE_CODE.date);
+    expect(ws.getCell("A2").numFmt).toBe("yyyy-mm-dd");
+    expect(ws.getCell("A3").numFmt).toBe(BE_DATE_CODE.datetime);
+
+    const [{ sheet }] = await importWorkbookFromFile(new File([await wb.xlsx.writeBuffer()], "be.xlsx"));
+    const back = computeSheet(sheet);
+    expect(back.values[0][0]).toBe(serialOf(2026, 1, 15));
+    expect(back.display[0][0]).toBe("15/1/2569");
+    expect(back.display[2][0]).toBe("15/1/2569 8:30");
+  });
+
+  it("an .xlsx that shows dates in the Buddhist year shows them that way here", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Thai");
+    const codes = ["[$-107041E]d mmm yy;@", "[$-1070000]dd/mm/yyyy;@", "dd/mm/bbbb", "[$-th-TH,107]d mmmm yyyy"];
+    codes.forEach((code, i) => {
+      ws.getCell(i + 1, 1).value = new Date(Date.UTC(2026, 0, 15));
+      ws.getCell(i + 1, 1).numFmt = code;
+    });
+    const [{ sheet }] = await importWorkbookFromFile(new File([await wb.xlsx.writeBuffer()], "thai.xlsx"));
+    const c = computeSheet(sheet);
+    expect(c.display.slice(0, 4).map((r) => r[0])).toEqual(["15 ม.ค. 69", "15/01/2569", "15/01/2569", "15 มกราคม 2569"]);
+    expect(c.values[0][0]).toBe(serialOf(2026, 1, 15));
   });
 });

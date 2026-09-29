@@ -310,6 +310,22 @@ const OPENED_STATES = [
     },
   },
   {
+    // "Convert to dates" (#82): a text date typed first, so the preview has a row and a count to show.
+    name: "convert to dates dialog",
+    path: "/app",
+    async open(page) {
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      await page.keyboard.type("15/01/69");
+      await page.keyboard.press("Enter");
+      await page.locator('td[data-row="0"][data-col="0"]').click();
+      await reveal(page, 'button[aria-label="แปลงเป็นวันที่"]');
+      await page.locator('button[aria-label="แปลงเป็นวันที่"]').first().click();
+      const dialog = page.getByRole("dialog", { name: "แปลงข้อความเป็นวันที่" });
+      await dialog.waitFor({ state: "visible", timeout: 10_000 });
+      await dialog.getByText("2026-01-15", { exact: false }).waitFor({ timeout: 10_000 });
+    },
+  },
+  {
     // Only asked when opening a file would land on top of work, so the state needs work first:
     // the app opens blank, and a typed cell is work. The file goes in through the same hidden
     // input the Import button clicks — a native picker is not something a page can drive.

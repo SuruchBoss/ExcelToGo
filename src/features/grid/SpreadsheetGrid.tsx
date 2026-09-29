@@ -1440,6 +1440,7 @@ export default function SpreadsheetGrid() {
             deleteRow: deleteSelectedRow,
             deleteColumn: deleteSelectedColumn,
             clear: clearSelection,
+            convertDates: () => useSheetStore.getState().setConvertingDates(true),
           }}
         />
       )}

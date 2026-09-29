@@ -35,7 +35,6 @@ import {
   getCellFormat,
   insertColumnBefore,
   insertRowBefore,
-  NumberFormat,
   parseTsv,
   pasteClipboardBlock,
   pastePlainTextBlock,
@@ -48,6 +47,9 @@ import {
   toTsv,
 } from "@/lib/sheet";
 import { fromStorage, PackedSheet, toStorage, withLegacyPercent } from "@/lib/sheetCodec";
+import { type FormatChoice, formatForChoice } from "@/lib/cellFormat";
+import { type DateCalendar, type DateOrder, planConversion } from "@/lib/dateConvert";
+import { BE_DATE_CODE } from "@/lib/excelDate";
 import { guardedStorage } from "@/lib/saveHealth";
 import { isEditingTab, noteRefusedEdit } from "./tabStore";
 import { autoChartAnchor, MAX_COL_WIDTH, MIN_COL_WIDTH } from "@/lib/gridGeometry";
@@ -315,6 +317,15 @@ interface SheetState {
   applyLiveData: (sourceId: string, table: TableData) => void;
 
   clearSelection: () => void;
+  /**
+   * "Convert to dates" (#82): rewrites the selection's date text as ISO, read in the order and
+   * calendar given, in one undoable step. Cells it cannot read are left as they are. A conversion
+   * from the Buddhist Era leaves the cells showing the Buddhist year, unless they already had a format.
+   */
+  convertSelectionToDates: (order: DateOrder, calendar: DateCalendar) => void;
+  /** Whether the "Convert to dates" dialog is open — shared, because the format bar and the cell menu both open it. */
+  convertingDates: boolean;
+  setConvertingDates: (open: boolean) => void;
   /** Continues the selection into the block ending at (row, col) — the fill handle. */
   fillFrom: (row: number, col: number) => void;
   /** Excel's Ctrl+D / Ctrl+R: the selection's first line fills the rest of it. */
@@ -382,7 +393,8 @@ interface SheetState {
   setFillColor: (fill: string | undefined) => void;
   /** One column's width in pixels, clamped; `undefined` goes back to the default. One undo step. */
   setColumnWidth: (col: number, width: number | undefined) => void;
-  setNumberFormat: (fmt: NumberFormat) => void;
+  /** A stored format, or "Date (B.E.)" (#82). */
+  setNumberFormat: (fmt: FormatChoice) => void;
   /** Joins the selection into one cell, or splits any merge it touches. */
   toggleMerge: () => void;
 
@@ -1204,6 +1216,33 @@ export const useSheetStore = create<SheetState>()(
             };
           }),
 
+        convertingDates: false,
+        setConvertingDates: (open) => set({ convertingDates: open }),
+
+        convertSelectionToDates: (order, calendar) =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            const { sheet } = activeTab(s);
+            if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            const plan = planConversion((r, c) => sheet.cells[r]?.[c] ?? "", sel, order, calendar);
+            const said = say(getMessages().live.datesConverted(plan.changes.length, plan.unreadable.length));
+            if (plan.changes.length === 0) return said;
+            return {
+              sheets: updateActiveSheet(s, (current) => {
+                const next = cloneSheet(current);
+                for (const { row, col, after } of plan.changes) {
+                  next.cells[row][col] = after.iso;
+                  const format = next.formats[row]?.[col];
+                  if (calendar === "be" && next.formats[row] && (!format?.numberFormat || format.numberFormat === "general") && after.kind !== "time") {
+                    next.formats[row][col] = { ...format, numberFormat: after.kind, dateFormat: BE_DATE_CODE[after.kind] };
+                  }
+                }
+                return next;
+              }),
+              ...said,
+            };
+          }),
+
         copySelection: () => {
           const s = get();
           const { sheet } = activeTab(s);
@@ -1585,12 +1624,10 @@ export const useSheetStore = create<SheetState>()(
             }),
           })),
 
-        setNumberFormat: (numberFormat) =>
+        setNumberFormat: (choice) =>
           set((s) => ({
             // A code a file brought in (`dd/mm/yyyy`, `0%`) goes with it: picking a format means the app's own.
-            sheets: updateActiveSheet(s, (sheet, selection) =>
-              applySelectionFormat(sheet, selection, { numberFormat, dateFormat: undefined, numFmtCode: undefined })
-            ),
+            sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, formatForChoice(choice))),
           })),
 
         /**

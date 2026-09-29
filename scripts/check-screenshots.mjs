@@ -110,6 +110,8 @@ const SHOWS = {
   "60-pointing-bar.png": [],
   "61-other-tab.png": [],
   "62-picking-bar.png": [],
+  // The convert-to-dates dialog (#82): dates and counts from its own sample, none of them counted figures.
+  "66-convert-dates.png": [],
   "demo.gif": [],
 };
 
