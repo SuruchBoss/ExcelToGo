@@ -3,8 +3,8 @@
 
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
-import { FilePlus, FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, CircleCheck, TriangleAlert, Database, Cloud, Menu } from "lucide-react";
+import { useRef, useState } from "react";
+import { FilePlus, FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, Database, Cloud, Menu } from "lucide-react";
 import clsx from "clsx";
 import { selectHasWork, useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
@@ -12,8 +12,8 @@ import { keepGridFocus } from "./keepGridFocus";
 import LanguageToggle from "./LanguageToggle";
 import Link from "next/link";
 import { isCloudConfigured } from "@/lib/cloud/config";
-import { getSaveStatus, subscribeSaveStatus } from "@/lib/saveHealth";
 import MobileMenu from "./MobileMenu";
+import SaveStatus from "./SaveStatus";
 import { useKeyboardOpen } from "./useKeyboardOpen";
 import ImportChoiceDialog from "./ImportChoiceDialog";
 import NewFileDialog from "./NewFileDialog";
@@ -28,6 +28,10 @@ function navButton(active: boolean) {
   return clsx(
     "flex shrink-0 items-center justify-center whitespace-nowrap font-medium",
     "max-lg:h-14 max-lg:min-w-0 max-lg:flex-col max-lg:gap-0.5 max-lg:px-0.5 max-lg:text-[11px] max-lg:leading-tight",
+    // Icons only on a short screen, and below 360px wide (a phone at 200% zoom), named for a screen
+    // reader by the word they keep (#129). The words set the bar's width there: 325px of them made
+    // the whole page scroll sideways at 320.
+    "max-lg:short:h-11 max-lg:short:min-w-11",
     "lg:gap-1.5 lg:rounded-md lg:px-3 lg:py-1.5 lg:text-sm",
     active
       ? "max-lg:font-semibold max-lg:text-emerald-800 lg:bg-emerald-700 lg:text-white"
@@ -57,7 +61,6 @@ export default function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const busy = useSheetStore((s) => s.busy);
-  const saveStatus = useSyncExternalStore(subscribeSaveStatus, getSaveStatus, () => "ok" as const);
   const sidebarMode = useSheetStore((s) => s.sidebarMode);
   const hasPending = useSheetStore((s) => s.pending !== null);
   const importFromFile = useSheetStore((s) => s.importFromFile);
@@ -91,38 +94,14 @@ export default function Toolbar() {
     // the format bar and the formula bar under it, more than half a phone screen was chrome before
     // the first cell. Below 1024px it now holds four things and does not scroll at all; from 1024px up
     // it scrolls when it has to, like the format bar under it.
-    <div className="flex items-center gap-1.5 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 sm:py-2" onMouseDown={keepGridFocus}>
+    <div className="flex items-center gap-1.5 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 sm:py-2 max-lg:short:py-0.5 sm:max-lg:short:border-b-0" onMouseDown={keepGridFocus}>
       {/* The brand doubles as the way back to the landing page, the way it does on most sites. */}
       <Link href="/" title={t.landing.home} className="mr-2 shrink-0 text-lg font-bold text-emerald-700 hover:text-emerald-800">
         {t.app.brand}
       </Link>
-      {/* Where a document app says it saved: beside the name, as a status rather than a control. It
-          sat at the head of the panel buttons with a floppy disk — the icon of a Save *button* — and
-          read as a button that did nothing, alone on the wrong side of a gap. A tick says it is
-          done; amber and different words when the browser refused the last save. The word only from
-          2xl, as before: below that the row overflowed a 1366px laptop in English. The icon stays,
-          and the word stays for a screen reader. `relative` because `sr-only` is absolute — without
-          a positioned parent the hidden word widened the page by 86px at 820. */}
-      {busy ? (
-        <span className="-ml-1 mr-2 hidden shrink-0 text-xs text-zinc-500 lg:inline">{busy}</span>
-      ) : (
-        <span
-          title={saveStatus === "ok" ? t.toolbar.autosaveTitle : t.toolbar.autosaveFailed}
-          className={clsx(
-            "relative -ml-1 mr-2 hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs lg:flex",
-            saveStatus === "ok" ? "text-zinc-500" : "font-medium text-amber-800"
-          )}
-        >
-          {saveStatus === "ok" ? (
-            <CircleCheck size={13} aria-hidden className="text-emerald-600" />
-          ) : (
-            <TriangleAlert size={13} aria-hidden />
-          )}
-          <span className="sr-only 2xl:not-sr-only">
-            {saveStatus === "ok" ? t.toolbar.autosaveLabel : t.toolbar.autosaveFailed}
-          </span>
-        </span>
-      )}
+      {/* The save status, and behind it the "saved in this browser only" text (#129). On a phone
+          too now: that text used to be a band over the grid, and this is where it went. */}
+      {busy ? <span className="-ml-1 mr-2 hidden shrink-0 text-xs text-zinc-500 lg:inline">{busy}</span> : <SaveStatus />}
       {/* On a phone the row is the brand, then undo, redo and the language — nothing that scrolls
           out of sight. The busy message lives here too, since the tab bar has no room for words
           that are not tab names. */}
@@ -240,7 +219,9 @@ export default function Toolbar() {
       <nav
         aria-label={t.menu.navLabel}
         className={clsx(
-          "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-[35] max-lg:grid max-lg:auto-cols-fr max-lg:grid-flow-col max-lg:border-t max-lg:border-zinc-200 max-lg:bg-white max-lg:pb-[env(safe-area-inset-bottom)]",
+          "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-[35] max-lg:grid max-lg:auto-cols-[minmax(0,1fr)] max-lg:grid-flow-col max-lg:border-t max-lg:border-zinc-200 max-lg:bg-white max-lg:pb-[env(safe-area-inset-bottom)]",
+          // A short screen from 640px wide: the icons move to the right end of the sheet tabs' row.
+          "sm:max-lg:short:left-auto sm:max-lg:short:border-l sm:max-lg:short:px-1",
           "lg:ml-auto lg:flex lg:shrink-0 lg:items-center lg:gap-1.5",
           keyboardOpen && "max-lg:hidden"
         )}
@@ -249,19 +230,19 @@ export default function Toolbar() {
           <span className={navIcon(paletteOpen)}>
             <Sigma size={17} className="lg:size-[15px]" />
           </span>
-          {t.toolbar.formulas}
+          <span className="max-lg:short:sr-only max-[359px]:sr-only">{t.toolbar.formulas}</span>
         </button>
         <button onClick={() => toggleSidebar("ai")} aria-label={t.toolbar.askAi} aria-pressed={aiOpen} className={navButton(aiOpen)}>
           <span className={navIcon(aiOpen)}>
             <Sparkles size={17} className="lg:size-[15px]" />
           </span>
-          {t.toolbar.askAi}
+          <span className="max-lg:short:sr-only max-[359px]:sr-only">{t.toolbar.askAi}</span>
         </button>
         <button onClick={() => toggleSidebar("data")} aria-label={t.toolbar.data} aria-pressed={dataOpen} className={navButton(dataOpen)}>
           <span className={navIcon(dataOpen)}>
             <Database size={17} className="lg:size-[15px]" />
           </span>
-          {t.toolbar.data}
+          <span className="max-lg:short:sr-only max-[359px]:sr-only">{t.toolbar.data}</span>
         </button>
         {/* Absent, not disabled, when no cloud backend is configured — which is the default. The
             app is open source, not a hosted service: you point it at your own Supabase project or
@@ -273,7 +254,7 @@ export default function Toolbar() {
             <span className={navIcon(cloudOpen)}>
               <Cloud size={17} className="lg:size-[15px]" />
             </span>
-            <span className="lg:hidden">{t.toolbar.cloudShort}</span>
+            <span className="lg:hidden max-lg:short:sr-only max-[359px]:sr-only">{t.toolbar.cloudShort}</span>
             <span className="hidden lg:inline">{t.cloud.title}</span>
           </button>
         )}
@@ -286,7 +267,7 @@ export default function Toolbar() {
           <span className={navIcon(menuOpen)}>
             <Menu size={17} />
           </span>
-          {t.menu.open}
+          <span className="max-lg:short:sr-only max-[359px]:sr-only">{t.menu.open}</span>
         </button>
       </nav>
       <LanguageToggle />

@@ -110,6 +110,8 @@ const SHOWS = {
   "60-pointing-bar.png": [],
   "61-other-tab.png": [],
   "62-picking-bar.png": [],
+  "64-short-screen.png": [],
+  "65-save-status.png": [],
   "demo.gif": [],
 };
 

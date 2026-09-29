@@ -1,6 +1,8 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
+import { markCopyKept } from "./keptCopy";
+
 /**
  * Handing a Blob to the browser as a file.
  *
@@ -16,6 +18,9 @@
  *   version of the rescue path did exactly that.
  * - **Revoke after the click, not before.** The object URL has to outlive the navigation the click
  *   starts.
+ *
+ * It is also where a copy of the work leaves this browser, so it is what clears the save status's
+ * reminder to keep one (`keptCopy.ts`) — every export goes through here, and so will the next one.
  */
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -26,4 +31,5 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  markCopyKept();
 }

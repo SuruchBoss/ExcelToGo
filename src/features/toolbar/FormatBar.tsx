@@ -141,7 +141,7 @@ export default function FormatBar() {
 
 
   return (
-    <div ref={barRef} className="flex items-center gap-2 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4" onMouseDown={keepGridFocus}>
+    <div ref={barRef} className="flex items-center gap-2 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 sm:max-lg:short:order-last sm:max-lg:short:col-span-2 sm:max-lg:short:border-b-0 sm:max-lg:short:border-t" onMouseDown={keepGridFocus}>
       {/* The word only on a wide screen: italic and underline made this row 72px longer, and at
           1366px the word was the one thing on it nobody presses. */}
       <span className="hidden shrink-0 text-xs font-medium text-zinc-500 2xl:inline">{t.formatBar.label}</span>
