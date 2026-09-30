@@ -11,6 +11,7 @@ export const en: Messages = {
     skipToContent: "Skip to main content",
     languageToggleLabel: "TH",
     languageToggleTitle: "Switch to Thai",
+    heading: "Edit an Excel file in your browser",
   },
   toolbar: {
     importFile: "Import file",
@@ -426,9 +427,9 @@ export const en: Messages = {
     },
     stats: [
       { value: "37", label: "ready-made formulas" },
-      { value: "65", label: "engine functions" },
-      { value: "1734", label: "automated tests" },
-      { value: "323", label: "security tests" },
+      { value: "66", label: "engine functions" },
+      { value: "1859", label: "automated tests" },
+      { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -445,6 +446,56 @@ export const en: Messages = {
     ],
     limitsMoreText: "The rest of the limits are written out in the README — including the ones a promo page normally leaves out.",
     limitsMoreCta: "Read every limitation",
+    faqTitle: "Questions people ask",
+    faqLead: "The short answer first, then the details and the limits.",
+    faq: [
+      {
+        q: "Can I open an Excel file on my phone without Office?",
+        answer: "Yes. Open it in your phone's browser, import an .xlsx or CSV, edit it, and export it back to .xlsx, with nothing to install.",
+        detail:
+          "The grid works with a finger: tap cells while typing a formula to put in their addresses, and long-press a cell for its menu. A phone shows only a few columns at a time, so it suits editing a file more than building a large sheet from scratch.",
+        link: { href: "/app", label: "Open the sheet" },
+      },
+      {
+        q: "Do I need to sign up or pay?",
+        answer: "No. There are no accounts, and it is free.",
+        detail:
+          "Your work is saved in this browser automatically, so it does not follow you to another device, and clearing the browser's data clears it. Export an .xlsx to keep a copy. Saving across devices and editing together work if you run this app on your own server with your own Supabase — not on this site.",
+      },
+      {
+        q: "Is my file uploaded to a server?",
+        answer: "No. The file is read and edited in your browser and is not sent anywhere.",
+        detail:
+          "The one exception: if you add your own API key and ask the AI, the question, the selected cells and the column headers go straight to Anthropic, never the file. The page's security policy (CSP) stops scripts from sending data anywhere else.",
+      },
+      {
+        q: "Will the file come back broken?",
+        answer:
+          "Mostly not. Colours, font sizes, bold, borders, merged cells, column widths, number formats, dates and formulas are read in and written back to .xlsx.",
+        detail:
+          "What is not kept: pictures, Excel's own charts and PivotTables, and macros; they are not in the exported file. A formula using a function the app does not have yet shows #NAME?. CSV files must be UTF-8.",
+        link: { href: "https://github.com/SuruchBoss/ExcelToGo/blob/main/README.en.md#-import-an-existing-excel-file", label: "Every limitation" },
+      },
+      {
+        q: "Can I use Excel formulas, and do I need an AI key?",
+        answer: "Yes, and no key is needed. Type formulas as in Excel, or pick from 37 ready-made formulas, each explained.",
+        detail:
+          "You can also describe what you want in plain words. Without a key the app guesses from keywords and always says it is a guess, so check before you use it. Add your own API key for answers from the AI.",
+      },
+      {
+        q: "Can I connect data from my company's systems?",
+        answer: "Yes, if the system has an API that allows CORS. Connect it from the browser in the app, and the values land in the sheet and refresh on their own.",
+        detail:
+          "PostgreSQL or MySQL cannot be reached from a browser. Company cookies and SSO are not supported yet; use headers you enter yourself. An API without CORS needs the app running on your own server.",
+        link: { href: "/guide", label: "Guide to connecting your data" },
+      },
+      {
+        q: "How is it different from Excel or Google Sheets?",
+        answer: "No account, nothing to install, and the file never leaves your device.",
+        detail:
+          "Excel and Google Sheets on the web need you to sign in and keep files in their cloud. What this app does not have: macros, Excel-style PivotTables, and hundreds of functions (it has 66). Editing together works if you run this app on your own server with your own Supabase — not on this site.",
+      },
+    ],
     closingTitle: "Use it now — free, nothing to sign up for",
     closingBody: "This is the real app, not a trial — open it and start on your own work, and connect your own API from the browser so the numbers in the sheet keep themselves up to date. No API yet? The live-data panel has three sample APIs to connect first.",
     contact: {
@@ -706,6 +757,13 @@ export const en: Messages = {
     text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
     openSample: "Try it with sample data",
   },
+  pasteWarning: {
+    title: "Rows here are hidden",
+    body: (hidden) =>
+      `This paste would land on ${hidden === 1 ? "a row" : `${hidden} rows`} the filter is hiding, writing over ${hidden === 1 ? "its" : "their"} values where you can't see them. Clear the filter first to see what it would replace. Undo always takes a paste back.`,
+    pasteAnyway: "Paste anyway",
+    cancel: "Cancel",
+  },
   sortWarning: {
     title: "Formulas here point at other rows",
     body: (formulas) =>
@@ -718,9 +776,29 @@ export const en: Messages = {
     body: "One tab edits at a time, so neither can save over the other's work. Use this tab instead and the other tab turns view-only, with everything done there already saved. View only shows the latest work here without changing it.",
     useHere: "Use this tab instead",
     viewOnly: "View only",
-    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here.",
+    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here. If that tab closes, this one can edit by itself.",
     handedOff: "This tab is view-only now: the workbook was opened for editing in another tab. Everything done here was saved.",
     refused: "Nothing can be changed in this tab. Use this tab instead to edit here.",
+    freed: "The other tab closed — you can edit here now, with everything it saved.",
+    dismiss: "Dismiss",
+  },
+  convertDates: {
+    button: "Convert to dates",
+    menu: "Convert to dates…",
+    hint: "Read the selected text as dates, such as 15/01/69",
+    title: "Convert text to dates",
+    body: "A date like 15/01/69 can be read more than one way — 2569 B.E. or 1969, day first or month first — so it is not guessed. Say how it is written and see the result before anything changes. Cells that cannot be read are left as they are, and one undo puts everything back.",
+    order: "Order",
+    orders: { dmy: "Day/Month/Year", mdy: "Month/Day/Year", ymd: "Year/Month/Day" },
+    calendar: "Years in",
+    calendars: { be: "B.E. (Thai)", ce: "A.D." },
+    preview: "Preview",
+    before: "Now",
+    after: "Becomes",
+    counts: (changed, unreadable) => `${changed} ${changed === 1 ? "cell" : "cells"} will change${unreadable ? ` · ${unreadable} cannot be read (left as they are)` : ""}`,
+    nothing: "Nothing in the selection reads as a date this way",
+    confirm: (changed) => `Convert ${changed} ${changed === 1 ? "cell" : "cells"}`,
+    cancel: "Cancel",
   },
   newFile: {
     button: "New file",
@@ -902,6 +980,7 @@ export const en: Messages = {
     currency: "Currency (฿)",
     text: "Text",
     date: "Date",
+    dateBE: "Date (B.E.)",
     datetime: "Date and time",
     time: "Time",
   },
@@ -968,6 +1047,10 @@ export const en: Messages = {
     allFiltersCleared: (total) => `Cleared all filters, showing all ${total} rows`,
     pasted: (rows, cols, at) => `Pasted ${rows} rows by ${cols} columns at ${at}`,
     cleared: (range) => `Cleared ${range}`,
+    datesConverted: (changed, unreadable) =>
+      changed === 0
+        ? "No cell could be read as a date this way"
+        : `Converted ${changed} ${changed === 1 ? "cell" : "cells"} to dates${unreadable ? ` · ${unreadable} could not be read and were left as they were` : ""}`,
     filled: (cells, range) => `Filled ${cells} cells, ${range} now selected`,
     replacedOne: (at) => `Replaced in ${at}`,
     replacedAll: (cells) => `Replaced in ${cells} cells`,
@@ -1134,6 +1217,8 @@ export const en: Messages = {
     heuristicNote: "No API key yet, so this is a keyword guess — check the formula before using it, or open \"Use your own API key\" below for a real answer from Claude",
     guessBadge: "Keyword guess",
     overwriteWarning: (address) => `${address} already holds something — inserting overwrites it (you can undo)`,
+    selfReference: (address) => `This formula reads ${address} itself, so putting it there would make it circular (#CIRCULAR!). Click an empty cell outside the range and ask again.`,
+    openForm: (name) => `Open the ${name} form`,
     connectionError: "Sorry, something went wrong connecting to AI. Please try again.",
     rateLimited: (seconds) => `Too many questions too quickly — try again in ${seconds}s.`,
     examples: [
@@ -1184,14 +1269,27 @@ export const en: Messages = {
       min: "Finds the smallest value in the selected range",
       counta: "Counts how many cells have data (aren't blank)",
       count: "Counts how many cells in the selected range contain numbers",
-      vlookup: "Looks up the value in A1 in the table's first column, then returns column 2's value (adjust the column number as needed)",
       if: "Checks a condition and returns one value if true, another if false (adjust the condition and text as needed)",
       concatenate: "Joins text from multiple cells together",
       upper: "Converts text to all uppercase",
       today: "Shows today's date",
     },
     noMatch:
-      "I can't tell which formula you want — without a key this assistant only matches keywords, so it won't guess. Pick one from the Formulas panel on the left, or paste an API key in the box above and ask again.",
+      "I can't tell which formula you want. Without a key this assistant only matches words, so it won't guess. Press “Formulas” and pick one, or add a key under “Use your own API key” below and ask again.",
+    declined: {
+      conditional: (form) =>
+        `This asks about some rows only (“only drinks”, “more than 15”). Working on the whole column would give a number that looks right and isn't, so this guess stops here.${form ? ` ${form} works on just the rows that match: its form below asks for the column to check, the condition, and the cells to use.` : " Press “Formulas” to build it, or add your own API key below."}`,
+      needsRange: (form) =>
+        `Which cells? Click in the column you mean (or select the cells) and ask again, or open the ${form} form below and pick them.`,
+      textColumns: (form) =>
+        `Say which columns, by their names in row 1 (“product”, “category”), or open the ${form} form below and pick the cells.`,
+      lookup:
+        "A lookup needs two things this guess can't read from a question: what to look for, and the table to look in. The VLOOKUP form below asks for both.",
+      ifDetail:
+        "An IF needs the column to check (by its name in row 1), a comparison and a number, like “if the price is above 50”. Not all of that is in the question, so the IF form below asks for it.",
+      subtract: "Subtracting needs the two cells, which the question doesn't point at. Type = in a cell and click them, like =C2-D2.",
+      dates: "Days between two dates need the two date cells. The DATEDIF form below asks for them.",
+    },
     ifOutcomes: ["Pass", "Fail"],
   },
   formulas: {

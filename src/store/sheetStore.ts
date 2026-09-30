@@ -35,7 +35,6 @@ import {
   getCellFormat,
   insertColumnBefore,
   insertRowBefore,
-  NumberFormat,
   parseTsv,
   pasteClipboardBlock,
   pastePlainTextBlock,
@@ -48,11 +47,16 @@ import {
   toTsv,
 } from "@/lib/sheet";
 import { fromStorage, PackedSheet, toStorage, withLegacyPercent } from "@/lib/sheetCodec";
+import { type FormatChoice, formatForChoice } from "@/lib/cellFormat";
+import { type DateCalendar, type DateOrder, planConversion } from "@/lib/dateConvert";
+import { BE_DATE_CODE } from "@/lib/excelDate";
 import { guardedStorage } from "@/lib/saveHealth";
 import { isEditingTab, noteRefusedEdit } from "./tabStore";
 import { autoChartAnchor, MAX_COL_WIDTH, MIN_COL_WIDTH } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
-import { autoSumRange, headerRow } from "@/lib/aiRange";
+import { autoSumRange, hasHeaderRow, headerRow, namedColumns, runIsText, TOTAL_LABEL, valuesMentioned, type NamedColumn } from "@/lib/aiRange";
+import { placeFormula, type Cell } from "@/lib/aiPlacement";
+import { referencedRects } from "@/lib/precedents";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
 import { fitSheetNames, renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
 import { nextSheetName, SheetNameProblem, sheetNameProblem } from "@/lib/sheetNames";
@@ -318,6 +322,16 @@ interface SheetState {
   applyLiveData: (sourceId: string, table: TableData) => void;
 
   clearSelection: () => void;
+  /**
+   * "Convert to dates" (#82): rewrites the selection's date text as ISO, read in the order and
+   * calendar given, in one undoable step. Cells it cannot read, and rows a filter hides, are left
+   * as they are. A conversion
+   * from the Buddhist Era leaves the cells showing the Buddhist year, unless they already had a format.
+   */
+  convertSelectionToDates: (order: DateOrder, calendar: DateCalendar) => void;
+  /** Whether the "Convert to dates" dialog is open — shared, because the format bar and the cell menu both open it. */
+  convertingDates: boolean;
+  setConvertingDates: (open: boolean) => void;
   /** Continues the selection into the block ending at (row, col) — the fill handle. */
   fillFrom: (row: number, col: number) => void;
   /** Excel's Ctrl+D / Ctrl+R: the selection's first line fills the rest of it. */
@@ -345,7 +359,14 @@ interface SheetState {
   replaceAll: (needle: string, replacement: string, options: SearchOptions) => number;
   copySelection: () => void;
   cutSelection: () => void;
-  pasteAtSelection: (externalText?: string) => void;
+  /**
+   * Pastes the clipboard (ours, else `externalText`) at the cursor. When the rows it would land on
+   * include rows a filter hides (#50), it records `pasteWarning` and waits for `force`.
+   */
+  pasteAtSelection: (externalText?: string, force?: boolean) => void;
+  /** Set while a paste waits on "this would write over n hidden rows — paste anyway?". */
+  pasteWarning: { hidden: number; text?: string } | null;
+  dismissPasteWarning: () => void;
   clearClipboard: () => void;
 
   /**
@@ -385,7 +406,8 @@ interface SheetState {
   setFillColor: (fill: string | undefined) => void;
   /** One column's width in pixels, clamped; `undefined` goes back to the default. One undo step. */
   setColumnWidth: (col: number, width: number | undefined) => void;
-  setNumberFormat: (fmt: NumberFormat) => void;
+  /** A stored format, or "Date (B.E.)" (#82). */
+  setNumberFormat: (fmt: FormatChoice) => void;
   /** Joins the selection into one cell, or splits any merge it touches. */
   toggleMerge: () => void;
 
@@ -394,7 +416,9 @@ interface SheetState {
   insertPending: () => void;
   cancelPending: () => void;
 
-  insertAIFormula: (formula: string) => void;
+  /** Writes an answer where `placeFormula` says it goes, and returns where — or `null`, having
+   *  written nothing, when the only cells it could go into are ones it reads (#64). */
+  insertAIFormula: (formula: string) => Cell | null;
 
   /** `append` adds the file's sheets after the ones open; `replace` swaps the workbook for it. */
   importFromFile: (file: File, mode?: ImportMode) => Promise<void>;
@@ -494,6 +518,19 @@ const DEFAULT_SELECTION: SelectionRect = singleCellSelection(0, 0);
 
 function activeSelectionOf(s: SheetState): SelectionRect {
   return s.selectionBySheetId[s.activeSheetId] ?? DEFAULT_SELECTION;
+}
+
+const NO_HIDDEN_ROWS: ReadonlySet<number> = new Set();
+
+/**
+ * The rows the active sheet's filters hide, as the grid hides them (#50). Every action on a
+ * selection skips these, as Excel does: they are not on screen, so nothing the person can see
+ * says they were changed. Deleting a filtered range used to empty the hidden rows too.
+ */
+function hiddenRowsOfActive(s: SheetState): ReadonlySet<number> {
+  const filters = s.filtersBySheetId[s.activeSheetId];
+  if (!filters || Object.keys(filters).length === 0) return NO_HIDDEN_ROWS;
+  return hiddenRowsFor(computeTab(activeTab(s).sheet, s.sheets).display, filters);
 }
 
 /** Replaces the active tab's sheet with whatever `fn` returns, leaving every other tab (and
@@ -668,12 +705,15 @@ function applyFill(
   if (refusedByTemplate(sheet, target.startRow, target.startCol, target.endRow, target.endCol)) return;
   const writes = fillBlock((r, c) => sheet.cells[r]?.[c] ?? "", source, target);
   if (writes.length === 0) return;
+  // Rows a filter hides are not filled (#50): Excel fills what is on screen, and a fill that
+  // reached rows nobody could see overwrote them unseen.
+  const hidden = hiddenRowsOfActive(s);
 
   set(() => {
     const next = cloneSheet(ensureBounds(sheet, target.endRow + 1, target.endCol + 1));
     let written = 0;
     for (const w of writes) {
-      if (isTemplateLocked(next.template, w.row, w.col)) continue;
+      if (hidden.has(w.row) || isTemplateLocked(next.template, w.row, w.col)) continue;
       next.cells[w.row][w.col] = w.value;
       written++;
     }
@@ -1124,9 +1164,11 @@ export const useSheetStore = create<SheetState>()(
             if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
 
             const source = sheet.cells[sel.anchorRow]?.[sel.anchorCol] ?? "";
+            const hidden = hiddenRowsOfActive(s);
             const next = cloneSheet(sheet);
             let written = 0;
             for (let r = sel.startRow; r <= sel.endRow; r++) {
+              if (hidden.has(r)) continue;
               for (let c = sel.startCol; c <= sel.endCol; c++) {
                 if (isTemplateLocked(next.template, r, c)) continue;
                 // Shifted rather than copied verbatim: a formula that kept pointing at the anchor's
@@ -1210,11 +1252,40 @@ export const useSheetStore = create<SheetState>()(
           set((s) => {
             const sel = activeSelectionOf(s);
             if (refusedByTemplate(activeTab(s).sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            const hidden = hiddenRowsOfActive(s);
             return {
               sheets: updateActiveSheet(s, (sheet, selection) =>
-                clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol)
+                clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, hidden)
               ),
               ...say(getMessages().live.cleared(rangeLabel(sel))),
+            };
+          }),
+
+        convertingDates: false,
+        setConvertingDates: (open) => set({ convertingDates: open }),
+
+        convertSelectionToDates: (order, calendar) =>
+          set((s) => {
+            const sel = activeSelectionOf(s);
+            const { sheet } = activeTab(s);
+            if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            // Rows a filter hides are left as they are (#50), as delete and fill leave them.
+            const plan = planConversion((r, c) => sheet.cells[r]?.[c] ?? "", sel, order, calendar, hiddenRowsOfActive(s));
+            const said = say(getMessages().live.datesConverted(plan.changes.length, plan.unreadable.length));
+            if (plan.changes.length === 0) return said;
+            return {
+              sheets: updateActiveSheet(s, (current) => {
+                const next = cloneSheet(current);
+                for (const { row, col, after } of plan.changes) {
+                  next.cells[row][col] = after.iso;
+                  const format = next.formats[row]?.[col];
+                  if (calendar === "be" && next.formats[row] && (!format?.numberFormat || format.numberFormat === "general") && after.kind !== "time") {
+                    next.formats[row][col] = { ...format, numberFormat: after.kind, dateFormat: BE_DATE_CODE[after.kind] };
+                  }
+                }
+                return next;
+              }),
+              ...said,
             };
           }),
 
@@ -1222,7 +1293,7 @@ export const useSheetStore = create<SheetState>()(
           const s = get();
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
-          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, hiddenRowsOfActive(s));
           set({
             clipboard: { ...block, cut: false, sheetId: activeTab(s).id },
             ...say(getMessages().live.copied(rangeLabel(selection))),
@@ -1234,7 +1305,7 @@ export const useSheetStore = create<SheetState>()(
           const s = get();
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
-          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, hiddenRowsOfActive(s));
           set({
             clipboard: { ...block, cut: true, sheetId: activeTab(s).id },
             ...say(getMessages().live.cut(rangeLabel(selection))),
@@ -1242,10 +1313,22 @@ export const useSheetStore = create<SheetState>()(
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
-        pasteAtSelection: (externalText) =>
+        pasteWarning: null,
+        dismissPasteWarning: () => set({ pasteWarning: null }),
+
+        pasteAtSelection: (externalText, force = false) =>
           set((s) => {
             const { sheet } = activeTab(s);
             const selection = activeSelectionOf(s);
+            // A paste goes down in one piece, so under a filter it can land on rows nobody can see
+            // (#50). Delete and fill skip those; a paste cannot, so it asks first (PO's call).
+            if (!force) {
+              const height = s.clipboard?.rows.length ?? (externalText ? parseTsv(externalText).length : 0);
+              const hidden = hiddenRowsOfActive(s);
+              let covered = 0;
+              for (let r = selection.anchorRow; r < selection.anchorRow + height; r++) if (hidden.has(r)) covered++;
+              if (covered > 0) return { pasteWarning: { hidden: covered, text: externalText } };
+            }
             if (sheet.template) {
               // Size the guard to what would actually be written, not just the selected cell.
               const height = s.clipboard?.rows.length ?? parseTsv(externalText ?? "").length;
@@ -1264,8 +1347,15 @@ export const useSheetStore = create<SheetState>()(
               if (clipboard.cut) {
                 const height = clipboard.rows.length;
                 const width = clipboard.rows[0]?.length ?? 0;
-                const srcEndRow = clipboard.startRow + height - 1;
+                const srcEndRow = clipboard.sourceRows?.at(-1) ?? clipboard.startRow + height - 1;
                 const srcEndCol = clipboard.startCol + width - 1;
+                // A cut made under a filter took only the rows on screen (#50); only those are
+                // emptied, and the hidden rows between them stay as they were.
+                const kept = new Set<number>();
+                if (clipboard.sourceRows) {
+                  const cut = new Set(clipboard.sourceRows);
+                  for (let r = clipboard.startRow; r <= srcEndRow; r++) if (!cut.has(r)) kept.add(r);
+                }
                 const destId = activeTab(s).id;
                 if (clipboard.sheetId === destId) {
                   const destOverlapsSource =
@@ -1276,7 +1366,7 @@ export const useSheetStore = create<SheetState>()(
                   // Moving to a spot that overlaps the original block would otherwise wipe out
                   // the very cells pasteClipboardBlock just wrote there.
                   if (!destOverlapsSource) {
-                    next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+                    next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol, kept);
                     sheets = withActiveSheet(s, () => next);
                   }
                 } else {
@@ -1286,7 +1376,7 @@ export const useSheetStore = create<SheetState>()(
                   // update, so one undo puts both back.
                   sheets = sheets.map((t) =>
                     t.id === clipboard.sheetId
-                      ? { ...t, sheet: clearRange(t.sheet, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol) }
+                      ? { ...t, sheet: clearRange(t.sheet, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol, kept) }
                       : t
                   );
                 }
@@ -1295,6 +1385,7 @@ export const useSheetStore = create<SheetState>()(
               return {
                 sheets,
                 clipboard: clearedClipboard,
+                pasteWarning: null,
                 ...say(
                   getMessages().live.pasted(
                     clipboard.rows.length,
@@ -1310,6 +1401,7 @@ export const useSheetStore = create<SheetState>()(
                 const next = pastePlainTextBlock(sheet, rows, targetRow, targetCol);
                 return {
                   sheets: withActiveSheet(s, () => next),
+                  pasteWarning: null,
                   ...say(getMessages().live.pasted(rows.length, rows[0]?.length ?? 0, cellRef(targetRow, targetCol))),
                 };
               }
@@ -1328,7 +1420,7 @@ export const useSheetStore = create<SheetState>()(
             const sheet = activeTab(s).sheet;
             const selection = activeSelectionOf(s);
             const computed = computeTab(sheet, s.sheets);
-            const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
+            const range = detectSortRange(sheet, computed, selection, selection.anchorRow);
             // Asked first, not refused: sometimes a running total is meant to be re-run on new
             // rows. But a sort that silently gives each row another row's numbers is how #48 cost
             // a tester 2,710 baht, so it is never silent.
@@ -1599,12 +1691,10 @@ export const useSheetStore = create<SheetState>()(
             }),
           })),
 
-        setNumberFormat: (numberFormat) =>
+        setNumberFormat: (choice) =>
           set((s) => ({
             // A code a file brought in (`dd/mm/yyyy`, `0%`) goes with it: picking a format means the app's own.
-            sheets: updateActiveSheet(s, (sheet, selection) =>
-              applySelectionFormat(sheet, selection, { numberFormat, dateFormat: undefined, numFmtCode: undefined })
-            ),
+            sheets: updateActiveSheet(s, (sheet, selection) => applySelectionFormat(sheet, selection, formatForChoice(choice))),
           })),
 
         /**
@@ -1834,22 +1924,23 @@ export const useSheetStore = create<SheetState>()(
           }));
         },
 
-        insertAIFormula: (formula) =>
-          set((s) => {
-            const raw = formula.startsWith("=") ? formula : `=${formula}`;
-            const sel = activeSelectionOf(s);
-            return {
-              sheets: updateActiveSheet(s, (sheet, selection) =>
-                withFormulaDateFormat(
-                  setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw),
-                  raw,
-                  selection.anchorRow,
-                  selection.anchorCol
-                )
-              ),
-              ...say(getMessages().live.formulaInserted(raw, cellRef(sel.anchorRow, sel.anchorCol))),
-            };
-          }),
+        insertAIFormula: (formula) => {
+          const s = get();
+          const raw = formula.startsWith("=") ? formula : `=${formula}`;
+          const sel = activeSelectionOf(s);
+          const { sheet } = activeTab(s);
+          const at = placeFormula(raw, { row: sel.anchorRow, col: sel.anchorCol }, (r, c) => sheet.cells[r]?.[c] ?? "", sheet.rows, sheet.names);
+          if (!at) {
+            set(say(getMessages().ai.selfReference(cellRef(sel.anchorRow, sel.anchorCol))));
+            return null;
+          }
+          set((st) => ({
+            sheets: updateActiveSheet(st, (sh) => withFormulaDateFormat(setCellRaw(sh, at.row, at.col, raw), raw, at.row, at.col)),
+            selectionBySheetId: { ...st.selectionBySheetId, [st.activeSheetId]: singleCellSelection(at.row, at.col) },
+            ...say(getMessages().live.formulaInserted(raw, cellRef(at.row, at.col))),
+          }));
+          return at;
+        },
 
         importFromFile: async (file, mode = "replace") => {
           countUsage("file_imported");
@@ -2144,11 +2235,38 @@ export function useSelectionAddress() {
 }
 
 export interface AIContext {
-  /** Where the cursor is, for the "ช่วงที่เลือกอยู่" line and the Insert button. */
+  /** Where the cursor is, for the "ช่วงที่เลือกอยู่" line. */
   address: string;
-  /** What the question is probably *about* — see `aiRange.ts`. */
-  range: string;
+  /** The cursor's cell: where an answer goes unless it reads it — see `aiPlacement.ts`. */
+  anchor: Cell;
+  /** The cursor's row, 1-based, for answers that work along one row (#63). */
+  row: number;
+  /** The range is text, so a count is COUNTA (#63). */
+  rangeIsText: boolean;
+  /** Row 1's names and the data under each, when row 1 is a row of names (#63). */
+  columns: NamedColumn[];
+  /** The sheet's values that a question names — a condition the answer must not drop (#63). */
+  mentionsIn: (question: string) => string[];
+  /** What the question is probably *about* — see `aiRange.ts`. Absent when the cursor is in no
+   *  column of data: sending its own address made `=SUM(F2)` in F2 (#64). */
+  range?: string;
   headers: string[];
+}
+
+/**
+ * A cell that totals what is above it, so it is left out of a range an answer works on (#63): a SUM
+ * or SUBTOTAL that reads the cell right above it, or a number on a row whose label says total.
+ */
+function totalCellTest(sheet: SheetModel, valueAt: (r: number, c: number) => string) {
+  return (row: number, col: number): boolean => {
+    const raw = sheet.cells[row]?.[col] ?? "";
+    if (/^=\s*(SUM|SUBTOTAL|AGGREGATE)\s*\(/i.test(raw)) {
+      if (referencedRects(raw).some((r) => r.startCol <= col && col <= r.endCol && r.startRow <= row - 1 && row - 1 <= r.endRow)) return true;
+    }
+    if (row === 0) return false;
+    for (let c = 0; c < col; c++) if (TOTAL_LABEL.test(valueAt(row, c).trim())) return true;
+    return false;
+  };
 }
 
 /**
@@ -2163,25 +2281,41 @@ export function useAIContext(): AIContext {
   const sheet = useSheetStore(selectActiveSheet);
   const sheets = useSheetStore((s) => s.sheets);
   const selection = useSheetStore(selectActiveSelection);
-  return useMemo(() => {
-    const address = selectionToAddress(selection);
-    // The *computed* sheet, not the raw one. On this app's own sample data column E is nine
-    // `=C2*D2` formulas, so reading `sheet.cells` made every number in it look like text: the
-    // "drop a header that sits on top of numbers" rule never fired, and the range came back as
-    // E1:E10 with the word "รวม" inside it. SUM ignores text, so the total was right and the range
-    // was wrong — the kind of bug that survives because the number on screen looks fine.
-    const { display } = computeTab(sheet, sheets);
-    const valueAt = (r: number, c: number) => display[r]?.[c] ?? "";
-    const bounds = { rows: sheet.rows, cols: sheet.cols };
-    const headers = headerRow(valueAt, bounds);
-    // A selection of more than one cell already says what it means; only a lone cursor is ambiguous.
-    if (!isSingleCell(selection)) return { address, range: address, headers };
-    const run = autoSumRange(valueAt, bounds, { row: selection.anchorRow, col: selection.anchorCol });
-    const range = run
-      ? rangeRefString(run.startRow, selection.anchorCol, run.endRow, selection.anchorCol)
-      : address;
-    return { address, range, headers };
-  }, [sheet, sheets, selection]);
+  return useMemo(() => aiContextOf(sheet, sheets, selection), [sheet, sheets, selection]);
+}
+
+/** `useAIContext` outside React — what the panel sends, for the tests that ask QA's questions. */
+export function aiContextOf(sheet: SheetModel, sheets: SheetTab[], selection: SelectionRect): AIContext {
+  const address = selectionToAddress(selection);
+  // The *computed* sheet, not the raw one. On this app's own sample data column E is nine
+  // `=C2*D2` formulas, so reading `sheet.cells` made every number in it look like text: the
+  // "drop a header that sits on top of numbers" rule never fired, and the range came back as
+  // E1:E10 with the word "รวม" inside it. SUM ignores text, so the total was right and the range
+  // was wrong — the kind of bug that survives because the number on screen looks fine.
+  const { display } = computeTab(sheet, sheets);
+  const valueAt = (r: number, c: number) => display[r]?.[c] ?? "";
+  const bounds = { rows: sheet.rows, cols: sheet.cols };
+  const headers = headerRow(valueAt, bounds);
+  const header = hasHeaderRow(valueAt, bounds);
+  const isTotal = totalCellTest(sheet, valueAt);
+  const anchor = { row: selection.anchorRow, col: selection.anchorCol };
+  const base = {
+    address,
+    anchor,
+    row: anchor.row + 1,
+    headers,
+    columns: namedColumns(valueAt, bounds, colToLetters, { isTotal }),
+    mentionsIn: (question: string) => valuesMentioned(question, valueAt, bounds, header),
+  };
+  // A selection of more than one cell already says what it means; only a lone cursor is ambiguous.
+  if (!isSingleCell(selection)) return { ...base, range: address, rangeIsText: false };
+  const run = autoSumRange(valueAt, bounds, anchor, { isTotal, hasHeaderRow: header });
+  if (!run) return { ...base, rangeIsText: false };
+  return {
+    ...base,
+    range: rangeRefString(run.startRow, anchor.col, run.endRow, anchor.col),
+    rangeIsText: runIsText(valueAt, anchor.col, run),
+  };
 }
 
 const EMPTY_FORMAT: CellFormat = {};

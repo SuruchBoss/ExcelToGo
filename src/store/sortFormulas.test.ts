@@ -41,6 +41,26 @@ describe("a formula sorts with its row (#48)", () => {
     expect(sheet().cells[1][2]).toBe("=B2*2");
   });
 
+  it("sorting the text column Z→A keeps the header on row 1 and asks nothing (#49 with #48)", () => {
+    // The header used to be sorted like data on a text column, and a header row inside the range
+    // made its neighbours' formulas look like they pointed at another row.
+    type([
+      ["Name", "Score", "Double"],
+      ["a", "3", "=B2*2"],
+      ["b", "1", "=B3*2"],
+      ["c", "2", "=B4*2"],
+    ]);
+    select(1, 0);
+    state().sortSelection(false);
+    expect(state().sortWarning).toBeNull();
+    expect(values().slice(0, 4).map((r) => r.slice(0, 3))).toEqual([
+      ["Name", "Score", "Double"],
+      ["c", 2, 4],
+      ["b", 1, 2],
+      ["a", 3, 6],
+    ]);
+  });
+
   for (const locale of ["th", "en"] as const) {
     it(`keeps Price × Qty = Total on every row of the ${locale} sample, and the grand total unchanged`, () => {
       useLocaleStore.setState({ locale });

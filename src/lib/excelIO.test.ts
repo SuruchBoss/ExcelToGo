@@ -667,3 +667,41 @@ describe("dropdowns whose list lives on another sheet", () => {
     expect(choicesOf("Items", 1, 4)).toEqual(["TRUE", "FALSE"]);
   });
 });
+
+/**
+ * A merged cell's value lives in its top-left cell only (#55). ExcelJS reports it from every cell the
+ * merge covers, and each of them used to get a copy: SUM over a merged 10 was 30.
+ */
+describe("a merged cell imports as Excel holds it", () => {
+  async function mergedFile(): Promise<File> {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Merged");
+    ws.getCell("A1").value = 10;
+    ws.mergeCells("A1:A3");
+    ws.getCell("D1").value = "Merged title";
+    ws.mergeCells("D1:F2");
+    ws.getCell("B1").value = { formula: "SUM(A1:A3)", result: 10 };
+    ws.getCell("B2").value = { formula: "COUNTA(A1:A3)", result: 1 };
+    ws.getCell("B3").value = { formula: "COUNTA(D1:F2)", result: 1 };
+    return new File([await wb.xlsx.writeBuffer()], "merged.xlsx");
+  }
+
+  it("keeps the value in the top-left cell and leaves the covered cells empty", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await mergedFile());
+    expect([sheet.cells[0][0], sheet.cells[1][0], sheet.cells[2][0]]).toEqual(["10", "", ""]);
+    expect(sheet.cells.slice(0, 2).map((row) => row.slice(3, 6))).toEqual([["Merged title", "", ""], ["", "", ""]]);
+  });
+
+  it("so SUM and COUNTA give what Excel gives", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await mergedFile());
+    const c = computeSheet(sheet);
+    expect([c.values[0][1], c.values[1][1], c.values[2][1]]).toEqual([10, 1, 1]);
+  });
+
+  it("and the merges go back out as they came", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await mergedFile());
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(sheet, "Merged")));
+    expect(ws.model?.merges).toEqual(expect.arrayContaining(["A1:A3", "D1:F2"]));
+    expect(ws.getCell("A1").value).toBe(10);
+  });
+});

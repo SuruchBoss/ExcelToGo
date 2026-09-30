@@ -20,7 +20,7 @@ export function useTabLock() {
   useEffect(() => {
     let previous: TabRole = "starting";
     const lock = browserTabLock({
-      onRole(role) {
+      onRole(role, freed) {
         const history = useSheetStore.temporal.getState();
         if (role === "editor") {
           // The first answer on a tab that was editing all along keeps what it has typed so far.
@@ -31,10 +31,12 @@ export function useTabLock() {
           history.clear();
         }
         previous = role;
-        useTabStore.setState({ role, refused: 0 });
+        useTabStore.setState({ role, refused: 0, freed: Boolean(freed) });
       },
       // A cell half-typed commits on blur, and the commit is saved before the lock is let go.
       beforeHandOff: () => (document.activeElement as HTMLElement | null)?.blur?.(),
+      // Also when the editing tab closed and this one was waiting (#146): it edits from the last
+      // thing that tab saved, never from the copy it happened to be showing.
       // Reads the save through the store's own `merge`: a field added to what autosave keeps (a
       // workbook's name, say) follows a hand-over when `merge` takes it back as well as `partialize`.
       afterTakeOver: () => void useSheetStore.persist.rehydrate(),

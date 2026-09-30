@@ -260,6 +260,7 @@ const W = {
     items: [["กาแฟลาเต้", "เครื่องดื่ม"]],
     findReplaceWith: "น้ำอัดลม",
     aiQuestion: "หาค่าเฉลี่ยราคา",
+    aiConditional: "ยอดรวมของหมวดเครื่องดื่ม",
     ordersSource: "ออเดอร์ทั้งหมด",
     limitedSource: "API ที่จำกัดจำนวนครั้ง",
     salesSource: "ยอดขายสด",
@@ -286,6 +287,7 @@ const W = {
     reportTitle: "รายงานยอดขายประจำเดือน",
     month1: "ม.ค.",
     crashTabs: ["ยอดขาย", "งบประมาณ"],
+    textDates: ["วันเกิด", "15/01/69", "03/05/30", "28/02/2569", "ไม่ทราบ"],
     newItem: "ของหวาน",
     regions: [["ภาค", "ยอดขาย"], ["เหนือ", 1200], ["กลาง", 3400], ["ใต้", 900], ["เหนือ", 2100]],
     rangeName: "ยอดขาย",
@@ -308,6 +310,7 @@ const W = {
     items: [["Caffè latte", "Drinks"]],
     findReplaceWith: "Beverages",
     aiQuestion: "Find the average price",
+    aiConditional: "The total for drinks",
     ordersSource: "All orders",
     limitedSource: "Rate-limited API",
     salesSource: "Live sales",
@@ -334,6 +337,7 @@ const W = {
     reportTitle: "Monthly sales report",
     month1: "Jan",
     crashTabs: ["Sales", "Budget"],
+    textDates: ["Date of birth", "15/01/69", "03/05/30", "28/02/2569", "unknown"],
     newItem: "Desserts",
     regions: [["Region", "Sales"], ["North", 1200], ["Central", 3400], ["South", 900], ["North", 2100]],
     rangeName: "Sales",
@@ -697,6 +701,22 @@ const SCENES = [
       const insert = k.button(k.t.ai.insertAt("C11"));
       await insert.waitFor({ timeout: 30_000 });
       await insert.scrollIntoViewIfNeeded();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // #62: a question about some rows only. No formula and no Insert, the reason, and the form
+    // that fits one press away. The matcher's own answer — no key, nothing typed in.
+    file: "63-ai-declined.png",
+    async take(k) {
+      await k.open();
+      await k.cell(10, 4).click();
+      await k.button(k.t.toolbar.askAi).first().click();
+      await k.page.getByPlaceholder(k.t.ai.textareaPlaceholder).fill(W[k.lang].aiConditional);
+      await k.button(k.t.ai.askButton).last().click();
+      const form = k.button(k.t.ai.openForm("SUMIF"));
+      await form.waitFor({ timeout: 30_000 });
+      await form.scrollIntoViewIfNeeded();
       await k.shot(this.file);
     },
   },
@@ -1067,8 +1087,10 @@ const SCENES = [
     },
   },
   {
-    // The error screen, reached the way the error boundary is tested: `?crash=1` throws on render.
-    // The workbook is what the store would have saved, so the rescue has something real to offer.
+    // The error screen, reached the way the gates reach it: the crash test in `features/crash`
+    // throws on render (#145). It used to be a workbook saved in a format the app could not read,
+    // which stopped crashing anything once #139 taught the app to read it. The workbook is what the
+    // store would have saved, so the rescue has something real to offer.
     file: "39-crash-rescue.png",
     async take(k) {
       const [first, second] = W[k.lang].crashTabs;
@@ -1080,7 +1102,14 @@ const SCENES = [
         prepare: (page) =>
           page.addInitScript(
             ({ first, second, header }) => {
-              const sheet = (cells) => ({ rows: cells.length, cols: cells[0].length, cells });
+              sessionStorage.setItem("exceltogo:crash-test", "1");
+              // Saved as the store saves today (version 1, cells keyed "row,col"). A version-0 save
+              // that looks like the sample is dropped on purpose (#139), and this one would.
+              const sheet = (grid) => ({
+                rows: grid.length,
+                cols: grid[0].length,
+                cells: Object.fromEntries(grid.flatMap((row, r) => row.map((text, c) => [`${r},${c}`, text]))),
+              });
               localStorage.setItem(
                 "exceltogo-sheet-v2",
                 JSON.stringify({
@@ -1091,15 +1120,17 @@ const SCENES = [
                     ],
                     activeSheetId: "a",
                   },
-                  version: 0,
+                  version: 1,
                 })
               );
             },
             { first, second, header: W[k.lang].header }
           ),
       });
-      await k.page.goto(ORIGIN + "/app?crash=1", { waitUntil: "networkidle" });
-      await k.page.locator("h1").first().waitFor();
+      // The rescue screen's own heading and a file to take away, or the scene fails — a rescue
+      // screen with nothing to offer is not the picture the README describes.
+      await k.page.getByRole("heading", { level: 1, name: /Something broke|มีบางอย่างพัง/ }).waitFor({ timeout: 10_000 });
+      await k.page.getByRole("button", { name: new RegExp(first) }).waitFor({ timeout: 10_000 });
       await k.shot(this.file);
     },
   },
@@ -1406,6 +1437,21 @@ const SCENES = [
       await fingerTap(k, 1, 2);
       await fingerDrag(k, 9, 2);
       await k.page.getByRole("region", { name: k.t.paramPanel.pickingBarLabel }).waitFor();
+    },
+  },
+  {
+    // #82: dates typed as text that nothing reads on its own (`15/01/69`), and the dialog that asks
+    // how to read them — day first, Buddhist years — with the preview of what they become.
+    file: "66-convert-dates.png",
+    async take(k) {
+      await k.open("/app", { width: 1440, height: 860, blank: true });
+      const column = W[k.lang].textDates;
+      for (let r = 0; r < column.length; r++) await k.type(r, 0, column[r]);
+      await k.select(1, 0, column.length - 1, 0);
+      await k.button(k.t.convertDates.button).click();
+      const dialog = k.page.getByRole("dialog", { name: k.t.convertDates.title });
+      await dialog.waitFor();
+      await dialog.getByText("2026-01-15", { exact: false }).waitFor();
       await k.shot(this.file);
     },
   },
@@ -1451,6 +1497,17 @@ const SCENES = [
       await k.page.getByRole("button", { name: new RegExp(`^${k.t.toolbar.autosaveLabel}`) }).tap();
       await k.page.getByRole("dialog", { name: k.t.storageNotice.title }).waitFor();
       await k.shot(this.file);
+    },
+  },
+  {
+    // The landing page's questions (#152), answered in the first sentence, every answer open.
+    file: "67-landing-faq.png",
+    async take(k) {
+      await k.open("/", { height: 900 });
+      await k.shot(this.file, {
+        fullPage: true,
+        clip: await k.boxOf(k.page.locator("#faq-title").locator("xpath=ancestor::section[1]")),
+      });
     },
   },
   {

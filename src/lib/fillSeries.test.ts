@@ -8,8 +8,29 @@ const fill = (seed: string[], count: number, rowOffset = seed.length, colOffset 
   fillValues({ seed, count, rowOffset, colOffset });
 
 describe("numbers", () => {
-  it("continues a single number by one", () => {
-    expect(fill(["1"], 3)).toEqual(["2", "3", "4"]);
+  it("copies a single number, as Excel does (#162)", () => {
+    // Ctrl+D on a price used to write 10, 11, 12, 13, 14: a different number in every row.
+    expect(fill(["10"], 4)).toEqual(["10", "10", "10", "10"]);
+    expect(fill(["-2.5"], 2)).toEqual(["-2.5", "-2.5"]);
+    expect(fill(["1,250"], 2)).toEqual(["1,250", "1,250"]);
+  });
+
+  it("copies a single number written as a screen shows it, rather than counting its last digits (#52, #162)", () => {
+    expect(fill(["฿1,500"], 2)).toEqual(["฿1,500", "฿1,500"]);
+    expect(fill(["15%"], 2)).toEqual(["15%", "15%"]);
+  });
+
+  it("still continues from one cell what is not a plain number (#162)", () => {
+    expect(fill(["2026-01-15"], 2)).toEqual(["2026-01-16", "2026-01-17"]);
+    expect(fill(["15/01/2569"], 2)).toEqual(["16/01/2569", "17/01/2569"]);
+    expect(fill(["จ"], 2)).toEqual(["อ", "พ"]);
+    expect(fill(["Item 08"], 2)).toEqual(["Item 09", "Item 10"]);
+    expect(fill(["Q3"], 2)).toEqual(["Q4", "Q1"]);
+  });
+
+  it("continues two numbers with a constant gap (#162)", () => {
+    expect(fill(["1", "2"], 2)).toEqual(["3", "4"]);
+    expect(fill(["10", "20"], 2)).toEqual(["30", "40"]);
   });
 
   it("follows the gap two cells set", () => {
@@ -153,5 +174,22 @@ describe("dates (#45)", () => {
   it("keeps the gap two dates set, and a time's step", () => {
     expect(fill(["2024-01-01", "2024-01-08"], 2)).toEqual(["2024-01-15", "2024-01-22"]);
     expect(fill(["09:00", "09:30"], 2)).toEqual(["10:00", "10:30"]);
+  });
+});
+
+describe("Buddhist-Era dates (#82)", () => {
+  const fill = (seed: string[], count = 2) => fillValues({ seed, count, rowOffset: 1, colOffset: 0 });
+  it("go on in the seed's own layout and calendar, across the end of the month and the year", () => {
+    expect(fill(["30/01/2569"])).toEqual(["31/01/2569", "01/02/2569"]);
+    expect(fill(["31/12/2568"])).toEqual(["01/01/2569", "02/01/2569"]);
+    expect(fill(["5-1-2569"])).toEqual(["6-1-2569", "7-1-2569"]);
+    expect(fill(["2569-01-15"])).toEqual(["2569-01-16", "2569-01-17"]);
+    expect(fill(["31 ม.ค. 2569"])).toEqual(["1 ก.พ. 2569", "2 ก.พ. 2569"]);
+    expect(fill(["15 มกราคม 69"])).toEqual(["16 มกราคม 69", "17 มกราคม 69"]);
+  });
+  it("and what they write reads back as the same dates", async () => {
+    const { dateLiteral, serialOf } = await import("./excelDate");
+    for (const text of fill(["31 ม.ค. 2569", "7 ก.พ. 2569"], 3)) expect(dateLiteral(text)?.era, text).toBe("be");
+    expect(dateLiteral(fill(["31 ม.ค. 2569"])[0])?.serial).toBe(serialOf(2026, 2, 1));
   });
 });

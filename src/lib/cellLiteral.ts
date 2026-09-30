@@ -27,7 +27,13 @@ import type { FormulaValue } from "./formulaEngine/types";
  * 5. **An ISO date or time** (`2024-01-15`, `2024-01-15 13:45`, `13:45`) is that date's Excel serial,
  *    so `=A1+1` is the next day and the file gets a real date (#45). The text stays in the cell;
  *    only its value is a number. Other layouts stay text — see `excelDate.dateLiteral` for why.
- * 6. Anything else that `Number()` accepts is a number.
+ * 6. **A number written the way a screen shows it** (#52) — `1,250`, `12%`, `฿1,500.00`, `-$3.50` — is
+ *    that number: commas only where thousands fall, `%` as a hundredth (`50%` is 0.5, as in Excel
+ *    and #53), a currency sign in front. It is what Excel and Google Sheets put on the clipboard, and
+ *    a pasted column of them used to add up to 0. The text stays in the cell and shows as typed; the
+ *    file gets the number with a matching format (`formattedNumber`). Commas in the wrong places
+ *    (`1,25`), dashes (`081-234-5678`, `123-4-56789-0`) and a leading zero (`01,250`) stay text.
+ * 7. Anything else that `Number()` accepts is a number.
  *
  * Nothing is stored to make the automatic rules work, so a sheet saved before they existed shows
  * its zeros again the moment it is opened.
@@ -39,16 +45,54 @@ export function literalValue(raw: string, numberFormat?: NumberFormat): FormulaV
   if (LEADING_ZERO.test(raw) || LONG_DIGITS.test(raw)) return raw;
   const date = dateLiteral(raw);
   if (date) return date.serial;
+  const shown = formattedNumber(raw);
+  if (shown) return shown.value;
   const n = Number(raw);
   return raw.trim() !== "" && !Number.isNaN(n) ? n : raw;
 }
 
 const LEADING_ZERO = /^0\d+$/;
+
+/**
+ * A number with thousands commas, a trailing percent or a leading currency sign: sign, then
+ * currency, then digits grouped in threes, then decimals, then `%`. The sign may also sit after the
+ * currency sign (`฿-1,500`), as some programs write it.
+ */
+const SHOWN_NUMBER = /^([-+])?([฿$€£¥])?\s?([-+])?((?:[1-9]\d{0,2}(?:,\d{3})+|\d+))(\.\d+)?(%)?$/;
+
+export interface FormattedNumber {
+  value: number;
+  /** The Excel code the number goes out with, so the file shows it the way the cell did. */
+  code: string;
+}
+
+/**
+ * A number as a screen shows it (#52), or null for text that is not one — including a plain number
+ * (`1250`), which needs no format of its own, and a code with a leading zero (`01,250`).
+ */
+export function formattedNumber(raw: string): FormattedNumber | null {
+  const m = SHOWN_NUMBER.exec(raw.trim());
+  if (!m) return null;
+  const [, sign1, currency, sign2, whole, fraction = "", percent] = m;
+  if (sign1 && sign2) return null;
+  const grouped = whole.includes(",");
+  if (!grouped && !currency && !percent) return null;
+  if (!grouped && whole.length > 1 && whole.startsWith("0")) return null;
+  const negative = (sign1 ?? sign2) === "-";
+  const magnitude = Number(whole.replace(/,/g, "") + fraction);
+  if (!Number.isFinite(magnitude)) return null;
+  const value = (negative ? -magnitude : magnitude) / (percent ? 100 : 1);
+  const decimals = fraction.length > 1 ? "." + "0".repeat(fraction.length - 1) : "";
+  const body = (grouped || currency ? "#,##0" : "0") + decimals;
+  const code = percent ? `0${decimals}%` : currency ? `"${currency}"${body}` : body;
+  // Floating point: 12.5% is 0.125 exactly, but 0.1% would carry noise past 15 digits.
+  return { value: Number(value.toPrecision(15)), code };
+}
 const LONG_DIGITS = /^\d{12,}$/;
 
 /** Text a spreadsheet would read as a number if somebody typed it in: what Excel flags with a green corner. */
 export function looksNumeric(text: string): boolean {
-  return text.trim() !== "" && !Number.isNaN(Number(text));
+  return (text.trim() !== "" && !Number.isNaN(Number(text))) || formattedNumber(text) !== null;
 }
 
 /**

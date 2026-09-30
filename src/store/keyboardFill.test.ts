@@ -71,3 +71,44 @@ describe("filling a selection from the cell the cursor is on", () => {
     expect(useSheetStore.getState().announcement?.text).toBeTruthy();
   });
 });
+
+/**
+ * One number copies whichever way it is filled (#162). The issue's case: B2:B6 with Ctrl+D wrote
+ * 10, 11, 12, 13, 14 where Excel writes 10 five times — a different price on every row.
+ */
+describe("a single number fills as a copy, not a count (#162)", () => {
+  beforeEach(() => {
+    ["10", "2", "30", "4", "50"].forEach((v, i) => useSheetStore.getState().setCellRaw(i + 1, 1, v));
+  });
+
+  it("Ctrl+D copies the top cell down", () => {
+    select(1, 1, 5, 1);
+    useSheetStore.getState().fillWithinSelection("down");
+    expect([1, 2, 3, 4, 5].map((r) => raw(r, 1))).toEqual(["10", "10", "10", "10", "10"]);
+  });
+
+  it("Ctrl+R copies the first cell across", () => {
+    select(1, 1, 1, 4);
+    useSheetStore.getState().fillWithinSelection("right");
+    expect([1, 2, 3, 4].map((c) => raw(1, c))).toEqual(["10", "10", "10", "10"]);
+  });
+
+  it("dragging the handle from one number copies it", () => {
+    select(1, 1, 1, 1);
+    useSheetStore.getState().fillFrom(4, 1);
+    expect([1, 2, 3, 4].map((r) => raw(r, 1))).toEqual(["10", "10", "10", "10"]);
+  });
+
+  it("Ctrl+Enter copies it into the selection", () => {
+    select(1, 1, 5, 1);
+    useSheetStore.getState().fillSelectionFromAnchor();
+    expect([1, 2, 3, 4, 5].map((r) => raw(r, 1))).toEqual(["10", "10", "10", "10", "10"]);
+  });
+
+  it("two numbers with a constant gap still continue when dragged", () => {
+    useSheetStore.getState().setCellRaw(2, 1, "20");
+    select(1, 1, 2, 1);
+    useSheetStore.getState().fillFrom(4, 1);
+    expect([1, 2, 3, 4].map((r) => raw(r, 1))).toEqual(["10", "20", "30", "40"]);
+  });
+});
