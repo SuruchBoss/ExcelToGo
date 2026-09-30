@@ -84,6 +84,9 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
   },
   alternates: { canonical: SITE_URL },
+  // Google Search Console ownership check for the production site (#148). Not a secret: the tag is
+  // public by design, and it only proves that whoever controls this deployment added it.
+  verification: { google: "9qpXdFd3GLA-nMaN6FDWw6AUTZJzvEGa_4SLuZQ8VZw" },
 };
 
 /**
