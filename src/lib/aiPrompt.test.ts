@@ -4,6 +4,8 @@
 import { describe, expect, it } from "vitest";
 import { FUNCTIONS } from "./formulaEngine/functions";
 import { SYSTEM_PROMPTS, buildUserMessage, parseFormulaReply, parseLocale } from "./aiPrompt";
+import { th } from "@/i18n/th";
+import { en } from "@/i18n/en";
 
 describe("the user message", () => {
   it("carries the question on its own when nothing else is known", () => {
@@ -80,6 +82,20 @@ describe("locale", () => {
   it("tells the model which language to explain in", () => {
     expect(SYSTEM_PROMPTS.th).toContain("ภาษาไทยเสมอ");
     expect(SYSTEM_PROMPTS.en).toContain("must always be in English");
+  });
+});
+
+describe("Buddhist-Era dates in the prompt (#82)", () => {
+  it("tells the model the app already reads them, and that DATE() takes the Gregorian year", () => {
+    expect(SYSTEM_PROMPTS.th).toContain("ห้ามลบ 543 เอง");
+    expect(SYSTEM_PROMPTS.th).toContain("=DATE(2026,1,15)");
+    expect(SYSTEM_PROMPTS.en).toContain("Never subtract 543 yourself");
+    expect(SYSTEM_PROMPTS.en).toContain("=DATE(2026,1,15)");
+  });
+
+  it("points text dates at the Convert to dates button by the name the button has", () => {
+    expect(SYSTEM_PROMPTS.th).toContain(`"${th.convertDates.button}"`);
+    expect(SYSTEM_PROMPTS.en).toContain(`"${en.convertDates.button}"`);
   });
 });
 

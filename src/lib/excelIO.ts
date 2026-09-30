@@ -5,7 +5,7 @@ import { commentKey } from "./cellComments";
 import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { chartDataFrom } from "./charts";
 import { dateKindAt, dateTextReader } from "./dateCells";
-import { DEFAULT_DATE_CODE, isoFromSerial, kindOfDateCode } from "./excelDate";
+import { BE_DATE_CODE, DEFAULT_DATE_CODE, dateLiteral, isoFromSerial, kindOfDateCode } from "./excelDate";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
 import { colToLetters } from "./formulaEngine/address";
@@ -734,7 +734,9 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         // A date typed as a date goes out as a date cell: the serial, with a date format Excel
         // recognises (#45). Without one it would open as 45306.
         const kind = dateKindAt(sheet, r, c);
-        if (kind) cell.numFmt = DEFAULT_DATE_CODE[kind];
+        // One typed with a Buddhist year goes out showing it, as it shows in the grid (#82).
+        const be = kind && kind !== "time" && dateLiteral(sheet.cells[r]?.[c] ?? "")?.era === "be";
+        if (kind) cell.numFmt = be ? BE_DATE_CODE[kind] : DEFAULT_DATE_CODE[kind];
       }
       // Text that would read as a number goes out marked as text ("@"), which is what stops Excel
       // itself from turning it back into one the first time somebody edits the cell. After the

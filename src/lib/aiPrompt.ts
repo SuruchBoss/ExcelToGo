@@ -41,6 +41,27 @@ export const AI_MODEL = "claude-opus-5";
  */
 export const AI_MAX_TOKENS = 800;
 
+/**
+ * Buddhist-Era dates (#82): what the app does with them, so the model neither "fixes" a year the
+ * app already read correctly nor writes 2569 into DATE() expecting the Buddhist year. And where text
+ * dates the app does not read are concerned, the answer is the command that asks, not a formula
+ * that guesses.
+ */
+const BE_RULES: Record<Locale, string> = {
+  th: `- วันที่แบบ พ.ศ.: แอปนี้อ่านข้อความวันที่ที่ปีเป็น พ.ศ. (2400–2700) เช่น 15/01/2569, 2569-01-15 และวันที่ที่เขียนเดือนเป็นภาษาไทย
+  เช่น 15 ม.ค. 2569 หรือ 15 ม.ค. 69 เป็นวันที่ ค.ศ. ให้อยู่แล้ว **ห้ามลบ 543 เอง** ในสูตร เพราะค่าในเซลล์เป็น ค.ศ. แล้ว
+- DATE() ในแอปนี้รับปี ค.ศ. เหมือน Excel: 15 ม.ค. 2569 ต้องเขียน =DATE(2026,1,15) ไม่ใช่ =DATE(2569,1,15)
+- ถ้าผู้ใช้ถามถึงวันที่ที่ยังเป็นข้อความที่แอปอ่านเองไม่ได้ เช่น 15/01/69 หรือ 03/04/2026 (ไม่รู้ว่าวันหรือเดือนก่อน)
+  ให้แนะนำคำสั่ง "แปลงเป็นวันที่" (เลือกช่วงแล้วคลิกขวาที่เซลล์) ซึ่งให้เลือกลำดับและ พ.ศ./ค.ศ. และแสดงผลก่อนแปลง แทนการเดาด้วยสูตร`,
+  en: `- Buddhist-Era dates: this app already reads date text with a Buddhist year (2400–2700) such as 15/01/2569 or
+  2569-01-15, and dates with a Thai month name such as 15 ม.ค. 2569 or 15 ม.ค. 69, as the Gregorian date they mean.
+  **Never subtract 543 yourself** in a formula: the value in the cell is already Gregorian.
+- DATE() here takes the Gregorian year, as in Excel: 15 January 2569 B.E. is =DATE(2026,1,15), not =DATE(2569,1,15).
+- If the user asks about dates still held as text the app cannot read on its own — 15/01/69, or 03/04/2026 where day
+  and month could be either way round — point them to the "Convert to dates" command (select the cells, then right-click one), which asks for
+  the order and the calendar and shows the result first, rather than guessing with a formula.`,
+};
+
 export const SYSTEM_PROMPTS: Record<Locale, string> = {
   th: `คุณคือผู้ช่วยแนะนำสูตร Excel ให้กับผู้ใช้ทั่วไปที่อาจไม่ถนัดสูตร
 รับคำอธิบายสิ่งที่ผู้ใช้ต้องการ (ภาษาไทยหรืออังกฤษ) พร้อมช่วงเซลล์ที่เลือกไว้ (ถ้ามี) และหัวคอลัมน์ (ถ้ามี)
@@ -57,7 +78,8 @@ ${SUPPORTED_FUNCTIONS}
 - ถ้าโจทย์ต้องใช้ฟังก์ชันนอกรายการจริง ๆ **ให้ตอบสูตร Excel ที่ถูกต้องตามปกติ** แล้วขึ้นต้น explanation
   ด้วยคำเตือนว่าแอปนี้คำนวณสูตรนี้ไม่ได้ (จะขึ้น #NAME?) แต่ใช้ได้เมื่อส่งออกเป็นไฟล์ Excel
 - **ห้ามเปลี่ยนไปใช้ฟังก์ชันอื่นที่ไม่ตรงโจทย์เพียงเพื่อให้อยู่ในรายการ** เช่น ถูกถามให้ต่อข้อความแล้วตอบ SUM
-  สูตรผิดที่ดูเหมือนถูกนั้นแย่กว่าสูตรที่แอปรันไม่ได้ เพราะผู้ใช้จะไม่รู้เลยว่าได้คำตอบผิด`,
+  สูตรผิดที่ดูเหมือนถูกนั้นแย่กว่าสูตรที่แอปรันไม่ได้ เพราะผู้ใช้จะไม่รู้เลยว่าได้คำตอบผิด
+${BE_RULES.th}`,
   en: `You are an assistant that suggests Excel formulas for everyday users who may not know formula syntax.
 You'll receive a description of what the user wants (in Thai or English), the cell range they have selected (if any), and column headers (if any).
 Reply with JSON only, in this shape:
@@ -76,7 +98,8 @@ ${SUPPORTED_FUNCTIONS}
   although it will work once the file is exported to Excel.
 - **Never substitute an unrelated function just to stay on the list** — answering "join these names"
   with SUM, for instance. A wrong formula that looks right is worse than one the app cannot run,
-  because nothing tells the user the answer is wrong.`,
+  because nothing tells the user the answer is wrong.
+${BE_RULES.en}`,
 };
 
 export function parseLocale(value: unknown): Locale {

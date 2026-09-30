@@ -129,4 +129,16 @@ describe("the landing page's questions (#152)", () => {
     const [, , , roundTrip] = th.landing.faq;
     for (const lost of ["รูปภาพ", "กราฟ", "PivotTable", "มาโคร"]) expect(roundTrip.detail).toContain(lost);
   });
+
+  it("never offers Supabase without saying it needs your own server, not this site (PO)", () => {
+    // The public site has no cloud button: it only appears where someone runs the app with their own
+    // Supabase settings. Read in a search result, "connect your own Supabase" alone promises a button
+    // nobody here can find (the #125 rule: no promise without its limit beside it).
+    const thTexts = th.landing.faq.map((f) => `${f.answer} ${f.detail}`).filter((t) => t.includes("Supabase"));
+    const enTexts = en.landing.faq.map((f) => `${f.answer} ${f.detail}`).filter((t) => t.includes("Supabase"));
+    expect(thTexts.length).toBeGreaterThan(0);
+    expect(enTexts).toHaveLength(thTexts.length);
+    for (const t of thTexts) expect(t).toMatch(/เซิร์ฟเวอร์ของคุณเอง[\s\S]*บนเว็บนี้ยังไม่มี/);
+    for (const t of enTexts) expect(t).toMatch(/your own server[\s\S]*not on this site/);
+  });
 });

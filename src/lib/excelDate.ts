@@ -61,8 +61,37 @@ function validDay(year: number, month: number, day: number): boolean {
   return day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-const ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})(?: (\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+const TIME = String.raw`(?: (\d{1,2}):(\d{2})(?::(\d{2}))?)?`;
+const ISO_DATE = new RegExp(String.raw`^(\d{4})-(\d{1,2})-(\d{1,2})${TIME}$`);
 const ISO_TIME = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
+/** `15/01/2569`, `15-1-2569`: day first, the way every Thai writes it — read only with a BE year. */
+const DMY = new RegExp(String.raw`^(\d{1,2})([/-])(\d{1,2})\2(\d{4})${TIME}$`);
+
+/**
+ * The Thai month names, full and short (#82). The short forms are matched with or without their
+ * dots — `ม.ค.`, `มค` — because both are how people type them.
+ */
+export const THAI_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+export const THAI_MONTHS_SHORT = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const THAI_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const THAI_DAYS_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+
+const dotsOptional = (short: string) => short.replace(/\./g, "").split("").join(String.raw`\.?`) + String.raw`\.?`;
+// Full names first: `มีนาคม` must not stop at a short form that happens to match its start.
+const MONTH_ALTERNATIVES = [...THAI_MONTHS, ...THAI_MONTHS_SHORT.map(dotsOptional)].join("|");
+const THAI_DATE = new RegExp(String.raw`^(\d{1,2})\s*(${MONTH_ALTERNATIVES})\s*(?:(พ\.?ศ\.?|ค\.?ศ\.?)\s*)?(\d{4}|\d{2})${TIME}$`);
+
+function thaiMonth(name: string): number {
+  const full = THAI_MONTHS.indexOf(name);
+  if (full !== -1) return full + 1;
+  const bare = name.replace(/\./g, "");
+  return THAI_MONTHS_SHORT.findIndex((m) => m.replace(/\./g, "") === bare) + 1;
+}
+
+/** The difference between the Thai Buddhist Era and the Gregorian year. */
+export const BE_OFFSET = 543;
+/** A four-digit year in this range, in text that looks like a date, is a Buddhist-Era year (#82). */
+const isBeYear = (year: number) => year >= 2400 && year <= 2700;
 
 function timeFraction(h: string, m: string, s: string | undefined): number | null {
   const hour = Number(h);
@@ -72,25 +101,68 @@ function timeFraction(h: string, m: string, s: string | undefined): number | nul
   return (hour * 3600 + minute * 60 + second) / 86_400;
 }
 
+/** `era: "be"` when the text gave its year in the Buddhist Era: the value is still the Gregorian date. */
+export interface DateLiteral {
+  serial: number;
+  kind: DateKind;
+  era?: "be";
+}
+
+function dateOf(year: number, month: number, day: number, h: string | undefined, mi: string | undefined, s: string | undefined, era?: "be"): DateLiteral | null {
+  if (year < 1900 || year > 9999 || !validDay(year, month, day)) return null;
+  const serial = serialOf(year, month, day);
+  const withEra = (d: DateLiteral): DateLiteral => (era ? { ...d, era } : d);
+  if (h === undefined) return withEra({ serial, kind: "date" });
+  const fraction = timeFraction(h, mi!, s);
+  return fraction === null ? null : withEra({ serial: serial + fraction, kind: "datetime" });
+}
+
 /**
  * The date a piece of text means, or null for text that is not one.
  *
- * Only the ISO forms — `2024-01-15`, `2024-01-15 13:45`, `2024-01-15 13:45:30`, `13:45` — because
- * they are the only ones that cannot be misread: `03/04/2024` is March in one country and April in
- * another, and a guess that is wrong moves a date a month without a word. Everything else stays the
- * text it is. One function so that #82 (Buddhist-era years, Thai month names) adds forms here and
- * nowhere else.
+ * The ISO forms — `2024-01-15`, `2024-01-15 13:45`, `2024-01-15 13:45:30`, `13:45` — because they
+ * are the only numeric ones that cannot be misread: `03/04/2024` is March in one country and April
+ * in another, and a guess that is wrong moves a date a month without a word.
+ *
+ * And the Thai forms that cannot be misread either (#82):
+ * - **A four-digit year from 2400 to 2700 is the Buddhist Era**, in `d/m/yyyy`, `d-m-yyyy` or ISO
+ *   (`15/01/2569`, `2569-01-15`): no Gregorian date in a sheet is five centuries away, and a Thai who
+ *   writes the year that way writes the day first. The value is the Gregorian date, 543 years back.
+ * - **A Thai month name** (`15 ม.ค. 2569`, `15 มกราคม พ.ศ. 2569`, `15 มค 69`) says Thai, so a two-digit
+ *   year is a Buddhist one (`69` is 2569) — nearly everyone who writes the month in Thai counts the
+ *   years that way. A four-digit year from 1900 to 2399 with it is Gregorian (`15 ม.ค. 2026`).
+ *
+ * Everything else stays the text it is: `2569` alone, `15/01/69` (a birthday in 2530 or a due date
+ * in 2030 — the "Convert to dates" command asks), `15/01/2024` (day or month first). One function, so
+ * the cell, the formulas, the importers and the fill handle all read the same dates.
  */
-export function dateLiteral(text: string): { serial: number; kind: DateKind } | null {
-  const date = ISO_DATE.exec(text);
-  if (date) {
-    const [, y, mo, d, h, mi, s] = date;
+export function dateLiteral(text: string): DateLiteral | null {
+  const iso = ISO_DATE.exec(text);
+  if (iso) {
+    const [, y, mo, d, h, mi, s] = iso;
     const year = Number(y);
-    if (year < 1900 || !validDay(year, Number(mo), Number(d))) return null;
-    const serial = serialOf(year, Number(mo), Number(d));
-    if (h === undefined) return { serial, kind: "date" };
-    const fraction = timeFraction(h, mi, s);
-    return fraction === null ? null : { serial: serial + fraction, kind: "datetime" };
+    return isBeYear(year) ? dateOf(year - BE_OFFSET, Number(mo), Number(d), h, mi, s, "be") : dateOf(year, Number(mo), Number(d), h, mi, s);
+  }
+  const dmy = DMY.exec(text);
+  if (dmy) {
+    const [, d, , mo, y, h, mi, s] = dmy;
+    const year = Number(y);
+    return isBeYear(year) ? dateOf(year - BE_OFFSET, Number(mo), Number(d), h, mi, s, "be") : null;
+  }
+  const thai = THAI_DATE.exec(text);
+  if (thai) {
+    const [, d, name, marker, y, h, mi, s] = thai;
+    const month = thaiMonth(name);
+    const saysCe = marker !== undefined && marker.startsWith("ค");
+    const saysBe = marker !== undefined && !saysCe;
+    let year = Number(y);
+    if (y.length === 2) {
+      if (saysCe) return null;
+      year += 2500;
+    }
+    if (saysCe) return dateOf(year, month, Number(d), h, mi, s);
+    if (saysBe || isBeYear(year)) return dateOf(year - BE_OFFSET, month, Number(d), h, mi, s, "be");
+    return year < 2400 ? dateOf(year, month, Number(d), h, mi, s) : null;
   }
   const time = ISO_TIME.exec(text);
   if (time) {
@@ -117,6 +189,20 @@ export const DEFAULT_DATE_CODE: Record<DateKind, string> = {
   time: "hh:mm",
 };
 
+/**
+ * The Buddhist-Era date as Thai Excel writes it (#82): day/month/year, the year in the Thai
+ * calendar (`07` in the locale tag), Thai (`041E`). Used for the "Date (B.E.)" format and for a date
+ * typed with a Buddhist year, so Excel opens it showing 2569 as the grid does.
+ *
+ * NOT YET CHECKED against a file Excel itself saved — the issue asks for exactly that, and no such
+ * file could be reached from here. Reading does not depend on it: every Thai-calendar tag and
+ * `bbbb` show a Buddhist year on the way in. Only this one code, going out, waits on that file.
+ */
+export const BE_DATE_CODE: Record<"date" | "datetime", string> = {
+  date: "[$-107041E]d/m/yyyy;@",
+  datetime: "[$-107041E]d/m/yyyy h:mm;@",
+};
+
 /** Codes with their literal parts and bracketed modifiers taken out, so only the tokens remain. */
 function bareCode(code: string): string {
   return code
@@ -129,13 +215,13 @@ function bareCode(code: string): string {
 /** Whether an Excel number-format code shows a date or a time rather than a number. */
 export function isDateFormatCode(code: string | undefined): boolean {
   if (!code || code === "General" || code === "@") return false;
-  return /[ymdhs]/i.test(bareCode(code).replace(/General/gi, ""));
+  return /[ymdhsb]/i.test(bareCode(code).replace(/General/gi, ""));
 }
 
 /** Which kind a date format code is, for the app's own three formats. */
 export function kindOfDateCode(code: string): DateKind {
   const bare = bareCode(code).toLowerCase();
-  const hasDate = /[yd]/.test(bare) || /m{3,}/.test(bare) || (/m/.test(bare) && !/[hs]/.test(bare));
+  const hasDate = /[ydb]/.test(bare) || /m{3,}/.test(bare) || (/m/.test(bare) && !/[hs]/.test(bare));
   const hasTime = /[hs]/.test(bare);
   return hasDate && hasTime ? "datetime" : hasTime ? "time" : "date";
 }
@@ -145,9 +231,35 @@ const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 
 type Token = { kind: "lit"; text: string } | { kind: "tok"; text: string };
 
-function tokenize(code: string): Token[] {
+/** What a code's locale tag says about how a date is written: the calendar and the language. */
+interface DateLocale {
+  /** The Thai Buddhist calendar: every year shows 543 higher (#82). */
+  be: boolean;
+  /** Thai month and weekday names. */
+  thai: boolean;
+}
+
+/**
+ * Reads a `[$-…]` tag. Excel writes the locale as a number — `[$-107041E]`: `041E` is Thai, the `07`
+ * before it the Thai Buddhist calendar, the rest the digits it uses — or, lately, by name with the
+ * same number after a comma, `[$-th-TH,107]`. Anything else — `[$-409]`, `[$€-407]` — says nothing
+ * that changes a date.
+ */
+export function dateLocaleOf(inner: string): DateLocale {
+  const tag = /^\$[^-]*-(.+)$/.exec(inner)?.[1];
+  if (!tag) return { be: false, thai: false };
+  if (/^[0-9a-f]+$/i.test(tag)) {
+    const value = parseInt(tag, 16);
+    return { be: ((value >>> 16) & 0xff) === 7, thai: (value & 0xffff) === 0x041e };
+  }
+  const [name, extra] = tag.split(",");
+  return { be: extra !== undefined && (parseInt(extra, 16) & 0xff) === 7, thai: /^th(-|$)/i.test(name) };
+}
+
+function tokenizeWithLocale(code: string): { tokens: Token[]; locale: DateLocale } {
   const section = code.split(";")[0];
   const out: Token[] = [];
+  const locale: DateLocale = { be: false, thai: false };
   let i = 0;
   while (i < section.length) {
     const ch = section[i];
@@ -161,14 +273,20 @@ function tokenize(code: string): Token[] {
     } else if (ch === "[") {
       const end = section.indexOf("]", i);
       const inner = section.slice(i + 1, end === -1 ? undefined : end);
-      // Elapsed-time brackets ([h], [mm]) read as their plain token; locale and colour tags do nothing.
+      // Elapsed-time brackets ([h], [mm]) read as their plain token; a locale tag may set the calendar
+      // and the language (#82); colour tags do nothing.
       if (/^[hms]+$/i.test(inner)) out.push({ kind: "tok", text: inner.toLowerCase() });
+      else if (inner.startsWith("$")) {
+        const tag = dateLocaleOf(inner);
+        locale.be ||= tag.be;
+        locale.thai ||= tag.thai;
+      }
       i = end === -1 ? section.length : end + 1;
     } else if (/^(AM\/PM|am\/pm|A\/P|a\/p)/.test(section.slice(i))) {
       const m = /^(AM\/PM|am\/pm|A\/P|a\/p)/.exec(section.slice(i))![0];
       out.push({ kind: "tok", text: m.toUpperCase() });
       i += m.length;
-    } else if (/[ymdhs]/i.test(ch)) {
+    } else if (/[ymdhsb]/i.test(ch)) {
       let j = i;
       while (j < section.length && section[j].toLowerCase() === ch.toLowerCase()) j++;
       out.push({ kind: "tok", text: section.slice(i, j).toLowerCase() });
@@ -180,7 +298,7 @@ function tokenize(code: string): Token[] {
       i++;
     }
   }
-  return out;
+  return { tokens: out, locale };
 }
 
 /**
@@ -188,12 +306,16 @@ function tokenize(code: string): Token[] {
  *
  * The part of Excel's format language that dates use, which is what files carry: year, month, day,
  * weekday, hour, minute, second, AM/PM, quoted and escaped literals. `m` is a month unless it sits
- * after an hour or before a second, as in Excel. Locale tags (`[$-409]`) are read past; a Thai
- * calendar code is #82's.
+ * after an hour or before a second, as in Excel. A locale tag for the Thai Buddhist calendar shows
+ * the year 543 higher, and one for Thai shows Thai month and day names; `bb`/`bbbb` are the Buddhist
+ * year in any code (#82). Other locale tags (`[$-409]`) are read past.
  */
 export function formatSerial(serial: number, code: string): string {
   const p = partsOfSerial(serial);
-  const tokens = tokenize(code);
+  const { tokens, locale } = tokenizeWithLocale(code);
+  const months = locale.thai ? THAI_MONTHS : MONTHS;
+  const shortMonth = (m: number) => (locale.thai ? THAI_MONTHS_SHORT[m - 1] : MONTHS[m - 1].slice(0, 3));
+  const beYear = p.year + BE_OFFSET;
   const twelve = tokens.some((t) => t.kind === "tok" && (t.text === "AM/PM" || t.text === "A/P"));
   const isMinute = (index: number): boolean => {
     for (let k = index - 1; k >= 0; k--) {
@@ -213,20 +335,24 @@ export function formatSerial(serial: number, code: string): string {
       if (t.kind === "lit") return t.text;
       const s = t.text;
       switch (s[0]) {
-        case "y":
-          return s.length <= 2 ? two(p.year % 100) : String(p.year);
+        case "y": {
+          const year = locale.be ? beYear : p.year;
+          return s.length <= 2 ? two(year % 100) : String(year);
+        }
+        case "b":
+          return s.length <= 2 ? two(beYear % 100) : String(beYear);
         case "m":
           if (s.length <= 2 && isMinute(index)) return s.length === 2 ? two(p.minute) : String(p.minute);
           if (s.length === 1) return String(p.month);
           if (s.length === 2) return two(p.month);
-          if (s.length === 3) return MONTHS[p.month - 1].slice(0, 3);
-          if (s.length === 5) return MONTHS[p.month - 1][0];
-          return MONTHS[p.month - 1];
+          if (s.length === 3) return shortMonth(p.month);
+          if (s.length === 5) return months[p.month - 1][0];
+          return months[p.month - 1];
         case "d":
           if (s.length === 1) return String(p.day);
           if (s.length === 2) return two(p.day);
-          if (s.length === 3) return DAYS[weekday].slice(0, 3);
-          return DAYS[weekday];
+          if (s.length === 3) return locale.thai ? THAI_DAYS_SHORT[weekday] : DAYS[weekday].slice(0, 3);
+          return (locale.thai ? THAI_DAYS : DAYS)[weekday];
         case "h": {
           const h = twelve ? hour12 : p.hour;
           return s.length >= 2 ? two(h) : String(h);

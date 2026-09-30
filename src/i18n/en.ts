@@ -428,7 +428,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1787", label: "automated tests" },
+      { value: "1828", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -460,7 +460,7 @@ export const en: Messages = {
         q: "Do I need to sign up or pay?",
         answer: "No. There are no accounts, and it is free.",
         detail:
-          "Your work is saved in this browser automatically, so it does not follow you to another device, and clearing the browser's data clears it. Export an .xlsx to keep a copy. To save across devices or edit together, connect your own Supabase.",
+          "Your work is saved in this browser automatically, so it does not follow you to another device, and clearing the browser's data clears it. Export an .xlsx to keep a copy. Saving across devices and editing together work if you run this app on your own server with your own Supabase — not on this site.",
       },
       {
         q: "Is my file uploaded to a server?",
@@ -493,7 +493,7 @@ export const en: Messages = {
         q: "How is it different from Excel or Google Sheets?",
         answer: "No account, nothing to install, and the file never leaves your device.",
         detail:
-          "Excel and Google Sheets on the web need you to sign in and keep files in their cloud. What this app does not have: macros, Excel-style PivotTables, and hundreds of functions (it has 66). Editing together works once you connect your own Supabase.",
+          "Excel and Google Sheets on the web need you to sign in and keep files in their cloud. What this app does not have: macros, Excel-style PivotTables, and hundreds of functions (it has 66). Editing together works if you run this app on your own server with your own Supabase — not on this site.",
       },
     ],
     closingTitle: "Use it now — free, nothing to sign up for",
@@ -776,9 +776,29 @@ export const en: Messages = {
     body: "One tab edits at a time, so neither can save over the other's work. Use this tab instead and the other tab turns view-only, with everything done there already saved. View only shows the latest work here without changing it.",
     useHere: "Use this tab instead",
     viewOnly: "View only",
-    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here.",
+    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here. If that tab closes, this one can edit by itself.",
     handedOff: "This tab is view-only now: the workbook was opened for editing in another tab. Everything done here was saved.",
     refused: "Nothing can be changed in this tab. Use this tab instead to edit here.",
+    freed: "The other tab closed — you can edit here now, with everything it saved.",
+    dismiss: "Dismiss",
+  },
+  convertDates: {
+    button: "Convert to dates",
+    menu: "Convert to dates…",
+    hint: "Read the selected text as dates, such as 15/01/69",
+    title: "Convert text to dates",
+    body: "A date like 15/01/69 can be read more than one way — 2569 B.E. or 1969, day first or month first — so it is not guessed. Say how it is written and see the result before anything changes. Cells that cannot be read are left as they are, and one undo puts everything back.",
+    order: "Order",
+    orders: { dmy: "Day/Month/Year", mdy: "Month/Day/Year", ymd: "Year/Month/Day" },
+    calendar: "Years in",
+    calendars: { be: "B.E. (Thai)", ce: "A.D." },
+    preview: "Preview",
+    before: "Now",
+    after: "Becomes",
+    counts: (changed, unreadable) => `${changed} ${changed === 1 ? "cell" : "cells"} will change${unreadable ? ` · ${unreadable} cannot be read (left as they are)` : ""}`,
+    nothing: "Nothing in the selection reads as a date this way",
+    confirm: (changed) => `Convert ${changed} ${changed === 1 ? "cell" : "cells"}`,
+    cancel: "Cancel",
   },
   newFile: {
     button: "New file",
@@ -960,6 +980,7 @@ export const en: Messages = {
     currency: "Currency (฿)",
     text: "Text",
     date: "Date",
+    dateBE: "Date (B.E.)",
     datetime: "Date and time",
     time: "Time",
   },
@@ -1017,6 +1038,10 @@ export const en: Messages = {
     allFiltersCleared: (total) => `Cleared all filters, showing all ${total} rows`,
     pasted: (rows, cols, at) => `Pasted ${rows} rows by ${cols} columns at ${at}`,
     cleared: (range) => `Cleared ${range}`,
+    datesConverted: (changed, unreadable) =>
+      changed === 0
+        ? "No cell could be read as a date this way"
+        : `Converted ${changed} ${changed === 1 ? "cell" : "cells"} to dates${unreadable ? ` · ${unreadable} could not be read and were left as they were` : ""}`,
     filled: (cells, range) => `Filled ${cells} cells, ${range} now selected`,
     replacedOne: (at) => `Replaced in ${at}`,
     replacedAll: (cells) => `Replaced in ${cells} cells`,

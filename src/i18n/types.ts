@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { NumberFormat } from "@/lib/cellFormat";
+import type { FormatChoice } from "@/lib/cellFormat";
 import { CfComparison, CfTest } from "@/lib/conditionalFormat";
 import { ChartKind } from "@/lib/charts";
 
@@ -583,8 +583,31 @@ export interface Messages {
     viewing: string;
     handedOff: string;
     refused: string;
+    /** The editing tab closed or left, and this one edits now with its latest save (#146). */
+    freed: string;
+    dismiss: string;
   };
   /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
+  /** "Convert to dates" (#82): text dates that need to be told the order and the calendar. */
+  convertDates: {
+    button: string;
+    /** The cell menu's entry: the button's words and an ellipsis, since it opens a dialog. */
+    menu: string;
+    hint: string;
+    title: string;
+    body: string;
+    order: string;
+    orders: { dmy: string; mdy: string; ymd: string };
+    calendar: string;
+    calendars: { be: string; ce: string };
+    preview: string;
+    before: string;
+    after: string;
+    counts: (changed: number, unreadable: number) => string;
+    nothing: string;
+    confirm: (changed: number) => string;
+    cancel: string;
+  };
   newFile: {
     button: string;
     hint: string;
@@ -713,7 +736,7 @@ export interface Messages {
     /** Headings inside the phone sheet. */
     groups: { cells: string; sort: string; rules: string; summarise: string };
   };
-  numberFormats: Record<NumberFormat, string>;
+  numberFormats: Record<FormatChoice, string>;
   /** The pivot panel, and the sheet it writes. */
   pivot: {
     title: string;
@@ -772,6 +795,8 @@ export interface Messages {
     allFiltersCleared: (total: number) => string;
     pasted: (rows: number, cols: number, at: string) => string;
     cleared: (range: string) => string;
+    /** "Convert to dates" (#82): how many changed, and how many were left because they could not be read. */
+    datesConverted: (changed: number, unreadable: number) => string;
     filled: (cells: number, range: string) => string;
     replacedOne: (at: string) => string;
     replacedAll: (cells: number) => string;
