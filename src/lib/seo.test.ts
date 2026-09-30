@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { CANONICAL, DESCRIPTION_MAX, DESCRIPTIONS, MAKER, TITLE_MAX, TITLES, jsonLdScript, landingJsonLd } from "./seo";
+import { CANONICAL, DESCRIPTION_MAX, DESCRIPTIONS, MAKER, TITLE_MAX, TITLES, faqAnswerText, jsonLdScript, landingJsonLd } from "./seo";
+import { FUNCTIONS } from "./formulaEngine/functions";
 import { getFormulaCatalog } from "./formulaCatalog";
 import { SITE_URL } from "./site";
 import { th } from "@/i18n/th";
@@ -54,7 +55,7 @@ describe("what a search result says about each page (#148)", () => {
 
 describe("the landing page's structured data (#148)", () => {
   const ld = landingJsonLd();
-  const [app, person] = ld["@graph"];
+  const [app, person] = ld["@graph"] as Record<string, unknown>[];
 
   it("round-trips through its script text as valid JSON", () => {
     expect(JSON.parse(jsonLdScript(ld))).toEqual(ld);
@@ -87,5 +88,45 @@ describe("the landing page's structured data (#148)", () => {
 
   it("cannot close its own script element, whatever a string in it says", () => {
     expect(jsonLdScript({ x: "</script><script>alert(1)</script>" })).not.toContain("</script>");
+  });
+});
+
+describe("the landing page's questions (#152)", () => {
+  const faqNode = landingJsonLd()["@graph"].find((n) => n["@type"] === "FAQPage") as {
+    mainEntity: { name: string; acceptedAnswer: { text: string } }[];
+  };
+
+  it("the FAQPage data says what the page says, word for word, and nothing more", () => {
+    expect(faqNode.mainEntity.map((q) => [q.name, q.acceptedAnswer.text])).toEqual(
+      th.landing.faq.map((f) => [f.q, faqAnswerText(f)])
+    );
+  });
+
+  it("asks the same questions in both languages, with the same links", () => {
+    expect(en.landing.faq).toHaveLength(th.landing.faq.length);
+    expect(en.landing.faq.map((f) => Boolean(f.link))).toEqual(th.landing.faq.map((f) => Boolean(f.link)));
+    expect(th.landing.faq).toHaveLength(7);
+  });
+
+  it("answers the yes-or-no questions with a yes or a no, in the first words", () => {
+    // The last one asks how it differs, which a yes or no cannot answer.
+    for (const f of th.landing.faq.slice(0, -1)) expect(f.answer).toMatch(/^(ได้|ไม่|ส่วนใหญ่ไม่)/);
+    for (const f of en.landing.faq.slice(0, -1)) expect(f.answer).toMatch(/^(Yes|No|Mostly not)\b/);
+  });
+
+  it("compares with Excel and Google Sheets in facts, never in rankings (PO)", () => {
+    const all = [...th.landing.faq, ...en.landing.faq].map((f) => `${f.q} ${f.answer} ${f.detail}`).join(" ");
+    expect(all).not.toMatch(/ดีกว่า|เร็วกว่า|ง่ายกว่า|better|faster|easier|best/i);
+  });
+
+  it("the counts it quotes are the palette's and the engine's", () => {
+    const text = [...th.landing.faq, ...en.landing.faq].map((f) => `${f.answer} ${f.detail}`).join(" ");
+    expect(text).toContain(String(getFormulaCatalog(th).length));
+    expect(text).toContain(`${Object.keys(FUNCTIONS).length})`);
+  });
+
+  it("says plainly what an exported file loses", () => {
+    const [, , , roundTrip] = th.landing.faq;
+    for (const lost of ["รูปภาพ", "กราฟ", "PivotTable", "มาโคร"]) expect(roundTrip.detail).toContain(lost);
   });
 });

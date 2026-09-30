@@ -1472,6 +1472,17 @@ const SCENES = [
     },
   },
   {
+    // The landing page's questions (#152), answered in the first sentence, every answer open.
+    file: "67-landing-faq.png",
+    async take(k) {
+      await k.open("/", { height: 900 });
+      await k.shot(this.file, {
+        fullPage: true,
+        clip: await k.boxOf(k.page.locator("#faq-title").locator("xpath=ancestor::section[1]")),
+      });
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {

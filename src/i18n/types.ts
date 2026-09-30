@@ -311,6 +311,14 @@ export interface Messages {
     limits: { title: string; body: string }[];
     limitsMoreText: string;
     limitsMoreCta: string;
+    /**
+     * Questions people type into a search box or ask an AI, each answered in its first sentence
+     * (#152). `answer` is that sentence and `detail` the limits that go with it; both are what the
+     * page shows and what the FAQPage structured data says, word for word.
+     */
+    faqTitle: string;
+    faqLead: string;
+    faq: { q: string; answer: string; detail: string; link?: { href: string; label: string } }[];
     closingTitle: string;
     closingBody: string;
     /** The contact block beside the closing call to action. The addresses themselves are not

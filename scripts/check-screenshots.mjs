@@ -113,6 +113,8 @@ const SHOWS = {
   "63-ai-declined.png": [],
   "64-short-screen.png": [],
   "65-save-status.png": [],
+  // Two answers quote a count: the palette's formulas, and the engine's functions.
+  "67-landing-faq.png": ["paletteFormulas", "engineFunctions"],
   "demo.gif": [],
 };
 

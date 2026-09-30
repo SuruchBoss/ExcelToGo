@@ -613,6 +613,24 @@ const FLOWS = [
       const verification = html.match(/<meta name="google-site-verification" content="([^"]+)"/)?.[1];
       note(Boolean(verification), "and / keeps its Google Search Console verification tag", verification ?? "none");
 
+      // The FAQPage data may never say more than the page (#152): both read from what was served,
+      // the page in Thai as a first visit gets it.
+      const faq = ld?.["@graph"]?.find((n) => n["@type"] === "FAQPage");
+      await page.goto(ORIGIN + "/", { waitUntil: "networkidle" });
+      const shown = await page.evaluate(() =>
+        [...document.querySelectorAll("section[aria-labelledby='faq-title'] h3")].map((h) => [
+          h.lastChild?.textContent?.trim() ?? "",
+          h.nextElementSibling?.querySelector("p")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        ])
+      );
+      const said = (faq?.mainEntity ?? []).map((q) => [q.name, q.acceptedAnswer?.text]);
+      const differs = shown.findIndex((row, i) => JSON.stringify(row) !== JSON.stringify(said[i]));
+      note(
+        shown.length === 7 && said.length === 7 && differs === -1,
+        `the page's ${shown.length} questions and answers are the FAQPage data, word for word`,
+        differs === -1 ? "" : `${JSON.stringify(shown[differs])} vs ${JSON.stringify(said[differs])}`
+      );
+
       // A mistyped link is a 404, kept out of the index, in both languages, with a way on.
       await page.goto(ORIGIN + "/no-such-page");
       const missing = await fetch(ORIGIN + "/no-such-page");

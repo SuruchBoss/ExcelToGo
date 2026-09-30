@@ -497,6 +497,45 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── Questions people ask (#152) ─────────────────────────────────────────────────────────
+          Answered in the first sentence, because that is the passage a search result or an AI
+          answer quotes. Every answer is open: an answer behind a click is one people skip, and a
+          crawler reads less of. The same text, word for word, is the FAQPage data in app/page.tsx. */}
+      <section className="border-b border-rule bg-white" aria-labelledby="faq-title">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
+          <SectionHead n="03" id="faq-title" title={t.landing.faqTitle} lead={t.landing.faqLead} />
+          <div className="mt-1">
+            {t.landing.faq.map((f, i) => (
+              <div
+                key={f.q}
+                className="grid gap-x-6 gap-y-1.5 border-b border-rule px-2 py-5 sm:grid-cols-[minmax(0,22rem)_1fr] sm:px-3"
+              >
+                <h3 className="flex gap-3 text-[15px] font-semibold leading-snug text-ink sm:gap-4">
+                  <span aria-hidden className="tabular-nums shrink-0 pt-0.5 font-mono text-[11px] font-normal text-ref">
+                    {num(i)}
+                  </span>
+                  {f.q}
+                </h3>
+                <div className="text-[14.5px] leading-relaxed text-ash">
+                  <p>
+                    <span className="font-medium text-ink">{f.answer}</span> {f.detail}
+                  </p>
+                  {f.link && (
+                    <a
+                      href={f.link.href}
+                      {...(f.link.href.startsWith("http") && { target: "_blank", rel: "noreferrer" })}
+                      className="mt-1.5 inline-flex min-h-6 items-center font-medium text-ledger underline underline-offset-4 hover:text-ink"
+                    >
+                      {f.link.label} →
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Closing ──────────────────────────────────────────────────────────────────────────────
           The last thing on the page is the two things a reader can do next: try it, or ask. They
           sit side by side on a wide screen, and one under the other on a phone, with the try
@@ -520,7 +559,7 @@ export default function Landing() {
           and the limits, where everyone had to scroll through it. */}
       <section className="bg-ink">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-18">
-          <SectionHead n="03" title={t.landing.statsTitle} inverted />
+          <SectionHead n="04" title={t.landing.statsTitle} inverted />
           <dl className="mt-10 grid grid-cols-2 gap-y-9 sm:grid-cols-5 sm:gap-y-0">
             {t.landing.stats.map((s, i, all) => (
               // Two columns on a phone and five figures leave the last one alone on its row, half

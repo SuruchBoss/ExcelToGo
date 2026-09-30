@@ -308,6 +308,7 @@ the outcome under a double rule like a total.
   - [Templates from an Excel file](#-templates-from-an-excel-file)
   - [A usage count that provably cannot identify anyone](#-a-usage-count-that-provably-cannot-identify-anyone)
   - [A landing page that explains the app](#-a-landing-page-that-explains-the-app)
+  - [Questions people ask, on the landing page](#-questions-people-ask-on-the-landing-page)
   - [Bilingual (Thai / English)](#-bilingual-thai--english)
 - [Tech stack](#-tech-stack)
 - [Architecture](#-architecture)
@@ -1884,7 +1885,7 @@ was true, and the app still could not open on a train — the document was local
 was not. A fair thing for someone to hold against it.
 
 A service worker now caches the app itself, and a manifest lets it go on a home screen. Install it
-and `/app` opens with no network at all: the grid, the engine, the 65 functions, import and export,
+and `/app` opens with no network at all: the grid, the engine, the 66 functions, import and export,
 and whatever was autosaved in `localStorage`.
 
 **What the caching policy is, and why each part of it:**
@@ -2683,6 +2684,26 @@ email and LinkedIn written as two lines of the ledger like everything above them
 on webmail a `mailto:` link does nothing at all; the copy result is announced in a live region. The
 footer gains an email link next to LinkedIn and GitHub as well.
 
+### ❓ Questions people ask, on the landing page
+
+<p align="center"><img src="public/screenshots/en/67-landing-faq.png" width="900" alt="The landing page's questions section: seven questions, each answered in its first sentence and followed by its limits"></p>
+
+Seven questions people actually type into a search box or ask an AI (#152): opening a file on a phone, whether you
+sign up, whether the file is uploaded, whether it comes back broken, formulas and AI keys, company data, and how it
+differs from Excel and Google Sheets.
+
+- **Answered in the first sentence** ("Yes." / "No."), because search results and AI answers quote the passage that
+  answers plainly, then followed by the limits. Every answer was checked against the README's limits; the round-trip
+  one says plainly that **pictures, Excel's own charts and PivotTables, and macros are not kept**.
+- **Every answer is open, not an accordion**: an answer behind a click is one people skip.
+- **The comparison with Excel and Google Sheets is facts only**, with no "better" or "faster", and it names what this
+  app does not have (a test holds the wording).
+- **The `FAQPage` JSON-LD is built from the same data the page shows**, so it cannot say more than the page. A test
+  compares them, the e2e reads the served page against the served data, and it carries the CSP nonce.
+- The counts in the answers (37 ready-made formulas, 66 functions) are counted from the code. **This very test found
+  the function counter had been one short all along** (`"RANK.EQ"` is quoted and the old pattern skipped it), so the
+  65 on the landing page, the README and the link-preview card is now 66.
+
 ### 🌐 Bilingual (Thai / English)
 
 Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 37 formula
@@ -3135,7 +3156,7 @@ flowchart LR
     Raw["Raw formula text<br/>e.g. =SUM(A1:A10)*2"] --> Tok["tokenizer.ts<br/>splits into tokens"]
     Tok --> Par["parser.ts<br/>builds an AST (recursive descent)"]
     Par --> Eval["evaluator.ts<br/>walks the AST to compute a result"]
-    Eval -->|"calls"| Fn["functions.ts<br/>65 functions"]
+    Eval -->|"calls"| Fn["functions.ts<br/>66 functions"]
     Eval -->|"getCell(row, col)"| Sheet[("other cells' values/formulas<br/>in the sheet")]
     Sheet -.-> Eval
     Eval --> Result["a number/text value,<br/>or a FormulaError"]
@@ -3251,7 +3272,7 @@ thing:
 ### Supported functions
 
 The drag-and-drop palette shows only the **37 most commonly used** formulas, but the engine itself supports
-**65 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
+**66 functions** — the rest can be typed directly into a cell even with no card in the palette (e.g. `=MID(...)`,
 `=YEAR(...)`, `=PROPER(...)`):
 
 | Category | In the palette (37) | Also available by typing |
@@ -3864,7 +3885,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
 | `functions.test.ts` | 136 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
-| `seo.test.ts` | 12 | Each page's search result (#148): title/description length, no AI promise, the formula count matching the palette, its own canonical, JSON-LD that parses and claims no rating |
+| `seo.test.ts` | 18 | Each page's search result (#148): title/description length, no AI promise, the formula count matching the palette, its own canonical, JSON-LD that parses and claims no rating · The FAQ (#152): FAQPage matching the page word for word, seven questions in both languages, yes/no questions opening with the answer, no ranking words, counts that match, and what an export loses |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 12 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 16 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
