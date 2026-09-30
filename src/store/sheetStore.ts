@@ -355,7 +355,14 @@ interface SheetState {
   replaceAll: (needle: string, replacement: string, options: SearchOptions) => number;
   copySelection: () => void;
   cutSelection: () => void;
-  pasteAtSelection: (externalText?: string) => void;
+  /**
+   * Pastes the clipboard (ours, else `externalText`) at the cursor. When the rows it would land on
+   * include rows a filter hides (#50), it records `pasteWarning` and waits for `force`.
+   */
+  pasteAtSelection: (externalText?: string, force?: boolean) => void;
+  /** Set while a paste waits on "this would write over n hidden rows — paste anyway?". */
+  pasteWarning: { hidden: number; text?: string } | null;
+  dismissPasteWarning: () => void;
   clearClipboard: () => void;
 
   /**
@@ -507,6 +514,19 @@ const DEFAULT_SELECTION: SelectionRect = singleCellSelection(0, 0);
 
 function activeSelectionOf(s: SheetState): SelectionRect {
   return s.selectionBySheetId[s.activeSheetId] ?? DEFAULT_SELECTION;
+}
+
+const NO_HIDDEN_ROWS: ReadonlySet<number> = new Set();
+
+/**
+ * The rows the active sheet's filters hide, as the grid hides them (#50). Every action on a
+ * selection skips these, as Excel does: they are not on screen, so nothing the person can see
+ * says they were changed. Deleting a filtered range used to empty the hidden rows too.
+ */
+function hiddenRowsOfActive(s: SheetState): ReadonlySet<number> {
+  const filters = s.filtersBySheetId[s.activeSheetId];
+  if (!filters || Object.keys(filters).length === 0) return NO_HIDDEN_ROWS;
+  return hiddenRowsFor(computeTab(activeTab(s).sheet, s.sheets).display, filters);
 }
 
 /** Replaces the active tab's sheet with whatever `fn` returns, leaving every other tab (and
@@ -681,12 +701,15 @@ function applyFill(
   if (refusedByTemplate(sheet, target.startRow, target.startCol, target.endRow, target.endCol)) return;
   const writes = fillBlock((r, c) => sheet.cells[r]?.[c] ?? "", source, target);
   if (writes.length === 0) return;
+  // Rows a filter hides are not filled (#50): Excel fills what is on screen, and a fill that
+  // reached rows nobody could see overwrote them unseen.
+  const hidden = hiddenRowsOfActive(s);
 
   set(() => {
     const next = cloneSheet(ensureBounds(sheet, target.endRow + 1, target.endCol + 1));
     let written = 0;
     for (const w of writes) {
-      if (isTemplateLocked(next.template, w.row, w.col)) continue;
+      if (hidden.has(w.row) || isTemplateLocked(next.template, w.row, w.col)) continue;
       next.cells[w.row][w.col] = w.value;
       written++;
     }
@@ -1126,9 +1149,11 @@ export const useSheetStore = create<SheetState>()(
             if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
 
             const source = sheet.cells[sel.anchorRow]?.[sel.anchorCol] ?? "";
+            const hidden = hiddenRowsOfActive(s);
             const next = cloneSheet(sheet);
             let written = 0;
             for (let r = sel.startRow; r <= sel.endRow; r++) {
+              if (hidden.has(r)) continue;
               for (let c = sel.startCol; c <= sel.endCol; c++) {
                 if (isTemplateLocked(next.template, r, c)) continue;
                 // Shifted rather than copied verbatim: a formula that kept pointing at the anchor's
@@ -1212,9 +1237,10 @@ export const useSheetStore = create<SheetState>()(
           set((s) => {
             const sel = activeSelectionOf(s);
             if (refusedByTemplate(activeTab(s).sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            const hidden = hiddenRowsOfActive(s);
             return {
               sheets: updateActiveSheet(s, (sheet, selection) =>
-                clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol)
+                clearRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, hidden)
               ),
               ...say(getMessages().live.cleared(rangeLabel(sel))),
             };
@@ -1251,7 +1277,7 @@ export const useSheetStore = create<SheetState>()(
           const s = get();
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
-          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, hiddenRowsOfActive(s));
           set({
             clipboard: { ...block, cut: false, sheetId: activeTab(s).id },
             ...say(getMessages().live.copied(rangeLabel(selection))),
@@ -1263,7 +1289,7 @@ export const useSheetStore = create<SheetState>()(
           const s = get();
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
-          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+          const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, hiddenRowsOfActive(s));
           set({
             clipboard: { ...block, cut: true, sheetId: activeTab(s).id },
             ...say(getMessages().live.cut(rangeLabel(selection))),
@@ -1271,10 +1297,22 @@ export const useSheetStore = create<SheetState>()(
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
-        pasteAtSelection: (externalText) =>
+        pasteWarning: null,
+        dismissPasteWarning: () => set({ pasteWarning: null }),
+
+        pasteAtSelection: (externalText, force = false) =>
           set((s) => {
             const { sheet } = activeTab(s);
             const selection = activeSelectionOf(s);
+            // A paste goes down in one piece, so under a filter it can land on rows nobody can see
+            // (#50). Delete and fill skip those; a paste cannot, so it asks first (PO's call).
+            if (!force) {
+              const height = s.clipboard?.rows.length ?? (externalText ? parseTsv(externalText).length : 0);
+              const hidden = hiddenRowsOfActive(s);
+              let covered = 0;
+              for (let r = selection.anchorRow; r < selection.anchorRow + height; r++) if (hidden.has(r)) covered++;
+              if (covered > 0) return { pasteWarning: { hidden: covered, text: externalText } };
+            }
             if (sheet.template) {
               // Size the guard to what would actually be written, not just the selected cell.
               const height = s.clipboard?.rows.length ?? parseTsv(externalText ?? "").length;
@@ -1293,8 +1331,15 @@ export const useSheetStore = create<SheetState>()(
               if (clipboard.cut) {
                 const height = clipboard.rows.length;
                 const width = clipboard.rows[0]?.length ?? 0;
-                const srcEndRow = clipboard.startRow + height - 1;
+                const srcEndRow = clipboard.sourceRows?.at(-1) ?? clipboard.startRow + height - 1;
                 const srcEndCol = clipboard.startCol + width - 1;
+                // A cut made under a filter took only the rows on screen (#50); only those are
+                // emptied, and the hidden rows between them stay as they were.
+                const kept = new Set<number>();
+                if (clipboard.sourceRows) {
+                  const cut = new Set(clipboard.sourceRows);
+                  for (let r = clipboard.startRow; r <= srcEndRow; r++) if (!cut.has(r)) kept.add(r);
+                }
                 const destId = activeTab(s).id;
                 if (clipboard.sheetId === destId) {
                   const destOverlapsSource =
@@ -1305,7 +1350,7 @@ export const useSheetStore = create<SheetState>()(
                   // Moving to a spot that overlaps the original block would otherwise wipe out
                   // the very cells pasteClipboardBlock just wrote there.
                   if (!destOverlapsSource) {
-                    next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol);
+                    next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol, kept);
                     sheets = withActiveSheet(s, () => next);
                   }
                 } else {
@@ -1315,7 +1360,7 @@ export const useSheetStore = create<SheetState>()(
                   // update, so one undo puts both back.
                   sheets = sheets.map((t) =>
                     t.id === clipboard.sheetId
-                      ? { ...t, sheet: clearRange(t.sheet, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol) }
+                      ? { ...t, sheet: clearRange(t.sheet, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol, kept) }
                       : t
                   );
                 }
@@ -1324,6 +1369,7 @@ export const useSheetStore = create<SheetState>()(
               return {
                 sheets,
                 clipboard: clearedClipboard,
+                pasteWarning: null,
                 ...say(
                   getMessages().live.pasted(
                     clipboard.rows.length,
@@ -1339,6 +1385,7 @@ export const useSheetStore = create<SheetState>()(
                 const next = pastePlainTextBlock(sheet, rows, targetRow, targetCol);
                 return {
                   sheets: withActiveSheet(s, () => next),
+                  pasteWarning: null,
                   ...say(getMessages().live.pasted(rows.length, rows[0]?.length ?? 0, cellRef(targetRow, targetCol))),
                 };
               }
@@ -1357,7 +1404,7 @@ export const useSheetStore = create<SheetState>()(
             const sheet = activeTab(s).sheet;
             const selection = activeSelectionOf(s);
             const computed = computeTab(sheet, s.sheets);
-            const range = detectSortRange(sheet, computed, selection, selection.anchorRow, selection.anchorCol);
+            const range = detectSortRange(sheet, computed, selection, selection.anchorRow);
             // Asked first, not refused: sometimes a running total is meant to be re-run on new
             // rows. But a sort that silently gives each row another row's numbers is how #48 cost
             // a tester 2,710 baht, so it is never silent.

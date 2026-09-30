@@ -22,6 +22,7 @@ import ChartPanel from "@/features/grid/ChartPanel";
 import PivotPanel from "@/features/grid/PivotPanel";
 import CloudPanel from "@/features/cloud/CloudPanel";
 import SortWarningDialog from "@/features/grid/SortWarningDialog";
+import PasteWarningDialog from "@/features/grid/PasteWarningDialog";
 import OtherTabDialog from "@/features/otherTab/OtherTabDialog";
 import ConvertDatesDialog from "@/features/toolbar/ConvertDatesDialog";
 import { useTabLock } from "@/features/otherTab/useTabLock";
@@ -115,6 +116,7 @@ export default function Home() {
       <SkipLink />
       <LiveAnnouncer />
       <SortWarningDialog />
+      <PasteWarningDialog />
       <OtherTabDialog />
       {convertingDates && <ConvertDatesDialog onClose={() => setConvertingDates(false)} />}
       {find.open && <FindPanel onClose={find.close} />}

@@ -29,14 +29,65 @@ export interface SortRange {
   endCol: number;
 }
 
+/** How a header row tends to be drawn: bold, or a band of colour. */
+function looksStyled(format: { bold?: boolean; fill?: string } | undefined): boolean {
+  return Boolean(format?.bold || format?.fill);
+}
+
+/**
+ * Whether the top row of a block is a header rather than the first row of data (#49).
+ *
+ * One rule, whichever way the sort runs. It used to look only at the column being sorted, and only
+ * for a text header over numbers, so a text column never had a header: sorting names Z→A put
+ * "Name" at the bottom. Ascending only looked right because "N" sorts before lowercase letters.
+ *
+ * The top row is a header when it holds no numbers, and anything in the block says it is a
+ * different kind of row from the ones under it:
+ * - **a column of numbers under a word** — in any column, not just the one being sorted;
+ * - **a label over an empty column** — "City" with nothing entered under it yet;
+ * - **drawn differently** — bold or filled, where the row under it is not.
+ *
+ * A single column of plain, unformatted words has none of these, so its first row is sorted like
+ * the rest. Excel guesses the same way; selecting the rows to sort is the way to be exact.
+ */
+export function topRowIsHeader(sheet: SheetModel, computed: ComputedSheet, top: number, bottom: number): boolean {
+  if (bottom <= top) return false;
+  const header = computed.values[top];
+  let words = 0;
+  for (let c = 0; c < sheet.cols; c++) {
+    const v = header[c];
+    if (typeof v === "number") return false;
+    if (typeof v === "string" && v.trim() !== "") words++;
+  }
+  if (words === 0) return false;
+
+  for (let c = 0; c < sheet.cols; c++) {
+    const v = header[c];
+    if (typeof v !== "string" || v.trim() === "") continue;
+    let filled = 0;
+    let numbers = 0;
+    for (let r = top + 1; r <= bottom; r++) {
+      const below = computed.values[r][c];
+      if (isBlankValue(below)) continue;
+      filled++;
+      if (typeof below === "number") numbers++;
+    }
+    if (filled === 0) return true;
+    if (numbers * 2 >= filled) return true;
+  }
+
+  const styledTop = sheet.formats[top]?.some((f, c) => looksStyled(f) && !isBlankValue(header[c]));
+  const styledNext = sheet.formats[top + 1]?.some(looksStyled);
+  return Boolean(styledTop && !styledNext);
+}
+
 /**
  * Given the cell the user had selected when they asked to sort, figures out what range to
  * sort: the selection itself if it already spans more than one row, or — for a single-cell
  * selection — the contiguous non-blank block around it (like Excel's ribbon Sort buttons),
- * auto-excluding the top row from the sort if it looks like a text header sitting over mostly
- * numeric data in the sort column.
+ * leaving its top row where it is when that row is a header (`topRowIsHeader`).
  */
-export function detectSortRange(sheet: SheetModel, computed: ComputedSheet, selection: SortRange, anchorRow: number, anchorCol: number): SortRange {
+export function detectSortRange(sheet: SheetModel, computed: ComputedSheet, selection: SortRange, anchorRow: number): SortRange {
   if (selection.startRow !== selection.endRow) {
     return { startRow: selection.startRow, endRow: selection.endRow, startCol: selection.startCol, endCol: selection.endCol };
   }
@@ -45,16 +96,7 @@ export function detectSortRange(sheet: SheetModel, computed: ComputedSheet, sele
   let bottom = anchorRow;
   while (bottom < sheet.rows - 1 && !isRowBlank(sheet, bottom + 1)) bottom++;
 
-  let startRow = top;
-  if (bottom > top) {
-    const headerVal = computed.values[top][anchorCol];
-    const isHeaderTextual = typeof headerVal === "string" && headerVal.trim() !== "";
-    let numericCount = 0;
-    for (let r = top + 1; r <= bottom; r++) {
-      if (typeof computed.values[r][anchorCol] === "number") numericCount++;
-    }
-    if (isHeaderTextual && numericCount >= Math.ceil((bottom - top) / 2)) startRow = top + 1;
-  }
+  const startRow = topRowIsHeader(sheet, computed, top, bottom) ? top + 1 : top;
   return { startRow, endRow: bottom, startCol: 0, endCol: sheet.cols - 1 };
 }
 
