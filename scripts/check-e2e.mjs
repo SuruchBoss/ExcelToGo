@@ -625,6 +625,60 @@ const FLOWS = [
     },
   },
   {
+    name: "Delete on a filtered range leaves the rows the filter hid, and a paste over them asks first (#50)",
+    async run(page) {
+      // The unit tests cover the store. What only a browser shows is the whole path: the funnel on
+      // the column header, rows gone from the grid, a Shift+click selection that spans them, the key.
+      const rows = [["Region", "Sales"], ["North", "10"], ["South", "2"], ["North", "30"], ["South", "4"], ["North", "50"]];
+      for (const [r, row] of rows.entries()) for (const [c, v] of row.entries()) await typeInCell(page, r, c, v);
+
+      await page.locator("thead").getByTitle("กรองข้อมูลคอลัมน์นี้").first().click();
+      await page.getByRole("checkbox", { name: "South" }).uncheck();
+      await page.getByRole("button", { name: "ตกลง", exact: true }).click();
+      await cell(page, 2, 1).waitFor({ state: "detached", timeout: 5000 }).catch(() => {});
+      const hiddenNow = !(await cell(page, 2, 1).isVisible());
+      note(hiddenNow, "the filter hides South's rows");
+
+      // A paste cannot skip rows the way Delete does, so one that would land on a hidden row asks
+      // first (PO's call on #50): copy the visible 10 and 30, paste them at C2, where C3 is hidden.
+      await cell(page, 1, 1).click();
+      await cell(page, 3, 1).click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Shift+F10");
+      await page.getByRole("menu").getByRole("menuitem", { name: /คัดลอก|Copy/ }).click();
+      await cell(page, 1, 2).click({ button: "right" });
+      await page.getByRole("menu").getByRole("menuitem", { name: /วาง|Paste/ }).click();
+      const ask = page.getByRole("alertdialog", { name: "ช่วงที่จะวางมีแถวที่ซ่อนอยู่" });
+      await ask.waitFor({ timeout: 5000 });
+      const focused = await page.evaluate(() => document.activeElement?.textContent?.trim());
+      note(focused === "ยกเลิก", `a paste over a hidden row asks first, with Cancel focused (${focused})`);
+      await page.keyboard.press("Enter");
+      await ask.waitFor({ state: "detached", timeout: 5000 });
+      note((await cell(page, 1, 2).innerText()).trim() === "", "and Cancel pastes nothing");
+      await cell(page, 1, 2).click({ button: "right" });
+      await page.getByRole("menu").getByRole("menuitem", { name: /วาง|Paste/ }).click();
+      await ask.getByRole("button", { name: "วางทับ", exact: true }).click();
+      note((await cell(page, 1, 2).innerText()).trim() === "10", "and 'paste anyway' pastes");
+      await page.keyboard.press("Control+z");
+
+      await cell(page, 1, 1).click();
+      await cell(page, 5, 1).click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Delete");
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="1"]')?.innerText.trim() === "");
+
+      await page.locator("thead").getByTitle("กรองข้อมูลคอลัมน์นี้").first().click();
+      await page.getByRole("button", { name: "ล้างตัวกรอง", exact: true }).click();
+      await cell(page, 2, 1).waitFor({ state: "visible", timeout: 5000 });
+      const after = await page.evaluate(() =>
+        [1, 2, 3, 4, 5].map((r) => document.querySelector(`td[data-row="${r}"][data-col="1"]`)?.innerText.trim() ?? "?")
+      );
+      note(after.join(",") === ",2,,4,", "after clearing the filter, the hidden rows still hold 2 and 4", after.join(","));
+      const pastedColumn = await page.evaluate(() =>
+        [1, 2].map((r) => document.querySelector(`td[data-row="${r}"][data-col="2"]`)?.innerText.trim() ?? "?")
+      );
+      note(pastedColumn.join(",") === ",", "and the undone paste left column C as it was", pastedColumn.join(","));
+    },
+  },
+  {
     name: "the cloud client is built, and never downloaded",
     async run(page) {
       // The README says a deployment with no cloud configured never downloads the ~250KB Supabase
