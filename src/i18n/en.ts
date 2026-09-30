@@ -234,6 +234,7 @@ export const en: Messages = {
     aiNote:
       "Try it without a key: the app guesses a formula from keywords and always says it's a guess — check before you use it. Add your own API key for real AI answers (it stays in your browser, never on our server).",
     ctaNote: "Free, nothing to sign up for",
+    formulasLink: "Or read the common Excel formulas, one per page (in Thai)",
     benefits: ["Nothing to install", "Your file stays on your device", "Works on a phone, a tablet or a computer"],
     screenshotAlt: "The main ExcelToGo screen",
     demo: {
@@ -428,7 +429,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1828", label: "automated tests" },
+      { value: "1843", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -481,6 +482,7 @@ export const en: Messages = {
         answer: "Yes, and no key is needed. Type formulas as in Excel, or pick from 37 ready-made formulas, each explained.",
         detail:
           "You can also describe what you want in plain words. Without a key the app guesses from keywords and always says it is a guess, so check before you use it. Add your own API key for answers from the AI.",
+        link: { href: "/formulas", label: "Common formulas, one page each (in Thai)" },
       },
       {
         q: "Can I connect data from my company's systems?",
@@ -913,6 +915,7 @@ export const en: Messages = {
     moreTitle: "Read more",
     moreReadme: "The full details in the README",
     moreSecurity: "SECURITY.md — every guard on live data",
+    moreFormulas: "Common Excel formulas, one page each (in Thai)",
     openApp: "Open the app",
     copy: "Copy",
     copied: "Copied",
@@ -930,6 +933,9 @@ export const en: Messages = {
     cancel: "Cancel",
     doneAppend: (sheets) => `Added ${sheets === 1 ? "1 sheet" : `${sheets} sheets`} from the file after your work`,
     doneReplace: (sheets) => `Opened ${sheets === 1 ? "1 sheet" : `${sheets} sheets`} in place of your work — undo to get it back`,
+    lessonFile: (id) => `The ${id} example`,
+    lessonSheet: (id) => `Try ${id}`,
+    doneLesson: (id) => `Opened the ${id} example — undo to take it out again`,
     undo: "Undo",
     dismiss: "Dismiss",
   },

@@ -68,7 +68,11 @@ export default function ImportNotice() {
       >
         <FileCheck2 size={14} className="shrink-0" aria-hidden />
         <p className="min-w-[8rem] flex-1 leading-snug">
-          {notice.mode === "append" ? t.importChoice.doneAppend(notice.sheets) : t.importChoice.doneReplace(notice.sheets)}
+          {notice.lesson
+            ? t.importChoice.doneLesson(notice.lesson)
+            : notice.mode === "append"
+              ? t.importChoice.doneAppend(notice.sheets)
+              : t.importChoice.doneReplace(notice.sheets)}
         </p>
         <button
           {...hold}

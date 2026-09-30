@@ -1511,6 +1511,21 @@ const SCENES = [
     },
   },
   {
+    // A formula page (#149): the answer, the shape, and an example whose numbers the engine worked
+    // out on the server — down to the button that opens it in the sheet. Thai in both sets: these
+    // pages are Thai until they have English addresses of their own, and the English README says so.
+    file: "68-formula-page.png",
+    async take(k) {
+      await k.open("/formulas/sumif", { height: 900 });
+      const main = await k.boxOf(k.page.locator("main"));
+      const example = await k.boxOf(k.page.locator("#example").locator("xpath=ancestor::section[1]"));
+      await k.shot(this.file, {
+        fullPage: true,
+        clip: { x: main.x, y: main.y, width: main.width, height: example.y + example.height - main.y + 24 },
+      });
+    },
+  },
+  {
     // The README's three steps, played in order on the sample: a price, a pivot, a stale pivot.
     file: "demo.gif",
     async take(k) {

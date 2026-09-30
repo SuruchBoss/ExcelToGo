@@ -40,8 +40,10 @@ import AxeBuilder from "@axe-core/playwright";
 
 const PORT = Number(process.env.A11Y_PORT || 3123);
 const ORIGIN = `http://localhost:${PORT}`;
-// The last is any unknown path: the 404 page (#148), which a mistyped link lands on.
-const PAGES = ["/", "/app", "/guide", "/no-such-page"];
+// `/no-such-page` is any unknown path: the 404 page (#148), which a mistyped link lands on. The
+// formula pages (#149) share one template, so the list and one lesson stand for all of them — the
+// lesson with the widest example table (three columns) and a shaded row, which is what 360px tests.
+const PAGES = ["/", "/app", "/guide", "/no-such-page", "/formulas", "/formulas/sumif"];
 /**
  * The browser's language, fixed. A first visit now takes the language the browser asks for, and
  * the selectors below are the Thai names — so the gate says which language it scans rather than

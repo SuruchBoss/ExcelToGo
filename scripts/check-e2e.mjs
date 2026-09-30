@@ -886,6 +886,77 @@ const FLOWS = [
     },
   },
   {
+    // A formula page (#149) shows numbers the engine worked out on the server; "ลองในตาราง" opens
+    // the same table in the app. Only a browser can say the two agree, that the name leaves the
+    // address, and that over work it asks the way a file does — keeping the work being the default.
+    name: "a formula page's example opens in the sheet with the page's own numbers, and over work it asks first (#149)",
+    async run(page) {
+      const result = (p) => p.locator("[data-lesson-result]").innerText();
+      const bar = page.getByPlaceholder(label.formulaBar);
+
+      await page.goto(ORIGIN + "/formulas/sumif", { waitUntil: "networkidle" });
+      const shown = (await result(page)).trim();
+      await page.getByRole("link", { name: /^ลองในตาราง/ }).click();
+      await page.waitForURL(/\/app/);
+      await page.waitForFunction(() => document.querySelector('td[data-row="6"][data-col="2"]')?.innerText.trim() !== "");
+      const inSheet = (await cell(page, 6, 2).innerText()).trim();
+      note(shown === "450" && inSheet === shown, `the sheet's C7 matches the page (page ${shown}, sheet ${inSheet})`);
+      note((await bar.inputValue()).startsWith("=SUMIF("), `the cursor is on the formula's cell (bar: ${await bar.inputValue()})`);
+      note(!page.url().includes("lesson="), `the lesson's name leaves the address (${page.url()})`);
+      const asked = await page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ }).count();
+      note(asked === 0, "with no work in this browser it opens without asking");
+
+      // Now there is work: the lesson sheet was edited.
+      await typeInCell(page, 0, 4, "keep-me");
+      // Leaving the page before the autosave lands would test a browser that lost the work.
+      await page.waitForFunction(() => (localStorage.getItem("exceltogo-sheet-v2") ?? "").includes("keep-me"));
+      await page.goto(ORIGIN + "/formulas/vlookup", { waitUntil: "networkidle" });
+      const price = (await result(page)).trim();
+      await page.getByRole("link", { name: /^ลองในตาราง/ }).click();
+      const dialog = page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ });
+      await dialog.waitFor({ timeout: 10_000 });
+      const named = await dialog.getByText(/VLOOKUP/).count();
+      note(named > 0, "over work it asks first, naming the example");
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('td[data-row="6"][data-col="2"]')?.innerText.trim() !== "");
+      const got = (await cell(page, 6, 2).innerText()).trim();
+      note(price === "35" && got === price, `the focused choice adds the example (page ${price}, sheet ${got})`);
+      const tabs = await page.getByText(/^(ลอง|Try) VLOOKUP$/).count();
+      await page.getByText(/^(ลอง|Try) SUMIF$/).first().click();
+      const kept = (await cell(page, 0, 4).innerText()).trim();
+      note(tabs > 0 && kept === "keep-me", `and the work that was open is still there (E1 "${kept}")`);
+
+      await page.getByRole("status").getByRole("button", { name: /^(ย้อนกลับ|Undo)$/ }).click();
+      const left = await page.getByText(/^(ลอง|Try) VLOOKUP$/).count();
+      note(left === 0, `undo on the notice takes the example back out (${left} left)`);
+
+      // A name no lesson has is dropped: no dialog, no new tab.
+      await page.goto(ORIGIN + "/app?lesson=not-a-lesson", { waitUntil: "networkidle" });
+      const stray = await page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ }).count();
+      note(stray === 0, "an unknown lesson name opens nothing");
+
+      // Typed in capitals, it is the same page, at the one address it lives at.
+      const upper = await fetch(ORIGIN + "/formulas/SUMIF", { redirect: "manual" });
+      note(upper.status === 308 && new URL(upper.headers.get("location"), ORIGIN).pathname === "/formulas/sumif", `/formulas/SUMIF redirects to /formulas/sumif (${upper.status})`);
+      const missing = await fetch(ORIGIN + "/formulas/nope");
+      note(missing.status === 404, `an unknown formula page is a 404 (${missing.status})`);
+
+      // The breadcrumb is an inline script like the landing page's, so it needs this request's nonce.
+      const res = await fetch(ORIGIN + "/formulas/sumif");
+      const nonce = res.headers.get("content-security-policy")?.match(/'nonce-([^']+)'/)?.[1];
+      const tag = (await res.text()).match(/<script type="application\/ld\+json"([^>]*)>([\s\S]*?)<\/script>/);
+      let crumbs = null;
+      try {
+        crumbs = JSON.parse(tag?.[2] ?? "");
+      } catch {
+        // stays null
+      }
+      const names = crumbs?.itemListElement?.map((i) => i.name).join(" › ");
+      note(crumbs?.["@type"] === "BreadcrumbList" && names === "หน้าแรก › สูตร Excel › SUMIF", `the breadcrumb data parses (${names})`);
+      note(Boolean(nonce) && (tag?.[1] ?? "").includes(`nonce="${nonce}"`), "and carries this request's CSP nonce");
+    },
+  },
+  {
     // The app opens blank, and the sample is one press away. What only a browser can say: the
     // sample an older version autosaved into localStorage is not brought back on the next visit,
     // while one changed cell makes it somebody's work that is. And "New file" over that work asks,

@@ -265,6 +265,14 @@ export default function Landing() {
                 {t.landing.ctaSecondary}
               </a>
             </div>
+            {/* The formula pages (#149): a text link, not a third button — the two above are the
+                page's choices, this is somewhere to read. */}
+            <Link href="/formulas" className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-medium text-ledger-ink underline-offset-2 hover:underline">
+              {t.landing.formulasLink}
+              <span aria-hidden className="font-mono">
+                →
+              </span>
+            </Link>
             {/* The three questions a first visit asked and the page did not answer out loud: is it
                 free, where does my file go, does it work on my phone. Answered next to the button
                 rather than somewhere in the fine print (blind test U31). */}
