@@ -21,8 +21,10 @@ describe("the keyword matcher", () => {
 
   it("writes the words an IF puts in the sheet in that language too", () => {
     // Not just the explanation: these land in cells, and an English sheet was getting "ผ่าน".
-    expect(heuristicSuggest("if it is over zero", "A1:A5", "en").formula).toBe('=IF(A1>0,"Pass","Fail")');
-    expect(heuristicSuggest("ถ้ามากกว่าศูนย์", "A1:A5", "th").formula).toBe('=IF(A1>0,"ผ่าน","ไม่ผ่าน")');
+    const score = { row: 4, columns: [{ name: "Score", col: "B", range: "B2:B9", numeric: true }] };
+    expect(heuristicSuggest("if the score is over 50", score, "en").formula).toBe('=IF(B4>50,"Pass","Fail")');
+    const คะแนน = { row: 4, columns: [{ name: "คะแนน", col: "B", range: "B2:B9", numeric: true }] };
+    expect(heuristicSuggest("ถ้าคะแนนมากกว่า 50", คะแนน, "th").formula).toBe('=IF(B4>50,"ผ่าน","ไม่ผ่าน")');
   });
 });
 
@@ -46,13 +48,14 @@ describe("questions it cannot answer", () => {
       "join the first and last name",
       "concat these columns",
     ]) {
-      expect(heuristicSuggest(q, "E2:E11", "th").formula, q).not.toMatch(/^=SUM/);
+      expect(heuristicSuggest(q, "E2:E11", "th").formula ?? "", q).not.toMatch(/^=SUM/);
     }
   });
 
   it("reads 'รวมข้อความ' as joining text, not as adding up", () => {
-    // Both rules' keywords appear in the sentence; the narrower one has to win.
-    expect(heuristicSuggest("รวมข้อความสองช่องนี้", "A1:A5", "th").formula).toMatch(/^=CONCATENATE/);
+    // Both rules' keywords appear in the sentence; the narrower one has to win. Which two columns
+    // it does not say, so it points at the form rather than guessing A1 and B1 (#63).
+    expect(heuristicSuggest("รวมข้อความสองช่องนี้", "A1:A5", "th").form).toBe("CONCATENATE");
   });
 
   it("still reads 'นับจำนวนข้อความ' as COUNTA, not COUNT", () => {

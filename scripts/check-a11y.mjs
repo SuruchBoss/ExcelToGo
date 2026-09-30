@@ -183,6 +183,34 @@ const panel = (name, opener) => ({
 
 const OPENED_STATES = [
   {
+    // #62–#64: an answer from the keyword matcher, with where it goes and its Insert button.
+    name: "AI answer card",
+    path: "/app",
+    async open(page) {
+      await page.getByRole("button", { name: "ลองกับข้อมูลตัวอย่าง", exact: true }).click();
+      await page.locator('td[data-row="4"][data-col="4"]').click();
+      await reveal(page, 'button[aria-label="ถาม AI"]');
+      await page.locator('button[aria-label="ถาม AI"]').first().click();
+      await page.locator("aside textarea").fill("อยากรวมยอดขายทั้งหมดในคอลัมน์นี้");
+      await page.locator("aside").getByRole("button", { name: "ถาม AI" }).click();
+      await page.getByRole("button", { name: /ใส่สูตรนี้ที่เซลล์/ }).waitFor({ timeout: 10_000 });
+    },
+  },
+  {
+    // …and one it declines, pointing at the form that fits instead (#62).
+    name: "AI declined answer with its form",
+    path: "/app",
+    async open(page) {
+      await page.getByRole("button", { name: "ลองกับข้อมูลตัวอย่าง", exact: true }).click();
+      await page.locator('td[data-row="10"][data-col="4"]').click();
+      await reveal(page, 'button[aria-label="ถาม AI"]');
+      await page.locator('button[aria-label="ถาม AI"]').first().click();
+      await page.locator("aside textarea").fill("ยอดรวมของหมวดเครื่องดื่ม");
+      await page.locator("aside").getByRole("button", { name: "ถาม AI" }).click();
+      await page.getByRole("button", { name: "เปิดฟอร์ม SUMIF" }).waitFor({ timeout: 10_000 });
+    },
+  },
+  {
     name: "data picker dialog",
     path: "/app",
     async open(page) {

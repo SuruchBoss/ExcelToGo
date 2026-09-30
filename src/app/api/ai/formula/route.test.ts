@@ -121,3 +121,38 @@ describe("with a key configured, or not", () => {
     console_.mockRestore();
   });
 });
+
+describe("what the panel says about the sheet (#62–#64)", () => {
+  it("is used to answer on the cursor's row", async () => {
+    const { body } = await post(
+      {
+        question: "join the product and category",
+        selection: "E2:E10",
+        locale: "en",
+        context: { row: 4, columns: [{ name: "Product", col: "A", range: "A2:A10" }, { name: "Category", col: "B", range: "B2:B10" }] },
+      },
+      "10.0.9.1"
+    );
+    expect(body.formula).toBe('=CONCATENATE(A4," ",B4)');
+  });
+
+  it("is taken only in the shapes formulas are built from, so nothing else reaches the answer", async () => {
+    const { body } = await post(
+      {
+        question: "join the product and category",
+        locale: "en",
+        context: {
+          row: "4); DROP",
+          columns: [
+            { name: "Product", col: "A1)&HYPERLINK(\"x", range: "A2:A10" },
+            { name: "Category", col: "B", range: "B2:B10,Z1" },
+          ],
+          mentions: ["x".repeat(500)],
+        },
+      },
+      "10.0.9.2"
+    );
+    expect(body.formula).toBeNull();
+    expect(body.form).toBe("CONCATENATE");
+  });
+});

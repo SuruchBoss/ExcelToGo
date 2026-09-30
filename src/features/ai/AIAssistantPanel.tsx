@@ -3,11 +3,15 @@
 
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { countUsage } from "@/lib/usage";
 import { Sparkles, Loader2, KeyRound, ExternalLink, ChevronDown, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
-import { selectActiveSelection, selectActiveSheet, useAIContext, useSheetStore } from "@/store/sheetStore";
+import { selectActiveSheet, useAIContext, useSheetStore } from "@/store/sheetStore";
+import { placeFormula } from "@/lib/aiPlacement";
+import { getFormulaById } from "@/lib/formulaCatalog";
+import { cellRef } from "@/lib/formulaEngine/address";
+import type { AskContext } from "@/lib/aiHeuristic";
 import { useLocale, useT } from "@/i18n";
 import { clearKey, keyServerSnapshot, keySnapshot, looksLikeAnthropicKey, maskKey, saveKey, subscribeToKey } from "@/lib/byok";
 import { askAnthropicDirect } from "./askAnthropicDirect";
@@ -17,13 +21,17 @@ interface Suggestion {
   formula: string | null;
   explanation: string;
   source: "ai" | "heuristic";
+  /** The palette form a declined answer points at (#62). */
+  form?: string;
 }
 
 export default function AIAssistantPanel() {
   const t = useT();
   const locale = useLocale();
-  const { address: selectionAddress, range, headers } = useAIContext();
+  const { address: selectionAddress, range, headers, anchor, row, rangeIsText, columns, mentionsIn } = useAIContext();
   const onInsert = useSheetStore((s) => s.insertAIFormula);
+  const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
+  const sheet = useSheetStore(selectActiveSheet);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
@@ -38,11 +46,17 @@ export default function AIAssistantPanel() {
   // line at 1366×768, when the question is what people open this panel for.
   const [keyOpen, setKeyOpen] = useState(false);
   const answerRef = useRef<HTMLDivElement>(null);
-  // What the insert button would overwrite. The anchor is where insertAIFormula writes.
-  const target = useSheetStore((s) => {
-    const sel = selectActiveSelection(s);
-    return selectActiveSheet(s).cells[sel.anchorRow]?.[sel.anchorCol] ?? "";
-  });
+  // Where Insert would write, by the same rule the store follows (#64): not into a cell the formula
+  // reads — under the column for a total, and nowhere when there is no such cell.
+  const place = useMemo(
+    () =>
+      suggestion?.formula
+        ? placeFormula(suggestion.formula, anchor, (r, c) => sheet.cells[r]?.[c] ?? "", sheet.rows, sheet.names)
+        : null,
+    [suggestion, anchor, sheet]
+  );
+  const placeAddress = place ? cellRef(place.row, place.col) : null;
+  const target = place ? (sheet.cells[place.row]?.[place.col] ?? "") : "";
 
   // The answer arrives below the fold on a laptop screen; bring it into view rather than leave
   // someone wondering whether anything happened.
@@ -78,18 +92,21 @@ export default function AIAssistantPanel() {
     setLoading(true);
     setError(null);
     setSuggestion(null);
+    // What the keyword matcher needs to answer without guessing (#62–#64); it runs on the server when
+    // there is no key, so it cannot read the sheet itself.
+    const context: AskContext = { range, rangeIsText, row, columns, mentions: mentionsIn(q) };
     try {
       // With the visitor's own key the request never touches this app's server — see byok.ts.
       // `range`, not `selectionAddress`: with a single cell highlighted those differ, and the
       // range is the one that makes "add up this column" mean a column. See aiRange.ts.
       if (savedKey) {
-        setSuggestion(await askAnthropicDirect(savedKey, q, range, locale, headers));
+        setSuggestion(await askAnthropicDirect(savedKey, q, range, locale, headers, context));
         return;
       }
       const res = await fetch("/api/ai/formula", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, selection: range, headers, locale }),
+        body: JSON.stringify({ question: q, selection: range, headers, locale, context }),
       });
       // "Too many, too fast" is a different situation from "the AI is unreachable", and the user
       // can act on it — so it says how long to wait instead of the generic connection error.
@@ -186,26 +203,46 @@ export default function AIAssistantPanel() {
               <code className="text-sm font-semibold text-emerald-900">{suggestion.formula}</code>
               <p className="text-xs text-emerald-800">{suggestion.explanation}</p>
               {suggestion.source === "heuristic" && <p className="text-[11px] leading-relaxed text-zinc-700">{t.ai.heuristicNote}</p>}
-              {target !== "" && (
+              {placeAddress === null ? (
                 <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-900">
                   <TriangleAlert size={13} className="mt-0.5 shrink-0" aria-hidden />
-                  {t.ai.overwriteWarning(selectionAddress.split(":")[0])}
+                  {t.ai.selfReference(cellRef(anchor.row, anchor.col))}
                 </p>
+              ) : (
+                <>
+                  {target !== "" && (
+                    <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-900">
+                      <TriangleAlert size={13} className="mt-0.5 shrink-0" aria-hidden />
+                      {t.ai.overwriteWarning(placeAddress)}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => onInsert(suggestion.formula!)}
+                    className={clsx(
+                      "rounded-md px-3 py-1.5 text-xs font-medium",
+                      suggestion.source === "heuristic"
+                        ? "border border-emerald-700 bg-white text-emerald-800 hover:bg-emerald-100"
+                        : "bg-emerald-700 text-white hover:bg-emerald-800"
+                    )}
+                  >
+                    {t.ai.insertAt(placeAddress)}
+                  </button>
+                </>
               )}
-              <button
-                onClick={() => onInsert(suggestion.formula!)}
-                className={clsx(
-                  "rounded-md px-3 py-1.5 text-xs font-medium",
-                  suggestion.source === "heuristic"
-                    ? "border border-emerald-700 bg-white text-emerald-800 hover:bg-emerald-100"
-                    : "bg-emerald-700 text-white hover:bg-emerald-800"
-                )}
-              >
-                {t.ai.insertAt(selectionAddress.split(":")[0])}
-              </button>
             </>
           ) : (
-            <p className="text-xs leading-relaxed text-amber-800">{suggestion.explanation}</p>
+            <>
+              <p className="text-xs leading-relaxed text-amber-800">{suggestion.explanation}</p>
+              {/* Not sure is not a dead end (#62): the form that fits the question, one press away. */}
+              {suggestion.form && getFormulaById(t, suggestion.form) && (
+                <button
+                  onClick={() => openFormulaPanel(getFormulaById(t, suggestion.form!)!, anchor.row, anchor.col)}
+                  className="self-start rounded-md border border-amber-700 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  {t.ai.openForm(suggestion.form)}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
