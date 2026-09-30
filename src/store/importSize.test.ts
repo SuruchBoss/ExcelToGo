@@ -218,7 +218,10 @@ describe("empty rows that a form still needs are part of the sheet (#10)", () =>
     expect(ruleAt(sheet, 59, 0)).toMatchObject({ kind: "number", min: 0, max: 10 }); // A60
   });
 
-  it("a rule on the whole column does not stretch the sheet to a million rows", async () => {
+  // Its own timeout, for the same reason as the past-the-ceiling import above: a rule over a whole
+  // column is a million-row range in the file, and reading it takes about 3 s here — close to
+  // Vitest's 5 s default on a slower machine. The test is about the sheet's size, not the speed.
+  it("a rule on the whole column does not stretch the sheet to a million rows", { timeout: 30_000 }, async () => {
     const file = await fileOf((wb) => {
       const ws = wb.addWorksheet("Whole");
       ws.getCell("A1").value = "status";
