@@ -95,7 +95,11 @@ describe("an import keeps every cell up to the last one the file holds (#43)", (
     expect(cells[0][25]).toBe("far right");
   });
 
-  it("past the ceiling the sheet opens clipped, and says so instead of dropping rows quietly", async () => {
+  // Its own timeout, not the suite's: the file really does run past the row ceiling, and writing and
+  // reading one that long takes 3–5 s on a busy machine — over Vitest's 5 s default on the PO's
+  // runs of #168 while main already took 4–4.8 s. What it checks is the clip and the alert, not
+  // the speed, so the limit only has to stop a hang.
+  it("past the ceiling the sheet opens clipped, and says so instead of dropping rows quietly", { timeout: 30_000 }, async () => {
     const last = IMPORT_MAX_ROWS + 5;
     const file = await fileOf((wb) => {
       const ws = wb.addWorksheet("Huge");
