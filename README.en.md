@@ -42,7 +42,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1846%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1860%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -63,7 +63,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1846 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1860 automated tests.
 
 ---
 
@@ -107,7 +107,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1846 passing tests could not catch
+### 🧪 What 1860 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -118,7 +118,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1846 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1860 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -391,7 +391,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1846-case Vitest suite |
+| `npm test` | Run the 1860-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1253,8 +1253,8 @@ always stored as typed, so the zeros come back the moment they are opened.
   type a field is); use `.xlsx`, or Excel's Data → From Text.
 - **What was already lost stays lost** — an `.xlsx` exported or imported before the fix holds `812345678` as a
   number, with no zero to give back. (Live data from a CSV source follows the same rule since #36.)
-- **`=SUM(A1:A3)` over text still adds up number-looking text**, where Excel gives 0 — that is #38, separate
-  because it changes the totals of sheets that already exist.
+- **`=SUM(A1:A3)` over these codes is 0 now, as in Excel (#166, #38)** — text read from cells is not added,
+  so an old sheet with codes inside a summed range now totals what Excel gives (see [Formula engine](#-formula-engine)).
 - "Text" is a cell format, so like every format it does not sync live while co-editing; an apostrophe is part of
   the cell, so it does.
 
@@ -2833,7 +2833,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1846 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1860 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3469,6 +3469,21 @@ so `1E3` quietly became `1E4`.
 `=0-2^2` is still -4, because that minus is a subtraction rather than a sign (#25). Both used to
 give -4, so a formula copied out of Excel flipped its sign with nothing to say so.
 
+**Text read from a cell is not a number to `SUM`, as in Excel (#166)** — `SUM`, `AVERAGE`, `MIN`, `MAX`,
+`PRODUCT` and `COUNT` skip text and TRUE/FALSE that come from a cell, in a range or referred to alone, even
+when the text spells a number: a code like `0812345678` or a `'1,250` in the column is no longer added in.
+(`=SUM(D2:D5)` over three codes and 1,000,000 used to be 813,345,801, where Excel gives 1,000,000.) A value
+written into the formula still converts: `=SUM("5",1)` is 6 and `=SUM(TRUE,1)` is 2. Arithmetic converts as
+before: `=C2*2` over `'1,250` is 2500. `COUNTA` counts every non-empty cell as before, and `SUMIF`, `SUMIFS`,
+`AVERAGEIF` and `SUMPRODUCT` add only the numbers in the range they sum. **An old sheet with codes inside a
+summed range now totals what Excel gives** — on purpose, since its export already showed that other total
+once Excel opened it.
+
+**A name nothing defines is `#NAME?` everywhere (#166)** — `=SUMIF(A2:A6,North,C2:C6)` with the quotes
+forgotten is `#NAME?`, not a silent 0 that reads as "no sales in the north". That holds for every function
+(`COUNTIF`, `UPPER`, `VLOOKUP`…) except those made to look at errors: `IF`, `IFERROR`, `IFNA`, `COUNT`,
+`COUNTA` and `COUNTBLANK`. A defined name, `TRUE` and `FALSE` are not unknown names.
+
 **Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
 position inside a block. `MROUND` is not in the engine. Arithmetic that overflows (`10^308*10`) still
 shows as Infinity rather than Excel's `#NUM!`; only `^` and `POWER` were fixed. A chain of `^` still
@@ -3832,13 +3847,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1846 cases across 125 files, via Vitest
+npm test      # 1860 cases across 126 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1846 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1860 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -3957,10 +3972,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1846 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1860 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1846 passing tests could not catch](#-what-1846-passing-tests-could-not-catch), repeatable
+> [What 1860 passing tests could not catch](#-what-1860-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3981,6 +3996,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
 | `functions.test.ts` | 136 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `textFromCells.test.ts` | 14 | Text and TRUE/FALSE read from cells skipped by `SUM`, `AVERAGE`, `MIN`, `MAX`, `PRODUCT` and `COUNT`, in a single cell and a range, while a value written in the formula still converts (`SUM("5",1)` = 6); `C2*2` over `'1,250` still 2500; `SUMIF`/`SUMIFS`/`AVERAGEIF`/`SUMPRODUCT` adding only numbers; and a name nothing defines being `#NAME?` in every function but those that look at errors (#166) |
 | `seo.test.ts` | 18 | Each page's search result (#148): title/description length, no AI promise, the formula count matching the palette, its own canonical, JSON-LD that parses and claims no rating · The FAQ (#152): FAQPage matching the page word for word, seven questions in both languages, yes/no questions opening with the answer, no ranking words, counts that match, and what an export loses |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 12 | Relative reference shifting on copy/paste; absolute references staying put |
@@ -4338,7 +4354,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Leading zeros stay (#23)** — phone numbers, ID cards and codes are text from the moment the sheet
       computes, by one rule the `.xlsx` writer shares (see
       [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros))
-- [ ] **`SUM`/`AVERAGE`/`COUNT` skip text in a range, as Excel does (#38)** — today number-looking text is added in
+- [x] **`SUM`/`AVERAGE`/`COUNT` skip text read from cells, as Excel does (#38, #166)** — done, for ranges and single cells alike, and a name nothing defines is `#NAME?` everywhere
 - [x] **Live CSV data uses the same rule (#36)** — done: leading zeros in live CSV data stay
 - [x] **Sorting keeps row formulas right, and asks before a sort that would not (#48)** — done (see [Sort and filter](#-sort-and-filter)) · still open: a formula outside the range pointing at one cell inside it
 - [x] **Percent ×100 as Excel does, and a file's number formats shown as the file has them (#53)** — done (see [Cell formatting](#-cell-formatting)) · typing `50%` as a number (#52) is done too · still open: writing codes in the app
