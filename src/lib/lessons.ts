@@ -1,7 +1,8 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { computeSheet, createEmptySheet, type SheetModel } from "./sheet";
+import { createEmptySheet, type SheetModel } from "./sheet";
+import { computeStandalone } from "./sheetCompute";
 import { cellRef, parseCellRef } from "./formulaEngine/address";
 
 /**
@@ -264,7 +265,7 @@ export function computeLesson(lesson: Lesson, mistake?: Mistake): LessonTable {
   const overrides = { ...(mistake?.cells ?? {}) };
   if (mistake?.formula) overrides[lesson.example.result] = mistake.formula;
   const sheet = lessonSheet(lesson, overrides);
-  const computed = computeSheet(sheet);
+  const computed = computeStandalone(sheet);
   const { grid } = lesson.example;
   const cols = Math.max(...grid.map((r) => r.length));
   const display = grid.map((_, r) => Array.from({ length: cols }, (__, c) => computed.display[r]?.[c] ?? ""));

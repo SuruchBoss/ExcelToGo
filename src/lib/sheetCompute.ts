@@ -705,6 +705,17 @@ export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): 
 }
 
 /**
+ * A sheet that is its whole workbook — a formula page's example (#149), which lives nowhere else.
+ *
+ * Here rather than at the call site because of #58: outside this file nothing calls `computeSheet`
+ * bare, so no caller can forget the rest of a workbook. A lesson has no rest, and saying so by name
+ * keeps that rule a rule rather than a list of exceptions.
+ */
+export function computeStandalone(sheet: SheetModel, name = "Sheet1"): ComputedSheet {
+  return computeSheet(sheet, createWorkbookResolver([{ name, sheet }]));
+}
+
+/**
  * Which path each call took, so a test can prove the incremental one actually ran.
  *
  * Without this the property test is worth very little: falling back to a full recompute every time
