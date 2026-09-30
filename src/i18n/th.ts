@@ -427,7 +427,7 @@ export const th: Messages = {
     stats: [
       { value: "37", label: "สูตรพร้อมใช้" },
       { value: "66", label: "ฟังก์ชันในเอนจิน" },
-      { value: "1781", label: "เทสต์อัตโนมัติ" },
+      { value: "1787", label: "เทสต์อัตโนมัติ" },
       { value: "325", label: "เทสต์ด้านความปลอดภัย" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],
