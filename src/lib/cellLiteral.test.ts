@@ -114,11 +114,10 @@ describe("formulas reading a phone number stored as text", () => {
     expect(evalWith('=A1&""')).toBe(PHONE);
   });
 
-  it("=SUM(A1:A3) is left as it was before #23", () => {
-    // Pinned, not endorsed. Excel's answer is 0 — SUM skips text in a range — and this engine
-    // adds numeric-looking text up. Changing that changes what existing sheets total to, so it is
-    // its own issue: #38. When #38 lands this expectation is the one that should move.
-    expect(evalWith("=SUM(A1:A3)", [PHONE, CODE, "1"])).toBe(812345678 + 123 + 1);
+  it("=SUM(A1:A3) skips them, as Excel does (#166)", () => {
+    // Until #166 this was pinned at 812345678 + 123 + 1: the engine added up numeric-looking text
+    // that Excel skips, so a column of phone numbers and codes gave a total nobody could explain.
+    expect(evalWith("=SUM(A1:A3)", [PHONE, CODE, "1"])).toBe(1);
   });
 });
 
