@@ -21,17 +21,13 @@ import ConditionalFormatPanel from "@/features/grid/ConditionalFormatPanel";
 import ChartPanel from "@/features/grid/ChartPanel";
 import PivotPanel from "@/features/grid/PivotPanel";
 import CloudPanel from "@/features/cloud/CloudPanel";
-import StorageNotice from "@/features/grid/StorageNotice";
-import SaveFailedNotice from "@/features/grid/SaveFailedNotice";
-import SampleNotice from "@/features/grid/SampleNotice";
-import StartNotice from "@/features/grid/StartNotice";
 import SortWarningDialog from "@/features/grid/SortWarningDialog";
 import OtherTabDialog from "@/features/otherTab/OtherTabDialog";
 import ConvertDatesDialog from "@/features/toolbar/ConvertDatesDialog";
-import ViewOnlyNotice from "@/features/otherTab/ViewOnlyNotice";
 import { useTabLock } from "@/features/otherTab/useTabLock";
-import PivotNotice from "@/features/grid/PivotNotice";
 import ImportNotice from "@/features/grid/ImportNotice";
+import MessageSlot from "@/features/grid/MessageSlot";
+import { useFormatBarFoldsWhenShort } from "@/features/toolbar/useShortScreen";
 import DataPicker from "@/features/data/DataPicker";
 import LiveAnnouncer from "@/features/a11y/LiveAnnouncer";
 import FindPanel from "@/features/search/FindPanel";
@@ -41,8 +37,6 @@ import { CrashTest } from "@/features/crash/crashTest";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import {
-  selectHasWork,
-  selectShowingSample,
   useClipboardShortcuts,
   useHydrateSheetStore,
   useSampleFollowsLocale,
@@ -75,8 +69,7 @@ export default function Home() {
   useUndoRedoShortcuts();
   useClipboardShortcuts();
   useLiveDataPolling();
-  const showingSample = useSheetStore(selectShowingSample);
-  const hasWork = useSheetStore(selectHasWork);
+  useFormatBarFoldsWhenShort();
 
   // The panel covers the whole screen on a phone, so leaving it open by default meant a visitor
   // arriving from a phone saw the formula list and not one cell of the spreadsheet. Closing it on
@@ -115,7 +108,9 @@ export default function Home() {
     // `dvh`, not `vh`: on a phone 100vh is the height with the browser's address bar hidden, so the
     // sheet tabs sat under the bar whenever it was showing. The bottom padding is the tab bar's
     // height — below 1024px the panel switches are pinned there (see Toolbar).
-    <div className="flex h-dvh flex-col bg-zinc-50 max-lg:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+    // On a short screen the tab bar is 44px of icons, and from 640px wide it shares its row with the
+    // sheet tabs, so nothing is reserved for it at all (#129).
+    <div className="flex h-dvh flex-col bg-zinc-50 max-lg:pb-[calc(3.5rem+env(safe-area-inset-bottom))] max-sm:short:pb-[calc(2.75rem+env(safe-area-inset-bottom))] sm:max-lg:short:pb-0">
       <CrashTest />
       <SkipLink />
       <LiveAnnouncer />
@@ -123,20 +118,21 @@ export default function Home() {
       <OtherTabDialog />
       {convertingDates && <ConvertDatesDialog onClose={() => setConvertingDates(false)} />}
       {find.open && <FindPanel onClose={find.close} />}
-      <Toolbar />
-      <FormatBar />
-      <FormulaBar />
+      {/* On a short screen from 640px wide, the top bar and the formula bar share one row, and the
+          formatting row (folded by default there) opens under both (#129, UX-13). */}
+      <div className="flex flex-col sm:max-lg:short:grid sm:max-lg:short:grid-cols-[auto_minmax(0,1fr)] sm:max-lg:short:border-b sm:max-lg:short:border-zinc-200 sm:max-lg:short:bg-white">
+        <Toolbar />
+        <FormatBar />
+        <FormulaBar />
+      </div>
       <TemplateBar />
-      <SaveFailedNotice />
-      <ViewOnlyNotice />
-      {showingSample ? <SampleNotice /> : hasWork ? <StorageNotice /> : <StartNotice />}
-      <ImportNotice />
-      <PivotNotice />
-      <div className="flex min-h-0 flex-1 gap-3 p-2 sm:p-3">
+      <MessageSlot />
+      <div className="flex min-h-0 flex-1 gap-3 p-1.5 sm:p-3 max-lg:short:p-1 sm:max-lg:short:pb-0">
         <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white outline-none">
           <div className="relative min-h-0 flex-1">
             <SpreadsheetGrid />
             <BackToSelection />
+            <ImportNotice />
           </div>
           <TouchActionBar />
           <SheetTabs />

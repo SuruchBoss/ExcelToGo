@@ -260,6 +260,7 @@ const W = {
     items: [["กาแฟลาเต้", "เครื่องดื่ม"]],
     findReplaceWith: "น้ำอัดลม",
     aiQuestion: "หาค่าเฉลี่ยราคา",
+    aiConditional: "ยอดรวมของหมวดเครื่องดื่ม",
     ordersSource: "ออเดอร์ทั้งหมด",
     limitedSource: "API ที่จำกัดจำนวนครั้ง",
     salesSource: "ยอดขายสด",
@@ -309,6 +310,7 @@ const W = {
     items: [["Caffè latte", "Drinks"]],
     findReplaceWith: "Beverages",
     aiQuestion: "Find the average price",
+    aiConditional: "The total for drinks",
     ordersSource: "All orders",
     limitedSource: "Rate-limited API",
     salesSource: "Live sales",
@@ -699,6 +701,22 @@ const SCENES = [
       const insert = k.button(k.t.ai.insertAt("C11"));
       await insert.waitFor({ timeout: 30_000 });
       await insert.scrollIntoViewIfNeeded();
+      await k.shot(this.file);
+    },
+  },
+  {
+    // #62: a question about some rows only. No formula and no Insert, the reason, and the form
+    // that fits one press away. The matcher's own answer — no key, nothing typed in.
+    file: "63-ai-declined.png",
+    async take(k) {
+      await k.open();
+      await k.cell(10, 4).click();
+      await k.button(k.t.toolbar.askAi).first().click();
+      await k.page.getByPlaceholder(k.t.ai.textareaPlaceholder).fill(W[k.lang].aiConditional);
+      await k.button(k.t.ai.askButton).last().click();
+      const form = k.button(k.t.ai.openForm("SUMIF"));
+      await form.waitFor({ timeout: 30_000 });
+      await form.scrollIntoViewIfNeeded();
       await k.shot(this.file);
     },
   },
@@ -1449,6 +1467,35 @@ const SCENES = [
       await second.waitForLoadState("networkidle");
       await second.getByRole("alertdialog", { name: k.t.otherTab.title }).waitFor();
       k.page = second;
+      await k.shot(this.file);
+    },
+  },
+  {
+    // A phone on its side (#129, UX-13): the top bar and the formula bar in one row, the sheet tabs
+    // and the panel icons in another, and the grid between them — it showed no rows at all.
+    file: "64-short-screen.png",
+    async take(k) {
+      await k.open("/app", { width: 844, height: 390, scale: 2, touch: true });
+      await fingerTap(k, 4, 2);
+      await k.shot(this.file);
+    },
+  },
+  {
+    // Where "saved in this browser only" went (#129): one line in the visit of the first edit, then
+    // the save status on the top bar — a dot until a copy is exported, the whole text behind it.
+    file: "65-save-status.png",
+    async take(k) {
+      await k.open("/app", { width: 390, height: 844, scale: 3, touch: true });
+      // An empty cell: a finger opens the editor with the caret at the end, so typing into a
+      // price would append to it (45 became 4550 in the first take).
+      await fingerTap(k, 12, 2);
+      await fingerTap(k, 12, 2);
+      await k.cell(12, 2).locator("input").waitFor({ timeout: 5000 });
+      await k.page.keyboard.insertText("50");
+      await k.page.keyboard.press("Enter");
+      await k.page.keyboard.press("Escape");
+      await k.page.getByRole("button", { name: new RegExp(`^${k.t.toolbar.autosaveLabel}`) }).tap();
+      await k.page.getByRole("dialog", { name: k.t.storageNotice.title }).waitFor();
       await k.shot(this.file);
     },
   },

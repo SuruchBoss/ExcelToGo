@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { autoSumRange, headerRow } from "./aiRange";
+import { autoSumRange, hasHeaderRow, headerRow, namedColumns, valuesMentioned } from "./aiRange";
 
 /** A grid drawn as text, so the case under test is readable in the test. */
 function grid(rows: string[][]) {
@@ -108,5 +108,59 @@ describe("the headers sent along with the question", () => {
 
   it("has nothing to say about an empty sheet", () => {
     expect(headerRow(() => "", { rows: 0, cols: 0 })).toEqual([]);
+  });
+});
+
+describe("what a question's range leaves out (#63)", () => {
+  const letters = (c: number) => "ABCDEFGH"[c];
+
+  it("a grand total right under the numbers, even when it is the only cell there", () => {
+    const { valueAt, bounds } = grid([["รวม"], ["10"], ["20"], ["30"], [""]]);
+    const isTotal = (r: number) => r === 3;
+    expect(autoSumRange(valueAt, bounds, { row: 1, col: 0 }, { isTotal })).toEqual({ startRow: 1, endRow: 2 });
+    expect(autoSumRange(valueAt, bounds, { row: 4, col: 0 }, { isTotal })).toEqual({ startRow: 1, endRow: 2 });
+    const lone = grid([["x"], [""], ["30"], [""]]);
+    expect(autoSumRange(lone.valueAt, lone.bounds, { row: 3, col: 0 }, { isTotal: (r) => r === 2 })).toBeNull();
+  });
+
+  it("the header of a text column, when row 1 is a row of names", () => {
+    const { valueAt, bounds } = grid([
+      ["Product", "Price"],
+      ["latte", "65"],
+      ["tea", "45"],
+    ]);
+    expect(hasHeaderRow(valueAt, bounds)).toBe(true);
+    expect(autoSumRange(valueAt, bounds, { row: 1, col: 0 }, { hasHeaderRow: true })).toEqual({ startRow: 1, endRow: 2 });
+    expect(namedColumns(valueAt, bounds, letters)).toEqual([
+      { name: "Product", col: "A", range: "A2:A3", numeric: false },
+      { name: "Price", col: "B", range: "B2:B3", numeric: true },
+    ]);
+  });
+
+  it("is no row of names when row 1 holds a number", () => {
+    const { valueAt, bounds } = grid([
+      ["2024", "Price"],
+      ["latte", "65"],
+    ]);
+    expect(hasHeaderRow(valueAt, bounds)).toBe(false);
+  });
+});
+
+describe("the sheet's values a question names (#63)", () => {
+  const { valueAt, bounds } = grid([
+    ["Product", "Category"],
+    ["Croissant", "Bakery"],
+    ["Tea", "Drinks"],
+    ["", "Grand total"],
+  ]);
+
+  it("finds a category, whatever its case, and not the column names", () => {
+    expect(valuesMentioned("sum of quantity for bakery", valueAt, bounds, true)).toEqual(["Bakery"]);
+    expect(valuesMentioned("the category of each product", valueAt, bounds, true)).toEqual([]);
+  });
+
+  it("leaves out short words and a total's label", () => {
+    expect(valuesMentioned("tea time", valueAt, bounds, true)).toEqual(["Tea"]);
+    expect(valuesMentioned("the grand total", valueAt, bounds, true)).toEqual([]);
   });
 });

@@ -4,6 +4,8 @@
 
 ### ▶ [Try it — nothing to install](https://excel-to-go.vercel.app)
 
+**Status (Sep 2026):** closing a last set of fixes before new features pause ([the list](https://github.com/SuruchBoss/ExcelToGo/issues?q=label%3Astatus%3Asprint-final)). After that the app stays free and open as it is, and [bug reports](https://github.com/SuruchBoss/ExcelToGo/issues) and security ([SECURITY.md](SECURITY.md)) are still looked after.
+
 Runs in your browser; your data stays on your machine.
 This site is the real app — free, no sign-up, not a trial — and you can [connect your own API from the browser](#from-your-browser-restcsv--works-on-this-site)
 right here, with the URL, the header and the data never passing through our server.
@@ -40,7 +42,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1756%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1790%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -61,7 +63,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1756 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1790 automated tests.
 
 ---
 
@@ -105,7 +107,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1756 passing tests could not catch
+### 🧪 What 1790 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -116,7 +118,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1756 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1790 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -289,6 +291,7 @@ the outcome under a double rule like a total.
   - [Selecting a range with a finger without losing the data](#-selecting-a-range-with-a-finger-without-losing-the-data)
   - [Tapping cells into a formula on a phone](#-tapping-cells-into-a-formula-on-a-phone)
   - [Tablets and folding phones](#-tablets-and-folding-phones)
+  - [One message at a time, and short screens](#-one-message-at-a-time-and-short-screens)
   - [Insert/delete rows & columns](#-insertdelete-rows--columns)
   - [Right-click on a cell](#️-right-click-on-a-cell)
   - [Drag a column wider or narrower](#-drag-a-column-wider-or-narrower)
@@ -387,7 +390,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1756-case Vitest suite |
+| `npm test` | Run the 1790-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -395,7 +398,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 37 flows: a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 40 flows: the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -559,6 +562,37 @@ of the sample is nine `=C2*D2` formulas, so reading the raw cells made every num
 text, the header rule never fired, and the range came back as `E1:E10` with the word "รวม" inside.
 `SUM` ignores text, so the *total was right and the range was wrong* — the kind of bug that survives
 because the number on screen looks fine.
+
+**QA's second round found three more (#62–#64), all of them confidently wrong answers.** The matcher was fixed
+by one rule: when it isn't sure, point at the form in the formula palette rather than guess.
+
+- **Words inside words.** "count" matched "account", "if" matched "difference", "min" matched "minus". English
+  keywords now match whole words; Thai, written without spaces, still matches inside a sentence.
+- **The first rule won.** *"จำนวนเงินรวมทั้งหมด"* (the total amount of money) got `COUNT` because "จำนวน" came before
+  "รวม" — 9 instead of 7,495. Intents now have a precedence: "รวม"/"total" beat "จำนวน", and "จำนวนเงิน" is an amount.
+- **Conditions were dropped.** *"The total for drinks"* got the total of everything. A question with a qualifier
+  (only, for, more than, เฉพาะ…) or one that names a value from the sheet ("Drinks") now gets the amber card with an
+  **"Open the SUMIF form"** button (or COUNTIF/AVERAGEIF). IF and VLOOKUP are built only when the question says
+  enough — a column by its header, a comparison, a number — and point at their form otherwise. Formulas that work
+  along a row (join, upper-case) are built on **the cursor's row** from the columns the question names, not on the
+  header row; a text column is counted with `COUNTA`; ranges leave out the header and the total row
+  (`=AVERAGE(E12)` in E13 was the average of one grand total).
+- **Inserting over itself.** Click E5 (`=C5*D5`), ask "total this column", get `=SUM(E2:E10)` written into E5:
+  `#CIRCULAR!`, its own formula gone. Where an answer goes now comes from the formula (`aiPlacement.ts`): the
+  cursor's cell when it is empty and not read; a column's total **under the column**, as AutoSum does (E11); a
+  filled cell it does not read (with the warning); and **nowhere at all** when there is no such cell, with the
+  reason. The rule holds for real Claude's answers too, and the button names the cell it will write ("Insert this
+  formula at cell E11").
+- Help that gave directions ("the Formulas panel on the left", "the box above") now names the button instead —
+  the panels sit in different places on a phone and a desktop.
+
+<p align="center"><img src="public/screenshots/en/63-ai-declined.png" width="820" alt="A question with a condition gets the amber card, no formula to insert, and a button that opens the SUMIF form"></p>
+
+Every question the testers asked is in `store/aiQuestions.test.ts` as a permanent suite, run on the real sample in
+both languages from the context the panel sends, through the matcher and the placement, to the value that shows
+in the cell. **Limits:** the matcher still doesn't build a SUMIF itself (it points at the form); sheet values
+shorter than three characters are not taken as conditions; and a question that names a sheet value without meaning
+a condition is declined, which errs on the safe side.
 
 Repeatable with `npm run check:ai` (needs your own key; not part of `npm run verify`, because it
 costs money).
@@ -1035,6 +1069,12 @@ changes, it has to follow — and no gate compares them yet.
   that tab, as closing a tab always does, so the tab that carries on has everything saved but that cell.
 
 <p align="center"><img src="public/screenshots/en/61-other-tab.png" width="700" alt="A second tab asking because the workbook is open in another tab: View only, or Use this tab instead"></p>
+- **"Saved in this browser only" lives behind that status** (#129). It shows as one line above the grid in
+  the visit of the first edit; after that the status carries an **amber dot** until a copy has been exported
+  (Excel, CSV or PDF all count), and a press on it shows the whole text with an Export button. It used to be a
+  three-line bar on every visit until dismissed. The status is on phones too now.
+
+<p align="center"><img src="public/screenshots/en/65-save-status.png" width="320" alt="Phone: one line saying the work is saved in this browser only, and the save status's popover on the top bar with the full text and Export Excel"></p>
 
 ### 🩹 The app can break and you still get your file out
 
@@ -2105,6 +2145,42 @@ single pixel**, and `check:a11y` checks for sideways scroll at five widths on ev
 four file buttons into the menu below 1366px, and e2e went red: at 1280px, the most common laptop width, every
 export would have cost two presses. There was room for the two that get used, so those two came back.
 
+### 📐 One message at a time, and short screens
+
+On a phone after opening a file, the "saved in this browser only" bar (three lines) and the "file opened · Undo" bar
+stacked to about 170px and left **10 rows** of grid at 390×844. A phone on its side, or a screen at 200% zoom, showed
+**no rows at all** under six stacked bars (#129).
+
+- **The messages above the grid show one at a time**, most pressing first: this tab is view-only (#47) › a save that
+  failed › a pivot whose source moved (numbers on screen that are wrong outrank advice) › the sample › saved in this
+  browser only.
+- **The file-open message floats over the foot of the grid** rather than pushing it down, and goes after 10 seconds or
+  at the next edit. Only its buttons take a touch, so a swipe that starts on its words still scrolls the grid under it.
+- **"Saved in this browser only"** is one line in the visit of the first edit, and then moves
+  [behind the save status](#-autosave--undoredo).
+- **Under 500px tall** (a phone on its side, 200% zoom) the bars fold together:
+  - the top bar and the formula bar share one row (from 640px wide);
+  - the format bar starts folded, and the brush on the formula bar, **"Cell format"**, opens it (the same name as its
+    tooltip and for a screen reader, which also hears whether it is open);
+  - the panel buttons are icons only (their names stay for a screen reader) and share a row with the sheet tabs;
+  - the copy/paste row folds away, and what it held is in the **cell menu, opened by a long press on a cell** (on
+    every touch screen, iPhone included, which never sends `contextmenu`; iOS's callout is off on the grid only).
+    The cell menu gained "Fill down".
+
+<p align="center"><img src="public/screenshots/en/64-short-screen.png" width="640" alt="A phone on its side at 844×390: top bar and formula bar in one row, eight rows of grid, sheet tabs and panel icons in one bottom row"></p>
+
+**Measured** after opening a file: 390×844 **14 rows** (was 10) · 844×390 **8 rows** (was 0) · 195×422, a 390px
+phone at 200% zoom, **6 rows** (was 0) · 360×640 **8 rows** (was 3). At 195px the page used to be 325px wide and
+scroll sideways as a whole (the words under the bottom bar's icons, and a formula input that would not shrink); it fits
+now, and `check:a11y` scans both sizes.
+
+At 200% zoom **Undo is on screen without scrolling**, since a phone has no Ctrl+Z to fall back on (the a11y gate
+checks it); Redo, the language and the save status are past a scroll of the top bar.
+
+**Not yet:** the file-open message
+covers two or three rows while it shows · the blocked sideways swipe from the usability test **no longer reproduces on
+main** (the tested build predates #142), so an e2e guards it instead.
+
 ### 🖱️ Right-click on a cell
 
 Right-clicking a cell used to give **the browser's own menu** (Back · Reload · Inspect); the app's menu lived
@@ -2287,8 +2363,9 @@ file to look up one number and lost nearly an hour of typing. Now, when there is
 - **Replace what is open** — the old behaviour, with a red icon and the number of sheets it will close
 - **Cancel** / `Escape`
 
-Afterwards a green bar says what happened, with an **Undo** button that takes the whole import back in one press
-(`Ctrl+Z` works too). **It does not ask** when the screen holds only the sample or empty sheets — a question with
+Afterwards a message floating over the foot of the grid says what happened, with an **Undo** button that takes the
+whole import back in one press (`Ctrl+Z` works too). It goes after 10 seconds or at the next edit, and the undo on the
+top bar does the same job either way; it used to be a bar that pushed the grid down (#129). **It does not ask** when the screen holds only the sample or empty sheets — a question with
 nothing at stake is the one that teaches people to click through without reading.
 
 ### 🆕 A blank start, and New file
@@ -2689,7 +2766,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1756 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1790 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -2899,13 +2976,14 @@ src/
     grid/CellContextMenu.tsx        # The right-click cell menu (role="menu"), also opened by Shift+F10
     grid/tabReturn.ts               # Tab along a row, Enter comes back under the column it started in
     a11y/useDialogKeys.ts           # Escape closes · Tab stays inside · focus in and back — shared by the modal dialogs
-    grid/ImportNotice.tsx           # Says what an import did, with an Undo button
+    grid/ImportNotice.tsx           # A toast over the grid saying what a file open did, with Undo; gone after 10s or the next edit
+    grid/MessageSlot.tsx            # The one message above the grid: save failed › stale pivot › sample › saved in this browser
     grid/CommentPopover.tsx         # The box that writes or clears the selected cell's note
     landing/LiveSheet.tsx           # The real grid in the hero — imports the app's own parser/evaluator,
                                      # so it is not a screenshot: edits recompute in the visitor's browser
     cloud/CloudPanel.tsx            # The cloud panel: sign in, save, and open from the user's own Supabase
     grid/ConditionalFormatPanel.tsx # The conditional-formatting panel: writing rules + this sheet's list
-    grid/StorageNotice.tsx          # The dismissible bar saying the data lives only in this browser
+    grid/StorageNotice.tsx          # One line saying the work lives only in this browser, in the visit of the first edit; then the save status holds it
     formulas/FormulaPalette.tsx     # The formula list panel — search/category filter/drag
     formulas/FormulaParamPanel.tsx  # The parameter-entry panel — pick a range from the grid + choose a scope
     ai/AIAssistantPanel.tsx         # The "ask AI" chat panel
@@ -2930,6 +3008,8 @@ src/
     toolbar/FillColorPopover.tsx    # Seven fill swatches and no fill
     toolbar/keepGridFocus.ts        # A toolbar button pressed without taking focus from the grid
     toolbar/useKeyboardOpen.ts      # Whether the on-screen keyboard is up (visualViewport), to hide what it would cover
+    toolbar/SaveStatus.tsx          # The save status on the top bar: an amber dot until a copy is exported, the full text and Export behind it
+    toolbar/useShortScreen.ts       # A screen under 500px tall (a phone on its side, 200% zoom), and folding the format bar there
     toolbar/FormatBar.tsx           # The cell-formatting bar + sort buttons · on a phone the rest is a cell tools sheet
     toolbar/LanguageToggle.tsx      # The UI language switch button
   lib/                       # Core domain logic, no React/UI coupling — editable/testable independently
@@ -2943,7 +3023,11 @@ src/
                               # number format) + pt↔px conversion and to/from Excel numFmt
     aiHeuristic.ts           # Keyword-based formula suggestion logic (used with no ANTHROPIC_API_KEY), bilingual
     aiPrompt.ts              # The prompt and reply parsing, shared by the server route and the browser (BYOK)
-    aiRange.ts               # Which cells a question is about, from where the cursor is (AutoSum) + the headers sent along
+    aiRange.ts               # Which cells a question is about, from where the cursor is (AutoSum, without the header or a
+                              # total row) + the headers sent along + row 1's names with the data under each + the sheet
+                              # values a question names (#63)
+    aiPlacement.ts           # Where an AI answer goes: never a cell the formula reads · a column's total under the
+                              # column · nowhere, when there is no such cell (#64)
     keyboardShortcuts.ts     # Every shortcut in one list; a test reads the handlers' source and fails if the two disagree
     sheetFilter.ts           # Which rows a filter hides — shared by the grid and by the spoken row count
     fillSeries.ts            # What dragging the corner continues into — numbers, Thai days and months, quarters, formulas
@@ -2961,6 +3045,7 @@ src/
     csv.ts                   # CSV read/write: delimiter sniffing, BOM, RFC 4180 quoting
     download.ts              # Handing a Blob to the browser as a file — its own module because the
                               # crash screen needs it and must not pull ExcelJS into that path
+    keptCopy.ts              # Whether this browser has ever exported a copy — set by download.ts, read by the save status's dot (tested)
     sheetCodec.ts            # Between the in-memory model (a full grid) and what goes into localStorage
     tabLock.ts               # One editing tab (#47): a Web Lock elects it, a second tab asks, a hand-over goes
                               # through a BroadcastChannel with the old tab committing and letting go before the
@@ -3500,7 +3585,7 @@ shares it and the same script checks the door opened exactly as far as it should
 edit, and still cannot take ownership or delete. It finishes by trying to join the channel holding
 nothing but the anon key, which is the thing that used to work.
 
-### 323 security tests
+### 325 security tests
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -3510,7 +3595,7 @@ nothing but the anon key, which is the thing that used to work.
 | `rateLimiter.test.ts` | 10 | Refusing past the limit, per-key counting, a `Retry-After` that really shrinks, a bounded key map under a flood of forged addresses |
 | `sourcesAuth.test.ts` | 9 | No token set means every request is refused, a blank token counts as unset, a token that is merely a prefix does not pass |
 | `validate.test.ts` | 10 | Which URL shapes are accepted and which paths must be refused · and on the database side: a query that is not a read, a string that is not a connection string, a type and a scheme that disagree |
-| `ai/formula/route.test.ts` | 7 | The server's key decides, and nothing else: no key means Anthropic is never reached and the local fallback still answers (not a 403), an old `NEXT_PUBLIC_DEMO_MODE` no longer hides a configured key, a missing question is a 400 |
+| `ai/formula/route.test.ts` | 9 | The server's key decides, and nothing else: no key means Anthropic is never reached and the local fallback still answers (not a 403), an old `NEXT_PUBLIC_DEMO_MODE` no longer hides a configured key, a missing question is a 400, and the sheet context the panel sends taken only in the shapes the matcher builds formulas from (column letters, ranges, short strings) (#62–#64) |
 | `byok.test.ts` | 12 | The visitor's own key: which shapes are accepted, masking (enough to recognise, not enough to reuse), gone when the tab closes, blocked storage must not break the panel |
 | `demoSources.test.ts` | 15 | The sample feeds' list: app-relative URLs, no credential, read-only, and an id lookup that matches the whole id, not a prefix |
 | `apiOrigins.test.ts` | 9 | Which origins the CSP takes from the cookie (https or localhost only; no wildcard, scheme source, path or credential; at most 20), the policy unchanged for someone who added nothing, exactly one origin added for someone who did, and no directive or wildcard injected through the cookie |
@@ -3672,20 +3757,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1756 cases across 119 files, via Vitest
+npm test      # 1790 cases across 122 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1756 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1790 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 37 flows in a real browser (needs a build)
+npm run check:e2e   # 40 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3797,10 +3882,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1756 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1790 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1756 passing tests could not catch](#-what-1756-passing-tests-could-not-catch), repeatable
+> [What 1790 passing tests could not catch](#-what-1790-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3812,8 +3897,10 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `arrayFormulas.test.ts` | 27 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
 | `sheetCodec.test.ts` | 12 | What is written to localStorage costs what was typed rather than what the sheet is sized to, pack/unpack returning every cell and format, saves in the old shape still loading and still rescuable after a crash, and malformed keys or out-of-bounds cells never losing data |
 | `saveHealth.test.ts` | 9 | A save the browser refuses becomes a status rather than an exception, "full" told apart from "disabled" in every spelling browsers use, the last good save left in place, recovery the moment a save lands, and listeners told when the status changes rather than on every keystroke |
+| `keptCopy.test.ts` | 4 | The save status's dot (#129): no copy until an export, listeners told and then not once they leave, a browser that refuses storage keeping the dot rather than throwing, and every download through `downloadBlob` clearing it |
 | `saveFailed.test.ts` | 3 | The real store over a full storage: edits still land in memory, **export still produces a file** (the bug PaynEat ERP's large template hit was a silent Export button), and the status clearing once a save lands again |
 | `tabLock.test.ts` | 13 | One editing tab (#47) over fake Web Locks and BroadcastChannel: the first tab edits and a second asks, View only takes nothing, taking over has the old tab commit before the new one reads the save, taking it back, a closed editing tab letting a tab that was looking or still asking edit by itself after reading the save, with no press (#146), one of two looking tabs editing, the tab that pressed going ahead of tabs already waiting, one tab still editing when the one that asked closes before its turn, the tab taken over from getting it back when that one closes, and no Web Locks or a refused lock meaning editing as before |
+| `aiPlacement.test.ts` | 5 | Where an AI answer goes (#64): the empty cursor cell, under the column when the cursor is inside it, a filled cell when there is nowhere else, nowhere when the formula reads the only cell it could go into, and a cell inside a range too big to highlight |
 | `crashRescue.test.ts` | 19 | Rescuing the sheet out of every broken shape localStorage can hold (no key, unparseable JSON, wrong types) without throwing, filenames Windows accepts, and the storage key matching what the store actually writes |
 | `crash/crashTest.test.ts` | 4 | The crash the gates use to reach the rescue screen (#145): only an automated browser that asked for it crashes · a browser a person uses never does, whatever its storage holds · automation that did not ask does not · storage that cannot be read does not |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
@@ -3858,6 +3945,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |
 | `store/sortFormulas.test.ts` | 9 | Formulas sorting with their rows (#48): the QA's minimal case, the sample in both languages sorted both ways with every row's price × qty = total and the grand total unchanged, a rate under the table and another sheet's cell still pointed at, a running total / a total in the range / a `$` row inside it asking first, and sorting when confirmed |
 | `store/viewOnlyTab.test.ts` | 4 | A view-only tab (#47) on the real store: an edit is refused and said so with nothing saved, the selection still moves, the editing tab edits and saves as before, and a tab whose lock has not answered yet edits |
+| `store/aiQuestions.test.ts` | 24 | The testers' real questions (#62–#64) on the real sample in both languages, from the context the panel sends through the matcher and the placement to the value in the cell: the right function ("the total amount of money" is SUM, "account" is not a count), conditions sent to the SUMIF/COUNTIF/AVERAGEIF form, per-row formulas on the cursor's row, a column's total under the column rather than over E5, no formula that reads itself, and help that gives no wrong directions |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
 | `cellComments.test.ts` | 17 | Writing and clearing a note, trimming, following an insert/delete, and a note going with the row it was written about |
@@ -3901,6 +3989,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live
       session that needed it. Still open: automatic sync (version history is done — see its own item below)
+- [ ] **The matcher filling in SUMIF/COUNTIF itself** (after #62–#64) — a question with a condition gets a button
+      to the form today, because guessing which column holds the condition is another guess. When the value it
+      names sits in exactly one column ("Drinks" only in B), the form could come pre-filled.
 - [ ] **Each tab on a file of its own** (#140) — one browser holds one workbook today (#47), so a second tab can
       only take over or look; it cannot open another file beside the first. Saves have to be kept per file
       first, and then the lock taken per file rather than per browser.
@@ -4020,10 +4111,10 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now 81 checks — most recently the
+      configured) and the live-data picker, which needs a source first. Now CHECKS_TBD checks — most recently the
       notice on a tab that edits again because the other closed (#146), the rescue screen after a crash (#145)
-      and the Convert to dates dialog (#82), and before them the question a second tab on the same workbook
-      asks, and the notice on a tab that is only looking (#47).
+      and the Convert to dates dialog (#82), and before them the AI assistant's answer card, both the one with a
+      formula and the one that points at a form (#62–#64).
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
       only rules that must hold for every formula, checked against thousands of generated ones with a
       hand-written generator and shrinker and a replayable seed. It found two real gaps on its first run
@@ -4081,7 +4172,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 37 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 40 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

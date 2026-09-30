@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Anthropic from "@anthropic-ai/sdk";
-import { heuristicSuggest } from "@/lib/aiHeuristic";
+import { heuristicSuggest, type AskContext } from "@/lib/aiHeuristic";
 import { AI_MAX_TOKENS, AI_MODEL, SYSTEM_PROMPTS, buildUserMessage, parseFormulaReply, parseLocale } from "@/lib/aiPrompt";
 import { clientKey, createRateLimiter } from "@/lib/server/rateLimiter";
 
@@ -25,6 +25,36 @@ interface RequestBody {
   selection?: string;
   headers?: string[];
   locale?: string;
+  context?: unknown;
+}
+
+const COLUMN = /^[A-Z]{1,3}$/;
+const RANGE = /^[A-Z]{1,3}\d{1,7}:[A-Z]{1,3}\d{1,7}$/;
+
+/**
+ * What the panel says about the sheet (#62–#64), taken only in the shapes the matcher builds
+ * formulas from: column letters and ranges that match a pattern, short strings, small counts. The
+ * route takes no token, so nothing in it is trusted further than that — and none of it reaches the
+ * model, whose prompt is unchanged.
+ */
+function parseContext(raw: unknown, selection: string | undefined): AskContext {
+  const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const text = (v: unknown, max: number) => String(v ?? "").slice(0, max);
+  const row = Number(c.row);
+  const columns = Array.isArray(c.columns)
+    ? c.columns
+        .slice(0, 50)
+        .map((col) => (col && typeof col === "object" ? (col as Record<string, unknown>) : {}))
+        .map((col) => ({ name: text(col.name, 60), col: text(col.col, 3), range: text(col.range, 20), numeric: col.numeric === true }))
+        .filter((col) => col.name !== "" && COLUMN.test(col.col) && RANGE.test(col.range))
+    : [];
+  return {
+    range: selection,
+    rangeIsText: c.rangeIsText === true,
+    row: Number.isInteger(row) && row >= 1 && row <= 1_048_576 ? row : undefined,
+    columns,
+    mentions: Array.isArray(c.mentions) ? c.mentions.slice(0, 5).map((m) => text(m, 60)).filter((m) => m !== "") : [],
+  };
 }
 
 export async function POST(request: Request) {
@@ -51,6 +81,7 @@ export async function POST(request: Request) {
   const selection = body.selection ? String(body.selection).slice(0, 100) : undefined;
   const headers = Array.isArray(body.headers) ? body.headers.slice(0, 50).map((h) => String(h).slice(0, 60)) : [];
   const locale = parseLocale(body.locale);
+  const context = parseContext(body.context, selection);
 
   // The deployment's own key, when it set one — and only then. This route takes no token, so **a key
   // set on a public deployment is spent by everyone who uses the site**; the per-process rate limit
@@ -60,7 +91,7 @@ export async function POST(request: Request) {
   // `NEXT_PUBLIC_DEMO_MODE` no longer changes this (#109): it now only switches server sources off.
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return Response.json({ ...heuristicSuggest(question, selection, locale), source: "heuristic" });
+    return Response.json({ ...heuristicSuggest(question, context, locale), source: "heuristic" });
   }
 
   try {
@@ -77,6 +108,6 @@ export async function POST(request: Request) {
     return Response.json({ ...parseFormulaReply(text), source: "ai" });
   } catch (err) {
     console.error("AI formula suggestion failed, falling back to heuristic", err);
-    return Response.json({ ...heuristicSuggest(question, selection, locale), source: "heuristic" });
+    return Response.json({ ...heuristicSuggest(question, context, locale), source: "heuristic" });
   }
 }

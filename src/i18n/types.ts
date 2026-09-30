@@ -606,6 +606,12 @@ export interface Messages {
     /** Shown once inside the app: work lives in this browser only. The README saying so is no
      *  help to someone who has already typed an afternoon's work into the grid. */
     text: string;
+    /** The one line shown in the visit of the first edit (#129). The whole of `text` is one press
+     *  away, behind the save status on the top bar. */
+    short: string;
+    /** The save status's popover: its heading, and its note until a copy has been exported. */
+    title: string;
+    noCopyYet: string;
     dismiss: string;
   };
   saveFailed: {
@@ -688,9 +694,9 @@ export interface Messages {
     addColumn: string;
   };
   formatBar: {
-    /** Collapses the formatting row to give the grid back its vertical space. */
-    hide: string;
-    show: string;
+    /** The brush that folds the formatting row away and back: one name whichever way it is, with
+     *  `aria-pressed` saying which (PO, #129 — it stands in for the design's "Aa" on short screens). */
+    toggle: string;
     label: string;
     boldTitle: string;
     italicTitle: string;
@@ -908,6 +914,10 @@ export interface Messages {
     guessBadge: string;
     /** Under a suggestion when the cell it would go in already holds something. */
     overwriteWarning: (address: string) => string;
+    /** The answer reads the only cell it could go into, so it is not offered (#64). */
+    selfReference: (address: string) => string;
+    /** Opens the palette form a declined answer points at (#62). */
+    openForm: (name: string) => string;
     connectionError: string;
     /** Shown when the server refuses because this browser has asked too often. */
     rateLimited: (seconds: number) => string;
@@ -956,6 +966,16 @@ export interface Messages {
      *  the old `fallback` handed back SUM for anything unrecognised, which is how "join these
      *  names" became a number nobody questioned. */
     noMatch: string;
+    /** Why it will not guess, each with the palette form it points at instead (#62–#64). */
+    declined: {
+      conditional: (form: string | null) => string;
+      needsRange: (form: string) => string;
+      textColumns: (form: string) => string;
+      lookup: string;
+      ifDetail: string;
+      subtract: string;
+      dates: string;
+    };
     /** The two outcomes the IF suggestion writes into the cell — in the formula, so in the sheet. */
     ifOutcomes: [pass: string, fail: string];
   };

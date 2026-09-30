@@ -4,7 +4,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { CalendarCheck, ClipboardPaste, Columns3, Copy, Eraser, Rows3, Scissors, Trash2 } from "lucide-react";
+import { ArrowDownToLine, CalendarCheck, ClipboardPaste, Columns3, Copy, Eraser, Rows3, Scissors, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useT } from "@/i18n";
 import { formatKey, isAppleKeyboard } from "@/lib/keyboardShortcuts";
@@ -21,6 +21,10 @@ export interface CellMenuActions {
   clear: () => void;
   /** Opens "Convert to dates" (#82). */
   convertDates: () => void;
+  /** Copies the selection's top row down it — on the touch bar, and so here for when that bar is
+   *  folded away on a short screen (#129). */
+  fillDown: () => void;
+  canFillDown: boolean;
 }
 
 /**
@@ -33,7 +37,8 @@ export interface CellMenuActions {
  *
  * A real menu to assistive technology: `role="menu"`, arrow keys move, Home/End jump, Escape closes
  * and puts focus back on the grid. It also opens from the keyboard (the Menu key or Shift+F10),
- * at the cell, for anyone who cannot right-click at all.
+ * at the cell, for anyone who cannot right-click at all — and from a long press on a touch screen,
+ * where it holds what the touch bar holds when a short screen folds that bar away (#129).
  */
 export default function CellContextMenu({
   x,
@@ -108,7 +113,7 @@ export default function CellContextMenu({
     onClose();
   };
 
-  const item = "flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm outline-none focus:bg-zinc-100 hover:bg-zinc-50 disabled:text-zinc-400 disabled:hover:bg-transparent";
+  const item = "flex w-full items-center gap-2.5 px-3 py-1.5 pointer-coarse:py-2.5 text-left text-sm outline-none focus:bg-zinc-100 hover:bg-zinc-50 disabled:text-zinc-400 disabled:hover:bg-transparent";
   const hint = "ml-auto pl-4 text-xs text-zinc-600";
   const rule = <div role="separator" className="my-1 h-px bg-zinc-200" />;
 
@@ -130,6 +135,9 @@ export default function CellContextMenu({
       </button>
       <button role="menuitem" onClick={run(actions.paste)} disabled={!actions.canPaste} className={item}>
         <ClipboardPaste size={15} aria-hidden /> {t.touchBar.paste} <span className={hint}>{key("V")}</span>
+      </button>
+      <button role="menuitem" onClick={run(actions.fillDown)} disabled={!actions.canFillDown} className={item}>
+        <ArrowDownToLine size={15} aria-hidden /> {t.touchBar.fillDown} <span className={hint}>{key("D")}</span>
       </button>
       {rule}
       <button role="menuitem" onClick={run(actions.insertRow)} className={item}>
