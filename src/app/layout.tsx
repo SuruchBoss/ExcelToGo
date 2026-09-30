@@ -54,9 +54,22 @@ export const metadata: Metadata = {
   creator: MAKER.name,
   // Search engines mostly ignore this tag. It still said "Next.js, React, TypeScript", which nobody
   // looking for a spreadsheet types, so it now says what they do type.
-  keywords: ["แก้ไฟล์ Excel ออนไลน์", "Excel ออนไลน์ ฟรี", "เปิดไฟล์ Excel บนมือถือ", "แก้ xlsx", "สูตร Excel", "edit Excel online", "xlsx editor"],
+  keywords: [
+    "แก้ไฟล์ Excel ออนไลน์",
+    "Excel ออนไลน์ ฟรี",
+    "เปิดไฟล์ Excel บนมือถือ",
+    "แก้ xlsx",
+    "สูตร Excel",
+    "edit Excel online",
+    "xlsx editor",
+  ],
   // opengraph-image.tsx / twitter-image.tsx supply the image; only the text lives here.
-  openGraph: { ...OPEN_GRAPH, url: CANONICAL.home, title: TITLES.th.home, description: DESCRIPTIONS.th.home },
+  openGraph: {
+    ...OPEN_GRAPH,
+    url: CANONICAL.home,
+    title: TITLES.th.home,
+    description: DESCRIPTIONS.th.home,
+  },
   twitter: {
     card: "summary_large_image",
     title: TITLES.th.home,
