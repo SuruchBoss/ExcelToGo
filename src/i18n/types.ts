@@ -31,6 +31,8 @@ export interface Messages {
     /** Shows the *other* language's name — clicking it switches to that language. */
     languageToggleLabel: string;
     languageToggleTitle: string;
+    /** The page's one heading on /app, for a screen reader and a crawler; not drawn (#148). */
+    heading: string;
   };
   toolbar: {
     importFile: string;

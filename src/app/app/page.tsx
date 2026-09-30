@@ -123,6 +123,9 @@ export default function Home() {
       <MessageSlot />
       <div className="flex min-h-0 flex-1 gap-3 p-1.5 sm:p-3 max-lg:short:p-1 sm:max-lg:short:pb-0">
         <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white outline-none">
+          {/* The page had no heading at all (#148). Drawn, it would cost a row of grid on a phone;
+              a screen reader's heading list and a crawler both still find it. */}
+          <h1 className="sr-only">{t.app.heading}</h1>
           <div className="relative min-h-0 flex-1">
             <SpreadsheetGrid />
             <BackToSelection />

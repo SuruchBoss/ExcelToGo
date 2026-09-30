@@ -11,6 +11,7 @@ export const en: Messages = {
     skipToContent: "Skip to main content",
     languageToggleLabel: "TH",
     languageToggleTitle: "Switch to Thai",
+    heading: "Edit an Excel file in your browser",
   },
   toolbar: {
     importFile: "Import file",
@@ -427,7 +428,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1751", label: "automated tests" },
+      { value: "1763", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
