@@ -82,18 +82,24 @@ export interface ConversionPlan {
   unreadable: { row: number; col: number; before: string }[];
 }
 
+const NO_ROWS: ReadonlySet<number> = new Set();
+
 /**
  * What converting a range would do, without doing it — the preview and the change are the same
- * list, so what the person saw is what happens. Empty cells and formulas are left out of both.
+ * list, so what the person saw is what happens. Empty cells and formulas are left out of both, and
+ * so are `skipRows`: the rows a filter hides, which every action on a selection leaves alone (#50),
+ * since nothing on screen would say they had changed.
  */
 export function planConversion(
   rawAt: (row: number, col: number) => string,
   range: { startRow: number; endRow: number; startCol: number; endCol: number },
   order: DateOrder,
-  calendar: DateCalendar
+  calendar: DateCalendar,
+  skipRows: ReadonlySet<number> = NO_ROWS
 ): ConversionPlan {
   const plan: ConversionPlan = { changes: [], unreadable: [] };
   for (let row = range.startRow; row <= range.endRow; row++) {
+    if (skipRows.has(row)) continue;
     for (let col = range.startCol; col <= range.endCol; col++) {
       const before = rawAt(row, col);
       if (before.trim() === "" || (before.startsWith("=") && before.length > 1)) continue;

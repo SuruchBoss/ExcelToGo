@@ -321,7 +321,8 @@ interface SheetState {
   clearSelection: () => void;
   /**
    * "Convert to dates" (#82): rewrites the selection's date text as ISO, read in the order and
-   * calendar given, in one undoable step. Cells it cannot read are left as they are. A conversion
+   * calendar given, in one undoable step. Cells it cannot read, and rows a filter hides, are left
+   * as they are. A conversion
    * from the Buddhist Era leaves the cells showing the Buddhist year, unless they already had a format.
    */
   convertSelectionToDates: (order: DateOrder, calendar: DateCalendar) => void;
@@ -1254,7 +1255,8 @@ export const useSheetStore = create<SheetState>()(
             const sel = activeSelectionOf(s);
             const { sheet } = activeTab(s);
             if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
-            const plan = planConversion((r, c) => sheet.cells[r]?.[c] ?? "", sel, order, calendar);
+            // Rows a filter hides are left as they are (#50), as delete and fill leave them.
+            const plan = planConversion((r, c) => sheet.cells[r]?.[c] ?? "", sel, order, calendar, hiddenRowsOfActive(s));
             const said = say(getMessages().live.datesConverted(plan.changes.length, plan.unreadable.length));
             if (plan.changes.length === 0) return said;
             return {

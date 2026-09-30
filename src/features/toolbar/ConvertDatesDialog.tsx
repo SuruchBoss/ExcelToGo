@@ -7,7 +7,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CalendarCheck, X } from "lucide-react";
 import { type DateCalendar, type DateOrder, planConversion } from "@/lib/dateConvert";
 import { BE_DATE_CODE, formatSerial } from "@/lib/excelDate";
-import { selectActiveSelection, selectActiveSheet, useSheetStore } from "@/store/sheetStore";
+import { selectActiveSelection, selectActiveSheet, useHiddenRows, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 
 /** How many rows the preview shows: enough to see the pattern, few enough to read at a glance. */
@@ -30,10 +30,15 @@ export default function ConvertDatesDialog({ onClose }: { onClose: () => void })
   const sheet = useSheetStore(selectActiveSheet);
   const selection = useSheetStore(selectActiveSelection);
   const convert = useSheetStore((s) => s.convertSelectionToDates);
+  // The preview counts what the command will touch, so it skips the rows a filter hides too (#50).
+  const hiddenRows = useHiddenRows();
   const [order, setOrder] = useState<DateOrder>("dmy");
   const [calendar, setCalendar] = useState<DateCalendar>("be");
 
-  const plan = useMemo(() => planConversion((r, c) => sheet.cells[r]?.[c] ?? "", selection, order, calendar), [sheet, selection, order, calendar]);
+  const plan = useMemo(
+    () => planConversion((r, c) => sheet.cells[r]?.[c] ?? "", selection, order, calendar, hiddenRows),
+    [sheet, selection, order, calendar, hiddenRows]
+  );
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
