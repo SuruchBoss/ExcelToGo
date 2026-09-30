@@ -427,8 +427,8 @@ export const en: Messages = {
     },
     stats: [
       { value: "37", label: "ready-made formulas" },
-      { value: "65", label: "engine functions" },
-      { value: "1839", label: "automated tests" },
+      { value: "66", label: "engine functions" },
+      { value: "1846", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -446,6 +446,56 @@ export const en: Messages = {
     ],
     limitsMoreText: "The rest of the limits are written out in the README — including the ones a promo page normally leaves out.",
     limitsMoreCta: "Read every limitation",
+    faqTitle: "Questions people ask",
+    faqLead: "The short answer first, then the details and the limits.",
+    faq: [
+      {
+        q: "Can I open an Excel file on my phone without Office?",
+        answer: "Yes. Open it in your phone's browser, import an .xlsx or CSV, edit it, and export it back to .xlsx, with nothing to install.",
+        detail:
+          "The grid works with a finger: tap cells while typing a formula to put in their addresses, and long-press a cell for its menu. A phone shows only a few columns at a time, so it suits editing a file more than building a large sheet from scratch.",
+        link: { href: "/app", label: "Open the sheet" },
+      },
+      {
+        q: "Do I need to sign up or pay?",
+        answer: "No. There are no accounts, and it is free.",
+        detail:
+          "Your work is saved in this browser automatically, so it does not follow you to another device, and clearing the browser's data clears it. Export an .xlsx to keep a copy. Saving across devices and editing together work if you run this app on your own server with your own Supabase — not on this site.",
+      },
+      {
+        q: "Is my file uploaded to a server?",
+        answer: "No. The file is read and edited in your browser and is not sent anywhere.",
+        detail:
+          "The one exception: if you add your own API key and ask the AI, the question, the selected cells and the column headers go straight to Anthropic, never the file. The page's security policy (CSP) stops scripts from sending data anywhere else.",
+      },
+      {
+        q: "Will the file come back broken?",
+        answer:
+          "Mostly not. Colours, font sizes, bold, borders, merged cells, column widths, number formats, dates and formulas are read in and written back to .xlsx.",
+        detail:
+          "What is not kept: pictures, Excel's own charts and PivotTables, and macros; they are not in the exported file. A formula using a function the app does not have yet shows #NAME?. CSV files must be UTF-8.",
+        link: { href: "https://github.com/SuruchBoss/ExcelToGo/blob/main/README.en.md#-import-an-existing-excel-file", label: "Every limitation" },
+      },
+      {
+        q: "Can I use Excel formulas, and do I need an AI key?",
+        answer: "Yes, and no key is needed. Type formulas as in Excel, or pick from 37 ready-made formulas, each explained.",
+        detail:
+          "You can also describe what you want in plain words. Without a key the app guesses from keywords and always says it is a guess, so check before you use it. Add your own API key for answers from the AI.",
+      },
+      {
+        q: "Can I connect data from my company's systems?",
+        answer: "Yes, if the system has an API that allows CORS. Connect it from the browser in the app, and the values land in the sheet and refresh on their own.",
+        detail:
+          "PostgreSQL or MySQL cannot be reached from a browser. Company cookies and SSO are not supported yet; use headers you enter yourself. An API without CORS needs the app running on your own server.",
+        link: { href: "/guide", label: "Guide to connecting your data" },
+      },
+      {
+        q: "How is it different from Excel or Google Sheets?",
+        answer: "No account, nothing to install, and the file never leaves your device.",
+        detail:
+          "Excel and Google Sheets on the web need you to sign in and keep files in their cloud. What this app does not have: macros, Excel-style PivotTables, and hundreds of functions (it has 66). Editing together works if you run this app on your own server with your own Supabase — not on this site.",
+      },
+    ],
     closingTitle: "Use it now — free, nothing to sign up for",
     closingBody: "This is the real app, not a trial — open it and start on your own work, and connect your own API from the browser so the numbers in the sheet keep themselves up to date. No API yet? The live-data panel has three sample APIs to connect first.",
     contact: {

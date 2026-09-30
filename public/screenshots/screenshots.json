@@ -4,23 +4,31 @@
   },
   "27-landing-stats.png": {
     "paletteFormulas": 37,
-    "engineFunctions": 65,
-    "tests": 1839,
+    "engineFunctions": 66,
+    "tests": 1828,
     "securityTests": 325
   },
   "38-landing-problems.png": {
     "paletteFormulas": 37
+  },
+  "67-landing-faq.png": {
+    "paletteFormulas": 37,
+    "engineFunctions": 66
   },
   "en/25-landing.png": {
     "paletteFormulas": 37
   },
   "en/27-landing-stats.png": {
     "paletteFormulas": 37,
-    "engineFunctions": 65,
-    "tests": 1839,
+    "engineFunctions": 66,
+    "tests": 1828,
     "securityTests": 325
   },
   "en/38-landing-problems.png": {
     "paletteFormulas": 37
+  },
+  "en/67-landing-faq.png": {
+    "paletteFormulas": 37,
+    "engineFunctions": 66
   }
 }
