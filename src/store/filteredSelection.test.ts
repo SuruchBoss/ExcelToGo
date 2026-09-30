@@ -26,6 +26,7 @@ const select = (startRow: number, startCol: number, endRow: number, endCol: numb
 
 beforeEach(() => {
   store().startBlank();
+  store().dismissPasteWarning();
   const rows = [
     ["Region", "Sales"],
     ["North", "10"],
@@ -77,7 +78,8 @@ describe("an action on a filtered selection skips the rows the filter hides (#50
     select(1, 1, 5, 1);
     store().cutSelection();
     select(0, 3, 0, 3);
-    store().pasteAtSelection();
+    // D1:D3 includes the hidden row 3, so the paste asks first; this one says yes.
+    store().pasteAtSelection(undefined, true);
     store().clearAllFilters();
     expect([1, 2, 3, 4, 5].map((r) => raw(r, 1))).toEqual(["", "2", "", "4", ""]);
     expect([0, 1, 2].map((r) => raw(r, 3))).toEqual(["10", "30", "50"]);
@@ -99,6 +101,49 @@ describe("an action on a filtered selection skips the rows the filter hides (#50
     // What the visible rows get is the fill's own business; the hidden ones are not touched.
     expect([2, 4].map((r) => raw(r, 1))).toEqual(["2", "4"]);
     expect([3, 5].map((r) => raw(r, 1))).not.toEqual(["30", "50"]);
+  });
+
+  it("a paste that would land on hidden rows asks first, and does nothing until told to (PO's call)", () => {
+    select(0, 0, 0, 0);
+    store().copySelection();
+    select(1, 1, 3, 1);
+    store().copySelection();
+    // Three rows pasted from B2 cover B2:B4, and B3 is hidden.
+    select(1, 1, 1, 1);
+    store().pasteAtSelection();
+    expect(store().pasteWarning).toEqual({ hidden: 1, text: undefined });
+    expect(raw(2, 1)).toBe("2");
+  });
+
+  it("told to, the paste goes over the hidden row as well, and one undo puts it back", () => {
+    select(1, 1, 5, 1);
+    store().copySelection();
+    select(2, 3, 2, 3);
+    // The three visible values land on D3:D5, which covers the hidden rows 3 and 5.
+    store().pasteAtSelection();
+    expect(store().pasteWarning?.hidden).toBe(2);
+    store().pasteAtSelection(undefined, true);
+    expect([2, 3, 4].map((r) => raw(r, 3))).toEqual(["10", "30", "50"]);
+    useSheetStore.temporal.getState().undo();
+    expect([2, 3, 4].map((r) => raw(r, 3))).toEqual(["", "", ""]);
+  });
+
+  it("text from another app asks the same way, and keeps the text for the answer", () => {
+    select(1, 1, 1, 1);
+    store().clearClipboard();
+    store().pasteAtSelection("a\nb");
+    expect(store().pasteWarning).toEqual({ hidden: 1, text: "a\nb" });
+  });
+
+  it("a paste that lands only on rows on screen goes straight in, and clears a question left open", () => {
+    store().clearClipboard();
+    select(1, 1, 1, 1);
+    store().pasteAtSelection("a\nb");
+    expect(store().pasteWarning).not.toBeNull();
+    select(3, 1, 3, 1);
+    store().pasteAtSelection("x");
+    expect(store().pasteWarning).toBeNull();
+    expect(raw(3, 1)).toBe("x");
   });
 
   it("with no filter on, every row in the selection is acted on, as before", () => {

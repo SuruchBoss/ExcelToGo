@@ -40,7 +40,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1747%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1751%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -61,7 +61,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1747 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1751 automated tests.
 
 ---
 
@@ -105,7 +105,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1747 passing tests could not catch
+### 🧪 What 1751 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -116,7 +116,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1747 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1751 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -387,7 +387,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1747-case Vitest suite |
+| `npm test` | Run the 1751-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -2179,13 +2179,15 @@ cell still measures from its top-left corner.
 - **Under a filter, actions touch only the rows on screen** (#50), as in Excel: Delete, copy, cut, Ctrl+Enter, Ctrl+D
   and drag-fill skip the rows the filter hides. A copy pastes the visible rows together, each row's formulas moving by
   that row's own distance. Deleting a visible range used to empty the hidden rows too, with nothing on screen to say so.
+- **A paste over hidden rows asks first**: a paste lands in one piece and cannot skip rows, so when it would land on
+  rows the filter hides the app asks ("n rows here are hidden"), with **Cancel** focused. Excel pastes over them
+  silently, which is values lost where nobody can see.
 
 **Limits:** a formula *outside* the range pointing at a single cell inside it (`=E5` under the table) still points at
 that cell after the sort, without a question. Named ranges in a formula are not counted when deciding to ask. **A plain
 list of words** (one column, nothing bold) has nothing to set its first row apart, so that row is sorted too — select
-just the rows to sort to be exact (Excel guesses the same way). **Pasting** into a filtered range still pastes
-contiguously over hidden rows (Excel pastes the same way). Bold, colours and number formats still reach hidden rows:
-no value is lost, but their look changes.
+just the rows to sort to be exact (Excel guesses the same way). Bold, colours and number formats still reach
+hidden rows: no value is lost, but their look changes.
 
 ### 🧮 Pivot (summarise a range)
 
@@ -2685,7 +2687,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1747 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1751 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3677,13 +3679,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1747 cases across 119 files, via Vitest
+npm test      # 1751 cases across 119 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1747 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1751 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -3802,10 +3804,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1747 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1751 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1747 passing tests could not catch](#-what-1747-passing-tests-could-not-catch), repeatable
+> [What 1751 passing tests could not catch](#-what-1751-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -3861,7 +3863,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |
 | `store/sortFormulas.test.ts` | 10 | Formulas sorting with their rows (#48): the QA's minimal case, the sample in both languages sorted both ways with every row's price × qty = total and the grand total unchanged, a rate under the table and another sheet's cell still pointed at, a running total / a total in the range / a `$` row inside it asking first, and sorting when confirmed · Z→A on a text column keeps the header and asks nothing (#49 with #48) |
-| `store/filteredSelection.test.ts` | 7 | Under a filter, only the rows on screen (#50): Delete, copy (formulas follow their own row), cut, Ctrl+Enter, Ctrl+D skip hidden rows; with no filter every row is acted on as before |
+| `store/filteredSelection.test.ts` | 11 | Under a filter, only the rows on screen (#50): Delete, copy (formulas follow their own row), cut, Ctrl+Enter, Ctrl+D skip hidden rows; with no filter every row is acted on as before · a paste over hidden rows asks first; Cancel pastes nothing, yes pastes and one undo takes it back, and text from another app asks too |
 | `store/viewOnlyTab.test.ts` | 4 | A view-only tab (#47) on the real store: an edit is refused and said so with nothing saved, the selection still moves, the editing tab edits and saves as before, and a tab whose lock has not answered yet edits |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |

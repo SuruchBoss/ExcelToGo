@@ -342,7 +342,14 @@ interface SheetState {
   replaceAll: (needle: string, replacement: string, options: SearchOptions) => number;
   copySelection: () => void;
   cutSelection: () => void;
-  pasteAtSelection: (externalText?: string) => void;
+  /**
+   * Pastes the clipboard (ours, else `externalText`) at the cursor. When the rows it would land on
+   * include rows a filter hides (#50), it records `pasteWarning` and waits for `force`.
+   */
+  pasteAtSelection: (externalText?: string, force?: boolean) => void;
+  /** Set while a paste waits on "this would write over n hidden rows — paste anyway?". */
+  pasteWarning: { hidden: number; text?: string } | null;
+  dismissPasteWarning: () => void;
   clearClipboard: () => void;
 
   /**
@@ -1247,10 +1254,22 @@ export const useSheetStore = create<SheetState>()(
           navigator.clipboard?.writeText(toTsv(block)).catch(() => {});
         },
 
-        pasteAtSelection: (externalText) =>
+        pasteWarning: null,
+        dismissPasteWarning: () => set({ pasteWarning: null }),
+
+        pasteAtSelection: (externalText, force = false) =>
           set((s) => {
             const { sheet } = activeTab(s);
             const selection = activeSelectionOf(s);
+            // A paste goes down in one piece, so under a filter it can land on rows nobody can see
+            // (#50). Delete and fill skip those; a paste cannot, so it asks first (PO's call).
+            if (!force) {
+              const height = s.clipboard?.rows.length ?? (externalText ? parseTsv(externalText).length : 0);
+              const hidden = hiddenRowsOfActive(s);
+              let covered = 0;
+              for (let r = selection.anchorRow; r < selection.anchorRow + height; r++) if (hidden.has(r)) covered++;
+              if (covered > 0) return { pasteWarning: { hidden: covered, text: externalText } };
+            }
             if (sheet.template) {
               // Size the guard to what would actually be written, not just the selected cell.
               const height = s.clipboard?.rows.length ?? parseTsv(externalText ?? "").length;
@@ -1307,6 +1326,7 @@ export const useSheetStore = create<SheetState>()(
               return {
                 sheets,
                 clipboard: clearedClipboard,
+                pasteWarning: null,
                 ...say(
                   getMessages().live.pasted(
                     clipboard.rows.length,
@@ -1322,6 +1342,7 @@ export const useSheetStore = create<SheetState>()(
                 const next = pastePlainTextBlock(sheet, rows, targetRow, targetCol);
                 return {
                   sheets: withActiveSheet(s, () => next),
+                  pasteWarning: null,
                   ...say(getMessages().live.pasted(rows.length, rows[0]?.length ?? 0, cellRef(targetRow, targetCol))),
                 };
               }

@@ -428,7 +428,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1747", label: "automated tests" },
+      { value: "1751", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -706,6 +706,13 @@ export const en: Messages = {
   startNotice: {
     text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
     openSample: "Try it with sample data",
+  },
+  pasteWarning: {
+    title: "Rows here are hidden",
+    body: (hidden) =>
+      `This paste would land on ${hidden === 1 ? "a row" : `${hidden} rows`} the filter is hiding, writing over ${hidden === 1 ? "its" : "their"} values where you can't see them. Clear the filter first to see what it would replace. Undo always takes a paste back.`,
+    pasteAnyway: "Paste anyway",
+    cancel: "Cancel",
   },
   sortWarning: {
     title: "Formulas here point at other rows",

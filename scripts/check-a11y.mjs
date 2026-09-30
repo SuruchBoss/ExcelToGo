@@ -371,6 +371,31 @@ const OPENED_STATES = [
     },
   },
   {
+    // Asked before a paste lands on rows a filter hides (#50): two rows pasted where one is hidden.
+    name: "paste warning dialog",
+    path: "/app",
+    async open(page) {
+      const rows = [["Region", "Sales"], ["North", "10"], ["South", "2"], ["North", "30"]];
+      for (const [r, row] of rows.entries()) {
+        for (const [c, v] of row.entries()) {
+          await page.locator(`td[data-row="${r}"][data-col="${c}"]`).click();
+          await page.keyboard.type(v);
+          await page.keyboard.press("Enter");
+        }
+      }
+      await page.locator("thead").getByTitle("กรองข้อมูลคอลัมน์นี้").first().click();
+      await page.getByRole("checkbox", { name: "South" }).uncheck();
+      await page.getByRole("button", { name: "ตกลง", exact: true }).click();
+      await page.locator('td[data-row="1"][data-col="1"]').click();
+      await page.locator('td[data-row="3"][data-col="1"]').click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Shift+F10");
+      await page.getByRole("menu").getByRole("menuitem", { name: "คัดลอก" }).click();
+      await page.locator('td[data-row="1"][data-col="2"]').click({ button: "right" });
+      await page.getByRole("menu").getByRole("menuitem", { name: "วาง" }).click();
+      await page.getByRole("alertdialog").waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
     // #47: a second tab on the same workbook asks before it does anything.
     name: "open in another tab dialog",
     path: "/app",
