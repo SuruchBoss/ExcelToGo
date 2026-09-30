@@ -155,3 +155,20 @@ describe("dates (#45)", () => {
     expect(fill(["09:00", "09:30"], 2)).toEqual(["10:00", "10:30"]);
   });
 });
+
+describe("Buddhist-Era dates (#82)", () => {
+  const fill = (seed: string[], count = 2) => fillValues({ seed, count, rowOffset: 1, colOffset: 0 });
+  it("go on in the seed's own layout and calendar, across the end of the month and the year", () => {
+    expect(fill(["30/01/2569"])).toEqual(["31/01/2569", "01/02/2569"]);
+    expect(fill(["31/12/2568"])).toEqual(["01/01/2569", "02/01/2569"]);
+    expect(fill(["5-1-2569"])).toEqual(["6-1-2569", "7-1-2569"]);
+    expect(fill(["2569-01-15"])).toEqual(["2569-01-16", "2569-01-17"]);
+    expect(fill(["31 ม.ค. 2569"])).toEqual(["1 ก.พ. 2569", "2 ก.พ. 2569"]);
+    expect(fill(["15 มกราคม 69"])).toEqual(["16 มกราคม 69", "17 มกราคม 69"]);
+  });
+  it("and what they write reads back as the same dates", async () => {
+    const { dateLiteral, serialOf } = await import("./excelDate");
+    for (const text of fill(["31 ม.ค. 2569", "7 ก.พ. 2569"], 3)) expect(dateLiteral(text)?.era, text).toBe("be");
+    expect(dateLiteral(fill(["31 ม.ค. 2569"])[0])?.serial).toBe(serialOf(2026, 2, 1));
+  });
+});

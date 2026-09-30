@@ -3,11 +3,15 @@
 
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { HardDriveDownload, X } from "lucide-react";
 import { useT } from "@/i18n";
+import { useShortScreen } from "@/features/toolbar/useShortScreen";
 
 const DISMISSED_KEY = "exceltogo.storage-notice-dismissed";
+// Shown in some visit (localStorage), and whether this visit is that one (sessionStorage).
+const SEEN_KEY = "exceltogo.storage-notice-seen";
+const VISIT_KEY = "exceltogo.storage-notice-visit";
 const CHANGED_EVENT = "exceltogo:storage-notice";
 
 function subscribe(onChange: () => void): () => void {
@@ -20,9 +24,12 @@ function subscribe(onChange: () => void): () => void {
   };
 }
 
-function isDismissed(): boolean {
+function isHidden(): boolean {
   try {
-    return localStorage.getItem(DISMISSED_KEY) === "1";
+    if (localStorage.getItem(DISMISSED_KEY) === "1") return true;
+    // Read once, in the visit it first appeared in. From the next visit on, the save status on the
+    // top bar holds it, with a dot until a copy has been exported (#129).
+    return localStorage.getItem(SEEN_KEY) === "1" && sessionStorage.getItem(VISIT_KEY) !== "1";
   } catch {
     // Storage blocked: nothing can be remembered, so the notice shows every time — which is right,
     // since that browser is exactly the one most likely to lose the work.
@@ -38,6 +45,10 @@ const serverSnapshot = () => true;
 /**
  * Says once, where a person will actually read it, that their work lives only in this browser.
  *
+ * One line, in the visit of the first edit, and then never again as a band: the whole text is one
+ * press away behind the save status on the top bar (`SaveStatus.tsx`). It was three lines at 390px
+ * and, stacked with the import message, left ten rows of grid on a phone (#129).
+ *
  * The README says so too, but nobody reads a README before typing into a grid — and finding out
  * afterwards, having lost an afternoon's work, is the kind of first impression there is no
  * recovering from.
@@ -51,7 +62,21 @@ const serverSnapshot = () => true;
  */
 export default function StorageNotice() {
   const t = useT();
-  const dismissed = useSyncExternalStore(subscribe, isDismissed, serverSnapshot);
+  const stored = useSyncExternalStore(subscribe, isHidden, serverSnapshot);
+  // A short screen has no row to spare: the dot on the save status says it there, and the line
+  // waits for a taller one rather than counting as read (#129).
+  const short = useShortScreen();
+  const hidden = stored || short;
+
+  useEffect(() => {
+    if (hidden) return;
+    try {
+      localStorage.setItem(SEEN_KEY, "1");
+      sessionStorage.setItem(VISIT_KEY, "1");
+    } catch {
+      // Nothing can be remembered: it shows every visit, as `isHidden` explains.
+    }
+  }, [hidden]);
 
   const dismiss = useCallback(() => {
     try {
@@ -62,12 +87,14 @@ export default function StorageNotice() {
     window.dispatchEvent(new Event(CHANGED_EVENT));
   }, []);
 
-  if (dismissed) return null;
+  if (hidden) return null;
 
   return (
-    <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-      <HardDriveDownload size={14} className="mt-0.5 shrink-0" />
-      <p className="flex-1 leading-relaxed">{t.storageNotice.text}</p>
+    <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-1 text-xs text-amber-900">
+      <HardDriveDownload size={14} className="shrink-0" aria-hidden />
+      <p className="min-w-0 flex-1 truncate" title={t.storageNotice.text}>
+        {t.storageNotice.short}
+      </p>
       <button
         onClick={dismiss}
         title={t.storageNotice.dismiss}

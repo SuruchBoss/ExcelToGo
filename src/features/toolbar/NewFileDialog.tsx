@@ -73,7 +73,7 @@ export default function NewFileDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full rounded-t-2xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:max-w-md sm:rounded-xl sm:pb-4"
+        className="relative max-h-dvh w-full overflow-y-auto rounded-t-2xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:max-w-md sm:rounded-xl sm:pb-4"
       >
         <div className="flex items-start justify-between gap-3">
           <h2 id={titleId} className="text-base font-semibold text-zinc-900">

@@ -109,7 +109,26 @@ const label = {
   cellTools: /^(เครื่องมือเซลล์|Cell tools)$/,
   italic: /^(ตัวเอียง|Italic)$/,
   chart: /^(กราฟ|Chart)$/,
+  appendSheets: /^(เพิ่มเป็นชีตใหม่|Add as new sheets)/,
+  savedHere: /^(งานบันทึกไว้ในเบราว์เซอร์นี้เท่านั้น|Saved in this browser only)/,
+  saveStatus: /^(บันทึกอัตโนมัติ|Autosaved)/,
+  noCopyYet: /(ยังไม่เคยส่งออกสำเนา|No copy exported yet)/,
+  undo: /^(เลิกทำ|Undo) \(/,
+  formatToggle: /^(รูปแบบเซลล์|Cell format)$/,
+  cellMenu: /^(เมนูเซลล์|Cell menu)$/,
+  fillDown: /^(เติมลงล่าง|Fill down)/,
 };
+
+/** Rows of the grid wholly on screen, under its header and above whatever ends it. */
+const rowsOnScreen = (page) =>
+  page.evaluate(() => {
+    const grid = document.querySelector('[role="grid"]').closest(".overflow-auto").getBoundingClientRect();
+    const head = document.querySelector("thead").getBoundingClientRect().bottom;
+    return [...document.querySelectorAll("tbody tr")].filter((tr) => {
+      const r = tr.getBoundingClientRect();
+      return r.top >= head - 1 && r.bottom <= Math.min(grid.bottom, innerHeight) + 1;
+    }).length;
+  });
 
 const failures = [];
 const note = (ok, text, detail) => {
@@ -177,10 +196,10 @@ async function typeThaiInCell(page, row, col, text) {
 }
 
 /** A fresh app with nothing carried over from the flow before. */
-async function freshPage(browser, width = 1280, touch = false) {
+async function freshPage(browser, width = 1280, touch = false, height = 900) {
   // Thai, fixed: a first visit takes the browser's language now, and several flows read Thai text.
   const ctx = await browser.newContext({
-    viewport: { width, height: 900 },
+    viewport: { width, height },
     acceptDownloads: true,
     locale: "th-TH",
     ...(touch && { hasTouch: true, isMobile: true }),
@@ -191,6 +210,9 @@ async function freshPage(browser, width = 1280, touch = false) {
   await page.reload({ waitUntil: "networkidle" });
   return { ctx, page };
 }
+
+/** The notice a tab shows when it edits because the editing tab closed (#146). */
+const FREED = /อีกแท็บปิดแล้ว|The other tab closed/;
 
 const FLOWS = [
   {
@@ -472,6 +494,39 @@ const FLOWS = [
     },
   },
   {
+    // #62–#64, through the real route and its keyword matcher (no key on this server): a total asked
+    // for from inside a column is offered under the column rather than over the cell's own formula,
+    // and a question with a condition offers no formula at all — the SUMIF form instead.
+    name: "the assistant puts a column's total under it, and sends a condition to the SUMIF form",
+    async run(page) {
+      await page.getByRole("button", { name: "ลองกับข้อมูลตัวอย่าง", exact: true }).click();
+      await cell(page, 4, 4).click(); // E5, which is =C5*D5
+      await page.locator('button[aria-label="ถาม AI"]').first().click();
+      const panel = page.locator("aside");
+      await panel.locator("textarea").fill("อยากรวมยอดขายทั้งหมดในคอลัมน์นี้");
+      await panel.getByRole("button", { name: "ถาม AI" }).click();
+      const insert = panel.getByRole("button", { name: /ใส่สูตรนี้ที่เซลล์/ });
+      await insert.waitFor({ timeout: 10_000 });
+      const offered = (await insert.innerText()).trim();
+      note(offered.endsWith("E11"), `the total is offered under the column, not over E5 ("${offered}")`);
+      await insert.click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="10"][data-col="4"]')?.innerText.trim() === "7495", null, { timeout: 5000 }).catch(() => {});
+      const [e11, e5] = await Promise.all([cell(page, 10, 4).innerText(), cell(page, 4, 4).innerText()]);
+      note(e11.trim() === "7495" && e5.trim() === "660", `E11 has the total and E5 keeps its own value (E11 "${e11.trim()}", E5 "${e5.trim()}")`);
+
+      await panel.locator("textarea").fill("ยอดรวมของหมวดเครื่องดื่ม");
+      await panel.getByRole("button", { name: "ถาม AI" }).click();
+      const form = panel.getByRole("button", { name: "เปิดฟอร์ม SUMIF" });
+      await form.waitFor({ timeout: 10_000 });
+      const inserts = await panel.getByRole("button", { name: /ใส่สูตรนี้ที่เซลล์/ }).count();
+      note(inserts === 0, "a question about some rows offers no formula to insert");
+      await form.click();
+      const heading = page.getByRole("heading", { name: /^SUMIF/ });
+      await heading.waitFor({ timeout: 5000 });
+      note(true, "and its button opens the SUMIF form");
+    },
+  },
+  {
     name: "a rate limit is shown, not swallowed",
     async run(page) {
       // 429 is the one error a person can act on, so it has to say how long to wait rather than
@@ -549,6 +604,111 @@ const FLOWS = [
       await typeInCell(page, 2, 0, "=SUM(A1:A2)");
       await page.waitForFunction(() => document.querySelector('td[data-row="2"][data-col="0"]')?.innerText.trim() === "30");
       note(own.length === 0, "and the app itself trips over none of it", own.join(" · "));
+    },
+  },
+  {
+    name: "every page in the sitemap names itself as canonical, and the landing page's structured data parses (#148)",
+    async run(page) {
+      // The root layout once set one canonical for the whole site, so /app and /guide told search
+      // engines they were copies of /. Only the served HTML can say what a page declares: metadata
+      // merges down through layouts, and a unit test of one file cannot see what a route inherits.
+      const sitemap = await (await fetch(ORIGIN + "/sitemap.xml")).text();
+      const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+      note(urls.length >= 3, `the sitemap lists the pages (${urls.length})`);
+      for (const url of urls) {
+        const res = await fetch(ORIGIN + new URL(url).pathname);
+        const html = await res.text();
+        const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+        note(res.status === 200 && canonical === url, `${new URL(url).pathname} declares itself canonical`, `${res.status} · ${canonical ?? "none"}`);
+        const h1s = (html.match(/<h1[\s>]/g) ?? []).length;
+        note(h1s === 1, `and has one <h1> (${h1s})`);
+        // A page that sets its own Open Graph text replaces the parent's block whole, image included.
+        const card = /<meta property="og:image" content="https?:\/\/[^"]+"/.test(html) && html.includes('<meta name="twitter:card" content="summary_large_image"');
+        note(card, "and keeps the link-preview card image");
+      }
+
+      // The JSON-LD is an inline script, so it needs this request's nonce like every other one.
+      const res = await fetch(ORIGIN + "/");
+      const nonce = res.headers.get("content-security-policy")?.match(/'nonce-([^']+)'/)?.[1];
+      const html = await res.text();
+      const tag = html.match(/<script type="application\/ld\+json"([^>]*)>([\s\S]*?)<\/script>/);
+      let ld = null;
+      try {
+        ld = JSON.parse(tag?.[2] ?? "");
+      } catch {
+        // stays null
+      }
+      note(Boolean(ld?.["@graph"]?.some((n) => n["@type"] === "WebApplication")), "/ carries WebApplication structured data that parses");
+      note(Boolean(nonce) && (tag?.[1] ?? "").includes(`nonce="${nonce}"`), "and it carries this request's CSP nonce");
+      note(!/aggregateRating|ratingValue/.test(tag?.[2] ?? ""), "and claims no rating");
+      // Search Console re-checks ownership from this tag; losing it in a metadata merge would quietly
+      // drop the property's reports, and nothing else would notice.
+      const verification = html.match(/<meta name="google-site-verification" content="([^"]+)"/)?.[1];
+      note(Boolean(verification), "and / keeps its Google Search Console verification tag", verification ?? "none");
+
+      // A mistyped link is a 404, kept out of the index, in both languages, with a way on.
+      await page.goto(ORIGIN + "/no-such-page");
+      const missing = await fetch(ORIGIN + "/no-such-page");
+      const missingHtml = await missing.text();
+      note(missing.status === 404 && /<meta name="robots" content="noindex/.test(missingHtml), "an unknown path is a 404 with noindex");
+      note(!/rel="canonical"/.test(missingHtml), "and declares no canonical");
+      const heading = await page.getByRole("heading", { level: 1 }).innerText();
+      const links = await page.getByRole("navigation").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+      note(heading === "ไม่พบหน้านี้" && links.includes("/app") && links.includes("/"), "and says so in Thai, with links to the app and home", `${heading} · ${links}`);
+    },
+  },
+  {
+    name: "Delete on a filtered range leaves the rows the filter hid, and a paste over them asks first (#50)",
+    async run(page) {
+      // The unit tests cover the store. What only a browser shows is the whole path: the funnel on
+      // the column header, rows gone from the grid, a Shift+click selection that spans them, the key.
+      const rows = [["Region", "Sales"], ["North", "10"], ["South", "2"], ["North", "30"], ["South", "4"], ["North", "50"]];
+      for (const [r, row] of rows.entries()) for (const [c, v] of row.entries()) await typeInCell(page, r, c, v);
+
+      await page.locator("thead").getByTitle("กรองข้อมูลคอลัมน์นี้").first().click();
+      await page.getByRole("checkbox", { name: "South" }).uncheck();
+      await page.getByRole("button", { name: "ตกลง", exact: true }).click();
+      await cell(page, 2, 1).waitFor({ state: "detached", timeout: 5000 }).catch(() => {});
+      const hiddenNow = !(await cell(page, 2, 1).isVisible());
+      note(hiddenNow, "the filter hides South's rows");
+
+      // A paste cannot skip rows the way Delete does, so one that would land on a hidden row asks
+      // first (PO's call on #50): copy the visible 10 and 30, paste them at C2, where C3 is hidden.
+      await cell(page, 1, 1).click();
+      await cell(page, 3, 1).click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Shift+F10");
+      await page.getByRole("menu").getByRole("menuitem", { name: /คัดลอก|Copy/ }).click();
+      await cell(page, 1, 2).click({ button: "right" });
+      await page.getByRole("menu").getByRole("menuitem", { name: /วาง|Paste/ }).click();
+      const ask = page.getByRole("alertdialog", { name: "ช่วงที่จะวางมีแถวที่ซ่อนอยู่" });
+      await ask.waitFor({ timeout: 5000 });
+      const focused = await page.evaluate(() => document.activeElement?.textContent?.trim());
+      note(focused === "ยกเลิก", `a paste over a hidden row asks first, with Cancel focused (${focused})`);
+      await page.keyboard.press("Enter");
+      await ask.waitFor({ state: "detached", timeout: 5000 });
+      note((await cell(page, 1, 2).innerText()).trim() === "", "and Cancel pastes nothing");
+      await cell(page, 1, 2).click({ button: "right" });
+      await page.getByRole("menu").getByRole("menuitem", { name: /วาง|Paste/ }).click();
+      await ask.getByRole("button", { name: "วางทับ", exact: true }).click();
+      note((await cell(page, 1, 2).innerText()).trim() === "10", "and 'paste anyway' pastes");
+      await page.keyboard.press("Control+z");
+
+      await cell(page, 1, 1).click();
+      await cell(page, 5, 1).click({ modifiers: ["Shift"] });
+      await page.keyboard.press("Delete");
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="1"]')?.innerText.trim() === "");
+
+      await page.locator("thead").getByTitle("กรองข้อมูลคอลัมน์นี้").first().click();
+      await page.getByRole("button", { name: "ล้างตัวกรอง", exact: true }).click();
+      await cell(page, 2, 1).waitFor({ state: "visible", timeout: 5000 });
+      const after = await page.evaluate(() =>
+        [1, 2, 3, 4, 5].map((r) => document.querySelector(`td[data-row="${r}"][data-col="1"]`)?.innerText.trim() ?? "?")
+      );
+      note(after.join(",") === ",2,,4,", "after clearing the filter, the hidden rows still hold 2 and 4", after.join(","));
+      const pastedColumn = await page.evaluate(() =>
+        [1, 2].map((r) => document.querySelector(`td[data-row="${r}"][data-col="2"]`)?.innerText.trim() ?? "?")
+      );
+      note(pastedColumn.join(",") === ",", "and the undone paste left column C as it was", pastedColumn.join(","));
     },
   },
   {
@@ -922,13 +1082,42 @@ const FLOWS = [
       const mirrored = (await cell(page, 2, 0).innerText()).trim();
       note(mirrored === "typed-in-second", `the view-only tab shows what the other tab saves (A3 "${mirrored}")`);
 
-      // Nobody is editing once the second tab closes, so a third one simply edits.
+      // The tab that took over closes: the first one was waiting, so it edits again by itself (#146).
       await second.close();
-      const third = await page.context().newPage();
-      await third.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
-      const kept = await Promise.all([0, 1, 2].map(async (r) => (await cell(third, r, 0).innerText()).trim()));
-      note(kept.join() === "first-tab,half-typed,typed-in-second", `reopened, the workbook has every edit from both tabs (${kept.join(", ")})`);
-      await third.close();
+      await page.getByRole("status").filter({ hasText: FREED }).waitFor({ timeout: 5000 });
+      await typeInCell(page, 3, 0, "back-in-first");
+      const kept = await Promise.all([0, 1, 2, 3].map(async (r) => (await cell(page, r, 0).innerText()).trim()));
+      note(kept.join() === "first-tab,half-typed,typed-in-second,back-in-first", `the first tab edits again with every edit from both tabs (${kept.join(", ")})`);
+    },
+  },
+  {
+    // #146: closing the old tab and carrying on in the one in front of you is how this usually ends.
+    name: "a tab that chose view only edits by itself once the editing tab closes, from its last save",
+    async run(page) {
+      await typeInCell(page, 0, 0, "one");
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const ask = second.getByRole("alertdialog", { name: /^(ไฟล์นี้เปิดอยู่ในอีกแท็บ|This workbook is open in another tab)$/ });
+      await ask.waitFor({ timeout: 5000 });
+      await second.keyboard.press("Escape");
+      await second.getByRole("status").filter({ hasText: /^(ดูอย่างเดียว|View only):/ }).waitFor({ timeout: 5000 });
+
+      await typeInCell(page, 1, 0, "two");
+      await page.close();
+
+      await second.getByRole("status").filter({ hasText: FREED }).waitFor({ timeout: 5000 });
+      note(true, "the second tab says the other tab closed and it can edit");
+      const stale = await second.getByRole("status").filter({ hasText: /กำลังแก้อยู่ในอีกแท็บ|being edited in another tab/ }).count();
+      note(stale === 0, `nothing still says another tab is editing (${stale})`);
+
+      await typeInCell(second, 2, 0, "three");
+      const got = await Promise.all([0, 1, 2].map(async (r) => (await cell(second, r, 0).innerText()).trim()));
+      note(got.join() === "one,two,three", `typing works and the earlier work is all there (${got.join(", ")})`);
+
+      // And it is this tab that saves now: a fresh tab opens on what it typed.
+      await second.reload({ waitUntil: "networkidle" });
+      const saved = (await cell(second, 2, 0).innerText()).trim();
+      note(saved === "three", `what it typed was saved (A3 "${saved}")`);
     },
   },
   {
@@ -946,6 +1135,63 @@ const FLOWS = [
       const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "ส่งออก CSV" }).click()]);
       const name = download.suggestedFilename();
       note(name === "ยอดขาย.csv", `the CSV is named after the sheet ("${name}")`);
+    },
+  },
+  {
+    // #145: the screen that holds someone's work on the worst day had no gate at all. The crash is
+    // the app's own crash test (`features/crash/crashTest.ts`), which only an automated browser that
+    // asks for it can set off — never a workbook in a format the app happens not to read.
+    name: "a crash offers the work as a file that holds it, and Try again comes back to it",
+    async run(page, { tmp }) {
+      await typeInCell(page, 0, 0, "rescued");
+      await typeInCell(page, 1, 0, "=1+1");
+      await page.evaluate(() => sessionStorage.setItem("exceltogo:crash-test", "1"));
+      await page.reload({ waitUntil: "networkidle" });
+      await page.getByRole("heading", { level: 1, name: /มีบางอย่างพัง/ }).waitFor({ timeout: 10_000 });
+      note(true, "the rescue screen appears, and says the sheet is still here");
+
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /Sheet1/ }).click()]);
+      const file = join(tmp, "rescued.csv");
+      await download.saveAs(file);
+      const csv = await readFile(file, "utf8");
+      note(csv.includes("rescued") && csv.includes("=1+1"), `the file it offers holds the work, formulas as typed (${JSON.stringify(csv.replace(/^\uFEFF/, "").trim())})`);
+
+      await page.evaluate(() => sessionStorage.removeItem("exceltogo:crash-test"));
+      await page.getByRole("button", { name: /ลองอีกครั้ง/ }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "rescued", null, { timeout: 10_000 }).catch(() => {});
+      const back = (await cell(page, 0, 0).innerText().catch(() => "")).trim();
+      note(back === "rescued", `Try again comes back to the sheet as it was (A1 "${back}")`);
+    },
+  },
+  {
+    // #82: Buddhist-Era dates. A typed 15/01/2569 is a date the formulas can use; 15/01/69 waits for
+    // "Convert to dates", reached from the cell menu, which shows what it will do and undoes in one step.
+    name: "a Buddhist-Era date counts, and Convert to dates turns 15/01/69 into one from the cell menu, undone in one step",
+    async run(page) {
+      await typeInCell(page, 0, 0, "15/01/2569");
+      await typeInCell(page, 0, 1, '=DATEDIF(A1,"2026-03-01","d")');
+      const days = (await cell(page, 0, 1).innerText()).trim();
+      const shown = (await cell(page, 0, 0).innerText()).trim();
+      note(days === "45" && shown === "15/01/2569", `15/01/2569 shows as typed and counts as 15 January 2026 (A1 "${shown}", DATEDIF ${days})`);
+
+      await typeInCell(page, 1, 0, "15/01/69");
+      await typeInCell(page, 2, 0, "unknown");
+      await cell(page, 1, 0).click();
+      await cell(page, 2, 0).click({ modifiers: ["Shift"] });
+      await cell(page, 1, 0).click({ button: "right" });
+      await page.getByRole("menuitem", { name: /แปลงเป็นวันที่/ }).click();
+      const dialog = page.getByRole("dialog", { name: /แปลงข้อความเป็นวันที่/ });
+      await dialog.waitFor({ timeout: 5000 });
+      const preview = await dialog.innerText();
+      note(preview.includes("2026-01-15") && /อ่านไม่ออก 1 ช่อง/.test(preview), "the preview shows 15/01/69 as 2026 and one cell it cannot read");
+      await dialog.getByRole("button", { name: /^แปลง 1 ช่อง$/ }).click();
+      const after = [(await cell(page, 1, 0).innerText()).trim(), (await cell(page, 2, 0).innerText()).trim()];
+      note(after.join() === "15/1/2569,unknown", `converted, it shows the Buddhist year and the unreadable cell is untouched (${after.join(", ")})`);
+
+      await cell(page, 3, 0).click();
+      await page.keyboard.press("Control+z");
+      const undone = (await cell(page, 1, 0).innerText()).trim();
+      note(undone === "15/01/69", `one undo puts the text back (A2 "${undone}")`);
     },
   },
   {
@@ -1402,6 +1648,128 @@ const FLOWS = [
     },
   },
   {
+    // #129: after an edit and a file opened on a phone, two bands took 170px and left ten rows.
+    name: "on a phone after opening a file: one message at a time, twelve rows, a swipe that scrolls, and the storage note on the top bar (#129)",
+    width: 390,
+    height: 844,
+    touch: true,
+    async run(page) {
+      const tapCell = async (r, c) => {
+        const box = await cell(page, r, c).boundingBox();
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        await page.waitForTimeout(120);
+      };
+      const edit = async (r, c, text) => {
+        await tapCell(r, c);
+        await tapCell(r, c);
+        await cell(page, r, c).locator("input").waitFor({ timeout: 5000 });
+        await page.keyboard.insertText(text);
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+      };
+      await edit(0, 0, "work");
+      const line = page.getByText(label.savedHere);
+      await line.waitFor({ timeout: 5000 });
+      const lineHeight = Math.round((await line.boundingBox()).height);
+      note(lineHeight <= 20, `"saved in this browser only" is one line (${lineHeight}px)`);
+
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "incoming.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("a,b,c,d,e,f,g,h,i,j\n1,2,3,4,5,6,7,8,9,10\n"),
+      });
+      await page.getByRole("button", { name: label.appendSheets }).tap();
+      const toast = page.getByRole("status").filter({ hasText: /(เพิ่ม 1 ชีต|Added 1 sheet)/ });
+      await toast.waitFor({ timeout: 5000 });
+      const scroller = page.locator('[role="grid"]').locator("xpath=ancestor::div[contains(@class,'overflow-auto')][1]");
+      const gridTop = (await scroller.boundingBox()).y;
+      note((await toast.boundingBox()).y > gridTop, "the file's message floats over the grid instead of pushing it down");
+      const rows = await rowsOnScreen(page);
+      note(rows >= 12, `at least twelve rows are on screen after the file opens (${rows})`);
+
+      // A swipe that starts on the message's words still reaches the grid under it.
+      const words = await toast.locator("p").boundingBox();
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+      const x = words.x + words.width / 2;
+      const y = words.y + words.height / 2;
+      const before = await scroller.evaluate((el) => el.scrollLeft);
+      await touch("touchStart", x, y);
+      for (let i = 1; i <= 10; i++) {
+        await touch("touchMove", x - 15 * i, y);
+        await page.waitForTimeout(16);
+      }
+      await touch("touchEnd", x - 150, y);
+      await page.waitForTimeout(300);
+      const after = await scroller.evaluate((el) => el.scrollLeft);
+      note(after > before + 50, `a sideways swipe scrolls the grid while the message shows (${before} → ${after})`);
+
+      await scroller.evaluate((el) => (el.scrollLeft = 0));
+      await edit(3, 0, "next");
+      note(!(await toast.isVisible()), "the next edit takes the message away");
+
+      const status = page.getByRole("button", { name: label.saveStatus });
+      note(label.noCopyYet.test(await status.getAttribute("aria-label")), "the save status on the top bar says no copy has been exported yet");
+      await status.tap();
+      const about = page.getByRole("dialog", { name: /^(บันทึกในเบราว์เซอร์นี้เท่านั้น|Saved in this browser only)$/ });
+      await about.waitFor({ timeout: 5000 });
+      await Promise.all([page.waitForEvent("download"), about.getByRole("button", { name: label.exportExcel }).tap()]);
+      await page.waitForTimeout(200);
+      note(!label.noCopyYet.test(await status.getAttribute("aria-label")), "and stops saying so once a copy has been exported");
+
+      // The next visit: a tab of its own shares the browser's storage, not this visit's.
+      const next = await page.context().newPage();
+      await next.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      await next.locator('td[data-row="0"][data-col="0"]').waitFor();
+      await next.waitForTimeout(300);
+      note(!(await next.getByText(label.savedHere).isVisible()), "a later visit shows no band for it — the top bar holds it");
+      await next.close();
+    },
+  },
+  {
+    // #129 / UX-13: on its side a phone showed no rows at all under six stacked bars.
+    name: "on a phone on its side: two rows of bars, six rows of grid, a long press opens the cell menu (#129)",
+    width: 844,
+    height: 390,
+    touch: true,
+    async run(page) {
+      const undo = await page.getByRole("button", { name: label.undo }).boundingBox();
+      const fx = await page.getByPlaceholder(label.formulaBar).boundingBox();
+      note(Math.abs(undo.y + undo.height / 2 - (fx.y + fx.height / 2)) < 12, "the formula bar shares the top row with undo");
+      const formulas = await page.getByRole("navigation").getByRole("button", { name: label.formulas }).boundingBox();
+      const addSheet = await page.getByRole("button", { name: label.addSheet }).boundingBox();
+      note(
+        Math.abs(formulas.y + formulas.height / 2 - (addSheet.y + addSheet.height / 2)) < 12,
+        "the panel icons share the bottom row with the sheet tabs"
+      );
+      const rows = await rowsOnScreen(page);
+      note(rows >= 6, `at least six rows of grid are on screen (${rows})`);
+
+      note(!(await page.getByRole("button", { name: label.italic }).isVisible()), "the formatting row starts folded");
+      const brush = page.getByRole("button", { name: label.formatToggle });
+      note((await brush.getAttribute("title")) !== null && (await brush.getAttribute("aria-pressed")) === "false", "the brush is named, has a tooltip, and says the row is folded");
+      await brush.tap();
+      await page.getByRole("button", { name: label.italic }).waitFor({ timeout: 5000 });
+      note(true, "and the brush opens it");
+      await brush.tap();
+
+      // The touch bar is folded here; its actions are in the cell menu, a long press away.
+      const box = await cell(page, 2, 1).boundingBox();
+      const cdp = await page.context().newCDPSession(page);
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      await page.waitForTimeout(700);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      const menu = page.getByRole("menu", { name: label.cellMenu });
+      await menu.waitFor({ timeout: 5000 });
+      note(await menu.getByRole("menuitem", { name: label.fillDown }).isVisible(), "a long press on a cell opens the cell menu, fill down included");
+      const pressed = await cell(page, 2, 1).getAttribute("aria-selected");
+      note(pressed === "true", `and the pressed cell is the one it acts on (aria-selected ${pressed})`);
+      await page.keyboard.press("Escape");
+    },
+  },
+  {
     // The report this came from: on a phone, the person who wrote the app could not find where to
     // connect an API. The panel switches were a scrolling row of unnamed icons, and the rest of the
     // row was past the edge. A unit test cannot see a layout, so this is the one place that asks
@@ -1509,7 +1877,7 @@ try {
 
   for (const flow of only ? FLOWS.filter((f) => f.name.includes(only)) : FLOWS) {
     console.log(`\n${flow.name}`);
-    const { ctx, page } = await freshPage(browser, flow.width, flow.touch);
+    const { ctx, page } = await freshPage(browser, flow.width, flow.touch, flow.height);
     const errors = [];
     page.on("pageerror", (err) => errors.push(String(err).split("\n")[0]));
     try {

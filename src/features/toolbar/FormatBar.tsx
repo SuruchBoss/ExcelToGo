@@ -15,6 +15,7 @@ import {
   ArrowDownAZ,
   ArrowDownZA,
   BarChart3,
+  CalendarCheck,
   MessageSquareText,
   Palette,
   ShieldCheck,
@@ -24,7 +25,8 @@ import {
   TableCellsMerge,
   PaintBucket,
 } from "lucide-react";
-import { getComment, NumberFormat } from "@/lib/sheet";
+import { getComment } from "@/lib/sheet";
+import { type FormatChoice, formatChoiceOf } from "@/lib/cellFormat";
 import { isSingleCell } from "@/types/sheet-ui";
 import { mergeWouldDiscard, rangeHasMerge } from "@/lib/sheetMerges";
 import { isFrozen } from "@/lib/sheetFreeze";
@@ -77,6 +79,7 @@ export default function FormatBar() {
   const [validationAt, setValidationAt] = useState<{ x: number; y: number } | null>(null);
   const [namesAt, setNamesAt] = useState<{ x: number; y: number } | null>(null);
   const [fillAt, setFillAt] = useState<{ x: number; y: number } | null>(null);
+  const setConvertingDates = useSheetStore((s) => s.setConvertingDates);
   const setFillColor = useSheetStore((s) => s.setFillColor);
   const singleCell = isSingleCell(selection);
   // Whether the button currently splits rather than joins.
@@ -141,7 +144,7 @@ export default function FormatBar() {
 
 
   return (
-    <div ref={barRef} className="flex items-center gap-2 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4" onMouseDown={keepGridFocus}>
+    <div ref={barRef} className="flex items-center gap-2 scroll-hint-x overflow-x-auto border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 sm:max-lg:short:order-last sm:max-lg:short:col-span-2 sm:max-lg:short:border-b-0 sm:max-lg:short:border-t" onMouseDown={keepGridFocus}>
       {/* The word only on a wide screen: italic and underline made this row 72px longer, and at
           1366px the word was the one thing on it nobody presses. */}
       <span className="hidden shrink-0 text-xs font-medium text-zinc-500 2xl:inline">{t.formatBar.label}</span>
@@ -253,10 +256,10 @@ export default function FormatBar() {
         <span className={clsx(SHEET_ONLY, "shrink-0 text-[13px] text-zinc-700")}>{t.formatBar.numberFormatTitle}</span>
       <select
         onChange={(e) => {
-          setNumberFormat(e.target.value as NumberFormat);
+          setNumberFormat(e.target.value as FormatChoice);
           setToolsOpen(false);
         }}
-        value={format.numberFormat ?? "general"}
+        value={formatChoiceOf(format.numberFormat, format.dateFormat)}
         aria-label={t.formatBar.numberFormatTitle}
         title={t.formatBar.numberFormatTitle}
         className="h-11 rounded-md border border-zinc-300 px-1.5 text-xs text-zinc-700 outline-none focus:border-emerald-500 max-[1366px]:group-data-[sheet=open]:flex-1 min-[1366px]:h-7"
@@ -268,6 +271,27 @@ export default function FormatBar() {
         ))}
       </select>
       </label>
+
+      {/* Dates written as text that only a person can say how to read (#82): `15/01/69`. Beside
+          the format list because it is the same question — what is in these cells. Not in the row
+          from 1366 to 1439px: the row was measured to fit at 1366 with nothing to spare, and this
+          would push it 14px off the screen. There, as everywhere, the cell menu has it. */}
+      <button
+        onClick={() => {
+          setConvertingDates(true);
+          setToolsOpen(false);
+        }}
+        aria-label={t.convertDates.button}
+        title={t.convertDates.hint}
+        aria-haspopup="dialog"
+        className={clsx(
+          "flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 min-[1366px]:h-7 min-[1366px]:w-7 min-[1366px]:max-[1439px]:hidden",
+          IN_SHEET_BTN
+        )}
+      >
+        <CalendarCheck size={14} aria-hidden />
+        <span className={SHEET_ONLY}>{t.convertDates.button}</span>
+      </button>
 
       <button
         onClick={(e) => {

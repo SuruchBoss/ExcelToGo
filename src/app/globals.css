@@ -5,6 +5,10 @@
 
 @import "tailwindcss";
 
+/* A short screen: a phone on its side, or a laptop at 200% zoom. Below this height the app folds
+   its bars together so the grid keeps six rows or more (#129, UX-13). */
+@custom-variant short (@media (max-height: 499px));
+
 /**
  * Ledger paper, not a SaaS gradient.
  *

@@ -58,6 +58,9 @@ const GRIP_ROOM = 22;
 const selectionKey = (s: { startRow: number; startCol: number; endRow: number; endCol: number }) =>
   `${s.startRow},${s.startCol},${s.endRow},${s.endCol}`;
 
+/** How long a finger rests on a cell before the cell menu opens — the platforms' own long press. */
+const LONG_PRESS_MS = 500;
+
 export default function SpreadsheetGrid() {
   const t = useT();
   const sheet = useSheetStore(selectActiveSheet);
@@ -419,6 +422,14 @@ export default function SpreadsheetGrid() {
   /** Whether the cell a touch landed on was already the selected one, sampled before the tap
    *  changes the selection. See the pointer handlers on each cell for why. */
   const tappedAlreadySelected = useRef(false);
+  /** A finger held still on a cell opens the cell menu, as a right-click does. iOS never fires
+   *  `contextmenu` for it, and on a short screen the menu is where the touch bar's actions went
+   *  (#129). Android fires `contextmenu` as well, which opens the same menu in the same place. */
+  const longPress = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const endLongPress = () => {
+    if (longPress.current) window.clearTimeout(longPress.current.timer);
+    longPress.current = null;
+  };
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -933,9 +944,47 @@ export default function SpreadsheetGrid() {
                   // already moved the selection by the time pointerup runs, which would make the
                   // very first tap open the editor.
                   onPointerDown={(e) => {
-                    if (e.pointerType === "touch") tappedAlreadySelected.current = isActive(r, c);
+                    if (e.pointerType !== "touch") return;
+                    tappedAlreadySelected.current = isActive(r, c);
+                    endLongPress();
+                    // Not on the grip, whose hold is the start of a drag, and not while a formula is
+                    // being pointed at, where a touch is an address (#99).
+                    if (editingHere || pointingFormula() || (e.target as HTMLElement).closest('[role="slider"]')) return;
+                    const { clientX: x, clientY: y } = e;
+                    longPress.current = {
+                      x,
+                      y,
+                      timer: window.setTimeout(() => {
+                        longPress.current = null;
+                        // The lift that follows is the end of the hold, not a second tap — and not a
+                        // click either, though Chromium sends one: it landed outside the menu and
+                        // closed it. Swallowed once, until just after the lift.
+                        tappedAlreadySelected.current = false;
+                        const swallow = (ev: Event) => {
+                          ev.stopImmediatePropagation();
+                          ev.preventDefault();
+                        };
+                        window.addEventListener("mousedown", swallow, true);
+                        window.addEventListener("click", swallow, true);
+                        const release = () => {
+                          window.removeEventListener("mousedown", swallow, true);
+                          window.removeEventListener("click", swallow, true);
+                        };
+                        window.addEventListener("pointerup", () => window.setTimeout(release, 400), { once: true, capture: true });
+                        window.setTimeout(release, 5000);
+                        if (!inSelection(r, c)) setSelection(singleCellSelection(r, c));
+                        // Clear of the finger, so the lift cannot land on the first item.
+                        setCellMenu({ x: x + 12, y: y + 12 });
+                      }, LONG_PRESS_MS),
+                    };
                   }}
+                  onPointerMove={(e) => {
+                    const held = longPress.current;
+                    if (held && Math.hypot(e.clientX - held.x, e.clientY - held.y) > 10) endLongPress();
+                  }}
+                  onPointerCancel={endLongPress}
                   onPointerUp={(e) => {
+                    endLongPress();
                     if (e.pointerType !== "touch" || !tappedAlreadySelected.current) return;
                     if (!editingHere && !locked) {
                       caretAtEnd.current = true;
@@ -1251,7 +1300,9 @@ export default function SpreadsheetGrid() {
         aria-multiselectable
         aria-rowcount={sheet.rows + 1}
         aria-colcount={sheet.cols + 1}
-        className="border-separate border-spacing-0 select-none"
+        // No iOS callout on a long press: the press is the cell menu here (#129), and Safari's own
+        // "copy / look up" bubble would land on top of it. The grid only — text anywhere else keeps it.
+        className="border-separate border-spacing-0 select-none [-webkit-touch-callout:none]"
         style={{ tableLayout: "fixed" }}
       >
         <thead>
@@ -1440,6 +1491,9 @@ export default function SpreadsheetGrid() {
             deleteRow: deleteSelectedRow,
             deleteColumn: deleteSelectedColumn,
             clear: clearSelection,
+            convertDates: () => useSheetStore.getState().setConvertingDates(true),
+            fillDown: () => fillWithinSelection("down"),
+            canFillDown: selection.endRow > selection.startRow,
           }}
         />
       )}

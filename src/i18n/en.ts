@@ -11,6 +11,7 @@ export const en: Messages = {
     skipToContent: "Skip to main content",
     languageToggleLabel: "TH",
     languageToggleTitle: "Switch to Thai",
+    heading: "Edit an Excel file in your browser",
   },
   toolbar: {
     importFile: "Import file",
@@ -427,8 +428,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1727", label: "automated tests" },
-      { value: "323", label: "security tests" },
+      { value: "1831", label: "automated tests" },
+      { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -706,6 +707,13 @@ export const en: Messages = {
     text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
     openSample: "Try it with sample data",
   },
+  pasteWarning: {
+    title: "Rows here are hidden",
+    body: (hidden) =>
+      `This paste would land on ${hidden === 1 ? "a row" : `${hidden} rows`} the filter is hiding, writing over ${hidden === 1 ? "its" : "their"} values where you can't see them. Clear the filter first to see what it would replace. Undo always takes a paste back.`,
+    pasteAnyway: "Paste anyway",
+    cancel: "Cancel",
+  },
   sortWarning: {
     title: "Formulas here point at other rows",
     body: (formulas) =>
@@ -718,9 +726,29 @@ export const en: Messages = {
     body: "One tab edits at a time, so neither can save over the other's work. Use this tab instead and the other tab turns view-only, with everything done there already saved. View only shows the latest work here without changing it.",
     useHere: "Use this tab instead",
     viewOnly: "View only",
-    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here.",
+    viewing: "View only: this workbook is being edited in another tab, and changes made there show up here. If that tab closes, this one can edit by itself.",
     handedOff: "This tab is view-only now: the workbook was opened for editing in another tab. Everything done here was saved.",
     refused: "Nothing can be changed in this tab. Use this tab instead to edit here.",
+    freed: "The other tab closed — you can edit here now, with everything it saved.",
+    dismiss: "Dismiss",
+  },
+  convertDates: {
+    button: "Convert to dates",
+    menu: "Convert to dates…",
+    hint: "Read the selected text as dates, such as 15/01/69",
+    title: "Convert text to dates",
+    body: "A date like 15/01/69 can be read more than one way — 2569 B.E. or 1969, day first or month first — so it is not guessed. Say how it is written and see the result before anything changes. Cells that cannot be read are left as they are, and one undo puts everything back.",
+    order: "Order",
+    orders: { dmy: "Day/Month/Year", mdy: "Month/Day/Year", ymd: "Year/Month/Day" },
+    calendar: "Years in",
+    calendars: { be: "B.E. (Thai)", ce: "A.D." },
+    preview: "Preview",
+    before: "Now",
+    after: "Becomes",
+    counts: (changed, unreadable) => `${changed} ${changed === 1 ? "cell" : "cells"} will change${unreadable ? ` · ${unreadable} cannot be read (left as they are)` : ""}`,
+    nothing: "Nothing in the selection reads as a date this way",
+    confirm: (changed) => `Convert ${changed} ${changed === 1 ? "cell" : "cells"}`,
+    cancel: "Cancel",
   },
   newFile: {
     button: "New file",
@@ -735,6 +763,9 @@ export const en: Messages = {
   },
   storageNotice: {
     text: "Your work is saved in this browser only — never uploaded. Clearing your browser data or moving to another device loses it, so use \"Export Excel\" to keep a copy.",
+    short: "Saved in this browser only — export a file to keep a copy",
+    title: "Saved in this browser only",
+    noCopyYet: "No copy exported yet",
     dismiss: "Dismiss",
   },
   saveFailed: {
@@ -868,8 +899,7 @@ export const en: Messages = {
     addColumn: "Add a column",
   },
   formatBar: {
-    hide: "Hide the formatting bar",
-    show: "Show the formatting bar",
+    toggle: "Cell format",
     label: "Format:",
     boldTitle: "Bold",
     italicTitle: "Italic",
@@ -900,6 +930,7 @@ export const en: Messages = {
     currency: "Currency (฿)",
     text: "Text",
     date: "Date",
+    dateBE: "Date (B.E.)",
     datetime: "Date and time",
     time: "Time",
   },
@@ -957,6 +988,10 @@ export const en: Messages = {
     allFiltersCleared: (total) => `Cleared all filters, showing all ${total} rows`,
     pasted: (rows, cols, at) => `Pasted ${rows} rows by ${cols} columns at ${at}`,
     cleared: (range) => `Cleared ${range}`,
+    datesConverted: (changed, unreadable) =>
+      changed === 0
+        ? "No cell could be read as a date this way"
+        : `Converted ${changed} ${changed === 1 ? "cell" : "cells"} to dates${unreadable ? ` · ${unreadable} could not be read and were left as they were` : ""}`,
     filled: (cells, range) => `Filled ${cells} cells, ${range} now selected`,
     replacedOne: (at) => `Replaced in ${at}`,
     replacedAll: (cells) => `Replaced in ${cells} cells`,
@@ -1123,6 +1158,8 @@ export const en: Messages = {
     heuristicNote: "No API key yet, so this is a keyword guess — check the formula before using it, or open \"Use your own API key\" below for a real answer from Claude",
     guessBadge: "Keyword guess",
     overwriteWarning: (address) => `${address} already holds something — inserting overwrites it (you can undo)`,
+    selfReference: (address) => `This formula reads ${address} itself, so putting it there would make it circular (#CIRCULAR!). Click an empty cell outside the range and ask again.`,
+    openForm: (name) => `Open the ${name} form`,
     connectionError: "Sorry, something went wrong connecting to AI. Please try again.",
     rateLimited: (seconds) => `Too many questions too quickly — try again in ${seconds}s.`,
     examples: [
@@ -1172,14 +1209,27 @@ export const en: Messages = {
       min: "Finds the smallest value in the selected range",
       counta: "Counts how many cells have data (aren't blank)",
       count: "Counts how many cells in the selected range contain numbers",
-      vlookup: "Looks up the value in A1 in the table's first column, then returns column 2's value (adjust the column number as needed)",
       if: "Checks a condition and returns one value if true, another if false (adjust the condition and text as needed)",
       concatenate: "Joins text from multiple cells together",
       upper: "Converts text to all uppercase",
       today: "Shows today's date",
     },
     noMatch:
-      "I can't tell which formula you want — without a key this assistant only matches keywords, so it won't guess. Pick one from the Formulas panel on the left, or paste an API key in the box above and ask again.",
+      "I can't tell which formula you want. Without a key this assistant only matches words, so it won't guess. Press “Formulas” and pick one, or add a key under “Use your own API key” below and ask again.",
+    declined: {
+      conditional: (form) =>
+        `This asks about some rows only (“only drinks”, “more than 15”). Working on the whole column would give a number that looks right and isn't, so this guess stops here.${form ? ` ${form} works on just the rows that match: its form below asks for the column to check, the condition, and the cells to use.` : " Press “Formulas” to build it, or add your own API key below."}`,
+      needsRange: (form) =>
+        `Which cells? Click in the column you mean (or select the cells) and ask again, or open the ${form} form below and pick them.`,
+      textColumns: (form) =>
+        `Say which columns, by their names in row 1 (“product”, “category”), or open the ${form} form below and pick the cells.`,
+      lookup:
+        "A lookup needs two things this guess can't read from a question: what to look for, and the table to look in. The VLOOKUP form below asks for both.",
+      ifDetail:
+        "An IF needs the column to check (by its name in row 1), a comparison and a number, like “if the price is above 50”. Not all of that is in the question, so the IF form below asks for it.",
+      subtract: "Subtracting needs the two cells, which the question doesn't point at. Type = in a cell and click them, like =C2-D2.",
+      dates: "Days between two dates need the two date cells. The DATEDIF form below asks for them.",
+    },
     ifOutcomes: ["Pass", "Fail"],
   },
   formulas: {

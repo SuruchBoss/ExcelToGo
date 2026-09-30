@@ -10,7 +10,7 @@
  * opens the AI panel pays for it, which matters because this app's whole pitch is that it loads and
  * runs on your machine.
  */
-import { heuristicSuggest } from "@/lib/aiHeuristic";
+import { heuristicSuggest, type AskContext } from "@/lib/aiHeuristic";
 import { AI_MAX_TOKENS, AI_MODEL, SYSTEM_PROMPTS, buildUserMessage, parseFormulaReply } from "@/lib/aiPrompt";
 import { Locale } from "@/i18n/types";
 
@@ -19,6 +19,7 @@ export interface AskResult {
   formula: string | null;
   explanation: string;
   source: "ai" | "heuristic";
+  form?: string;
 }
 
 export async function askAnthropicDirect(
@@ -26,7 +27,8 @@ export async function askAnthropicDirect(
   question: string,
   selection: string | undefined,
   locale: Locale,
-  headers: string[] = []
+  headers: string[] = [],
+  context: AskContext = { range: selection }
 ): Promise<AskResult> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   // `dangerouslyAllowBrowser` is the point rather than a workaround: the key belongs to the person
@@ -48,6 +50,6 @@ export async function askAnthropicDirect(
   } catch {
     // A reply that doesn't parse is still an answered, billed request — falling back locally beats
     // showing the person who just paid for it an error.
-    return { ...heuristicSuggest(question, selection, locale), source: "heuristic" };
+    return { ...heuristicSuggest(question, context, locale), source: "heuristic" };
   }
 }
