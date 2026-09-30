@@ -42,7 +42,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1831%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1839%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -63,7 +63,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1831 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1839 automated tests.
 
 ---
 
@@ -107,7 +107,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1831 passing tests could not catch
+### 🧪 What 1839 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -118,7 +118,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1831 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1839 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -390,7 +390,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1831-case Vitest suite |
+| `npm test` | Run the 1839-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1903,6 +1903,8 @@ touch uses it to pull a selection out — and nothing behind it on a mouse.
 <p align="center"><img src="public/screenshots/en/37-fill-handle.png" width="820"></p>
 
 ```
+10           → 10, 10, 10        one number is copied, not counted up (#162)
+1, 2         → 3, 4              two or more numbers with a constant gap continue
 5, 10        → 15, 20, 25        a constant gap
 10, 8        → 6, 4, 2           downwards
 1, 4, 9      → 1, 4, 9           repeated, not extrapolated
@@ -1911,11 +1913,18 @@ touch uses it to pull a selection out — and nothing behind it on a mouse.
 พ.ย., ธ.ค.   → ม.ค., ก.พ.        wrapping the year
 Q3           → Q4, Q1, Q2
 Item 08      → Item 09, Item 10  keeping the padding
+2026-01-15   → 2026-01-16, …     one date continues by day (#82's B.E. dates too)
 =A1*2        → =A2*2, =A3*2      moved, never extended
 ```
 
 Thai lists come first in that table because this app does. `จ อ พ` is a week to the people who will
 use it, and continuing `Mon Tue` but not `จ อ` would be building for somebody else.
+
+**One number is copied (#162)** by `Ctrl+D`, `Ctrl+R`, `Ctrl+Enter` and the handle alike, as in Excel. `Ctrl+D`
+on a price of `10` used to write `10, 11, 12, 13, 14` — a different price on every row with nothing to say so.
+`฿1,500` and `15%` are copied the same way. A single date, day, month, quarter or `Item 08` still continues.
+**There is no way yet to count up from a single number** (Excel's Ctrl+drag): type the first two, such as
+`1, 2`, and drag, or use `SEQUENCE`.
 
 **Two deliberate refusals.** A run whose gap is not constant is repeated rather than extrapolated —
 Excel fits a trend line to 1, 4, 9, and a wrong guess in a spreadsheet is a number nobody questions.
@@ -2803,7 +2812,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1831 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1839 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3802,13 +3811,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1831 cases across 125 files, via Vitest
+npm test      # 1839 cases across 125 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1831 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1839 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -3927,10 +3936,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1831 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1839 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1831 passing tests could not catch](#-what-1831-passing-tests-could-not-catch), repeatable
+> [What 1839 passing tests could not catch](#-what-1839-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4040,6 +4049,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **The matcher filling in SUMIF/COUNTIF itself** (after #62–#64) — a question with a condition gets a button
       to the form today, because guessing which column holds the condition is another guess. When the value it
       names sits in exactly one column ("Drinks" only in B), the form could come pre-filled.
+- [ ] **Counting up from a single number (Excel's Ctrl+drag)** (after #162) — one number is always copied now, so
+      counting needs the first two typed before the drag
 - [ ] **Each tab on a file of its own** (#140) — one browser holds one workbook today (#47), so a second tab can
       only take over or look; it cannot open another file beside the first. Saves have to be kept per file
       first, and then the lock taken per file rather than per browser.

@@ -12,6 +12,7 @@
  * a grid, a pointer or a store. The grid decides *what* was selected and *where* it was dragged to;
  * this decides only what the new cells should say.
  */
+import { formattedNumber } from "./cellLiteral";
 import { type DateKind, dateLiteral, formatSerial, isoFromSerial, THAI_MONTHS } from "./excelDate";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 
@@ -62,7 +63,10 @@ function suffixParts(values: string[]): { prefix: string; numbers: number[]; wid
   return { prefix, numbers: digits.map((d) => Number(d)), width: digits[0].length };
 }
 
-/** The constant gap in a run of numbers, or null when there is no single gap. */
+/**
+ * The constant gap in a run, or null when there is no single gap. One value steps by one: a single
+ * date, day, month or `Item 08` continues (a single plain number never gets here — it is copied).
+ */
 function step(numbers: number[]): number | null {
   if (numbers.length === 1) return 1;
   const first = numbers[1] - numbers[0];
@@ -116,6 +120,16 @@ export function fillValues({ seed, count, rowOffset, colOffset }: FillRequest): 
       const c = colOffset === 0 ? 0 : colOffset + (block(i) - 1) * seed.length * Math.sign(colOffset);
       out.push(`=${shiftFormulaRefs(raw.slice(1), r, c)}`);
     }
+    return out;
+  }
+
+  // One number is copied, not counted up from (#162). Excel's Ctrl+D copies, and so does dragging
+  // the handle from a single number; `10` filled down a column of prices as 10, 11, 12… is a
+  // different number in every row that nobody would think to check. Two numbers with a constant
+  // gap still continue below, and so do a single date, day, month or `Item 08`, as in Excel.
+  // `฿1,500` and `15%` count as numbers here (#52), or the suffix rule would make `฿1,501`.
+  if (seed.length === 1 && (asNumber(seed[0]) !== null || formattedNumber(seed[0]) !== null)) {
+    for (let i = 0; i < count; i++) out.push(seed[0]);
     return out;
   }
 

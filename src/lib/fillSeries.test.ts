@@ -8,8 +8,29 @@ const fill = (seed: string[], count: number, rowOffset = seed.length, colOffset 
   fillValues({ seed, count, rowOffset, colOffset });
 
 describe("numbers", () => {
-  it("continues a single number by one", () => {
-    expect(fill(["1"], 3)).toEqual(["2", "3", "4"]);
+  it("copies a single number, as Excel does (#162)", () => {
+    // Ctrl+D on a price used to write 10, 11, 12, 13, 14: a different number in every row.
+    expect(fill(["10"], 4)).toEqual(["10", "10", "10", "10"]);
+    expect(fill(["-2.5"], 2)).toEqual(["-2.5", "-2.5"]);
+    expect(fill(["1,250"], 2)).toEqual(["1,250", "1,250"]);
+  });
+
+  it("copies a single number written as a screen shows it, rather than counting its last digits (#52, #162)", () => {
+    expect(fill(["฿1,500"], 2)).toEqual(["฿1,500", "฿1,500"]);
+    expect(fill(["15%"], 2)).toEqual(["15%", "15%"]);
+  });
+
+  it("still continues from one cell what is not a plain number (#162)", () => {
+    expect(fill(["2026-01-15"], 2)).toEqual(["2026-01-16", "2026-01-17"]);
+    expect(fill(["15/01/2569"], 2)).toEqual(["16/01/2569", "17/01/2569"]);
+    expect(fill(["จ"], 2)).toEqual(["อ", "พ"]);
+    expect(fill(["Item 08"], 2)).toEqual(["Item 09", "Item 10"]);
+    expect(fill(["Q3"], 2)).toEqual(["Q4", "Q1"]);
+  });
+
+  it("continues two numbers with a constant gap (#162)", () => {
+    expect(fill(["1", "2"], 2)).toEqual(["3", "4"]);
+    expect(fill(["10", "20"], 2)).toEqual(["30", "40"]);
   });
 
   it("follows the gap two cells set", () => {
