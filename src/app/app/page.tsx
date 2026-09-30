@@ -24,6 +24,7 @@ import CloudPanel from "@/features/cloud/CloudPanel";
 import SortWarningDialog from "@/features/grid/SortWarningDialog";
 import PasteWarningDialog from "@/features/grid/PasteWarningDialog";
 import OtherTabDialog from "@/features/otherTab/OtherTabDialog";
+import ConvertDatesDialog from "@/features/toolbar/ConvertDatesDialog";
 import { useTabLock } from "@/features/otherTab/useTabLock";
 import ImportNotice from "@/features/grid/ImportNotice";
 import MessageSlot from "@/features/grid/MessageSlot";
@@ -33,6 +34,7 @@ import LiveAnnouncer from "@/features/a11y/LiveAnnouncer";
 import FindPanel from "@/features/search/FindPanel";
 import { useFindDialog } from "@/features/search/useFindDialog";
 import SkipLink from "@/features/a11y/SkipLink";
+import { CrashTest } from "@/features/crash/crashTest";
 import { X } from "lucide-react";
 import { useLiveDataPolling } from "@/features/data/useLiveDataPolling";
 import {
@@ -92,6 +94,8 @@ export default function Home() {
   const sidebarMode = useSheetStore((s) => s.sidebarMode);
   const hasPending = useSheetStore((s) => s.pending !== null);
   const setSidebarMode = useSheetStore((s) => s.setSidebarMode);
+  const convertingDates = useSheetStore((s) => s.convertingDates);
+  const setConvertingDates = useSheetStore((s) => s.setConvertingDates);
   const cancelPending = useSheetStore((s) => s.cancelPending);
   const sidebarVisible = hasPending || sidebarMode !== "none";
   // ⌖ on a phone: the form folds into a bar so the grid above it can be tapped (#138). From 1024px
@@ -108,11 +112,13 @@ export default function Home() {
     // On a short screen the tab bar is 44px of icons, and from 640px wide it shares its row with the
     // sheet tabs, so nothing is reserved for it at all (#129).
     <div className="flex h-dvh flex-col bg-zinc-50 max-lg:pb-[calc(3.5rem+env(safe-area-inset-bottom))] max-sm:short:pb-[calc(2.75rem+env(safe-area-inset-bottom))] sm:max-lg:short:pb-0">
+      <CrashTest />
       <SkipLink />
       <LiveAnnouncer />
       <SortWarningDialog />
       <PasteWarningDialog />
       <OtherTabDialog />
+      {convertingDates && <ConvertDatesDialog onClose={() => setConvertingDates(false)} />}
       {find.open && <FindPanel onClose={find.close} />}
       {/* On a short screen from 640px wide, the top bar and the formula bar share one row, and the
           formatting row (folded by default there) opens under both (#129, UX-13). */}

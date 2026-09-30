@@ -211,6 +211,9 @@ async function freshPage(browser, width = 1280, touch = false, height = 900) {
   return { ctx, page };
 }
 
+/** The notice a tab shows when it edits because the editing tab closed (#146). */
+const FREED = /อีกแท็บปิดแล้ว|The other tab closed/;
+
 const FLOWS = [
   {
     name: "typing a formula recalculates on screen",
@@ -1049,13 +1052,42 @@ const FLOWS = [
       const mirrored = (await cell(page, 2, 0).innerText()).trim();
       note(mirrored === "typed-in-second", `the view-only tab shows what the other tab saves (A3 "${mirrored}")`);
 
-      // Nobody is editing once the second tab closes, so a third one simply edits.
+      // The tab that took over closes: the first one was waiting, so it edits again by itself (#146).
       await second.close();
-      const third = await page.context().newPage();
-      await third.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
-      const kept = await Promise.all([0, 1, 2].map(async (r) => (await cell(third, r, 0).innerText()).trim()));
-      note(kept.join() === "first-tab,half-typed,typed-in-second", `reopened, the workbook has every edit from both tabs (${kept.join(", ")})`);
-      await third.close();
+      await page.getByRole("status").filter({ hasText: FREED }).waitFor({ timeout: 5000 });
+      await typeInCell(page, 3, 0, "back-in-first");
+      const kept = await Promise.all([0, 1, 2, 3].map(async (r) => (await cell(page, r, 0).innerText()).trim()));
+      note(kept.join() === "first-tab,half-typed,typed-in-second,back-in-first", `the first tab edits again with every edit from both tabs (${kept.join(", ")})`);
+    },
+  },
+  {
+    // #146: closing the old tab and carrying on in the one in front of you is how this usually ends.
+    name: "a tab that chose view only edits by itself once the editing tab closes, from its last save",
+    async run(page) {
+      await typeInCell(page, 0, 0, "one");
+      const second = await page.context().newPage();
+      await second.goto(ORIGIN + "/app", { waitUntil: "networkidle" });
+      const ask = second.getByRole("alertdialog", { name: /^(ไฟล์นี้เปิดอยู่ในอีกแท็บ|This workbook is open in another tab)$/ });
+      await ask.waitFor({ timeout: 5000 });
+      await second.keyboard.press("Escape");
+      await second.getByRole("status").filter({ hasText: /^(ดูอย่างเดียว|View only):/ }).waitFor({ timeout: 5000 });
+
+      await typeInCell(page, 1, 0, "two");
+      await page.close();
+
+      await second.getByRole("status").filter({ hasText: FREED }).waitFor({ timeout: 5000 });
+      note(true, "the second tab says the other tab closed and it can edit");
+      const stale = await second.getByRole("status").filter({ hasText: /กำลังแก้อยู่ในอีกแท็บ|being edited in another tab/ }).count();
+      note(stale === 0, `nothing still says another tab is editing (${stale})`);
+
+      await typeInCell(second, 2, 0, "three");
+      const got = await Promise.all([0, 1, 2].map(async (r) => (await cell(second, r, 0).innerText()).trim()));
+      note(got.join() === "one,two,three", `typing works and the earlier work is all there (${got.join(", ")})`);
+
+      // And it is this tab that saves now: a fresh tab opens on what it typed.
+      await second.reload({ waitUntil: "networkidle" });
+      const saved = (await cell(second, 2, 0).innerText()).trim();
+      note(saved === "three", `what it typed was saved (A3 "${saved}")`);
     },
   },
   {
@@ -1073,6 +1105,63 @@ const FLOWS = [
       const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "ส่งออก CSV" }).click()]);
       const name = download.suggestedFilename();
       note(name === "ยอดขาย.csv", `the CSV is named after the sheet ("${name}")`);
+    },
+  },
+  {
+    // #145: the screen that holds someone's work on the worst day had no gate at all. The crash is
+    // the app's own crash test (`features/crash/crashTest.ts`), which only an automated browser that
+    // asks for it can set off — never a workbook in a format the app happens not to read.
+    name: "a crash offers the work as a file that holds it, and Try again comes back to it",
+    async run(page, { tmp }) {
+      await typeInCell(page, 0, 0, "rescued");
+      await typeInCell(page, 1, 0, "=1+1");
+      await page.evaluate(() => sessionStorage.setItem("exceltogo:crash-test", "1"));
+      await page.reload({ waitUntil: "networkidle" });
+      await page.getByRole("heading", { level: 1, name: /มีบางอย่างพัง/ }).waitFor({ timeout: 10_000 });
+      note(true, "the rescue screen appears, and says the sheet is still here");
+
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /Sheet1/ }).click()]);
+      const file = join(tmp, "rescued.csv");
+      await download.saveAs(file);
+      const csv = await readFile(file, "utf8");
+      note(csv.includes("rescued") && csv.includes("=1+1"), `the file it offers holds the work, formulas as typed (${JSON.stringify(csv.replace(/^\uFEFF/, "").trim())})`);
+
+      await page.evaluate(() => sessionStorage.removeItem("exceltogo:crash-test"));
+      await page.getByRole("button", { name: /ลองอีกครั้ง/ }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="0"][data-col="0"]')?.innerText.trim() === "rescued", null, { timeout: 10_000 }).catch(() => {});
+      const back = (await cell(page, 0, 0).innerText().catch(() => "")).trim();
+      note(back === "rescued", `Try again comes back to the sheet as it was (A1 "${back}")`);
+    },
+  },
+  {
+    // #82: Buddhist-Era dates. A typed 15/01/2569 is a date the formulas can use; 15/01/69 waits for
+    // "Convert to dates", reached from the cell menu, which shows what it will do and undoes in one step.
+    name: "a Buddhist-Era date counts, and Convert to dates turns 15/01/69 into one from the cell menu, undone in one step",
+    async run(page) {
+      await typeInCell(page, 0, 0, "15/01/2569");
+      await typeInCell(page, 0, 1, '=DATEDIF(A1,"2026-03-01","d")');
+      const days = (await cell(page, 0, 1).innerText()).trim();
+      const shown = (await cell(page, 0, 0).innerText()).trim();
+      note(days === "45" && shown === "15/01/2569", `15/01/2569 shows as typed and counts as 15 January 2026 (A1 "${shown}", DATEDIF ${days})`);
+
+      await typeInCell(page, 1, 0, "15/01/69");
+      await typeInCell(page, 2, 0, "unknown");
+      await cell(page, 1, 0).click();
+      await cell(page, 2, 0).click({ modifiers: ["Shift"] });
+      await cell(page, 1, 0).click({ button: "right" });
+      await page.getByRole("menuitem", { name: /แปลงเป็นวันที่/ }).click();
+      const dialog = page.getByRole("dialog", { name: /แปลงข้อความเป็นวันที่/ });
+      await dialog.waitFor({ timeout: 5000 });
+      const preview = await dialog.innerText();
+      note(preview.includes("2026-01-15") && /อ่านไม่ออก 1 ช่อง/.test(preview), "the preview shows 15/01/69 as 2026 and one cell it cannot read");
+      await dialog.getByRole("button", { name: /^แปลง 1 ช่อง$/ }).click();
+      const after = [(await cell(page, 1, 0).innerText()).trim(), (await cell(page, 2, 0).innerText()).trim()];
+      note(after.join() === "15/1/2569,unknown", `converted, it shows the Buddhist year and the unreadable cell is untouched (${after.join(", ")})`);
+
+      await cell(page, 3, 0).click();
+      await page.keyboard.press("Control+z");
+      const undone = (await cell(page, 1, 0).innerText()).trim();
+      note(undone === "15/01/69", `one undo puts the text back (A2 "${undone}")`);
     },
   },
   {

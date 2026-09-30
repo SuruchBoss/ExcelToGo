@@ -146,6 +146,14 @@ describe("an action on a filtered selection skips the rows the filter hides (#50
     expect(raw(3, 1)).toBe("x");
   });
 
+  it("Convert to dates (#82) converts the rows on screen and leaves the hidden ones as typed", () => {
+    ["15/01/69", "16/01/69", "17/01/69", "18/01/69", "19/01/69"].forEach((v, i) => store().setCellRaw(i + 1, 2, v));
+    select(1, 2, 5, 2);
+    store().convertSelectionToDates("dmy", "be");
+    store().clearAllFilters();
+    expect([1, 2, 3, 4, 5].map((r) => raw(r, 2))).toEqual(["2026-01-15", "16/01/69", "2026-01-17", "18/01/69", "2026-01-19"]);
+  });
+
   it("with no filter on, every row in the selection is acted on, as before", () => {
     store().clearAllFilters();
     select(1, 1, 5, 1);
