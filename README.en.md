@@ -2064,7 +2064,11 @@ none of those; it closes the gap the letters fell through:
 - One tap on a cell that can be edited → a **"Tap again to type"** label under it (said to a screen reader too). It
   goes after 4 seconds, or when the editor opens, the cursor moves on, or the tap turns into a range drag
 - Nothing that takes typing keeps focus after one tap, so there is no keyboard for letters to fall into
-- A key from a phone keyboard that still arrives with no editor open (one that names no key) brings up the same
+- That, not catching letters, is the real guard. Dev reproduced the loss and found the text that vanishes is what an
+  on-screen keyboard sends as `insertText`/IME while focus is on a cell that cannot take typing, and **that path fires
+  no event the app could catch**. So it is prevented by leaving nothing that takes typing, and no keyboard, up instead
+  (a hardware keyboard sends real `keydown`s, and still types straight after one tap as before)
+- A key that names no key (`Unidentified` / keyCode 229) reaching the grid with no editor open brings up the same
   label and is said out loud, rather than being dropped
 - Letters typed between Enter and the next cell's editor, when that row was not drawn yet (past the rows the grid
   keeps rendered), go into that cell rather than into the keyboard keeper
