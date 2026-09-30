@@ -577,6 +577,57 @@ const FLOWS = [
     },
   },
   {
+    name: "every page in the sitemap names itself as canonical, and the landing page's structured data parses (#148)",
+    async run(page) {
+      // The root layout once set one canonical for the whole site, so /app and /guide told search
+      // engines they were copies of /. Only the served HTML can say what a page declares: metadata
+      // merges down through layouts, and a unit test of one file cannot see what a route inherits.
+      const sitemap = await (await fetch(ORIGIN + "/sitemap.xml")).text();
+      const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+      note(urls.length >= 3, `the sitemap lists the pages (${urls.length})`);
+      for (const url of urls) {
+        const res = await fetch(ORIGIN + new URL(url).pathname);
+        const html = await res.text();
+        const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+        note(res.status === 200 && canonical === url, `${new URL(url).pathname} declares itself canonical`, `${res.status} · ${canonical ?? "none"}`);
+        const h1s = (html.match(/<h1[\s>]/g) ?? []).length;
+        note(h1s === 1, `and has one <h1> (${h1s})`);
+        // A page that sets its own Open Graph text replaces the parent's block whole, image included.
+        const card = /<meta property="og:image" content="https?:\/\/[^"]+"/.test(html) && html.includes('<meta name="twitter:card" content="summary_large_image"');
+        note(card, "and keeps the link-preview card image");
+      }
+
+      // The JSON-LD is an inline script, so it needs this request's nonce like every other one.
+      const res = await fetch(ORIGIN + "/");
+      const nonce = res.headers.get("content-security-policy")?.match(/'nonce-([^']+)'/)?.[1];
+      const html = await res.text();
+      const tag = html.match(/<script type="application\/ld\+json"([^>]*)>([\s\S]*?)<\/script>/);
+      let ld = null;
+      try {
+        ld = JSON.parse(tag?.[2] ?? "");
+      } catch {
+        // stays null
+      }
+      note(Boolean(ld?.["@graph"]?.some((n) => n["@type"] === "WebApplication")), "/ carries WebApplication structured data that parses");
+      note(Boolean(nonce) && (tag?.[1] ?? "").includes(`nonce="${nonce}"`), "and it carries this request's CSP nonce");
+      note(!/aggregateRating|ratingValue/.test(tag?.[2] ?? ""), "and claims no rating");
+      // Search Console re-checks ownership from this tag; losing it in a metadata merge would quietly
+      // drop the property's reports, and nothing else would notice.
+      const verification = html.match(/<meta name="google-site-verification" content="([^"]+)"/)?.[1];
+      note(Boolean(verification), "and / keeps its Google Search Console verification tag", verification ?? "none");
+
+      // A mistyped link is a 404, kept out of the index, in both languages, with a way on.
+      await page.goto(ORIGIN + "/no-such-page");
+      const missing = await fetch(ORIGIN + "/no-such-page");
+      const missingHtml = await missing.text();
+      note(missing.status === 404 && /<meta name="robots" content="noindex/.test(missingHtml), "an unknown path is a 404 with noindex");
+      note(!/rel="canonical"/.test(missingHtml), "and declares no canonical");
+      const heading = await page.getByRole("heading", { level: 1 }).innerText();
+      const links = await page.getByRole("navigation").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+      note(heading === "ไม่พบหน้านี้" && links.includes("/app") && links.includes("/"), "and says so in Thai, with links to the app and home", `${heading} · ${links}`);
+    },
+  },
+  {
     name: "the cloud client is built, and never downloaded",
     async run(page) {
       // The README says a deployment with no cloud configured never downloads the ~250KB Supabase
