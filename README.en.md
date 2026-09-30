@@ -400,7 +400,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 44 flows: a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 45 flows: one tap on a phone only selecting and saying to tap again, with nothing typed lost in silence (#171), a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -2010,7 +2010,7 @@ of an 844px screen before the grid began. All three are fixed:
 | **Formulas / AI / live data / cloud** | A **tab bar along the bottom with a name on every tab**, where a thumb reaches. A panel rises as a sheet that **stops short of the top**, so the first rows and the selected cell stay in view, and stops above the tab bar, so the next panel is one press away · **starts closed** so the sheet is what you see first |
 | **Top row** | Four things: the name · undo · redo · language — **nothing past the edge**. The rest (import, export, add row/column, connecting an API) is in a **menu** with a name on every line |
 | **Formatting row** | Bold · italic · underline · alignment · colour · **Tools**, which fits 390px. The rest (number format, merge, freeze, sort, rules, charts, pivot) is in a **cell tools sheet**, every button named |
-| **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all · The second tap puts **the caret at the end of the text** rather than selecting it all (the first letter typed used to wipe the cell) · **Enter moves into the next cell ready to type, and the keyboard stays up** — it used to fold every time, so ten values meant ten taps to reopen it |
+| **Editing a cell** | **Tap to select, tap again to edit** — it previously needed a double-click, which a phone cannot do, so nothing could be typed at all · The second tap puts **the caret at the end of the text** rather than selecting it all (the first letter typed used to wipe the cell) · **Enter moves into the next cell ready to type, and the keyboard stays up** — it used to fold every time, so ten values meant ten taps to reopen it · **One tap and the cell says "Tap again to type"**, and a keyboard left up by the cell before goes away (#171, below) |
 | **Tap targets** | 44×44 everywhere, in both bars (up from 28px — and five format-bar buttons were still only 32px wide until a later measurement caught them) |
 | **Selecting a range** | A **grip on the selection's bottom-right corner**, dragged to pull the range out — its touch target is 44×44 while the dot you see stays small |
 | **Copy / paste / fill down** | **A row of commands above the sheet tabs** — see [Copy, paste and fill down with a finger](#-copy-paste-and-fill-down-with-a-finger) |
@@ -2052,6 +2052,26 @@ that a range could never be bigger than the screen, which on a phone is a handfu
 
 The grip appears only where `(pointer: coarse)` matches. On a mouse it would sit under the cursor
 looking like Excel's fill handle while doing something else entirely.
+
+**Typing after one tap is never lost in silence (#171).** In blind test round 3, two testers tapped a cell once
+and typed while the keyboard was still up from the cell before; the letters went nowhere and nothing said so. One of
+them lost a whole category, twelve rows. There were two ways out: (a) typing after one tap starts editing, as on a
+desktop, or (b) one tap only selects, no keyboard is left up, and the cell says to tap again. **This is (b)**: (a)
+needs something that takes typing to hold focus after every tap, so the keyboard would jump up on each one and run
+into the range drag, the long press for the cell menu and the tap during `=`, none of which may break. (b) changes
+none of those; it closes the gap the letters fell through:
+
+- One tap on a cell that can be edited → a **"Tap again to type"** label under it (said to a screen reader too). It
+  goes after 4 seconds, or when the editor opens, the cursor moves on, or the tap turns into a range drag
+- Nothing that takes typing keeps focus after one tap, so there is no keyboard for letters to fall into
+- A key from a phone keyboard that still arrives with no editor open (one that names no key) brings up the same
+  label and is said out loud, rather than being dropped
+- Letters typed between Enter and the next cell's editor, when that row was not drawn yet (past the rows the grid
+  keeps rendered), go into that cell rather than into the keyboard keeper
+
+**Limit:** on a phone it still takes two taps to type. Typing straight after one tap waits for the larger work in
+#130 (how to use the grid by touch). One e2e flow at 390px with a touch screen checks everything above, and the
+a11y gate scans the label while it is up.
 
 Desktop behaviour is **unchanged**: the panel still sits beside the grid, and clicking an already
 selected cell still does *not* start editing — you double-click, as in Excel. The tap-again rule is
@@ -3877,7 +3897,7 @@ assistant sent a range including its text header, because the context builder re
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 44 flows in a real browser (needs a build)
+npm run check:e2e   # 45 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -4225,8 +4245,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now 114 checks — most recently the
-      formula pages (#149), and before them the notice on a tab that edits again because the other closed (#146), the rescue screen after a crash (#145),
+      configured) and the live-data picker, which needs a source first. Now 115 checks — most recently the
+      "Tap again to type" label on a phone (#171), before it the formula pages (#149), and before them the notice on a tab that edits again because the other closed (#146), the rescue screen after a crash (#145),
       the Convert to dates dialog (#82), the question asked before a paste over rows a filter hides (#50) and
       the 404 page (#148), and before them the AI assistant's answer card, both the one with a formula and the one that points at a form (#62–#64).
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
@@ -4286,7 +4306,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 44 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 45 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

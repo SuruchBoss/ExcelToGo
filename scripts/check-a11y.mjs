@@ -611,6 +611,19 @@ const OPENED_STATES = [
     },
   },
   {
+    // #171: what one tap on a phone says under the cell. It goes by itself after a few seconds,
+    // so the scan runs while it is up.
+    name: "tap again to type",
+    path: "/app",
+    widths: [390],
+    touch: true,
+    async open(page) {
+      const box = await page.locator('td[data-row="2"][data-col="1"]').boundingBox();
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await page.locator('td[data-tap-hint="แตะอีกครั้งเพื่อพิมพ์"]').waitFor({ state: "attached", timeout: 3000 });
+    },
+  },
+  {
     name: "phone menu",
     path: "/app",
     widths: [390],
