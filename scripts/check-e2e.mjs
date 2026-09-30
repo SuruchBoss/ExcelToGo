@@ -378,6 +378,36 @@ const FLOWS = [
     },
   },
   {
+    // #52. What Excel and Google Sheets put on the clipboard is the number *as the screen shows it*,
+    // with CRLF between rows. It goes through the OS clipboard and a real Ctrl+V here, not a
+    // synthetic event, because the paste event's clipboardData is the seam: a unit test hands the
+    // store a string and never learns what the browser actually delivers.
+    name: "numbers pasted from Excel's clipboard add up, and codes stay codes (#52)",
+    async run(page) {
+      await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: ORIGIN });
+      const tsv = ["รหัส\tยอด", "00123\t1,250", "081-234-5678\t15%", "00456\t฿1,234.50", "12345\t$2,000"].join("\r\n") + "\r\n";
+      await page.evaluate((text) => navigator.clipboard.writeText(text), tsv);
+      await cell(page, 0, 0).click();
+      await page.keyboard.press("Control+v");
+      await page.waitForFunction(() => document.querySelector('td[data-row="4"][data-col="1"]')?.innerText.trim() === "$2,000", null, {
+        timeout: 5000,
+      });
+      const at = async (r, c) => (await cell(page, r, c).innerText()).trim();
+      const shown = [await at(1, 1), await at(2, 1), await at(3, 1)];
+      note(shown.join("|") === "1,250|15%|฿1,234.50", `each cell shows what was copied (${shown.join(", ")})`);
+
+      await typeInCell(page, 5, 1, "=SUM(B2:B5)");
+      const sum = await at(5, 1);
+      note(sum === "4484.65", `=SUM over the pasted column is 4484.65, not 0 (showed "${sum}")`);
+      await typeInCell(page, 5, 2, "=B3*100");
+      const percent = await at(5, 2);
+      note(percent === "15", `15% is 0.15, as #53 stores it (=B3*100 showed "${percent}")`);
+
+      const codes = [await at(1, 0), await at(2, 0), await at(3, 0)];
+      note(codes.join("|") === "00123|081-234-5678|00456", `codes and phone numbers stay as they were (${codes.join(", ")})`);
+    },
+  },
+  {
     name: "the formula bar shows the cell as it is now, and leaving it writes nothing (#42)",
     async run(page) {
       const bar = page.getByPlaceholder(label.formulaBar);

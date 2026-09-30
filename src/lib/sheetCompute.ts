@@ -13,7 +13,7 @@ import {
 import { FormulaError, FormulaValue } from "./formulaEngine/types";
 import { toDisplayString } from "./formulaEngine/coerce";
 import { formatNumberForDisplay } from "./cellFormat";
-import { literalValue } from "./cellLiteral";
+import { formattedNumber, literalValue } from "./cellLiteral";
 import { dateLiteral } from "./excelDate";
 
 /**
@@ -214,6 +214,8 @@ function displayOf(sheet: SheetModel, r: number, c: number, v: FormulaValue): st
   if (typeof v === "number") {
     const raw = sheet.cells[r]?.[c] ?? "";
     if (!isFormula(raw) && dateLiteral(raw)) return raw;
+    // So does a number typed the way a screen shows it — `1,250`, `12%`, `฿1,500.00` (#52).
+    if (!isFormula(raw) && formattedNumber(raw)) return raw.trim();
   }
   return toDisplayString(v);
 }

@@ -42,7 +42,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1843%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1861%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -63,7 +63,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1843 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1861 automated tests.
 
 ---
 
@@ -107,7 +107,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1843 passing tests could not catch
+### 🧪 What 1861 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -118,7 +118,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1843 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1861 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -392,7 +392,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1843-case Vitest suite |
+| `npm test` | Run the 1861-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -400,7 +400,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 43 flows: a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 44 flows: a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -1174,7 +1174,9 @@ exported as it came. Picking a format from the menu replaces it with the app's.
 50.00%, not 5000%, in the browser and in cloud workbooks. It becomes the `0.00"%"` code the app used to write,
 once, on load; choosing Percent again gives Excel's.
 
-**Limits:** typing `50%` into a cell still gives text (#52). A file's fractions (`# ?/?`) and scientific codes
+Typing `50%` into a cell gives the number 0.5 now (#52; see [Phone numbers and codes keep their zeros](#-phone-numbers-and-codes-keep-their-zeros)).
+
+**Limits:** A file's fractions (`# ?/?`) and scientific codes
 (`0.00E+00`) show the plain number. Codes cannot be written in the app yet, only brought in with a file. A cloud
 workbook saved by this version is refused by older app versions, on purpose: opened there, its percentages would
 be 100 times off.
@@ -1223,12 +1225,24 @@ share one rule (`src/lib/cellLiteral.ts`), in this order:
 | A cell formatted as **Text** (number format menu · Excel's `@`) | `123` | text — for a whole column of codes |
 | An integer with a leading zero | `0812345678`, `00123` | text, automatically (`0` and `0.5` are still numbers) |
 | Twelve digits or more, nothing else | `1234567890123` | text, automatically (eleven digits or fewer, or with a point or sign, are numbers) |
+| A number as a screen shows it — commas at the thousands, a trailing `%`, or a currency sign in front (#52) | `1,250`, `12%`, `฿1,500.00` | **a number** — `12%` is 0.12 (as #53 stores it) · the cell shows what was typed |
 | Everything else | `-3`, `12.50`, `10000000000` | a number, as before |
 
 In an `.xlsx` export, number-looking text is a string cell with the `@` format, so Excel does not turn it back
 into a number when somebody edits the cell. On import, a string cell the rules would read as something else
 (`"123"`, or text starting with `=`) gets its `'` back, so the file makes the round trip unchanged. Formulas
 reading these cells behave like Excel's: `=A1+1` still computes, `=LEN(A1)` is 10, `=A1&""` is `"0812345678"`.
+
+**Numbers copied from Excel, Google Sheets or a web page (#52)** — those copy a number *as the screen shows it*:
+`1,250`, `15%`, `฿1,234.50`. We used to keep that as text, so a pasted column added up to 0 with nothing to say
+so. Typed or pasted, it is a number now: the cell shows what was typed, formulas read the number (`="1,250"*2` is
+2500, as in Excel) and the `.xlsx` gets the number with a matching format (`#,##0` · `0%` · `"฿"#,##0.00`). The rule
+is strict enough that codes stay codes:
+- every comma must fall on a thousands boundary — `1,25` and `12,34,567` are text
+- a leading zero is still text — `01,250`, `00123`
+- a hyphen is not part of a number — `081-234-5678` and an account number `123-4-56789-0` are text
+- a number with no comma, `%` or currency sign follows the table above — `1234567890123` is still text
+- the currency signs it knows are `฿ $ € £ ¥`; to keep one as text on purpose, start it with `'` or format the cell as Text
 
 **What changes, on purpose:** `007` is text now, so it sorts after every number, and charts and conditional
 formatting do not count it as a number. Sheets already saved in the browser need nothing done: the raw text was
@@ -1891,6 +1905,8 @@ touch uses it to pull a selection out — and nothing behind it on a mouse.
 <p align="center"><img src="public/screenshots/en/37-fill-handle.png" width="820"></p>
 
 ```
+10           → 10, 10, 10        one number is copied, not counted up (#162)
+1, 2         → 3, 4              two or more numbers with a constant gap continue
 5, 10        → 15, 20, 25        a constant gap
 10, 8        → 6, 4, 2           downwards
 1, 4, 9      → 1, 4, 9           repeated, not extrapolated
@@ -1899,11 +1915,18 @@ touch uses it to pull a selection out — and nothing behind it on a mouse.
 พ.ย., ธ.ค.   → ม.ค., ก.พ.        wrapping the year
 Q3           → Q4, Q1, Q2
 Item 08      → Item 09, Item 10  keeping the padding
+2026-01-15   → 2026-01-16, …     one date continues by day (#82's B.E. dates too)
 =A1*2        → =A2*2, =A3*2      moved, never extended
 ```
 
 Thai lists come first in that table because this app does. `จ อ พ` is a week to the people who will
 use it, and continuing `Mon Tue` but not `จ อ` would be building for somebody else.
+
+**One number is copied (#162)** by `Ctrl+D`, `Ctrl+R`, `Ctrl+Enter` and the handle alike, as in Excel. `Ctrl+D`
+on a price of `10` used to write `10, 11, 12, 13, 14` — a different price on every row with nothing to say so.
+`฿1,500` and `15%` are copied the same way. A single date, day, month, quarter or `Item 08` still continues.
+**There is no way yet to count up from a single number** (Excel's Ctrl+drag): type the first two, such as
+`1, 2`, and drag, or use `SEQUENCE`.
 
 **Two deliberate refusals.** A run whose gap is not constant is repeated rather than extrapolated —
 Excel fits a trend line to 1, 4, 9, and a wrong guess in a spreadsheet is a number nobody questions.
@@ -2253,6 +2276,11 @@ A confirm dialog that fires every time is a dialog that teaches people to click 
 Merges already follow inserted and deleted rows and columns, and they **reach the exported `.xlsx` as real
 `<mergeCell>` elements** — checked by unzipping the export and reading the XML directly rather than
 through our own reader.
+
+**A merge in an imported Excel file holds its value in the top-left cell only (#55)**, as it does in Excel. The
+library that reads the file reports a merge's value from every cell the merge covers, and we used to copy it into
+each, so a `10` merged across A1:A3 added up to 30 and COUNTA said 3. Covered cells now import empty (their formatting
+stays), totals match Excel, and the merge still goes back out with the export.
 
 **Not supported yet:** vertical centring inside a merged cell, and dragging a selection out from a merged
 cell still measures from its top-left corner.
@@ -2834,7 +2862,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1843 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1861 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3836,20 +3864,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1843 cases across 126 files, via Vitest
+npm test      # 1861 cases across 127 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1843 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1861 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 43 flows in a real browser (needs a build)
+npm run check:e2e   # 44 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3961,10 +3989,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1843 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1861 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1843 passing tests could not catch](#-what-1843-passing-tests-could-not-catch), repeatable
+> [What 1861 passing tests could not catch](#-what-1861-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4002,7 +4030,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `rateLimit.test.ts` | 20 | Parsing `Retry-After` (seconds and HTTP-date) and every `X-RateLimit-Reset` shape, separating a quota-exhausted 403 from a plain one, backoff maths |
 | `sheetMerges.test.ts` | 35 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `excelIO.test.ts` | 52 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form), cross-sheet dropdowns read from the sheet the rule names (quoted names, a hidden sheet, a missing one, and the PaynEat ERP draft-0 template), a column exactly width 9 still 9 after export (#136) |
+| `excelIO.test.ts` | 55 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form), cross-sheet dropdowns read from the sheet the rule names (quoted names, a hidden sheet, a missing one, and the PaynEat ERP draft-0 template), a column exactly width 9 still 9 after export (#136), a merge in the file holding its value in the top-left cell only with SUM/COUNTA matching Excel and the merge still exported (#55) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
 | `server/urlGuard.test.ts` | 31 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 (`::ffff:`, `::`, SIIT, NAT64, 6to4, Teredo), non-http schemes, and the allowlist |
 | `server/sourcesAuth.test.ts` | 9 | No token means off, right/wrong/prefix tokens, and telling "switched off" apart from "wrong token" |
@@ -4016,6 +4044,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
 | `dataValidation.test.ts` | 28 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated |
 | `namedRanges.test.ts` | 26 | Named ranges: a name that is also an address, has a space, or is reserved is refused with the reason; the name is substituted throughout the tree; precedents point at the real rectangle; repointing a name really does recompute (the cache is keyed by the name table); and a name does not shift when filled |
+| `store/pasteNumbers.test.ts` | 1 | A TSV as Excel and Google Sheets put it on the clipboard (`1,250`, `15%`, `฿1,234.50`) pasted through the store: every cell a number, SUM right, codes like `00123` and `081-234-5678` still text (#52) |
 | `store/sheetRules.test.ts` | 11 | Both features at the store: a value outside the rule is not saved and is announced, rules and names follow row edits, deleting a name leaves the formula reading `#NAME?` rather than rewritten, and undo brings the name back |
 | `store/liveBlockStructure.test.ts` | 8 | Live data and row/column edits (#46), through the real store and then a refresh: the block moves with them, a total under it is not written over, an edit inside it is refused with the reason, deleting its header unlinks it and keeps the values, and undo brings the linked block back |
 | `store/liveEmptyResult.test.ts` | 2 | A source answering with an empty list (#65): the block keeps its last header, the rows under it are cleared, a SUM reads 0 rather than the envelope, and it fills again when rows come back |
@@ -4075,6 +4104,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **The matcher filling in SUMIF/COUNTIF itself** (after #62–#64) — a question with a condition gets a button
       to the form today, because guessing which column holds the condition is another guess. When the value it
       names sits in exactly one column ("Drinks" only in B), the form could come pre-filled.
+- [ ] **Counting up from a single number (Excel's Ctrl+drag)** (after #162) — one number is always copied now, so
+      counting needs the first two typed before the drag
 - [ ] **Each tab on a file of its own** (#140) — one browser holds one workbook today (#47), so a second tab can
       only take over or look; it cannot open another file beside the first. Saves have to be kept per file
       first, and then the lock taken per file rather than per browser.
@@ -4255,7 +4286,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 43 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 44 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -4344,7 +4375,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **`SUM`/`AVERAGE`/`COUNT` skip text in a range, as Excel does (#38)** — today number-looking text is added in
 - [x] **Live CSV data uses the same rule (#36)** — done: leading zeros in live CSV data stay
 - [x] **Sorting keeps row formulas right, and asks before a sort that would not (#48)** — done (see [Sort and filter](#-sort-and-filter)) · still open: a formula outside the range pointing at one cell inside it
-- [x] **Percent ×100 as Excel does, and a file's number formats shown as the file has them (#53)** — done (see [Cell formatting](#-cell-formatting)) · still open: typing `50%` as a number (#52), writing codes in the app
+- [x] **Percent ×100 as Excel does, and a file's number formats shown as the file has them (#53)** — done (see [Cell formatting](#-cell-formatting)) · typing `50%` as a number (#52) is done too · still open: writing codes in the app
+- [x] **Numbers from outside are right (#52, #55)** — done: `1,250` `15%` `฿1,500.00` typed or pasted are numbers with a matching format, codes stay text, and a merge in an Excel file holds its value in the top-left cell only, so totals match Excel
 - [x] **Dates are dates (#45)** — done (see [Dates and times](#-dates-and-times)): Excel serials, times kept
       on import, real date cells on export, a file's own layout shown as the file has it, and `###` rather than a cut-off date
 - [x] **Opening blank, a sample button, and New file** — done (see [A blank start, and New file](#-a-blank-start-and-new-file))
