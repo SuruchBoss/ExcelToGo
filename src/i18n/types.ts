@@ -553,6 +553,12 @@ export interface Messages {
     openSample: string;
   };
   /** Asked before a sort that would give formulas another row's numbers (#48). */
+  pasteWarning: {
+    title: string;
+    body: (hidden: number) => string;
+    pasteAnyway: string;
+    cancel: string;
+  };
   sortWarning: {
     title: string;
     body: (formulas: number) => string;

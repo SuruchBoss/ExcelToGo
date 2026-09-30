@@ -707,6 +707,13 @@ export const en: Messages = {
     text: "A blank sheet, ready for your work — type into a cell, or import an Excel or CSV file.",
     openSample: "Try it with sample data",
   },
+  pasteWarning: {
+    title: "Rows here are hidden",
+    body: (hidden) =>
+      `This paste would land on ${hidden === 1 ? "a row" : `${hidden} rows`} the filter is hiding, writing over ${hidden === 1 ? "its" : "their"} values where you can't see them. Clear the filter first to see what it would replace. Undo always takes a paste back.`,
+    pasteAnyway: "Paste anyway",
+    cancel: "Cancel",
+  },
   sortWarning: {
     title: "Formulas here point at other rows",
     body: (formulas) =>
