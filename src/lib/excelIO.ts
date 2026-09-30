@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { commentKey } from "./cellComments";
-import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
+import { formattedNumber, literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { chartDataFrom } from "./charts";
 import { dateKindAt, dateTextReader } from "./dateCells";
 import { BE_DATE_CODE, DEFAULT_DATE_CODE, dateLiteral, isoFromSerial, kindOfDateCode } from "./excelDate";
@@ -519,7 +519,11 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): { sheet: SheetModel; row
       const r = rowNumber - 1;
       const c = colNumber - 1;
       if (r < sheet.rows && c < sheet.cols) {
-        sheet.cells[r][c] = isTextCell(cell) ? rawForText(cellValueToRaw(cell)) : cellValueToRaw(cell);
+        // A cell a merge covers holds nothing in Excel; ExcelJS hands back the top-left cell's value
+        // for it anyway, so a merged 10 over A1:A3 used to arrive as three 10s and SUM said 30 (#55).
+        // Its formatting (borders on the band's edge) still counts; its value does not.
+        const covered = cell.type === ExcelJS.ValueType.Merge;
+        sheet.cells[r][c] = covered ? "" : isTextCell(cell) ? rawForText(cellValueToRaw(cell)) : cellValueToRaw(cell);
         const align = cell.alignment?.horizontal;
         const valign = cell.alignment?.vertical;
         const format = {
@@ -737,6 +741,12 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         // One typed with a Buddhist year goes out showing it, as it shows in the grid (#82).
         const be = kind && kind !== "time" && dateLiteral(sheet.cells[r]?.[c] ?? "")?.era === "be";
         if (kind) cell.numFmt = be ? BE_DATE_CODE[kind] : DEFAULT_DATE_CODE[kind];
+        // A number typed as a screen shows it goes out showing the same way (#52): `1,250` as
+        // #,##0, `12%` as 0%, `฿1,500.00` as "฿"#,##0.00 — not as 1250, 0.12 and 1500.
+        else {
+          const shown = formattedNumber(sheet.cells[r]?.[c] ?? "");
+          if (shown) cell.numFmt = shown.code;
+        }
       }
       // Text that would read as a number goes out marked as text ("@"), which is what stops Excel
       // itself from turning it back into one the first time somebody edits the cell. After the
