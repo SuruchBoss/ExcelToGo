@@ -14,7 +14,7 @@
  */
 import fs from "fs";
 import path from "path";
-import { ROOT, SECURITY_TEST_FILES, countMatches, countTestFiles, countTests, read } from "./counts.mjs";
+import { ENGINE_FUNCTION_KEY, ROOT, SECURITY_TEST_FILES, countMatches, countTestFiles, countTests, read } from "./counts.mjs";
 
 // `ROOT`, `read` and the counting helpers come from counts.mjs — see the note at the top of it.
 const READMES = ["README.md", "README.en.md"];
@@ -187,7 +187,7 @@ for (const [file, text, start, end] of [
 // suite had passed 400, and claimed 25 palette formulas and 42 engine functions when the real
 // figures were 32 and 49. The README's counts were being kept honest by this script while the
 // page every visitor sees first drifted for months.
-const engineFunctions = countMatches("src/lib/formulaEngine/functions.ts", /^  [A-Z][A-Z0-9.]*:/gm);
+const engineFunctions = countMatches("src/lib/formulaEngine/functions.ts", ENGINE_FUNCTION_KEY);
 const paletteFormulas = countMatches("src/lib/formulaCatalog.ts", /^    id: "[A-Z][A-Z0-9.]*",/gm);
 
 // The security figure is quoted on the landing page and all through the README's security section,

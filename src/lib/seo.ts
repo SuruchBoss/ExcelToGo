@@ -3,6 +3,7 @@
 
 import type { Locale } from "@/i18n/types";
 import { SITE_URL } from "@/lib/site";
+import { th } from "@/i18n/th";
 
 /**
  * What a search result says about each page, in one place (#148).
@@ -125,7 +126,29 @@ export function landingJsonLd() {
         name: MAKER.name,
         sameAs: MAKER.sameAs,
       },
+      faqPage(th.landing.faq),
     ],
+  };
+}
+
+/** How a visible FAQ answer reads as one passage: the answer, then its details. */
+export const faqAnswerText = (f: { answer: string; detail: string }) => `${f.answer} ${f.detail}`;
+
+/**
+ * The landing page's questions as `FAQPage` data (#152), built from the same entries the page
+ * renders, in Thai because that is what a crawler gets. It may never say more than the page does:
+ * a test compares the two, and the e2e reads the served page against the served data.
+ */
+export function faqPage(faq: readonly { q: string; answer: string; detail: string }[]) {
+  return {
+    "@type": "FAQPage",
+    "@id": `${SITE_URL}/#faq`,
+    inLanguage: "th",
+    mainEntity: faq.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: faqAnswerText(f) },
+    })),
   };
 }
 
