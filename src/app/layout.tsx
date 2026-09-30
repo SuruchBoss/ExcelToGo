@@ -65,6 +65,10 @@ export const metadata: Metadata = {
   // No canonical here on purpose (#148): set once in the root layout it was inherited by every
   // route, and told search engines that /app and /guide were copies of /. Each page declares its
   // own; `check:e2e` fails if a page in the sitemap does not.
+
+  // Google Search Console ownership check for the production site (#148). Not a secret: the tag is
+  // public by design, and it only proves that whoever controls this deployment added it.
+  verification: { google: "9qpXdFd3GLA-nMaN6FDWw6AUTZJzvEGa_4SLuZQ8VZw" },
 };
 
 /**

@@ -52,7 +52,9 @@ import { guardedStorage } from "@/lib/saveHealth";
 import { isEditingTab, noteRefusedEdit } from "./tabStore";
 import { autoChartAnchor, MAX_COL_WIDTH, MIN_COL_WIDTH } from "@/lib/gridGeometry";
 import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
-import { autoSumRange, headerRow } from "@/lib/aiRange";
+import { autoSumRange, hasHeaderRow, headerRow, namedColumns, runIsText, TOTAL_LABEL, valuesMentioned, type NamedColumn } from "@/lib/aiRange";
+import { placeFormula, type Cell } from "@/lib/aiPlacement";
+import { referencedRects } from "@/lib/precedents";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
 import { renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
 import { fillBlock, fillTargetFor, fillWithin, type FillTarget } from "@/lib/fillSeries";
@@ -391,7 +393,9 @@ interface SheetState {
   insertPending: () => void;
   cancelPending: () => void;
 
-  insertAIFormula: (formula: string) => void;
+  /** Writes an answer where `placeFormula` says it goes, and returns where — or `null`, having
+   *  written nothing, when the only cells it could go into are ones it reads (#64). */
+  insertAIFormula: (formula: string) => Cell | null;
 
   /** `append` adds the file's sheets after the ones open; `replace` swaps the workbook for it. */
   importFromFile: (file: File, mode?: ImportMode) => Promise<void>;
@@ -1820,22 +1824,23 @@ export const useSheetStore = create<SheetState>()(
           }));
         },
 
-        insertAIFormula: (formula) =>
-          set((s) => {
-            const raw = formula.startsWith("=") ? formula : `=${formula}`;
-            const sel = activeSelectionOf(s);
-            return {
-              sheets: updateActiveSheet(s, (sheet, selection) =>
-                withFormulaDateFormat(
-                  setCellRaw(sheet, selection.anchorRow, selection.anchorCol, raw),
-                  raw,
-                  selection.anchorRow,
-                  selection.anchorCol
-                )
-              ),
-              ...say(getMessages().live.formulaInserted(raw, cellRef(sel.anchorRow, sel.anchorCol))),
-            };
-          }),
+        insertAIFormula: (formula) => {
+          const s = get();
+          const raw = formula.startsWith("=") ? formula : `=${formula}`;
+          const sel = activeSelectionOf(s);
+          const { sheet } = activeTab(s);
+          const at = placeFormula(raw, { row: sel.anchorRow, col: sel.anchorCol }, (r, c) => sheet.cells[r]?.[c] ?? "", sheet.rows, sheet.names);
+          if (!at) {
+            set(say(getMessages().ai.selfReference(cellRef(sel.anchorRow, sel.anchorCol))));
+            return null;
+          }
+          set((st) => ({
+            sheets: updateActiveSheet(st, (sh) => withFormulaDateFormat(setCellRaw(sh, at.row, at.col, raw), raw, at.row, at.col)),
+            selectionBySheetId: { ...st.selectionBySheetId, [st.activeSheetId]: singleCellSelection(at.row, at.col) },
+            ...say(getMessages().live.formulaInserted(raw, cellRef(at.row, at.col))),
+          }));
+          return at;
+        },
 
         importFromFile: async (file, mode = "replace") => {
           countUsage("file_imported");
@@ -2112,11 +2117,38 @@ export function useSelectionAddress() {
 }
 
 export interface AIContext {
-  /** Where the cursor is, for the "ช่วงที่เลือกอยู่" line and the Insert button. */
+  /** Where the cursor is, for the "ช่วงที่เลือกอยู่" line. */
   address: string;
-  /** What the question is probably *about* — see `aiRange.ts`. */
-  range: string;
+  /** The cursor's cell: where an answer goes unless it reads it — see `aiPlacement.ts`. */
+  anchor: Cell;
+  /** The cursor's row, 1-based, for answers that work along one row (#63). */
+  row: number;
+  /** The range is text, so a count is COUNTA (#63). */
+  rangeIsText: boolean;
+  /** Row 1's names and the data under each, when row 1 is a row of names (#63). */
+  columns: NamedColumn[];
+  /** The sheet's values that a question names — a condition the answer must not drop (#63). */
+  mentionsIn: (question: string) => string[];
+  /** What the question is probably *about* — see `aiRange.ts`. Absent when the cursor is in no
+   *  column of data: sending its own address made `=SUM(F2)` in F2 (#64). */
+  range?: string;
   headers: string[];
+}
+
+/**
+ * A cell that totals what is above it, so it is left out of a range an answer works on (#63): a SUM
+ * or SUBTOTAL that reads the cell right above it, or a number on a row whose label says total.
+ */
+function totalCellTest(sheet: SheetModel, valueAt: (r: number, c: number) => string) {
+  return (row: number, col: number): boolean => {
+    const raw = sheet.cells[row]?.[col] ?? "";
+    if (/^=\s*(SUM|SUBTOTAL|AGGREGATE)\s*\(/i.test(raw)) {
+      if (referencedRects(raw).some((r) => r.startCol <= col && col <= r.endCol && r.startRow <= row - 1 && row - 1 <= r.endRow)) return true;
+    }
+    if (row === 0) return false;
+    for (let c = 0; c < col; c++) if (TOTAL_LABEL.test(valueAt(row, c).trim())) return true;
+    return false;
+  };
 }
 
 /**
@@ -2131,25 +2163,41 @@ export function useAIContext(): AIContext {
   const sheet = useSheetStore(selectActiveSheet);
   const sheets = useSheetStore((s) => s.sheets);
   const selection = useSheetStore(selectActiveSelection);
-  return useMemo(() => {
-    const address = selectionToAddress(selection);
-    // The *computed* sheet, not the raw one. On this app's own sample data column E is nine
-    // `=C2*D2` formulas, so reading `sheet.cells` made every number in it look like text: the
-    // "drop a header that sits on top of numbers" rule never fired, and the range came back as
-    // E1:E10 with the word "รวม" inside it. SUM ignores text, so the total was right and the range
-    // was wrong — the kind of bug that survives because the number on screen looks fine.
-    const { display } = computeTab(sheet, sheets);
-    const valueAt = (r: number, c: number) => display[r]?.[c] ?? "";
-    const bounds = { rows: sheet.rows, cols: sheet.cols };
-    const headers = headerRow(valueAt, bounds);
-    // A selection of more than one cell already says what it means; only a lone cursor is ambiguous.
-    if (!isSingleCell(selection)) return { address, range: address, headers };
-    const run = autoSumRange(valueAt, bounds, { row: selection.anchorRow, col: selection.anchorCol });
-    const range = run
-      ? rangeRefString(run.startRow, selection.anchorCol, run.endRow, selection.anchorCol)
-      : address;
-    return { address, range, headers };
-  }, [sheet, sheets, selection]);
+  return useMemo(() => aiContextOf(sheet, sheets, selection), [sheet, sheets, selection]);
+}
+
+/** `useAIContext` outside React — what the panel sends, for the tests that ask QA's questions. */
+export function aiContextOf(sheet: SheetModel, sheets: SheetTab[], selection: SelectionRect): AIContext {
+  const address = selectionToAddress(selection);
+  // The *computed* sheet, not the raw one. On this app's own sample data column E is nine
+  // `=C2*D2` formulas, so reading `sheet.cells` made every number in it look like text: the
+  // "drop a header that sits on top of numbers" rule never fired, and the range came back as
+  // E1:E10 with the word "รวม" inside it. SUM ignores text, so the total was right and the range
+  // was wrong — the kind of bug that survives because the number on screen looks fine.
+  const { display } = computeTab(sheet, sheets);
+  const valueAt = (r: number, c: number) => display[r]?.[c] ?? "";
+  const bounds = { rows: sheet.rows, cols: sheet.cols };
+  const headers = headerRow(valueAt, bounds);
+  const header = hasHeaderRow(valueAt, bounds);
+  const isTotal = totalCellTest(sheet, valueAt);
+  const anchor = { row: selection.anchorRow, col: selection.anchorCol };
+  const base = {
+    address,
+    anchor,
+    row: anchor.row + 1,
+    headers,
+    columns: namedColumns(valueAt, bounds, colToLetters, { isTotal }),
+    mentionsIn: (question: string) => valuesMentioned(question, valueAt, bounds, header),
+  };
+  // A selection of more than one cell already says what it means; only a lone cursor is ambiguous.
+  if (!isSingleCell(selection)) return { ...base, range: address, rangeIsText: false };
+  const run = autoSumRange(valueAt, bounds, anchor, { isTotal, hasHeaderRow: header });
+  if (!run) return { ...base, rangeIsText: false };
+  return {
+    ...base,
+    range: rangeRefString(run.startRow, anchor.col, run.endRow, anchor.col),
+    rangeIsText: runIsText(valueAt, anchor.col, run),
+  };
 }
 
 const EMPTY_FORMAT: CellFormat = {};

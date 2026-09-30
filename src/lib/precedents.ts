@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { AstNode } from "./formulaEngine/ast";
-import { compileFormula, packCell, PrecedentRange } from "./formulaEngine/formulaProgram";
+import { compileFormula, packCell, PrecedentRange, unpackCol, unpackRow } from "./formulaEngine/formulaProgram";
 import { nameScope, type NameTable } from "./namedRanges";
 
 /**
@@ -108,4 +108,23 @@ export function precedentsOf(raw: string, limit = MAX_HIGHLIGHT, names?: NameTab
     return { cells: new Set(), ranges: found.ranges, tooMany: true, elsewhere: found.elsewhere };
   }
   return { cells, ranges: found.ranges, tooMany: false, elsewhere: found.elsewhere };
+}
+
+/**
+ * Every rectangle a formula reads on its own sheet, a lone cell as a 1×1 one — without building the
+ * set of cells, so `=SUM(A1:A100000)` costs nothing. For asking "does this read cell X?" before a formula
+ * is written into X (#64), where a set capped at `MAX_HIGHLIGHT` would answer "no" to a big range.
+ */
+export function referencedRects(raw: string, names?: NameTable): PrecedentRange[] {
+  if (typeof raw !== "string" || !raw.startsWith("=")) return [];
+  const program = compileFormula(raw.slice(1), nameScope(names));
+  if (!program.ast) return [];
+  const found = { cells: [] as number[], ranges: [] as PrecedentRange[], elsewhere: false };
+  collect(program.ast, found);
+  const cells = found.cells.map((key) => {
+    const row = unpackRow(key);
+    const col = unpackCol(key);
+    return { startRow: row, startCol: col, endRow: row, endCol: col };
+  });
+  return [...cells, ...found.ranges];
 }

@@ -461,6 +461,39 @@ const FLOWS = [
     },
   },
   {
+    // #62–#64, through the real route and its keyword matcher (no key on this server): a total asked
+    // for from inside a column is offered under the column rather than over the cell's own formula,
+    // and a question with a condition offers no formula at all — the SUMIF form instead.
+    name: "the assistant puts a column's total under it, and sends a condition to the SUMIF form",
+    async run(page) {
+      await page.getByRole("button", { name: "ลองกับข้อมูลตัวอย่าง", exact: true }).click();
+      await cell(page, 4, 4).click(); // E5, which is =C5*D5
+      await page.locator('button[aria-label="ถาม AI"]').first().click();
+      const panel = page.locator("aside");
+      await panel.locator("textarea").fill("อยากรวมยอดขายทั้งหมดในคอลัมน์นี้");
+      await panel.getByRole("button", { name: "ถาม AI" }).click();
+      const insert = panel.getByRole("button", { name: /ใส่สูตรนี้ที่เซลล์/ });
+      await insert.waitFor({ timeout: 10_000 });
+      const offered = (await insert.innerText()).trim();
+      note(offered.endsWith("E11"), `the total is offered under the column, not over E5 ("${offered}")`);
+      await insert.click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="10"][data-col="4"]')?.innerText.trim() === "7495", null, { timeout: 5000 }).catch(() => {});
+      const [e11, e5] = await Promise.all([cell(page, 10, 4).innerText(), cell(page, 4, 4).innerText()]);
+      note(e11.trim() === "7495" && e5.trim() === "660", `E11 has the total and E5 keeps its own value (E11 "${e11.trim()}", E5 "${e5.trim()}")`);
+
+      await panel.locator("textarea").fill("ยอดรวมของหมวดเครื่องดื่ม");
+      await panel.getByRole("button", { name: "ถาม AI" }).click();
+      const form = panel.getByRole("button", { name: "เปิดฟอร์ม SUMIF" });
+      await form.waitFor({ timeout: 10_000 });
+      const inserts = await panel.getByRole("button", { name: /ใส่สูตรนี้ที่เซลล์/ }).count();
+      note(inserts === 0, "a question about some rows offers no formula to insert");
+      await form.click();
+      const heading = page.getByRole("heading", { name: /^SUMIF/ });
+      await heading.waitFor({ timeout: 5000 });
+      note(true, "and its button opens the SUMIF form");
+    },
+  },
+  {
     name: "a rate limit is shown, not swallowed",
     async run(page) {
       // 429 is the one error a person can act on, so it has to say how long to wait rather than
@@ -575,6 +608,10 @@ const FLOWS = [
       note(Boolean(ld?.["@graph"]?.some((n) => n["@type"] === "WebApplication")), "/ carries WebApplication structured data that parses");
       note(Boolean(nonce) && (tag?.[1] ?? "").includes(`nonce="${nonce}"`), "and it carries this request's CSP nonce");
       note(!/aggregateRating|ratingValue/.test(tag?.[2] ?? ""), "and claims no rating");
+      // Search Console re-checks ownership from this tag; losing it in a metadata merge would quietly
+      // drop the property's reports, and nothing else would notice.
+      const verification = html.match(/<meta name="google-site-verification" content="([^"]+)"/)?.[1];
+      note(Boolean(verification), "and / keeps its Google Search Console verification tag", verification ?? "none");
 
       // A mistyped link is a 404, kept out of the index, in both languages, with a way on.
       await page.goto(ORIGIN + "/no-such-page");

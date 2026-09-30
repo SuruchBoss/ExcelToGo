@@ -428,8 +428,8 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1733", label: "automated tests" },
-      { value: "323", label: "security tests" },
+      { value: "1763", label: "automated tests" },
+      { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
     limitsTitle: "Where this stops on purpose",
@@ -1126,6 +1126,8 @@ export const en: Messages = {
     heuristicNote: "No API key yet, so this is a keyword guess — check the formula before using it, or open \"Use your own API key\" below for a real answer from Claude",
     guessBadge: "Keyword guess",
     overwriteWarning: (address) => `${address} already holds something — inserting overwrites it (you can undo)`,
+    selfReference: (address) => `This formula reads ${address} itself, so putting it there would make it circular (#CIRCULAR!). Click an empty cell outside the range and ask again.`,
+    openForm: (name) => `Open the ${name} form`,
     connectionError: "Sorry, something went wrong connecting to AI. Please try again.",
     rateLimited: (seconds) => `Too many questions too quickly — try again in ${seconds}s.`,
     examples: [
@@ -1175,14 +1177,27 @@ export const en: Messages = {
       min: "Finds the smallest value in the selected range",
       counta: "Counts how many cells have data (aren't blank)",
       count: "Counts how many cells in the selected range contain numbers",
-      vlookup: "Looks up the value in A1 in the table's first column, then returns column 2's value (adjust the column number as needed)",
       if: "Checks a condition and returns one value if true, another if false (adjust the condition and text as needed)",
       concatenate: "Joins text from multiple cells together",
       upper: "Converts text to all uppercase",
       today: "Shows today's date",
     },
     noMatch:
-      "I can't tell which formula you want — without a key this assistant only matches keywords, so it won't guess. Pick one from the Formulas panel on the left, or paste an API key in the box above and ask again.",
+      "I can't tell which formula you want. Without a key this assistant only matches words, so it won't guess. Press “Formulas” and pick one, or add a key under “Use your own API key” below and ask again.",
+    declined: {
+      conditional: (form) =>
+        `This asks about some rows only (“only drinks”, “more than 15”). Working on the whole column would give a number that looks right and isn't, so this guess stops here.${form ? ` ${form} works on just the rows that match: its form below asks for the column to check, the condition, and the cells to use.` : " Press “Formulas” to build it, or add your own API key below."}`,
+      needsRange: (form) =>
+        `Which cells? Click in the column you mean (or select the cells) and ask again, or open the ${form} form below and pick them.`,
+      textColumns: (form) =>
+        `Say which columns, by their names in row 1 (“product”, “category”), or open the ${form} form below and pick the cells.`,
+      lookup:
+        "A lookup needs two things this guess can't read from a question: what to look for, and the table to look in. The VLOOKUP form below asks for both.",
+      ifDetail:
+        "An IF needs the column to check (by its name in row 1), a comparison and a number, like “if the price is above 50”. Not all of that is in the question, so the IF form below asks for it.",
+      subtract: "Subtracting needs the two cells, which the question doesn't point at. Type = in a cell and click them, like =C2-D2.",
+      dates: "Days between two dates need the two date cells. The DATEDIF form below asks for them.",
+    },
     ifOutcomes: ["Pass", "Fail"],
   },
   formulas: {
