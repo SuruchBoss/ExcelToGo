@@ -4111,7 +4111,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now CHECKS_TBD checks — most recently the
+      configured) and the live-data picker, which needs a source first. Now 91 checks — most recently the
       notice on a tab that edits again because the other closed (#146), the rescue screen after a crash (#145)
       and the Convert to dates dialog (#82), and before them the AI assistant's answer card, both the one with a
       formula and the one that points at a form (#62–#64).
