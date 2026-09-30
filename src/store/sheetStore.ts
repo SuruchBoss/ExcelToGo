@@ -289,6 +289,13 @@ interface SheetState {
    */
   applyRemoteCell: (tabId: string, row: number, col: number, raw: string, spoken?: string) => void;
   addRow: () => void;
+  /**
+   * One row more at the bottom, for Enter or ↓ on the last row (#170), so the next value typed has
+   * somewhere to go instead of landing on the one just entered. Kept out of the undo history on its
+   * own: the value typed into the new row is what Ctrl+Z takes back, and the row goes with it (see
+   * `rowsGrownForEntry`). False where the sheet cannot grow — a locked template.
+   */
+  growRowForEntry: () => boolean;
   addColumn: () => void;
   /** Grows the active sheet to `cols` columns in one step (one undo). The grid calls it when a cell
    *  past the last column is clicked: those are drawn to the edge of the screen but do not exist yet. */
@@ -770,6 +777,27 @@ function rewriteHistory(tabId: string, row: number, col: number, raw: string): v
   temporal.setState({ pastStates: pastStates.map(fix), futureStates: futureStates.map(fix) });
 }
 
+/**
+ * The rows Enter added at the bottom (#170), until something is typed into them.
+ *
+ * The row is added outside the undo history, so typing into it saves the grown sheet as the step
+ * to go back to — and Ctrl+Z would leave an empty row behind, or take a second press to remove it.
+ * When that step lands, `foldGrowthIntoEdit` swaps it for the sheet from before the row, so one
+ * undo takes back the value and the row it made room for. Matched by reference: once anything else
+ * changes the workbook, the grown sheets are never saved as a step and this is simply never used.
+ */
+let rowsGrownForEntry: { before: SheetTab[]; after: SheetTab[] } | null = null;
+
+function foldGrowthIntoEdit(): void {
+  const grown = rowsGrownForEntry;
+  if (!grown) return;
+  const { pastStates } = useSheetStore.temporal.getState();
+  const last = pastStates[pastStates.length - 1];
+  if (last?.sheets !== grown.after) return;
+  rowsGrownForEntry = null;
+  useSheetStore.temporal.setState({ pastStates: [...pastStates.slice(0, -1), { ...last, sheets: grown.before }] });
+}
+
 /** A dropdown is about a *cell*, so a row inserted above it takes the dropdown down with it. */
 function withShiftedValidation(sheet: SheetModel, axis: Axis, index: number, delta: 1 | -1): SheetModel {
   const moved = shiftValidation(sheet.validation, axis, index, delta);
@@ -1007,6 +1035,26 @@ export const useSheetStore = create<SheetState>()(
                   ...say(getMessages().live.rowAppended(activeTab(s).sheet.rows + 1)),
                 }
           ),
+        growRowForEntry: () => {
+          const before = get().sheets;
+          if (refusedStructuralChange(activeTab(get()).sheet)) return false;
+          const history = useSheetStore.temporal.getState();
+          history.pause();
+          try {
+            set((s) => ({ sheets: withActiveSheet(s, (tab) => addRow(tab.sheet)) }));
+          } finally {
+            history.resume();
+          }
+          const after = get().sheets;
+          if (after === before) return false;
+          // A second Enter on an untouched new row chains to the first, so one undo still goes back
+          // to the rows there were before either.
+          rowsGrownForEntry = {
+            before: rowsGrownForEntry?.after === before ? rowsGrownForEntry.before : before,
+            after,
+          };
+          return true;
+        },
         addColumn: () =>
           set((s) =>
             refusedStructuralChange(activeTab(s).sheet)
@@ -2134,6 +2182,9 @@ useSheetStore.subscribe((s, prev) => {
   const index = Math.min(Math.max(was, 0), s.sheets.length - 1);
   useSheetStore.setState({ activeSheetId: s.sheets[index].id });
 });
+
+// A step saved over rows Enter added is the step from before them (#170).
+useSheetStore.temporal.subscribe(foldGrowthIntoEdit);
 
 /** Reads any autosaved sheets from localStorage once, after the initial render has already
  *  matched the server-rendered HTML. Call once near the root of the app. */

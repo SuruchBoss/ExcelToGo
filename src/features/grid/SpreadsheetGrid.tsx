@@ -75,6 +75,7 @@ export default function SpreadsheetGrid() {
   const toggleUnderline = useSheetStore((s) => s.toggleUnderline);
   const setColumnWidth = useSheetStore((s) => s.setColumnWidth);
   const addColumn = useSheetStore((s) => s.addColumn);
+  const growRowForEntry = useSheetStore((s) => s.growRowForEntry);
   const growColumnsTo = useSheetStore((s) => s.growColumnsTo);
   /** A formula open in an editor on a touch screen: taps point instead of select (#99). */
   const pointingNow = usePointingStore((s) => s.editor !== null && s.text.startsWith("="));
@@ -541,6 +542,16 @@ export default function SpreadsheetGrid() {
     setSelection(singleCellSelection(row, toCol));
   };
 
+  /**
+   * Where Enter (or Shift+Enter) goes from (row, col). On the last row it used to stay put, so the
+   * next value typed went over the one just entered (#170). Now the sheet grows a row, the way Tab
+   * grows a column above; where it cannot (a locked template) it stays, as before.
+   */
+  const enterFrom = (row: number, col: number, up: boolean) => {
+    const grown = !up && row === sheet.rows - 1 && growRowForEntry();
+    return afterEnter(tabRun.current, row, col, up, grown ? sheet.rows + 1 : sheet.rows);
+  };
+
   const canEdit = useCallback(
     (row: number, col: number) => !boundCells.has(`${row},${col}`) && !isTemplateLocked(sheet.template, row, col),
     [boundCells, sheet.template]
@@ -670,6 +681,13 @@ export default function SpreadsheetGrid() {
 
     switch (e.key) {
       case "ArrowDown":
+        // ↓ on the last row makes one more, as Enter does (#170) — only the plain key: Shift is
+        // stretching a selection and Ctrl is jumping to an edge, and neither should grow the sheet.
+        if (!e.shiftKey && !jump && row === sheet.rows - 1 && growRowForEntry()) {
+          setSelection(singleCellSelection(row + 1, col));
+          e.preventDefault();
+          break;
+        }
         step(1, 0);
         break;
       case "Enter":
@@ -685,7 +703,7 @@ export default function SpreadsheetGrid() {
         // selection, which is why it does not go through `step`. After a run of Tabs it goes back
         // to the column the run started in, the way a row of a table is typed in Excel.
         {
-          const to = afterEnter(tabRun.current, row, col, e.shiftKey, sheet.rows);
+          const to = enterFrom(row, col, e.shiftKey);
           tabRun.current = null;
           setSelection(singleCellSelection(to.row, to.col));
         }
@@ -1160,18 +1178,25 @@ export default function SpreadsheetGrid() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          const to = afterEnter(tabRun.current, r, c, e.shiftKey, sheet.rows);
-                          tabRun.current = null;
-                          const moved = to.row !== r || to.col !== c;
-                          if (touchSession.current && moved && canEdit(to.row, to.col) && keyboardKeeper.current) {
+                          // The value is committed before `enterFrom` adds a row on the last one
+                          // (#170), so the row joins the undo step of what is typed into it next
+                          // rather than this one.
+                          const up = e.shiftKey;
+                          const ahead = afterEnter(tabRun.current, r, c, up, !up && r === sheet.rows - 1 ? sheet.rows + 1 : sheet.rows);
+                          const moved = ahead.row !== r || ahead.col !== c;
+                          if (touchSession.current && moved && canEdit(ahead.row, ahead.col) && keyboardKeeper.current) {
                             // On a phone, straight into the next cell with the keyboard still up.
                             // Focusing the keeper blurs this input, and its onBlur commits.
                             keyboardKeeper.current.focus({ preventScroll: true });
+                            const to = enterFrom(r, c, up);
+                            tabRun.current = null;
                             setSelection(singleCellSelection(to.row, to.col));
                             caretAtEnd.current = true;
                             startEdit(to.row, to.col);
                           } else {
                             commitEdit();
+                            const to = enterFrom(r, c, up);
+                            tabRun.current = null;
                             setSelection(singleCellSelection(to.row, to.col));
                           }
                         } else if (e.key === "Escape") {
