@@ -40,6 +40,7 @@ const SHEET_QUALIFIED_RE =
  * sheet would read as a name of its own and the formula as a syntax error.
  */
 const SHEET_NAME_RE =
+  // equivalent-mutant: ">" → ">=" — inside a regex character class that already holds "=": the class matches the same characters.
   /^(?:'(?:[^']|'')+'|[^\s'!,()+\-*/^&=<>%:]+)![A-Za-z_\u0E00-\u0E7F][A-Za-z0-9_.\u0E00-\u0E7F]*(?![A-Za-z0-9_.\u0E00-\u0E7F]|\s*\()/;
 const RANGE_RE = /^\$?[A-Za-z]{1,3}\$?\d+:\$?[A-Za-z]{1,3}\$?\d+/;
 const CELL_RE = /^\$?[A-Za-z]{1,3}\$?\d+/;
