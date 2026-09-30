@@ -428,7 +428,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1846", label: "automated tests" },
+      { value: "1860", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -578,7 +578,9 @@ export const en: Messages = {
     add: "Name the selection",
     rename: "Point it at the selection instead",
     remove: (name) => `Delete the name ${name}`,
-    empty: "This sheet has no names yet.",
+    empty: "No names yet.",
+    scopeWorkbook: "Workbook",
+    scopeSheet: "This sheet",
     defined: (name, range) => `${name} now means ${range}`,
     deleted: (name) => `${name} is gone — formulas using it now read #NAME?`,
     problem: {
@@ -587,9 +589,9 @@ export const en: Messages = {
       badChars: "Letters, digits, _ and . only — no spaces, and it cannot start with a digit.",
       reserved: "That word is already a function name or a reserved word.",
       tooLong: "Names stop at 255 characters.",
-      taken: "This sheet already has a name spelled that way.",
+      taken: "A name spelled that way is already in use here.",
     },
-    hint: "Names belong to this sheet, and move when rows or columns are inserted.",
+    hint: "A name works from every sheet, and moves when rows or columns are inserted.",
   },
   validation: {
     title: "Limit what can be typed",
@@ -1249,6 +1251,8 @@ export const en: Messages = {
     importError: "Couldn't import this file. Please check that it's a valid Excel (.xlsx) or CSV file.",
     importClipped: (sheet, rowsInFile, rowsOpened) =>
       `Sheet "${sheet}" goes down to row ${rowsInFile.toLocaleString("en-US")}, but only ${rowsOpened.toLocaleString("en-US")} rows can be opened — the rows past that were not imported (the original file is untouched).`,
+    importNamesDropped: (names) =>
+      `These names in the file could not be brought in, so formulas using them read #NAME?: ${names.join(", ")}. Only a name for one range on a sheet of the file comes in — not a formula, a whole column or several areas.`,
     csvEmpty: "This sheet is empty, so there is nothing to export.",
   },
   aiHeuristic: {
