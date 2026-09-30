@@ -24,13 +24,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ENGINE_FUNCTION_KEY } from "./counts.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = process.env.APP_URL ?? "http://127.0.0.1:3100";
 
 const supported = new Set(
-  (readFileSync(path.join(ROOT, "src/lib/formulaEngine/functions.ts"), "utf8").match(/^  [A-Z][A-Z0-9.]*:/gm) ?? [])
-    .map((m) => m.trim().replace(":", ""))
+  [...readFileSync(path.join(ROOT, "src/lib/formulaEngine/functions.ts"), "utf8").matchAll(ENGINE_FUNCTION_KEY)].map((m) => m[1])
 );
 
 /** Questions a real person asks, including ones this engine has no function for. */
