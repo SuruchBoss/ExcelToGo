@@ -13,3 +13,14 @@ contract. Its dropdowns read from a hidden, protected `Ref` sheet: `$A` units, `
 
 The larger `sample-import-template-large.xlsx` is not copied yet; it belongs to the work on storing
 cross-sheet rules as references rather than per-cell lists.
+
+## `losses-picture-chart.xlsx` · `losses-picture-chart.en.xlsx`
+
+For #83, the report of what an opened file cannot keep. Each is a real package from two writers on
+this machine: ExcelJS 4.4.0 wrote the workbook and a picture (`workbook.addImage` + `worksheet.addImage`),
+then the app's own chart writer (`injectCharts` in `src/lib/xlsxCharts.ts`) added a bar chart. Sheet
+one also holds `=TEXTBEFORE(A2,…)`, a function the engine does not have. The `.en` file is the same
+thing with English sheet names, for the English screenshot.
+
+openpyxl was tried first and not used: ExcelJS cannot open a file whose drawings openpyxl wrote (#159).
+To make them again, write a vitest file that builds the workbook as above and saves it here.

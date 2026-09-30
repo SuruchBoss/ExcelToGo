@@ -25,6 +25,7 @@ import SortWarningDialog from "@/features/grid/SortWarningDialog";
 import OtherTabDialog from "@/features/otherTab/OtherTabDialog";
 import { useTabLock } from "@/features/otherTab/useTabLock";
 import ImportNotice from "@/features/grid/ImportNotice";
+import FileLossDialog from "@/features/grid/FileLossDialog";
 import MessageSlot from "@/features/grid/MessageSlot";
 import { useFormatBarFoldsWhenShort } from "@/features/toolbar/useShortScreen";
 import DataPicker from "@/features/data/DataPicker";
@@ -127,6 +128,7 @@ export default function Home() {
             <SpreadsheetGrid />
             <BackToSelection />
             <ImportNotice />
+            <FileLossDialog />
           </div>
           <TouchActionBar />
           <SheetTabs />

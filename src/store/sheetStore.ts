@@ -5,6 +5,7 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { create, useStore, type StateCreator } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { temporal } from "zundo";
+import type { FileLoss } from "@/lib/fileLosses";
 import {
   addColumn,
   addRow,
@@ -227,6 +228,16 @@ interface SheetState {
    * only way back, and that nobody knew about.
    */
   importNotice: { sheets: number; mode: ImportMode } | null;
+  /**
+   * What the last opened `.xlsx` held that the app does not keep (#83), and the tabs it opened as.
+   * Null when the file had nothing to report. Not part of the undo history: `selectFileLosses`
+   * hides it once none of its tabs are left, which is what undoing the open does.
+   */
+  fileLosses: FileLossReport | null;
+  /** The report's dialog is showing: right after the open, or when reopened from the menu. */
+  fileLossesOpen: boolean;
+  showFileLosses: () => void;
+  closeFileLosses: () => void;
   /**
    * The last thing worth saying out loud, and a sequence number.
    *
@@ -580,6 +591,20 @@ const initialTab = newTab("Sheet1");
  */
 export type ImportMode = "append" | "replace";
 
+/** What an opened `.xlsx` held that the app does not keep, and the tabs it opened as (#83). */
+export interface FileLossReport {
+  fileName: string;
+  tabIds: string[];
+  items: FileLoss[];
+}
+
+/**
+ * The report while any tab the file opened as is still here. Undo takes a file back out, and a new
+ * file replaces the tabs; either way the report is about something that is no longer open.
+ */
+export const selectFileLosses = (s: SheetState): FileLossReport | null =>
+  s.fileLosses && s.sheets.some((t) => s.fileLosses!.tabIds.includes(t.id)) ? s.fileLosses : null;
+
 /**
  * Is there anything in the workbook a file open could destroy? The untouched sample is not work,
  * and neither is a workbook of empty sheets — asking "keep or replace?" over nothing is a question
@@ -791,6 +816,8 @@ export const useSheetStore = create<SheetState>()(
         formatBarOpen: true,
         busy: null,
         importNotice: null,
+        fileLosses: null,
+        fileLossesOpen: false,
         announcement: null,
         clipboard: null,
         dataPicker: null,
@@ -1855,6 +1882,7 @@ export const useSheetStore = create<SheetState>()(
             } else {
               set({ sheets: tabs, activeSheetId: tabs[0].id, selectionBySheetId: {}, filtersBySheetId: {}, ...notice });
             }
+            return tabs;
           };
           try {
             // A .csv is plain text, so it never reaches ExcelJS — which would reject it anyway.
@@ -1874,9 +1902,21 @@ export const useSheetStore = create<SheetState>()(
               place([{ name, sheet: sheetFromGrid(rows) }]);
               return;
             }
-            const { importWorkbookFromFile } = await import("@/lib/excelIO");
+            const [{ importWorkbookFromFile }, { findFileLosses }] = await Promise.all([
+              import("@/lib/excelIO"),
+              import("@/lib/fileLosses"),
+            ]);
             const imported = await importWorkbookFromFile(file);
-            place(imported.map((w) => ({ name: w.name, sheet: w.sheet })));
+            const tabs = place(imported.map((w) => ({ name: w.name, sheet: w.sheet })));
+            // Said before the first edit, while the file is still as it came (#83). Read from the
+            // package again rather than from `imported`: what the importer returned is exactly
+            // the thing that no longer has the pictures in it.
+            const items = await findFileLosses(await file.arrayBuffer(), imported);
+            if (items.length > 0) {
+              set({ fileLosses: { fileName: file.name, tabIds: tabs.map((t) => t.id), items }, fileLossesOpen: true });
+            } else if (mode === "replace") {
+              set({ fileLosses: null, fileLossesOpen: false });
+            }
             // A file longer than the sheet can open is opened as far as it goes — and said out loud,
             // because rows missing without a word is the bug this replaced (#43).
             const clipped = imported.filter((w) => w.rowsInFile !== undefined);
@@ -1893,6 +1933,8 @@ export const useSheetStore = create<SheetState>()(
         },
 
         dismissImportNotice: () => set({ importNotice: null }),
+        showFileLosses: () => set({ fileLossesOpen: true }),
+        closeFileLosses: () => set({ fileLossesOpen: false }),
 
         /**
          * Swaps the whole document for another one — opening a workbook from the optional cloud

@@ -450,6 +450,16 @@ const OPENED_STATES = [
       await page.getByRole("status").filter({ hasText: "เปิดไฟล์แล้ว" }).waitFor({ state: "visible", timeout: 10_000 });
     },
   },
+  {
+    // #83: what a file just opened holds that the app does not keep — a real file with a picture,
+    // an Excel chart and a function the engine lacks.
+    name: "file loss report",
+    path: "/app",
+    async open(page) {
+      await page.locator('input[type="file"]').first().setInputFiles(path.join(process.cwd(), "src/lib/fixtures/losses-picture-chart.xlsx"));
+      await page.getByRole("dialog", { name: /ExcelToGo เก็บไว้ไม่ได้/ }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
   // Short screens fold the bars together (#129, UX-13): a phone on its side, and a phone at 200%
   // zoom — where the bottom bar's words also used to push the page 130px sideways.
   {

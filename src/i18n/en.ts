@@ -427,7 +427,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "65", label: "engine functions" },
-      { value: "1721", label: "automated tests" },
+      { value: "1732", label: "automated tests" },
       { value: "323", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -721,6 +721,30 @@ export const en: Messages = {
     viewing: "View only: this workbook is being edited in another tab, and changes made there show up here.",
     handedOff: "This tab is view-only now: the workbook was opened for editing in another tab. Everything done here was saved.",
     refused: "Nothing can be changed in this tab. Use this tab instead to edit here.",
+  },
+  fileLosses: {
+    title: "This file has things ExcelToGo can't keep",
+    intro: (fileName, kinds) =>
+      `"${fileName}" has ${kinds} ${kinds === 1 ? "kind of thing" : "kinds of things"} we know the app can't keep yet. If you export and save over the original, ${kinds === 1 ? "it" : "they"} will be gone:`,
+    item: {
+      pictures: (n) => `${n} ${n === 1 ? "picture" : "pictures"}`,
+      charts: (n) => `${n} Excel ${n === 1 ? "chart" : "charts"}`,
+      shapes: (n) => `${n} ${n === 1 ? "shape or text box" : "shapes or text boxes"}`,
+      pivots: (n) => `${n} Excel ${n === 1 ? "PivotTable" : "PivotTables"}`,
+      unknownFunctions: (n, names) => `${n} ${n === 1 ? "formula uses" : "formulas use"} a function the app doesn't have yet (${names.join(", ")})`,
+      externalLinks: (n) => `${n} ${n === 1 ? "link" : "links"} to other files`,
+      macros: () => "Macros (VBA)",
+    },
+    detail: {
+      unknownFunctions: "The app shows #NAME? for them, but the exported file keeps the formula as it was, and Excel can calculate it",
+      externalLinks: "Values pulled from other files won't update in the app",
+      macros: "The app doesn't run macros, and the exported file doesn't carry them",
+    },
+    onSheets: (sheets) => (sheets.length === 0 ? "" : ` · ${sheets.length === 1 ? "sheet" : "sheets"} ${sheets.map((s) => `"${s}"`).join(", ")}`),
+    notComplete:
+      "These are the things we know aren't kept, not a complete list. If the file matters, keep the original and export under a new name.",
+    understood: "Got it",
+    reopen: "What this file can't keep",
   },
   newFile: {
     button: "New file",

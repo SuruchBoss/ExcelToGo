@@ -34,6 +34,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
+import ExcelJS from "exceljs";
 
 const PORT = Number(process.env.E2E_PORT || 3124);
 const ORIGIN = `http://localhost:${PORT}`;
@@ -1069,6 +1070,43 @@ const FLOWS = [
       const closed = (await page.getByRole("dialog").count()) === 0;
       const back = await page.evaluate(() => document.activeElement?.textContent?.trim() ?? "");
       note(closed && /ใส่ลงตาราง|Insert/.test(back), `the picker closes on Escape and focus returns to its button ("${back}")`);
+    },
+  },
+  {
+    // #83. The app is used to open a file, fix it and send it back, and a file with pictures or
+    // Excel's own charts loses them on the way — which the person used to hear from whoever got
+    // the file. The fixture is a real package (ExcelJS wrote the picture, the app's chart writer
+    // the chart) with a formula calling a function the engine lacks. The report has to come up as
+    // it opens, say what and where, go when dismissed, come back from the menu, and never appear
+    // for a file with nothing to lose.
+    name: "a file with pictures and a chart says what it will lose as it opens, and a clean one says nothing (#83)",
+    async run(page, { tmp }) {
+      await page.locator('input[type="file"]').setInputFiles(join(process.cwd(), "src/lib/fixtures/losses-picture-chart.xlsx"));
+      const report = page.getByRole("dialog", { name: /ExcelToGo (เก็บไว้ไม่ได้|can't keep)/ });
+      await report.waitFor({ timeout: 10_000 });
+      const text = (await report.innerText()).replace(/\s+/g, " ");
+      note(/รูปภาพ 1 รูป/.test(text) && /กราฟของ Excel 1 กราฟ/.test(text), `it counts the picture and the chart ("${text.slice(0, 90)}…")`);
+      note(/ใบเสนอราคา/.test(text) && /TEXTBEFORE/.test(text), "and names the sheet, and the function the app lacks");
+      note(/ไม่ใช่ทุกอย่าง/.test(text), "and does not claim the list is complete");
+      await report.getByRole("button", { name: /^(เข้าใจแล้ว|Got it)$/ }).last().click();
+      note((await report.count()) === 0, "it goes when dismissed");
+
+      await page.getByRole("button", { name: label.menu }).click();
+      await page.getByRole("dialog", { name: label.menu }).getByRole("button", { name: /สิ่งที่ไฟล์นี้เก็บไว้ไม่ได้|What this file can't keep/ }).click();
+      await report.waitFor({ timeout: 5000 });
+      note(true, "and comes back from the menu");
+      await page.keyboard.press("Escape");
+
+      // A clean file, opened over it, shows nothing — and takes the old report's menu line with it.
+      const clean = new ExcelJS.Workbook();
+      clean.addWorksheet("Sheet1").getCell("A1").value = 10;
+      const file = join(tmp, "clean.xlsx");
+      await clean.xlsx.writeFile(file);
+      await page.locator('input[type="file"]').setInputFiles(file);
+      const choice = page.getByRole("dialog", { name: /เปิดไฟล์นี้อย่างไร|How should this file open/ });
+      if (await choice.isVisible({ timeout: 2000 }).catch(() => false)) await choice.getByRole("button").first().click();
+      await page.waitForTimeout(800);
+      note((await report.count()) === 0, "a clean file shows no report");
     },
   },
   {

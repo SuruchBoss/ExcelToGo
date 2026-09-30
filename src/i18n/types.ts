@@ -569,6 +569,22 @@ export interface Messages {
     refused: string;
   };
   /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
+  /** What an opened file holds that the app does not keep (#83). */
+  fileLosses: {
+    title: string;
+    /** The file's name and how many kinds of thing were found. */
+    intro: (fileName: string, kinds: number) => string;
+    /** One line per kind: how many, and what it is. Sheets and names are added by `onSheets`. */
+    item: Record<import("@/lib/fileLosses").LossKind, (count: number, names: string[]) => string>;
+    /** A second, quieter line under a kind, where one is owed (formulas, links, macros). */
+    detail: Partial<Record<import("@/lib/fileLosses").LossKind, string>>;
+    onSheets: (sheets: string[]) => string;
+    /** The report must not claim to be complete: it lists what is known not to be kept. */
+    notComplete: string;
+    understood: string;
+    /** The menu line that opens it again. */
+    reopen: string;
+  };
   newFile: {
     button: string;
     hint: string;
