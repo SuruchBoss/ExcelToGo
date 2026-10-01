@@ -1048,6 +1048,61 @@ const FLOWS = [
     },
   },
   {
+    // #54. A save from before the names were checked holds what QA found: two tabs called Sheet3, a
+    // `sheet1` beside `Sheet1`, and `Q1/Q2`. That made the export throw with nothing on screen, or
+    // write a tab named "Q1 Q2" whose formulas still said 'Q1/Q2'. Here it has to open with names
+    // Excel takes, keep every formula on the sheet it was written for, refuse a new bad name where
+    // it is typed, and export a file whose names and formulas an Excel reader accepts.
+    name: "sheet names Excel refuses are fixed on load, refused when typed, and the export opens (#54)",
+    async run(page, { tmp }) {
+      await page.evaluate(() => {
+        const tab = (id, name, cells) => ({ id, name, sheet: { rows: 30, cols: 10, cells } });
+        const sheets = [
+          tab("a", "Sheet1", { "0,0": "=Sheet3!A1", "1,0": "='Q1/Q2'!A1*2" }),
+          tab("b", "Sheet3", { "0,0": "333" }),
+          tab("c", "Sheet3", { "0,0": "999" }),
+          tab("d", "Q1/Q2", { "0,0": "21" }),
+          tab("e", "sheet1", { "0,0": "5" }),
+        ];
+        localStorage.setItem("exceltogo-sheet-v2", JSON.stringify({ state: { sheets, activeSheetId: "a" }, version: 1 }));
+      });
+      await page.reload({ waitUntil: "networkidle" });
+      const want = ["Sheet1", "Sheet3", "Sheet3 (2)", "Q1 Q2", "sheet1 (2)"];
+      for (const name of want) await page.getByText(name, { exact: true }).waitFor({ timeout: 5000 });
+      note(true, `the tabs open with names Excel takes (${want.join(", ")})`);
+      const at = async (r, c) => (await cell(page, r, c).innerText()).trim();
+      const shown = [await at(0, 0), await at(1, 0)];
+      note(shown.join() === "333,42", `formulas read the sheets they were written for: the first Sheet3, and Q1/Q2 renamed with them (${shown.join(", ")})`);
+
+      await page.getByText("Sheet3 (2)", { exact: true }).dblclick();
+      const input = page.getByRole("textbox", { name: /^(ชื่อชีต|Sheet name)$/ });
+      await input.fill("SHEET1");
+      await input.press("Enter");
+      const refusal = page.getByRole("alert").filter({ hasText: "SHEET1" });
+      await refusal.waitFor({ timeout: 5000 });
+      note(await input.isVisible(), `a name only differing in case is refused where it was typed ("${(await refusal.innerText()).slice(0, 60)}…")`);
+      await input.press("Escape");
+      note(await page.getByText("Sheet3 (2)", { exact: true }).isVisible(), "Escape leaves the tab its name");
+
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByRole("button", { name: label.exportExcel }).click(),
+      ]);
+      const file = join(tmp, "sheet-names.xlsx");
+      await download.saveAs(file);
+      const { default: ExcelJS } = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(file);
+      const names = wb.worksheets.map((ws) => ws.name);
+      const valid = names.every((n) => n.length >= 1 && n.length <= 31 && !/[\\/?*[\]:]/.test(n) && !/^'|'$/.test(n));
+      const unique = new Set(names.map((n) => n.toLowerCase())).size === names.length;
+      note(names.join("|") === want.join("|") && valid && unique, `the file's sheets are unique and valid for Excel (${names.join(", ")})`);
+      const first = wb.getWorksheet("Sheet1");
+      const f = [first.getCell("A1").value, first.getCell("A2").value].map((v) => `${v?.formula}=${v?.result}`);
+      note(f.join(" · ") === "Sheet3!A1=333 · 'Q1 Q2'!A1*2=42", `its formulas name the right sheets, with their values cached (${f.join(" · ")})`);
+    },
+  },
+  {
     // #48: on the sample every visitor sees, sorting used to leave 8 of 9 totals reading another
     // row's price and quantity while the grand total still added up. Driven through the real
     // buttons in both languages; then a sort that cannot keep its formulas right has to ask first.

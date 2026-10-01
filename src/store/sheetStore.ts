@@ -58,7 +58,8 @@ import { autoSumRange, hasHeaderRow, headerRow, namedColumns, runIsText, TOTAL_L
 import { placeFormula, type Cell } from "@/lib/aiPlacement";
 import { referencedRects } from "@/lib/precedents";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
-import { renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
+import { fitSheetNames, renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
+import { nextSheetName, SheetNameProblem, sheetNameProblem } from "@/lib/sheetNames";
 import { lessonBySlug, lessonSheet } from "@/lib/lessons";
 import { fillBlock, fillTargetFor, fillWithin, type FillTarget } from "@/lib/fillSeries";
 import { findMatches, replaceIn, type Match, type SearchOptions } from "@/lib/sheetSearch";
@@ -186,10 +187,11 @@ function genId(): string {
 
 /** "Pivot", then "Pivot 2", "Pivot 3"… so repeated pivots don't all answer to the same name. */
 function nextPivotName(tabs: SheetTab[], base: string): string {
-  const taken = new Set(tabs.map((t) => t.name));
-  if (!taken.has(base)) return base;
+  // Lower-cased: Excel counts `Pivot` and `pivot` as one name (#54).
+  const taken = new Set(tabs.map((t) => t.name.toLowerCase()));
+  if (!taken.has(base.toLowerCase())) return base;
   let n = 2;
-  while (taken.has(`${base} ${n}`)) n += 1;
+  while (taken.has(`${base} ${n}`.toLowerCase())) n += 1;
   return `${base} ${n}`;
 }
 
@@ -266,7 +268,8 @@ interface SheetState {
    * that belongs to nobody.
    */
   showSampleIn: (locale: Locale) => void;
-  renameSheet: (id: string, name: string) => void;
+  /** Null when renamed (or unchanged); the rule it broke when refused (#54). */
+  renameSheet: (id: string, name: string) => SheetNameProblem | null;
   deleteSheet: (id: string) => void;
 
   setCellRaw: (row: number, col: number, raw: string) => void;
@@ -633,7 +636,8 @@ function placeIncoming(
   mode: ImportMode,
   extra: Partial<SheetState>
 ): Pick<SheetState, "sheets" | "activeSheetId" | "selectionBySheetId" | "filtersBySheetId"> & Partial<SheetState> {
-  const fitted = mode === "append" ? renameIncomingToFit(s.sheets.map((t) => t.name), incoming) : incoming;
+  const valid = fitSheetNames(incoming);
+  const fitted = mode === "append" ? renameIncomingToFit(s.sheets.map((t) => t.name), valid) : valid;
   const tabs = fitted.map((w) => newTab(w.name, w.sheet));
   if (mode === "append") {
     return {
@@ -877,7 +881,7 @@ export const useSheetStore = create<SheetState>()(
 
         addSheet: () => {
           const s = get();
-          const tab = newTab(`Sheet${s.sheets.length + 1}`);
+          const tab = newTab(nextSheetName(s.sheets.map((t) => t.name)));
           set({ sheets: [...s.sheets, tab], activeSheetId: tab.id });
         },
 
@@ -907,7 +911,17 @@ export const useSheetStore = create<SheetState>()(
 
         renameSheet: (id, name) => {
           const trimmed = name.trim();
-          if (!trimmed) return;
+          const s0 = get();
+          const current = s0.sheets.find((t) => t.id === id);
+          if (!current || current.name === trimmed) return null;
+          // Excel's rules, at the moment the name is made (#54). Refused rather than repaired — a
+          // name quietly changed to something else is a tab nobody can find — and handed back, so
+          // the tab's editor can stay open saying why.
+          const problem = sheetNameProblem(
+            trimmed,
+            s0.sheets.filter((t) => t.id !== id).map((t) => t.name)
+          );
+          if (problem) return problem;
           set((s) => {
             const before = s.sheets.find((t) => t.id === id);
             if (!before || before.name === trimmed) return {};
@@ -918,6 +932,7 @@ export const useSheetStore = create<SheetState>()(
             const fixed = renameSheetInFormulas(renamed, before.name, trimmed);
             return { sheets: renamed.map((t, i) => (fixed[i] === t.sheet ? t : { ...t, sheet: fixed[i] })) };
           });
+          return null;
         },
 
         deleteSheet: (id) => {
@@ -1971,6 +1986,8 @@ export const useSheetStore = create<SheetState>()(
            * `append` keeps the work that was open and adds the file after it, renaming a tab whose
            * name is already taken (and the file's own formulas that point at it).
            */
+          // A CSV is named after its file, which can hold what a sheet name cannot (#54);
+          // placeIncoming fits the names before anything else sees them.
           const place = (incoming: { name: string; sheet: SheetModel }[]) =>
             set(placeIncoming(get(), incoming, mode, {
               importNotice: { sheets: incoming.length, mode },
@@ -2033,8 +2050,10 @@ export const useSheetStore = create<SheetState>()(
          * backend. Selections and filters are keyed by sheet id, and the incoming ids are not the
          * outgoing ones, so they are cleared rather than left pointing at sheets that are gone.
          */
-        replaceWorkbook: (sheets) => {
-          if (sheets.length === 0) return;
+        replaceWorkbook: (incoming) => {
+          if (incoming.length === 0) return;
+          // Saved before the names were checked, possibly (#54).
+          const sheets = fitSheetNames(incoming);
           set({
             sheets,
             activeSheetId: sheets[0].id,
@@ -2055,6 +2074,12 @@ export const useSheetStore = create<SheetState>()(
             const { exportWorkbookToXlsxBlob, downloadBlob } = await import("@/lib/excelIO");
             const blob = await exportWorkbookToXlsxBlob(sheets);
             downloadBlob(blob, "ExcelToGo.xlsx");
+          } catch (error) {
+            // A button that does nothing is the one failure nobody reports (#54: a name clash made
+            // ExcelJS throw, the promise rejected into nothing, and no file arrived). Said, and
+            // left in the console for whoever gets told about it.
+            console.error(error);
+            alert(getMessages().store.exportError);
           } finally {
             set({ busy: null });
           }
@@ -2142,24 +2167,32 @@ export const useSheetStore = create<SheetState>()(
       // reading localStorage during store creation would make them diverge and trigger a
       // React hydration mismatch.
       skipHydration: true,
-      merge: (persisted, current) => {
-        const p = persisted as { sheets?: StoredTab[]; activeSheetId?: string } | undefined;
-        const stored = p?.sheets;
-        if (!stored || stored.length === 0) return current;
-        // The sample, saved exactly as the app used to open it, is not somebody's work: every
-        // visitor before the app opened blank has it in their browser, and it is what "left over
-        // in the cells" meant. Exactly — one change of any kind and it is theirs, and stays.
-        if (isStoredSample(stored)) return current;
-        // `fromStorage` reads both shapes: what `partialize` writes now, and the dense grid that
-        // is sitting in somebody's browser from the version before it. Dropping those would be
-        // losing their work to save bytes.
-        const sheets: SheetTab[] = stored.map((tab) => ({ ...tab, sheet: fromStorage(tab.sheet) }));
-        const activeSheetId = sheets.some((t) => t.id === p.activeSheetId) ? p.activeSheetId! : sheets[0].id;
-        return { ...current, sheets, activeSheetId };
-      },
+      merge: (persisted, current) => restoreSaved(persisted, current),
     }
   )
 );
+
+/**
+ * What a save in the browser becomes on load: the persist middleware's `merge`, named so it can be
+ * tested without a browser to persist into (#54 — names saved before they were checked).
+ */
+export function restoreSaved<S extends { sheets: SheetTab[]; activeSheetId: string }>(persisted: unknown, current: S): S {
+  const p = persisted as { sheets?: StoredTab[]; activeSheetId?: string } | undefined;
+  const stored = p?.sheets;
+  if (!stored || stored.length === 0) return current;
+  // The sample, saved exactly as the app used to open it, is not somebody's work: every
+  // visitor before the app opened blank has it in their browser, and it is what "left over
+  // in the cells" meant. Exactly — one change of any kind and it is theirs, and stays.
+  if (isStoredSample(stored)) return current;
+  // `fromStorage` reads both shapes: what `partialize` writes now, and the dense grid that
+  // is sitting in somebody's browser from the version before it. Dropping those would be
+  // losing their work to save bytes.
+  // Names are fitted to Excel's rules here too: a save from before #54 can hold two tabs
+  // called Sheet3, and the one its formulas were written for is the first.
+  const sheets: SheetTab[] = fitSheetNames(stored.map((tab) => ({ ...tab, sheet: fromStorage(tab.sheet) })));
+  const activeSheetId = sheets.some((t) => t.id === p.activeSheetId) ? p.activeSheetId! : sheets[0].id;
+  return { ...current, sheets, activeSheetId };
+}
 
 /**
  * `activeSheetId` always names a tab that exists.
