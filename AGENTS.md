@@ -259,6 +259,11 @@ every round of count, picture and README conflicts.
   production as a user, not that the gates are green — on launch day every gate was green while the feature the
   app exists for was switched off in production.
 
+## Communication language
+- Write every message to the user in Thai, including short progress updates between tool calls and final summaries, even when files, tool output, or surrounding context are in English.
+- Keep technical terms, file names, commands, branch names, PR numbers, and error messages in their original form.
+- This rule covers chat only. Commit messages, code, comments, README, and other repository documents follow the project's existing language.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
