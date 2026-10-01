@@ -493,6 +493,20 @@ const OPENED_STATES = [
     },
   },
   {
+    // #54: a sheet name Excel would refuse keeps the tab's editor open with the reason beside it.
+    // It needs a second tab, because the only name a lone tab can clash with is its own.
+    name: "sheet name refused",
+    path: "/app",
+    async open(page) {
+      await page.getByTitle("เพิ่มชีตใหม่").click();
+      await page.getByText("Sheet2", { exact: true }).dblclick();
+      const input = page.getByRole("textbox", { name: "ชื่อชีต" });
+      await input.fill("Sheet1");
+      await input.press("Enter");
+      await page.getByRole("alert").filter({ hasText: "Sheet1" }).waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
+  {
     name: "names popover",
     path: "/app",
     async open(page) {
