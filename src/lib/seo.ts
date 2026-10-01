@@ -3,6 +3,9 @@
 
 import type { Locale } from "@/i18n/types";
 import { SITE_URL } from "@/lib/site";
+// Types only: this file reaches the client through localeStore, and the lessons module carries the
+// formula engine with it.
+import type { Lesson } from "@/lib/lessons";
 import { th } from "@/i18n/th";
 
 /**
@@ -78,16 +81,70 @@ export const OPEN_GRAPH: { type: "website"; siteName: string; locale: string; al
  * the root's `opengraph-image` / `twitter-image`, named rather than inherited for that reason.
  */
 export function pageMetadata(page: Exclude<PageKey, "home">) {
-  const title = TITLES.th[page];
-  const description = DESCRIPTIONS.th[page];
+  return metadataFor(TITLES.th[page], DESCRIPTIONS.th[page], CANONICAL[page]);
+}
+
+function metadataFor(title: string, description: string, canonical: string) {
   const image = { width: 1200, height: 630, alt: "ExcelToGo" };
   return {
     title: { absolute: title },
     description,
-    alternates: { canonical: CANONICAL[page] },
-    openGraph: { ...OPEN_GRAPH, url: CANONICAL[page], title, description, images: [{ url: "/opengraph-image", ...image }] },
+    alternates: { canonical },
+    openGraph: { ...OPEN_GRAPH, url: canonical, title, description, images: [{ url: "/opengraph-image", ...image }] },
     twitter: { card: "summary_large_image" as const, title, description, images: [{ url: "/twitter-image", ...image }] },
   };
+}
+
+/**
+ * The formula pages (#149): one per lesson, and the list of them. Thai only, like their text — an
+ * English set waits for its own URLs rather than a toggle that would give one URL two languages.
+ *
+ * A lesson's title is "สูตร <NAME>: <what it does>", which is how people search for a formula they
+ * half remember; its description is the lesson's first sentence, the answer itself.
+ */
+export const FORMULAS_INDEX = {
+  title: "สูตร Excel ที่ใช้บ่อย สอนทีละตัวเป็นภาษาไทย · ExcelToGo",
+  description:
+    "สูตร Excel ที่ใช้บ่อย อธิบายเป็นภาษาไทยทีละตัว พร้อมตัวอย่างที่คำนวณจริงและข้อผิดพลาดที่เจอบ่อย กดลองในตารางได้ทันทีโดยไม่ต้องสมัคร",
+  canonical: `${SITE_URL}/formulas`,
+};
+
+export function lessonTitle(lesson: Pick<Lesson, "id" | "short">): string {
+  return `สูตร ${lesson.id}: ${lesson.short} · ExcelToGo`;
+}
+
+export function lessonCanonical(lesson: Pick<Lesson, "slug">): string {
+  return `${SITE_URL}/formulas/${lesson.slug}`;
+}
+
+export function formulasIndexMetadata() {
+  return metadataFor(FORMULAS_INDEX.title, FORMULAS_INDEX.description, FORMULAS_INDEX.canonical);
+}
+
+export function lessonMetadata(lesson: Lesson) {
+  return metadataFor(lessonTitle(lesson), lesson.lead, lessonCanonical(lesson));
+}
+
+/**
+ * Where a formula page sits: หน้าแรก › สูตร Excel › SUMIF. The one structured-data type these pages
+ * carry (PO, #149): it is what a result shows under the title, and it says nothing the page does not.
+ * `HowTo` was considered and left out — Google no longer shows it.
+ */
+export function breadcrumbJsonLd(trail: { name: string; url: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: trail.map((step, i) => ({ "@type": "ListItem", position: i + 1, name: step.name, item: step.url })),
+  };
+}
+
+/** The trail from the landing page to a formula page, or to the list when no lesson is given. */
+export function formulasTrail(lesson?: Lesson): { name: string; url: string }[] {
+  const trail = [
+    { name: "หน้าแรก", url: SITE_URL },
+    { name: "สูตร Excel", url: FORMULAS_INDEX.canonical },
+  ];
+  return lesson ? [...trail, { name: lesson.id, url: lessonCanonical(lesson) }] : trail;
 }
 
 /** The profiles the landing page already links, and the name it shows. `sameAs` may only name

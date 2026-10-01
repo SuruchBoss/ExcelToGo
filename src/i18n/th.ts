@@ -233,6 +233,7 @@ export const th: Messages = {
     aiNote:
       "ไม่ต้องใส่ key ก็ลองได้ — แอปเดาสูตรจากคำสำคัญ และบอกทุกครั้งว่าเป็นการเดา ตรวจก่อนใช้ · ใส่ API key ของคุณเองเพื่อให้ AI ตอบแม่นขึ้น (key อยู่ในเบราว์เซอร์คุณ ไม่ผ่านเซิร์ฟเวอร์เรา)",
     ctaNote: "ใช้ฟรี ไม่ต้องสมัคร",
+    formulasLink: "หรืออ่านสูตร Excel ที่ใช้บ่อย สอนทีละตัว",
     benefits: ["ไม่ต้องติดตั้งอะไร", "ไฟล์ไม่ออกจากเครื่องคุณ", "ใช้บนมือถือ แท็บเล็ต และคอมได้"],
     screenshotAlt: "หน้าจอหลักของ ExcelToGo",
     demo: {
@@ -427,7 +428,7 @@ export const th: Messages = {
     stats: [
       { value: "37", label: "สูตรพร้อมใช้" },
       { value: "66", label: "ฟังก์ชันในเอนจิน" },
-      { value: "1860", label: "เทสต์อัตโนมัติ" },
+      { value: "1903", label: "เทสต์อัตโนมัติ" },
       { value: "325", label: "เทสต์ด้านความปลอดภัย" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],
@@ -480,6 +481,7 @@ export const th: Messages = {
         answer: "ได้ และไม่ต้องมี key — พิมพ์สูตรแบบเดียวกับ Excel และมีสูตรพร้อมใช้ 37 แบบพร้อมคำอธิบายภาษาไทยให้เลือก",
         detail:
           "พิมพ์บอกเป็นภาษาไทยว่าอยากได้อะไรก็ได้ ถ้าไม่มี key แอปจะเดาจากคำสำคัญและบอกทุกครั้งว่าเป็นการเดา ให้ตรวจก่อนใช้ · ใส่ API key ของคุณเองเพื่อให้ AI ตอบ",
+        link: { href: "/formulas", label: "สูตรที่ใช้บ่อย สอนทีละตัว" },
       },
       {
         q: "ต่อข้อมูลจากระบบของบริษัทได้ไหม",
@@ -912,6 +914,7 @@ export const th: Messages = {
     moreTitle: "อ่านต่อ",
     moreReadme: "รายละเอียดเต็มใน README (ภาษาไทย)",
     moreSecurity: "SECURITY.md — ด่านความปลอดภัยของข้อมูลสดทั้งหมด",
+    moreFormulas: "สูตร Excel ที่ใช้บ่อย สอนทีละตัว",
     openApp: "เปิดแอป",
     copy: "คัดลอก",
     copied: "คัดลอกแล้ว",
@@ -929,6 +932,9 @@ export const th: Messages = {
     cancel: "ยกเลิก",
     doneAppend: (sheets) => `เพิ่ม ${sheets} ชีตจากไฟล์ต่อท้ายงานเดิมแล้ว`,
     doneReplace: (sheets) => `เปิดไฟล์แล้ว ${sheets} ชีต แทนที่งานเดิม — กดย้อนกลับเพื่อเอางานเดิมคืน`,
+    lessonFile: (id) => `ตัวอย่างสูตร ${id}`,
+    lessonSheet: (id) => `ลอง ${id}`,
+    doneLesson: (id) => `เปิดตัวอย่าง ${id} แล้ว — กดย้อนกลับเพื่อเอาออก`,
     undo: "ย้อนกลับ",
     dismiss: "ปิดข้อความนี้",
   },
@@ -1014,6 +1020,15 @@ export const th: Messages = {
     confirmDelete: (name) => `ลบชีต "${name}" ใช่หรือไม่? ข้อมูลในชีตนี้จะหายไป`,
     deleteTitle: "ลบชีตนี้",
     addTitle: "เพิ่มชีตใหม่",
+    renameLabel: "ชื่อชีต",
+    nameProblem: {
+      empty: () => "ชื่อชีตว่างไม่ได้",
+      tooLong: (name) => `ชื่อชีตยาวได้ไม่เกิน 31 ตัวอักษร ("${name}" ยาว ${name.length})`,
+      badChar: (name) => `ชื่อชีต "${name}" มีตัวอักษรที่ Excel ไม่รับ: \\ / ? * [ ] :`,
+      apostrophe: (name) => `ชื่อชีต "${name}" ขึ้นต้นหรือลงท้ายด้วย ' ไม่ได้`,
+      reserved: (name) => `"${name}" เป็นชื่อที่ Excel สงวนไว้ ตั้งชื่ออื่นแทน`,
+      taken: (name) => `มีชีตชื่อ "${name}" อยู่แล้ว (Excel ถือว่าตัวพิมพ์เล็กใหญ่เป็นชื่อเดียวกัน)`,
+    },
   },
   filterPopover: {
     selectAll: "เลือกทั้งหมด",
@@ -1243,6 +1258,7 @@ export const th: Messages = {
     busyExportingPdf: "กำลังสร้างไฟล์ PDF...",
     busyExportingCsv: "กำลังสร้างไฟล์ CSV...",
     importError: "ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) หรือ CSV ที่ถูกต้อง",
+    exportError: "ส่งออกไฟล์ Excel ไม่สำเร็จ งานในตารางยังอยู่ครบ ลองอีกครั้ง หรือส่งออกเป็น CSV ไปก่อน",
     importClipped: (sheet, rowsInFile, rowsOpened) =>
       `ชีต "${sheet}" ในไฟล์ยาวถึงแถว ${rowsInFile.toLocaleString("th-TH")} แต่เปิดได้ ${rowsOpened.toLocaleString("th-TH")} แถว — แถวที่เกินไม่ได้นำเข้ามา (ไฟล์ต้นฉบับยังอยู่ครบ)`,
     importNamesDropped: (names) =>

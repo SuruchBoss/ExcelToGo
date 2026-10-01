@@ -7,7 +7,7 @@ import { exportWorkbookToXlsxBlob, importWorkbookFromFile, type ImportedSheet } 
 import { effectiveNames, visibleNames, withName } from "./namedRanges";
 import { createEmptySheet, setCellRaw, type SheetModel } from "./sheet";
 import { computeSheet, createWorkbookResolver } from "./sheetCompute";
-import { renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "./workbookRefs";
+import { fitSheetNames, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "./workbookRefs";
 import { addSheetLevelNames, readRawDefinedNames } from "./xlsxNames";
 
 /**
@@ -120,6 +120,25 @@ describe("a workbook-level name works from every sheet (#60)", () => {
     ];
     const renamed = renameSheetInFormulas(tabs, "Local", "ใบอัตรา");
     expect(renamed[1].cells[0][0]).toBe("=ใบอัตรา!Rate+1");
+  });
+
+  it("a sheet name fixed on load (#54) keeps Sheet!Name pointing at the sheet it was written for", () => {
+    const tabs: Tab[] = [
+      { name: "Lists", sheet: sheetOf({ B1: "10" }, withName(undefined, "Rate", "$B$1", "sheet")) },
+      // A second "Lists", as an older save could hold: renamed, and formulas keep meaning the first.
+      { name: "Lists", sheet: sheetOf({ B2: "777" }, withName(undefined, "Rate", "$B$2", "sheet")) },
+      // A name Excel refuses: renamed together with the formulas that name it.
+      { name: "Q1/Q2", sheet: sheetOf({ B1: "5" }, withName(undefined, "Rate", "$B$1", "sheet")) },
+      { name: "Data", sheet: sheetOf({ A1: "=Lists!Rate", A2: "='Q1/Q2'!Rate" }) },
+    ];
+    const fitted = fitSheetNames(tabs);
+    expect(fitted.map((t) => t.name)).toEqual(["Lists", "Lists (2)", "Q1 Q2", "Data"]);
+    expect(fitted[3].sheet.cells[1][0]).toBe("='Q1 Q2'!Rate");
+    const data = valuesOf(fitted)[3];
+    expect(data[0][0]).toBe(10);
+    expect(data[1][0]).toBe(5);
+    const second = valuesOf([...fitted.slice(0, 3), { name: "Data", sheet: sheetOf({ A1: "='Lists (2)'!Rate" }) }])[3];
+    expect(second[0][0]).toBe(777);
   });
 });
 

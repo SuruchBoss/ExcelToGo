@@ -916,6 +916,77 @@ const FLOWS = [
     },
   },
   {
+    // A formula page (#149) shows numbers the engine worked out on the server; "ลองในตาราง" opens
+    // the same table in the app. Only a browser can say the two agree, that the name leaves the
+    // address, and that over work it asks the way a file does — keeping the work being the default.
+    name: "a formula page's example opens in the sheet with the page's own numbers, and over work it asks first (#149)",
+    async run(page) {
+      const result = (p) => p.locator("[data-lesson-result]").innerText();
+      const bar = page.getByPlaceholder(label.formulaBar);
+
+      await page.goto(ORIGIN + "/formulas/sumif", { waitUntil: "networkidle" });
+      const shown = (await result(page)).trim();
+      await page.getByRole("link", { name: /^ลองในตาราง/ }).click();
+      await page.waitForURL(/\/app/);
+      await page.waitForFunction(() => document.querySelector('td[data-row="6"][data-col="2"]')?.innerText.trim() !== "");
+      const inSheet = (await cell(page, 6, 2).innerText()).trim();
+      note(shown === "450" && inSheet === shown, `the sheet's C7 matches the page (page ${shown}, sheet ${inSheet})`);
+      note((await bar.inputValue()).startsWith("=SUMIF("), `the cursor is on the formula's cell (bar: ${await bar.inputValue()})`);
+      note(!page.url().includes("lesson="), `the lesson's name leaves the address (${page.url()})`);
+      const asked = await page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ }).count();
+      note(asked === 0, "with no work in this browser it opens without asking");
+
+      // Now there is work: the lesson sheet was edited.
+      await typeInCell(page, 0, 4, "keep-me");
+      // Leaving the page before the autosave lands would test a browser that lost the work.
+      await page.waitForFunction(() => (localStorage.getItem("exceltogo-sheet-v2") ?? "").includes("keep-me"));
+      await page.goto(ORIGIN + "/formulas/vlookup", { waitUntil: "networkidle" });
+      const price = (await result(page)).trim();
+      await page.getByRole("link", { name: /^ลองในตาราง/ }).click();
+      const dialog = page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ });
+      await dialog.waitFor({ timeout: 10_000 });
+      const named = await dialog.getByText(/VLOOKUP/).count();
+      note(named > 0, "over work it asks first, naming the example");
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('td[data-row="6"][data-col="2"]')?.innerText.trim() !== "");
+      const got = (await cell(page, 6, 2).innerText()).trim();
+      note(price === "35" && got === price, `the focused choice adds the example (page ${price}, sheet ${got})`);
+      const tabs = await page.getByText(/^(ลอง|Try) VLOOKUP$/).count();
+      await page.getByText(/^(ลอง|Try) SUMIF$/).first().click();
+      const kept = (await cell(page, 0, 4).innerText()).trim();
+      note(tabs > 0 && kept === "keep-me", `and the work that was open is still there (E1 "${kept}")`);
+
+      await page.getByRole("status").getByRole("button", { name: /^(ย้อนกลับ|Undo)$/ }).click();
+      const left = await page.getByText(/^(ลอง|Try) VLOOKUP$/).count();
+      note(left === 0, `undo on the notice takes the example back out (${left} left)`);
+
+      // A name no lesson has is dropped: no dialog, no new tab.
+      await page.goto(ORIGIN + "/app?lesson=not-a-lesson", { waitUntil: "networkidle" });
+      const stray = await page.getByRole("dialog", { name: /^(เปิดไฟล์นี้อย่างไร|How should this file open\?)$/ }).count();
+      note(stray === 0, "an unknown lesson name opens nothing");
+
+      // Typed in capitals, it is the same page, at the one address it lives at.
+      const upper = await fetch(ORIGIN + "/formulas/SUMIF", { redirect: "manual" });
+      note(upper.status === 308 && new URL(upper.headers.get("location"), ORIGIN).pathname === "/formulas/sumif", `/formulas/SUMIF redirects to /formulas/sumif (${upper.status})`);
+      const missing = await fetch(ORIGIN + "/formulas/nope");
+      note(missing.status === 404, `an unknown formula page is a 404 (${missing.status})`);
+
+      // The breadcrumb is an inline script like the landing page's, so it needs this request's nonce.
+      const res = await fetch(ORIGIN + "/formulas/sumif");
+      const nonce = res.headers.get("content-security-policy")?.match(/'nonce-([^']+)'/)?.[1];
+      const tag = (await res.text()).match(/<script type="application\/ld\+json"([^>]*)>([\s\S]*?)<\/script>/);
+      let crumbs = null;
+      try {
+        crumbs = JSON.parse(tag?.[2] ?? "");
+      } catch {
+        // stays null
+      }
+      const names = crumbs?.itemListElement?.map((i) => i.name).join(" › ");
+      note(crumbs?.["@type"] === "BreadcrumbList" && names === "หน้าแรก › สูตร Excel › SUMIF", `the breadcrumb data parses (${names})`);
+      note(Boolean(nonce) && (tag?.[1] ?? "").includes(`nonce="${nonce}"`), "and carries this request's CSP nonce");
+    },
+  },
+  {
     // The app opens blank, and the sample is one press away. What only a browser can say: the
     // sample an older version autosaved into localStorage is not brought back on the next visit,
     // while one changed cell makes it somebody's work that is. And "New file" over that work asks,
@@ -974,6 +1045,61 @@ const FLOWS = [
       await page.getByRole("combobox", { name: "รูปแบบตัวเลข" }).first().selectOption("percent");
       const a2 = (await cell(page, 1, 0).innerText()).trim();
       note(a2 === "25.00%", `0.25 given Percent now reads 25.00%, as in Excel (A2 "${a2}")`);
+    },
+  },
+  {
+    // #54. A save from before the names were checked holds what QA found: two tabs called Sheet3, a
+    // `sheet1` beside `Sheet1`, and `Q1/Q2`. That made the export throw with nothing on screen, or
+    // write a tab named "Q1 Q2" whose formulas still said 'Q1/Q2'. Here it has to open with names
+    // Excel takes, keep every formula on the sheet it was written for, refuse a new bad name where
+    // it is typed, and export a file whose names and formulas an Excel reader accepts.
+    name: "sheet names Excel refuses are fixed on load, refused when typed, and the export opens (#54)",
+    async run(page, { tmp }) {
+      await page.evaluate(() => {
+        const tab = (id, name, cells) => ({ id, name, sheet: { rows: 30, cols: 10, cells } });
+        const sheets = [
+          tab("a", "Sheet1", { "0,0": "=Sheet3!A1", "1,0": "='Q1/Q2'!A1*2" }),
+          tab("b", "Sheet3", { "0,0": "333" }),
+          tab("c", "Sheet3", { "0,0": "999" }),
+          tab("d", "Q1/Q2", { "0,0": "21" }),
+          tab("e", "sheet1", { "0,0": "5" }),
+        ];
+        localStorage.setItem("exceltogo-sheet-v2", JSON.stringify({ state: { sheets, activeSheetId: "a" }, version: 1 }));
+      });
+      await page.reload({ waitUntil: "networkidle" });
+      const want = ["Sheet1", "Sheet3", "Sheet3 (2)", "Q1 Q2", "sheet1 (2)"];
+      for (const name of want) await page.getByText(name, { exact: true }).waitFor({ timeout: 5000 });
+      note(true, `the tabs open with names Excel takes (${want.join(", ")})`);
+      const at = async (r, c) => (await cell(page, r, c).innerText()).trim();
+      const shown = [await at(0, 0), await at(1, 0)];
+      note(shown.join() === "333,42", `formulas read the sheets they were written for: the first Sheet3, and Q1/Q2 renamed with them (${shown.join(", ")})`);
+
+      await page.getByText("Sheet3 (2)", { exact: true }).dblclick();
+      const input = page.getByRole("textbox", { name: /^(ชื่อชีต|Sheet name)$/ });
+      await input.fill("SHEET1");
+      await input.press("Enter");
+      const refusal = page.getByRole("alert").filter({ hasText: "SHEET1" });
+      await refusal.waitFor({ timeout: 5000 });
+      note(await input.isVisible(), `a name only differing in case is refused where it was typed ("${(await refusal.innerText()).slice(0, 60)}…")`);
+      await input.press("Escape");
+      note(await page.getByText("Sheet3 (2)", { exact: true }).isVisible(), "Escape leaves the tab its name");
+
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByRole("button", { name: label.exportExcel }).click(),
+      ]);
+      const file = join(tmp, "sheet-names.xlsx");
+      await download.saveAs(file);
+      const { default: ExcelJS } = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(file);
+      const names = wb.worksheets.map((ws) => ws.name);
+      const valid = names.every((n) => n.length >= 1 && n.length <= 31 && !/[\\/?*[\]:]/.test(n) && !/^'|'$/.test(n));
+      const unique = new Set(names.map((n) => n.toLowerCase())).size === names.length;
+      note(names.join("|") === want.join("|") && valid && unique, `the file's sheets are unique and valid for Excel (${names.join(", ")})`);
+      const first = wb.getWorksheet("Sheet1");
+      const f = [first.getCell("A1").value, first.getCell("A2").value].map((v) => `${v?.formula}=${v?.result}`);
+      note(f.join(" · ") === "Sheet3!A1=333 · 'Q1 Q2'!A1*2=42", `its formulas name the right sheets, with their values cached (${f.join(" · ")})`);
     },
   },
   {

@@ -18,6 +18,7 @@ import { sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { tokenize } from "./formulaEngine/tokenizer";
 import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
 import { cloneSheet, SheetModel } from "./sheet";
+import { cleanSheetName, sheetNameProblem, uniqueSheetName } from "./sheetNames";
 
 export interface NamedSheet {
   name: string;
@@ -154,4 +155,49 @@ export function renameIncomingToFit(existingNames: string[], incoming: NamedShee
     tabs = renamed.map((t, j) => ({ ...t, sheet: fixed[j] }));
   }
   return tabs;
+}
+
+/**
+ * Gives every tab a name Excel accepts, unique ignoring case (#54), rewriting the formulas that
+ * follow a renamed tab.
+ *
+ * For workbooks that already hold names the app used to allow: a save in the browser, or a file
+ * whose names came from somewhere other than Excel. Two rules decide what moves:
+ *
+ * - **The first tab keeps a duplicated name.** It is the one the name was made for — QA's second
+ *   "Sheet3" appeared when a new tab was counted into a name already in use — so formulas that
+ *   say `Sheet3!A1` go on meaning the first, and the later tab is renamed *without* rewriting
+ *   anything. (The resolver used to let the later tab win, which is how the new tab's 999 turned
+ *   up in a formula written for the old one.)
+ * - **An invalid name that is not a duplicate is renamed together with its formulas**, through
+ *   the same rewrite a manual rename uses: `'Q1/Q2'!A1` becomes `'Q1 Q2'!A1`.
+ *
+ * Returns the same array when nothing needed fixing, so a clean workbook costs nothing and keeps
+ * every object identity the compute cache and undo history are keyed on.
+ */
+export function fitSheetNames<T extends NamedSheet>(tabs: T[]): T[] {
+  const claimed = new Set<string>();
+  const keeps = tabs.map((t) => {
+    const key = t.name.toLowerCase();
+    const fine = sheetNameProblem(t.name, []) === null && t.name === t.name.trim() && !claimed.has(key);
+    claimed.add(key);
+    return fine;
+  });
+  if (keeps.every(Boolean)) return tabs;
+
+  const taken = new Set(tabs.filter((_, i) => keeps[i]).map((t) => t.name.toLowerCase()));
+  const originals = tabs.map((t) => t.name.toLowerCase());
+  let out = tabs.map((t) => ({ ...t }));
+  for (let i = 0; i < out.length; i++) {
+    if (keeps[i]) continue;
+    const from = out[i].name;
+    const to = uniqueSheetName(cleanSheetName(from), taken);
+    taken.add(to.toLowerCase());
+    out[i] = { ...out[i], name: to };
+    const duplicate = originals.slice(0, i).includes(from.toLowerCase());
+    if (duplicate) continue;
+    const fixed = renameSheetInFormulas(out, from, to);
+    out = out.map((t, j) => (fixed[j] === t.sheet ? t : { ...t, sheet: fixed[j] }));
+  }
+  return out;
 }

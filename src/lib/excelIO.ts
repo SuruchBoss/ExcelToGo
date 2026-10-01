@@ -44,6 +44,7 @@ import { MergeRange, parseMergeRef } from "./sheetMerges";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 import { compileFormula } from "./formulaEngine/formulaProgram";
 import { CfRule, CfComparison, CfTest } from "./conditionalFormat";
+import { fitSheetNames } from "./workbookRefs";
 
 function hexToArgb(hex: string): string {
   return `FF${hex.replace("#", "").toUpperCase()}`;
@@ -59,12 +60,13 @@ function sanitizeSheetName(name: string, usedNames: Set<string>): string {
   const clean = name.replace(/[\\/*?:[\]]/g, " ").trim().slice(0, 31) || "Sheet";
   let unique = clean;
   let i = 2;
-  while (usedNames.has(unique)) {
+  // Lower-cased, as Excel compares them: `sheet1` beside `Sheet1` made ExcelJS throw (#54).
+  while (usedNames.has(unique.toLowerCase())) {
     const suffix = ` (${i})`;
     unique = clean.slice(0, 31 - suffix.length) + suffix;
     i += 1;
   }
-  usedNames.add(unique);
+  usedNames.add(unique.toLowerCase());
   return unique;
 }
 
@@ -985,8 +987,12 @@ function namesFromFile(file: { sheets: string[]; names: RawDefinedName[] }): {
   return { bySheet, dropped };
 }
 
-async function buildWorkbook(sheets: ExportableSheet[], picturesForCharts: boolean) {
+async function buildWorkbook(given: ExportableSheet[], picturesForCharts: boolean) {
   const workbook = new ExcelJS.Workbook();
+  // The store keeps names valid (#54); this is the guard for anything that reaches the writer
+  // without passing it, and it renames *with* the formulas that point at a tab, where renaming
+  // here alone once wrote a tab called "Q1 Q2" beside formulas that still said 'Q1/Q2'.
+  const sheets = fitSheetNames(given);
   const usedNames = new Set<string>();
   const names: string[] = [];
   for (const { name, sheet, computed } of sheets) {

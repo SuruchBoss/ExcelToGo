@@ -90,7 +90,9 @@ export interface WorkbookTab {
  */
 export function createWorkbookResolver(tabs: WorkbookTab[]): CrossSheetResolver {
   const byName = new Map<string, SheetModel>();
-  for (const tab of tabs) byName.set(tab.name.toLowerCase(), tab.sheet);
+  // The first tab of a name wins, as the name is fitted on load (#54): a workbook that still holds
+  // two answers to the same name reads the one it was made for.
+  for (const tab of tabs) if (!byName.has(tab.name.toLowerCase())) byName.set(tab.name.toLowerCase(), tab.sheet);
   const indexOf = new Map<SheetModel, number>();
   tabs.forEach((tab, i) => {
     if (!indexOf.has(tab.sheet)) indexOf.set(tab.sheet, i);
@@ -726,6 +728,17 @@ export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): 
 
   computeStats.full++;
   return remember(fullCompute(sheet, resolver, names));
+}
+
+/**
+ * A sheet that is its whole workbook — a formula page's example (#149), which lives nowhere else.
+ *
+ * Here rather than at the call site because of #58: outside this file nothing calls `computeSheet`
+ * bare, so no caller can forget the rest of a workbook. A lesson has no rest, and saying so by name
+ * keeps that rule a rule rather than a list of exceptions.
+ */
+export function computeStandalone(sheet: SheetModel, name = "Sheet1"): ComputedSheet {
+  return computeSheet(sheet, createWorkbookResolver([{ name, sheet }]));
 }
 
 /**
