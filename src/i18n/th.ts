@@ -428,7 +428,7 @@ export const th: Messages = {
     stats: [
       { value: "37", label: "สูตรพร้อมใช้" },
       { value: "66", label: "ฟังก์ชันในเอนจิน" },
-      { value: "1861", label: "เทสต์อัตโนมัติ" },
+      { value: "1888", label: "เทสต์อัตโนมัติ" },
       { value: "325", label: "เทสต์ด้านความปลอดภัย" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],
@@ -1018,6 +1018,15 @@ export const th: Messages = {
     confirmDelete: (name) => `ลบชีต "${name}" ใช่หรือไม่? ข้อมูลในชีตนี้จะหายไป`,
     deleteTitle: "ลบชีตนี้",
     addTitle: "เพิ่มชีตใหม่",
+    renameLabel: "ชื่อชีต",
+    nameProblem: {
+      empty: () => "ชื่อชีตว่างไม่ได้",
+      tooLong: (name) => `ชื่อชีตยาวได้ไม่เกิน 31 ตัวอักษร ("${name}" ยาว ${name.length})`,
+      badChar: (name) => `ชื่อชีต "${name}" มีตัวอักษรที่ Excel ไม่รับ: \\ / ? * [ ] :`,
+      apostrophe: (name) => `ชื่อชีต "${name}" ขึ้นต้นหรือลงท้ายด้วย ' ไม่ได้`,
+      reserved: (name) => `"${name}" เป็นชื่อที่ Excel สงวนไว้ ตั้งชื่ออื่นแทน`,
+      taken: (name) => `มีชีตชื่อ "${name}" อยู่แล้ว (Excel ถือว่าตัวพิมพ์เล็กใหญ่เป็นชื่อเดียวกัน)`,
+    },
   },
   filterPopover: {
     selectAll: "เลือกทั้งหมด",
@@ -1247,6 +1256,7 @@ export const th: Messages = {
     busyExportingPdf: "กำลังสร้างไฟล์ PDF...",
     busyExportingCsv: "กำลังสร้างไฟล์ CSV...",
     importError: "ไม่สามารถนำเข้าไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) หรือ CSV ที่ถูกต้อง",
+    exportError: "ส่งออกไฟล์ Excel ไม่สำเร็จ งานในตารางยังอยู่ครบ ลองอีกครั้ง หรือส่งออกเป็น CSV ไปก่อน",
     importClipped: (sheet, rowsInFile, rowsOpened) =>
       `ชีต "${sheet}" ในไฟล์ยาวถึงแถว ${rowsInFile.toLocaleString("th-TH")} แต่เปิดได้ ${rowsOpened.toLocaleString("th-TH")} แถว — แถวที่เกินไม่ได้นำเข้ามา (ไฟล์ต้นฉบับยังอยู่ครบ)`,
     csvEmpty: "ชีตนี้ยังไม่มีข้อมูล จึงไม่มีอะไรให้ส่งออก",

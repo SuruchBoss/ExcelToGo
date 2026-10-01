@@ -429,7 +429,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1861", label: "automated tests" },
+      { value: "1888", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -1021,6 +1021,15 @@ export const en: Messages = {
     confirmDelete: (name) => `Delete sheet "${name}"? Its data will be lost.`,
     deleteTitle: "Delete this sheet",
     addTitle: "Add a new sheet",
+    renameLabel: "Sheet name",
+    nameProblem: {
+      empty: () => "A sheet name can't be empty",
+      tooLong: (name) => `A sheet name can be at most 31 characters ("${name}" is ${name.length})`,
+      badChar: (name) => `"${name}" has a character Excel won't take in a sheet name: \\ / ? * [ ] :`,
+      apostrophe: (name) => `A sheet name can't start or end with ' ("${name}")`,
+      reserved: (name) => `"${name}" is a name Excel keeps for itself — pick another`,
+      taken: (name) => `There's already a sheet called "${name}" (Excel treats upper and lower case as the same name)`,
+    },
   },
   filterPopover: {
     selectAll: "Select all",
@@ -1253,6 +1262,7 @@ export const en: Messages = {
     busyExportingPdf: "Building PDF...",
     busyExportingCsv: "Building CSV...",
     importError: "Couldn't import this file. Please check that it's a valid Excel (.xlsx) or CSV file.",
+    exportError: "The Excel export didn't work. Everything in the sheet is still here — try again, or export as CSV for now.",
     importClipped: (sheet, rowsInFile, rowsOpened) =>
       `Sheet "${sheet}" goes down to row ${rowsInFile.toLocaleString("en-US")}, but only ${rowsOpened.toLocaleString("en-US")} rows can be opened — the rows past that were not imported (the original file is untouched).`,
     csvEmpty: "This sheet is empty, so there is nothing to export.",

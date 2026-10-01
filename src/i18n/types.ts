@@ -779,6 +779,9 @@ export interface Messages {
     confirmDelete: (name: string) => string;
     deleteTitle: string;
     addTitle: string;
+    renameLabel: string;
+    /** Why a typed name was refused (#54), keyed by the rule it broke; given the name as typed. */
+    nameProblem: Record<import("@/lib/sheetNames").SheetNameProblem, (name: string) => string>;
   };
   filterPopover: {
     selectAll: string;
@@ -978,6 +981,8 @@ export interface Messages {
     busyExportingPdf: string;
     busyExportingCsv: string;
     importError: string;
+    /** The .xlsx export threw: the file never arrived, and a silent button is the worst way to learn that (#54). */
+    exportError: string;
     /** A sheet that goes further down than an import opens: its name, the file's last row, and the rows opened. */
     importClipped: (sheet: string, rowsInFile: number, rowsOpened: number) => string;
     csvEmpty: string;

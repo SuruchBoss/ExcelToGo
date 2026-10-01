@@ -84,7 +84,9 @@ export interface WorkbookTab {
  */
 export function createWorkbookResolver(tabs: WorkbookTab[]): CrossSheetResolver {
   const byName = new Map<string, SheetModel>();
-  for (const tab of tabs) byName.set(tab.name.toLowerCase(), tab.sheet);
+  // The first tab of a name wins, as the name is fitted on load (#54): a workbook that still holds
+  // two answers to the same name reads the one it was made for.
+  for (const tab of tabs) if (!byName.has(tab.name.toLowerCase())) byName.set(tab.name.toLowerCase(), tab.sheet);
   const done = new Map<string, ComputedSheet>();
   const computing = new Set<string>();
 
