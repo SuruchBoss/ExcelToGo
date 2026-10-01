@@ -246,6 +246,8 @@ export interface Messages {
     /** The AI promise's limit, beside the promise (#125): no key means a keyword guess. */
     aiNote: string;
     ctaNote: string;
+    /** A text link under the buttons to the formula pages (#149), which are Thai only for now. */
+    formulasLink: string;
     /** Three answers a first visit is looking for — free? private? on my phone? — under the buttons. */
     benefits: string[];
     screenshotAlt: string;
@@ -671,6 +673,7 @@ export interface Messages {
     moreTitle: string;
     moreReadme: string;
     moreSecurity: string;
+    moreFormulas: string;
     openApp: string;
     copy: string;
     copied: string;
@@ -688,6 +691,11 @@ export interface Messages {
     cancel: string;
     doneAppend: (sheets: number) => string;
     doneReplace: (sheets: number) => string;
+    /** A formula page's example (#149): the name the dialog shows in place of a file name, the tab
+     *  it opens as, and what the notice says once it is open. */
+    lessonFile: (id: string) => string;
+    lessonSheet: (id: string) => string;
+    doneLesson: (id: string) => string;
     undo: string;
     dismiss: string;
   };

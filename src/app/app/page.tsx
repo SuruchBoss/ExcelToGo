@@ -24,6 +24,7 @@ import CloudPanel from "@/features/cloud/CloudPanel";
 import SortWarningDialog from "@/features/grid/SortWarningDialog";
 import PasteWarningDialog from "@/features/grid/PasteWarningDialog";
 import OtherTabDialog from "@/features/otherTab/OtherTabDialog";
+import LessonOpener from "@/features/lessons/LessonOpener";
 import ConvertDatesDialog from "@/features/toolbar/ConvertDatesDialog";
 import { useTabLock } from "@/features/otherTab/useTabLock";
 import ImportNotice from "@/features/grid/ImportNotice";
@@ -118,6 +119,7 @@ export default function Home() {
       <SortWarningDialog />
       <PasteWarningDialog />
       <OtherTabDialog />
+      <LessonOpener />
       {convertingDates && <ConvertDatesDialog onClose={() => setConvertingDates(false)} />}
       {find.open && <FindPanel onClose={find.close} />}
       {/* On a short screen from 640px wide, the top bar and the formula bar share one row, and the

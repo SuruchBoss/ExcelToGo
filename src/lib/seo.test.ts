@@ -2,7 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { CANONICAL, DESCRIPTION_MAX, DESCRIPTIONS, MAKER, TITLE_MAX, TITLES, faqAnswerText, jsonLdScript, landingJsonLd } from "./seo";
+import {
+  CANONICAL,
+  DESCRIPTION_MAX,
+  DESCRIPTIONS,
+  FORMULAS_INDEX,
+  MAKER,
+  TITLE_MAX,
+  TITLES,
+  breadcrumbJsonLd,
+  faqAnswerText,
+  formulasTrail,
+  jsonLdScript,
+  landingJsonLd,
+  lessonCanonical,
+  lessonTitle,
+} from "./seo";
+import { LESSONS } from "./lessons";
+import sitemap from "@/app/sitemap";
 import { FUNCTIONS } from "./formulaEngine/functions";
 import { getFormulaCatalog } from "./formulaCatalog";
 import { SITE_URL } from "./site";
@@ -140,5 +157,40 @@ describe("the landing page's questions (#152)", () => {
     expect(enTexts).toHaveLength(thTexts.length);
     for (const t of thTexts) expect(t).toMatch(/เซิร์ฟเวอร์ของคุณเอง[\s\S]*บนเว็บนี้ยังไม่มี/);
     for (const t of enTexts) expect(t).toMatch(/your own server[\s\S]*not on this site/);
+  });
+});
+
+describe("what a search result says about each formula page (#149)", () => {
+  it("every formula page's title and description fit before a result cuts them off", () => {
+    const pages = [
+      { key: "formulas", title: FORMULAS_INDEX.title, description: FORMULAS_INDEX.description },
+      ...LESSONS.map((l) => ({ key: l.slug, title: lessonTitle(l), description: l.lead })),
+    ];
+    const over = pages.filter((p) => p.title.length > TITLE_MAX || p.description.length > DESCRIPTION_MAX || !p.title.endsWith("ExcelToGo"));
+    expect(over.map((p) => `${p.key}: ${p.title.length}/${p.description.length}`)).toEqual([]);
+    const titles = [...Object.values(TITLES.th), ...pages.map((p) => p.title)];
+    expect(new Set(titles).size).toBe(titles.length);
+  });
+
+  it("names a lesson the way people search for it: สูตร NAME, then what it does", () => {
+    for (const l of LESSONS) expect(lessonTitle(l)).toMatch(new RegExp(`^สูตร ${l.id}: `));
+  });
+
+  it("the breadcrumb runs home › formulas › the formula, each step its own canonical", () => {
+    const sumif = LESSONS.find((l) => l.slug === "sumif")!;
+    const ld = breadcrumbJsonLd(formulasTrail(sumif));
+    expect(ld["@type"]).toBe("BreadcrumbList");
+    expect(ld.itemListElement.map((s) => [s.position, s.name, s.item])).toEqual([
+      [1, "หน้าแรก", SITE_URL],
+      [2, "สูตร Excel", `${SITE_URL}/formulas`],
+      [3, "SUMIF", lessonCanonical(sumif)],
+    ]);
+    expect(lessonCanonical(sumif)).toBe(`${SITE_URL}/formulas/sumif`);
+  });
+
+  it("every formula page is in the sitemap, from the lesson list rather than typed out", () => {
+    const urls = sitemap().map((e) => e.url);
+    expect(urls).toContain(FORMULAS_INDEX.canonical);
+    for (const l of LESSONS) expect(urls).toContain(lessonCanonical(l));
   });
 });
