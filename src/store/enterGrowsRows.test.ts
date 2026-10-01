@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { redoSheet, undoSheet, useSheetStore } from "./sheetStore";
 
 /**
@@ -19,6 +19,10 @@ const history = () => useSheetStore.temporal.getState();
 beforeEach(() => {
   state().startBlank();
   history().clear();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 /** Enter on the last row as the grid does it: grow, then type into the new row. */
@@ -78,5 +82,23 @@ describe("Enter on the last row adds one (#170)", () => {
     expect(history().pastStates).toHaveLength(1);
     undoSheet();
     expect(sheet().cells[0][0]).toBe("");
+  });
+
+  it("a template stays put on its last row, quietly: no row, no alert, no undo step", () => {
+    // A template's structure is locked, so the row is refused, but this is an arrow key or Enter,
+    // not Insert row: the "structure is locked" alert would pop up on every press.
+    const alert = vi.fn();
+    vi.stubGlobal("alert", alert);
+    useSheetStore.setState((s) => ({
+      sheets: s.sheets.map((t) =>
+        t.id === s.activeSheetId ? { ...t, sheet: { ...t.sheet, template: { inputs: {}, choices: {} } } } : t
+      ),
+    }));
+    history().clear();
+    const before = state().sheets;
+    expect(state().growRowForEntry()).toBe(false);
+    expect(state().sheets).toBe(before);
+    expect(alert).not.toHaveBeenCalled();
+    expect(history().pastStates).toHaveLength(0);
   });
 });

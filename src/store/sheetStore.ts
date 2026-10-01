@@ -1051,7 +1051,9 @@ export const useSheetStore = create<SheetState>()(
           ),
         growRowForEntry: () => {
           const before = get().sheets;
-          if (refusedStructuralChange(activeTab(get()).sheet)) return false;
+          // A template stays put, without `refusedStructuralChange`'s alert: that is for Insert row,
+          // and here it would pop up on every Enter or ↓ on the last row.
+          if (activeTab(get()).sheet.template) return false;
           const history = useSheetStore.temporal.getState();
           history.pause();
           try {
