@@ -11,6 +11,9 @@ export interface EvalContext {
   getCell(row: number, col: number, sheet?: string): FormulaValue;
 }
 
+/** Functions that take an error as an argument without becoming it (see the `call` case). */
+const ERROR_ARGS_ALLOWED = new Set(["IF", "IFERROR", "IFNA", "COUNT", "COUNTA", "COUNTBLANK"]);
+
 export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
   switch (node.type) {
     case "number":
@@ -21,7 +24,7 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
     case "bool":
       return scalar(node.value);
     case "cell":
-      return scalar(ctx.getCell(node.row, node.col, node.sheet));
+      return { kind: "scalar", value: ctx.getCell(node.row, node.col, node.sheet), fromRef: true };
     case "referror":
       return scalar(ERR_REF);
     case "missing":
@@ -54,6 +57,15 @@ export function evaluate(node: AstNode, ctx: EvalContext): EvalResult {
       const fn = FUNCTIONS[node.name];
       if (!fn) return scalar(ERR_NAME);
       const args = node.args.map((a) => evaluate(a, ctx));
+      // An error written into the formula or computed by it goes straight through, as in Excel
+      // (#166): `SUMIF(A2:A6,เหนือ,C2:C6)` with the quotes forgotten is `#NAME?`, not a silent 0,
+      // and `UPPER(foo)` is `#NAME?`, not the text "#NAME?". An error read from a cell is left to
+      // the function, which knows whether it reads that argument as a range (COUNTIF skips errors
+      // in its range). The functions whose job is to look at errors, or that may never use an
+      // argument (IF picks one branch), are not stopped here.
+      if (!ERROR_ARGS_ALLOWED.has(node.name)) {
+        for (const a of args) if (a.kind === "scalar" && !a.fromRef && isError(a.value)) return scalar(a.value);
+      }
       try {
         const out = fn(args);
         // INDEX can answer with a whole row or column; everything else answers with one value.
