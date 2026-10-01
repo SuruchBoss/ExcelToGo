@@ -53,13 +53,14 @@ import { BE_DATE_CODE } from "@/lib/excelDate";
 import { guardedStorage } from "@/lib/saveHealth";
 import { isEditingTab, noteRefusedEdit } from "./tabStore";
 import { autoChartAnchor, MAX_COL_WIDTH, MIN_COL_WIDTH } from "@/lib/gridGeometry";
-import { cellRef, colToLetters, rangeRefString } from "@/lib/formulaEngine/address";
+import { cellRef, colToLetters, parseCellRef, rangeRefString } from "@/lib/formulaEngine/address";
 import { autoSumRange, hasHeaderRow, headerRow, namedColumns, runIsText, TOTAL_LABEL, valuesMentioned, type NamedColumn } from "@/lib/aiRange";
 import { placeFormula, type Cell } from "@/lib/aiPlacement";
 import { referencedRects } from "@/lib/precedents";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
 import { fitSheetNames, renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
 import { nextSheetName, SheetNameProblem, sheetNameProblem } from "@/lib/sheetNames";
+import { lessonBySlug, lessonSheet } from "@/lib/lessons";
 import { fillBlock, fillTargetFor, fillWithin, type FillTarget } from "@/lib/fillSeries";
 import { findMatches, replaceIn, type Match, type SearchOptions } from "@/lib/sheetSearch";
 import type { Axis } from "@/lib/formulaEngine/structuralShift";
@@ -232,7 +233,8 @@ interface SheetState {
    * joined the work already open or replaced it. The notice offers the undo that used to be the
    * only way back, and that nobody knew about.
    */
-  importNotice: { sheets: number; mode: ImportMode } | null;
+  /** What a file (or a lesson's example, #149) just opened, for the notice with its undo. */
+  importNotice: { sheets: number; mode: ImportMode; lesson?: string } | null;
   /**
    * The last thing worth saying out loud, and a sequence number.
    *
@@ -422,6 +424,9 @@ interface SheetState {
 
   /** `append` adds the file's sheets after the ones open; `replace` swaps the workbook for it. */
   importFromFile: (file: File, mode?: ImportMode) => Promise<void>;
+  /** Opens a formula page's example as a sheet (#149), the way a file opens: `append` keeps the work
+   *  that is there, `replace` is for when there is none. Unknown names do nothing. */
+  openLesson: (slug: string, mode: ImportMode) => void;
   dismissImportNotice: () => void;
   replaceWorkbook: (sheets: SheetTab[]) => void;
   exportXlsx: () => Promise<void>;
@@ -619,6 +624,32 @@ const initialTab = newTab("Sheet1");
  * chart somebody had just made.
  */
 export type ImportMode = "append" | "replace";
+
+/**
+ * Puts opened sheets in the workbook — from a file or a lesson's example. `replace` is what opening
+ * a file always did; `append` keeps the work that was open and adds the new sheets after it,
+ * renaming a tab whose name is already taken (and the incoming formulas that point at it).
+ */
+function placeIncoming(
+  s: SheetState,
+  incoming: { name: string; sheet: SheetModel }[],
+  mode: ImportMode,
+  extra: Partial<SheetState>
+): Pick<SheetState, "sheets" | "activeSheetId" | "selectionBySheetId" | "filtersBySheetId"> & Partial<SheetState> {
+  const valid = fitSheetNames(incoming);
+  const fitted = mode === "append" ? renameIncomingToFit(s.sheets.map((t) => t.name), valid) : valid;
+  const tabs = fitted.map((w) => newTab(w.name, w.sheet));
+  if (mode === "append") {
+    return {
+      sheets: [...s.sheets, ...tabs],
+      activeSheetId: tabs[0].id,
+      selectionBySheetId: s.selectionBySheetId,
+      filtersBySheetId: s.filtersBySheetId,
+      ...extra,
+    };
+  }
+  return { sheets: tabs, activeSheetId: tabs[0].id, selectionBySheetId: {}, filtersBySheetId: {}, ...extra };
+}
 
 /**
  * Is there anything in the workbook a file open could destroy? The untouched sample is not work,
@@ -1950,19 +1981,13 @@ export const useSheetStore = create<SheetState>()(
            * `append` keeps the work that was open and adds the file after it, renaming a tab whose
            * name is already taken (and the file's own formulas that point at it).
            */
-          const place = (incoming: { name: string; sheet: SheetModel }[]) => {
-            const s = get();
-            // A CSV is named after its file, which can hold what a sheet name cannot (#54).
-            const valid = fitSheetNames(incoming);
-            const fitted = mode === "append" ? renameIncomingToFit(s.sheets.map((t) => t.name), valid) : valid;
-            const tabs = fitted.map((w) => newTab(w.name, w.sheet));
-            const notice = { importNotice: { sheets: tabs.length, mode }, ...say(getMessages().live.imported(tabs.length)) };
-            if (mode === "append") {
-              set({ sheets: [...s.sheets, ...tabs], activeSheetId: tabs[0].id, ...notice });
-            } else {
-              set({ sheets: tabs, activeSheetId: tabs[0].id, selectionBySheetId: {}, filtersBySheetId: {}, ...notice });
-            }
-          };
+          // A CSV is named after its file, which can hold what a sheet name cannot (#54);
+          // placeIncoming fits the names before anything else sees them.
+          const place = (incoming: { name: string; sheet: SheetModel }[]) =>
+            set(placeIncoming(get(), incoming, mode, {
+              importNotice: { sheets: incoming.length, mode },
+              ...say(getMessages().live.imported(incoming.length)),
+            }));
           try {
             // A .csv is plain text, so it never reaches ExcelJS — which would reject it anyway.
             // The delimiter is sniffed rather than assumed: Excel writes the list separator of the
@@ -1997,6 +2022,20 @@ export const useSheetStore = create<SheetState>()(
           } finally {
             set({ busy: null });
           }
+        },
+
+        openLesson: (slug, mode) => {
+          const lesson = lessonBySlug(slug);
+          if (!lesson) return;
+          const msg = getMessages().importChoice;
+          const at = parseCellRef(lesson.example.result)!;
+          const placed = placeIncoming(get(), [{ name: msg.lessonSheet(lesson.id), sheet: lessonSheet(lesson) }], mode, {
+            importNotice: { sheets: 1, mode, lesson: lesson.id },
+            ...say(msg.doneLesson(lesson.id)),
+          });
+          // The cursor on the cell the page was about, so the formula bar shows its formula.
+          const selectionBySheetId = { ...placed.selectionBySheetId, [placed.activeSheetId]: singleCellSelection(at.row, at.col) };
+          set({ ...placed, selectionBySheetId });
         },
 
         dismissImportNotice: () => set({ importNotice: null }),

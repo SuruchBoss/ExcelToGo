@@ -42,7 +42,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1873%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1888%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -63,7 +63,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1873 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1888 automated tests.
 
 ---
 
@@ -107,7 +107,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1873 passing tests could not catch
+### 🧪 What 1888 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -118,7 +118,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1873 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1888 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -310,6 +310,7 @@ the outcome under a double rule like a total.
   - [A usage count that provably cannot identify anyone](#-a-usage-count-that-provably-cannot-identify-anyone)
   - [A landing page that explains the app](#-a-landing-page-that-explains-the-app)
   - [Questions people ask, on the landing page](#-questions-people-ask-on-the-landing-page)
+  - [One page per formula](#-one-page-per-formula)
   - [Bilingual (Thai / English)](#-bilingual-thai--english)
 - [Tech stack](#-tech-stack)
 - [Architecture](#-architecture)
@@ -391,7 +392,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1873-case Vitest suite |
+| `npm test` | Run the 1888-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -399,7 +400,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 44 flows: numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), duplicate or invalid sheet names fixed on load, refused when typed, and exported with the right names and formulas (#54), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 45 flows: a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), duplicate or invalid sheet names fixed on load, refused when typed, and exported with the right names and formulas (#54), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -2819,6 +2820,34 @@ differs from Excel and Google Sheets.
   the function counter had been one short all along** (`"RANK.EQ"` is quoted and the old pattern skipped it), so the
   65 on the landing page, the README and the link-preview card is now 66.
 
+### 📘 One page per formula
+
+<p align="center"><img src="public/screenshots/en/68-formula-page.png" width="820" alt="The SUMIF page, in Thai: the sentence that answers what it does, its shape with each argument explained, and an example table with the northern branch's rows highlighted and the 450 total worked out by the app's engine, with a Try it in the sheet button"></p>
+
+The formulas people search for most have pages of their own now (#149). The first five are **SUM, SUMIF, COUNTIF, IF
+and VLOOKUP**, at `/formulas/<name>`, with a list at `/formulas`. They are linked from under the landing page's
+buttons, from the FAQ's fifth question, and from the end of the guide.
+
+- **The first sentence answers what the formula does**, then its shape, an example, the mistakes people make with it,
+  and formulas used alongside it.
+- **The name, the shape and what each argument means come from the app's formula palette**, so the page and the app
+  describe a formula in the same words. The opening sentence, the example and the mistakes are written by hand
+  (`src/lib/lessons.ts`).
+- **No result on a page was typed in.** A lesson holds a table and a formula; the page runs both through the app's
+  own engine when it renders. **The mistakes are computed too**: VLOOKUP without `FALSE` on an unsorted table returns
+  another row's price (8 instead of 35), because that is what the engine gives. A test pins every example's value,
+  and another checks that each mistake gives a different answer from the right one.
+- **"ลองในตาราง" (try it in the sheet)** opens the example as a sheet in the app, with the cursor on the formula's cell.
+  With no work in this browser it opens straight away; with work, it asks with the same dialog a file does, keeping
+  the work being the focused choice. One Ctrl+Z takes it out. The link carries only the lesson's name
+  (`/app?lesson=sumif`): the table comes from the lessons built into the app, so a made-up link cannot put anything in
+  a sheet, and the name leaves the address at once so a reload does not open it twice. A view-only tab (#47) does not
+  open it.
+- Rendered on the server, each with its own canonical, in the sitemap (built from the lesson list), with a
+  `BreadcrumbList` as the only JSON-LD, carrying the CSP nonce. `/formulas/SUMIF` redirects (308) to `/formulas/sumif`.
+- **Limits:** these pages are Thai only until they have English addresses of their own, which is why the picture
+  above is in Thai. The rest of the palette's formulas are still explained only in the app (the list page counts them from the palette).
+
 ### 🌐 Bilingual (Thai / English)
 
 Click **EN**/**ไทย** in the top-right corner to switch the entire UI instantly — menus, buttons, all 37 formula
@@ -2856,7 +2885,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1873 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1888 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3018,6 +3047,7 @@ src/
     app/layout.tsx           # /app's own title, description and canonical (it used to borrow the landing page's)
     guide/page.tsx           # /guide — connecting your own API or database, step by step, commands copyable
     not-found.tsx            # A 404 in both languages with links to the app and home, not Next's English default
+    formulas/                # /formulas and /formulas/[slug] — one page per formula (#149), rendered on the server
     sitemap.ts · robots.ts   # Every sitemap URL must declare itself canonical (check:e2e) · AI crawlers allowed on purpose
     api/ai/formula/route.ts  # API endpoint suggesting formulas (Claude, or a heuristic fallback)
     api/sources/             # Source CRUD, /test (run without saving), /[id]/data (fetch as a table)
@@ -3076,6 +3106,7 @@ src/
     landing/LandingPage.tsx         # The whole landing page (moved out of app/page.tsx so / can carry its own metadata)
     landing/LiveSheet.tsx           # The real grid in the hero — imports the app's own parser/evaluator,
                                      # so it is not a screenshot: edits recompute in the visitor's browser
+    lessons/                        # The formula pages' frame and example table, and the app's opener for ?lesson=
     cloud/CloudPanel.tsx            # The cloud panel: sign in, save, and open from the user's own Supabase
     grid/ConditionalFormatPanel.tsx # The conditional-formatting panel: writing rules + this sheet's list
     grid/StorageNotice.tsx          # One line saying the work lives only in this browser, in the visit of the first edit; then the save status holds it
@@ -3190,6 +3221,7 @@ src/
     apiOrigins.ts            # Which origins the CSP takes from the etg-api-origins cookie — each one re-derived
                               # with new URL(); https or localhost only, no wildcard, at most 20 (tested)
     site.ts                  # The one canonical public URL shared by metadata, sitemap and robots
+    lessons.ts               # The formula pages' lessons (#149): table, formula, mistakes — every result from the engine
     seo.ts                   # Each page's title, description and canonical, and the JSON-LD — shared by the metadata
                               # and the tab title in English; tests hold the lengths (≤60 / ≤155) and forbid an AI
                               # promise in a search result (#125)
@@ -3871,20 +3903,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1873 cases across 128 files, via Vitest
+npm test      # 1888 cases across 130 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1873 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1888 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 44 flows in a real browser (needs a build)
+npm run check:e2e   # 45 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -3996,10 +4028,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1873 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1888 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1873 passing tests could not catch](#-what-1873-passing-tests-could-not-catch), repeatable
+> [What 1888 passing tests could not catch](#-what-1888-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4021,7 +4053,8 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
 | `functions.test.ts` | 136 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
 | `textFromCells.test.ts` | 14 | Text and TRUE/FALSE read from cells skipped by `SUM`, `AVERAGE`, `MIN`, `MAX`, `PRODUCT` and `COUNT`, in a single cell and a range, while a value written in the formula still converts (`SUM("5",1)` = 6); `C2*2` over `'1,250` still 2500; `SUMIF`/`SUMIFS`/`AVERAGEIF`/`SUMPRODUCT` adding only numbers; and a name nothing defines being `#NAME?` in every function but those that look at errors (#166) |
-| `seo.test.ts` | 18 | Each page's search result (#148): title/description length, no AI promise, the formula count matching the palette, its own canonical, JSON-LD that parses and claims no rating · The FAQ (#152): FAQPage matching the page word for word, seven questions in both languages, yes/no questions opening with the answer, no ranking words, counts that match, and what an export loses |
+| `seo.test.ts` | 23 | Each page's search result (#148): title/description length, no AI promise, the formula count matching the palette, its own canonical, JSON-LD that parses and claims no rating · The FAQ (#152): FAQPage matching the page word for word, seven questions in both languages, yes/no questions opening with the answer, no ranking words, counts that match, what an export loses, and Supabase only with "your own server" · The formula pages (#149): titles and descriptions that fit, "สูตร NAME:" first, the breadcrumb trail, and every page in the sitemap |
+| `lessons.test.ts` | 8 | The formula pages (#149): each example's value pinned as the engine gives it, every mistake giving a different answer, each lesson a palette formula whose argument list lines up, lower-case unique addresses, and the sheet the app opens holding exactly the page's table |
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 12 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 16 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
@@ -4063,6 +4096,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/convertDates.test.ts` | 5 | "Convert to dates" and "Date (B.E.)" through the store (#82): converted cells show the Buddhist year while unreadable ones and formulas stay, A.D. month-first, one undo for all, a chosen format kept, the B.E. format shown and switched back |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |
 | `store/sortFormulas.test.ts` | 10 | Formulas sorting with their rows (#48): the QA's minimal case, the sample in both languages sorted both ways with every row's price × qty = total and the grand total unchanged, a rate under the table and another sheet's cell still pointed at, a running total / a total in the range / a `$` row inside it asking first, and sorting when confirmed · Z→A on a text column keeps the header and asks nothing (#49 with #48) |
+| `store/lessonOpen.test.ts` | 3 | A formula page's example opened in the app (#149): in place of an empty workbook with the cursor on the formula's cell, after the open work (which stays) with one undo taking it back out, and nothing for an unknown name |
 | `store/filteredSelection.test.ts` | 12 | Under a filter, only the rows on screen (#50): Delete, copy (formulas follow their own row), cut, Ctrl+Enter, Ctrl+D and Convert to dates (#82) skip hidden rows; with no filter every row is acted on as before · a paste over hidden rows asks first; Cancel pastes nothing, yes pastes and one undo takes it back, and text from another app asks too |
 | `store/viewOnlyTab.test.ts` | 4 | A view-only tab (#47) on the real store: an edit is refused and said so with nothing saved, the selection still moves, the editing tab edits and saves as before, and a tab whose lock has not answered yet edits |
 | `store/aiQuestions.test.ts` | 24 | The testers' real questions (#62–#64) on the real sample in both languages, from the context the panel sends through the matcher and the placement to the value in the cell: the right function ("the total amount of money" is SUM, "account" is not a count), conditions sent to the SUMIF/COUNTIF/AVERAGEIF form, per-row formulas on the cursor's row, a column's total under the column rather than over E5, no formula that reads itself, and help that gives no wrong directions |
@@ -4235,8 +4269,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (2.85:1), and two `<select>` elements in the conditional-formatting panel with **no accessible name at
       all**, which axe rates critical. A `<label>` sat above them without an `htmlFor`, which looks
       associated and is not. Both fixed. Still open: the cloud panel (no button unless a backend is
-      configured) and the live-data picker, which needs a source first. Now 102 checks — most recently the
-      sheet-name editor saying why Excel would refuse a name (#54), the notice on a tab that edits again because the other closed (#146), the rescue screen after a crash (#145),
+      configured) and the live-data picker, which needs a source first. Now 116 checks — most recently the
+      formula pages (#149) and the sheet-name editor saying why Excel would refuse a name (#54), and before them the notice on a tab that edits again because the other closed (#146), the rescue screen after a crash (#145),
       the Convert to dates dialog (#82), the question asked before a paste over rows a filter hides (#50) and
       the 404 page (#148), and before them the AI assistant's answer card, both the one with a formula and the one that points at a form (#62–#64).
 - [x] **Property-based testing for the engine** — done: `property.test.ts` names no formula at all,
@@ -4296,7 +4330,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 44 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 45 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

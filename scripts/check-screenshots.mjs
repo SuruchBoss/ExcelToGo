@@ -117,6 +117,8 @@ const SHOWS = {
   "66-convert-dates.png": [],
   // Two answers quote a count: the palette's formulas, and the engine's functions.
   "67-landing-faq.png": ["paletteFormulas", "engineFunctions"],
+  // A formula page's example: the engine's numbers for one lesson's table, none of them counted figures.
+  "68-formula-page.png": [],
   "demo.gif": [],
 };
 
