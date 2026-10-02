@@ -42,7 +42,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1893%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1908%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -63,7 +63,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1893 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1908 automated tests.
 
 ---
 
@@ -107,7 +107,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1893 passing tests could not catch
+### 🧪 What 1908 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -118,7 +118,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1893 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1908 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -392,7 +392,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1893-case Vitest suite |
+| `npm test` | Run the 1908-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1670,16 +1670,25 @@ those are what say it works.
 not shift when filled** — as in Excel. Both fall out of `shiftFormulaRefs` only ever rewriting cell
 and range tokens.
 
-They go **into and out of `.xlsx` as real defined names**, so a workbook that arrived from Excel
-with names on it still computes.
+**A name works from every sheet, as in Excel (#60).** Name `Prices` on `Products` and
+`=VLOOKUP("P2",Prices,2,FALSE)` works on `Orders`. It used to belong to the sheet it was made on, so it
+was `#REF!` from anywhere else, while the export wrote it as workbook-level anyway. **Sheet-level names**
+exist too: a sheet sees its own before the workbook's, and another sheet reaches one as
+`Products!Prices`, as Excel writes it. The name list says whether each name is the **workbook's** or
+**this sheet's**, and where it points. A name made in the app is always the workbook's; choosing
+sheet-level while making one is not there yet.
 
-**Stated limits:** **a name belongs to the sheet that defines it, not to the workbook.** Excel has
-both kinds; this has the second. The reason is mechanical rather than principled —
-`computeSheet(sheet)` takes a sheet, and fifteen call sites pass one with no workbook in reach. A
-name whose *target* points at another tab still works, which covers the lookup-table case. On
-export, **two tabs claiming the same name collide and the first one wins**, because a file's
-defined names are workbook-wide and renaming the second would produce a file whose formulas point
-somewhere nobody asked for. And **deleting a name leaves the formulas holding it**, reading
+They go **into and out of `.xlsx` as real defined names, scope and all**: a workbook-level name stays
+workbook-level, one with a `localSheetId` stays on the sheet the file names (not the one it points at),
+and an export opened again comes back with the same scopes. **A name that cannot come in is named when
+the file opens** — a formula (`=OFFSET(...)`), a whole column (`$B:$B`), several areas, or a sheet the file
+does not have — rather than turning into `#NAME?` with nothing to say why.
+
+**Stated limits:** formula and whole-column names still cannot come in (they are named instead). When a
+file is added after the work already open and both have a workbook-level name spelled the same, **the
+earlier sheet's wins**, in the app and in the export, because renaming one would produce formulas that
+point somewhere nobody asked for. Deleting the sheet a workbook-level name is stored on takes the name with
+it. And **deleting a name leaves the formulas holding it**, reading
 `#NAME?` rather than being rewritten back to addresses: quietly rewriting work nobody asked to have
 rewritten is worse, and `#NAME?` is both findable and undoable.
 
@@ -2892,7 +2901,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1893 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1908 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3236,6 +3245,7 @@ src/
     pivot.ts                 # The group-and-summarise engine — pure functions, no sheet or UI (tested)
     xlsxChartXml.ts          # Builds the chart OOXML (chart part + drawing anchor) as pure strings (tested)
     xlsxCharts.ts            # Splices chart parts into the finished .xlsx and wires the rels (tested)
+    xlsxNames.ts             # A file's defined names with their scope (localSheetId), read and written in workbook.xml, which ExcelJS drops (#60, tested)
     dataSources/sourcesToken.ts  # The operator token on the browser side (kept in sessionStorage)
     dataSources/collect.ts   # The one source reader, shared by server and browser: pages, byte/time budget, 429,
                               # partial tables
@@ -3910,13 +3920,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1893 cases across 131 files, via Vitest
+npm test      # 1908 cases across 133 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1893 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1908 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -4035,10 +4045,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1893 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1908 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1893 passing tests could not catch](#-what-1893-passing-tests-could-not-catch), repeatable
+> [What 1908 passing tests could not catch](#-what-1908-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4092,6 +4102,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
 | `dataValidation.test.ts` | 28 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated |
 | `namedRanges.test.ts` | 26 | Named ranges: a name that is also an address, has a space, or is reserved is refused with the reason; the name is substituted throughout the tree; precedents point at the real rectangle; repointing a name really does recompute (the cache is keyed by the name table); and a name does not shift when filled |
+| `workbookNames.test.ts` | 11 | Workbook-level names (#60): the issue's file gives 60 and 20 from another sheet; a sheet-level name wins on its own sheet and is reached from others as `Sheet!Name`; naming a range on one sheet recomputes a formula waiting on another; the table is the same object while nothing changes (so the caches hold); an inserted row and a renamed sheet keep names pointing right; a duplicate or invalid sheet name fixed on load (#54) leaves `Sheet!Name` on the sheet the formula was written for; a file with `localSheetId` opens with the same scopes, a name that cannot come in is named, and export then import keeps every scope |
 | `store/pasteNumbers.test.ts` | 1 | A TSV as Excel and Google Sheets put it on the clipboard (`1,250`, `15%`, `฿1,234.50`) pasted through the store: every cell a number, SUM right, codes like `00123` and `081-234-5678` still text (#52) |
 | `store/sheetNaming.test.ts` | 6 | Sheet names through the real store (#54): QA's four cases (+ after a delete, a rename onto a name in use, a case twin, a forbidden character), a save from before the fix opening with valid names and formulas on the right tab, the export read as XML with cross-sheet `<v>` values real (#101), and a failed export announced |
 | `store/sheetRules.test.ts` | 11 | Both features at the store: a value outside the rule is not saved and is announced, rules and names follow row edits, deleting a name leaves the formula reading `#NAME?` rather than rewritten, and undo brings the name back |
@@ -4107,6 +4118,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/lessonOpen.test.ts` | 3 | A formula page's example opened in the app (#149): in place of an empty workbook with the cursor on the formula's cell, after the open work (which stays) with one undo taking it back out, and nothing for an unknown name |
 | `store/filteredSelection.test.ts` | 12 | Under a filter, only the rows on screen (#50): Delete, copy (formulas follow their own row), cut, Ctrl+Enter, Ctrl+D and Convert to dates (#82) skip hidden rows; with no filter every row is acted on as before · a paste over hidden rows asks first; Cancel pastes nothing, yes pastes and one undo takes it back, and text from another app asks too |
 | `store/viewOnlyTab.test.ts` | 4 | A view-only tab (#47) on the real store: an edit is refused and said so with nothing saved, the selection still moves, the editing tab edits and saves as before, and a tab whose lock has not answered yet edits |
+| `store/workbookNames.test.ts` | 4 | A name made in the app is the workbook's (#60): `PriceTable` made on Products answers a VLOOKUP on another sheet, the same word is refused from another sheet and a new name lands on the sheet in front, a name deleted from another sheet is deleted where it lives and undo brings it back, and repointing it from another sheet keeps it one name |
 | `store/aiQuestions.test.ts` | 24 | The testers' real questions (#62–#64) on the real sample in both languages, from the context the panel sends through the matcher and the placement to the value in the cell: the right function ("the total amount of money" is SUM, "account" is not a count), conditions sent to the SUMIF/COUNTIF/AVERAGEIF form, per-row formulas on the cursor's row, a column's total under the column rather than over E5, no formula that reads itself, and help that gives no wrong directions |
 | `store/liveStore.test.ts` | 12 | The wiring, with the socket replaced by a function call: a keystroke reaching the wire, an arriving edit reaching the document, the two not feeding each other for ever, and undo not erasing the other person's work |
 | `pdfFont.test.ts` | 5 | Embedding the Thai font, fetching it once per page, and falling back to the built-in font rather than failing the export |
@@ -4404,7 +4416,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
       cannot be written to the file.
 - [x] **Named ranges** — done (see [Named ranges](#-named-ranges)): Thai names work, substitution happens
       at compile time so the dependency graph stays honest, names follow row edits, and they round-trip
-      through `.xlsx`. Still open: a name belongs to its sheet rather than the workbook, and there is no
+      through `.xlsx`; since #60 a name is the workbook's, as in Excel, with a file's sheet-level names kept.
+      Still open: choosing a scope when making a name in the app, formula and whole-column names, and a
       name box beside the formula bar to jump to a range.
 - [x] **Database sources (Postgres/MySQL)** — done (see [Straight into a database](#-straight-into-a-database-postgresql--mysql)):
       tech saves a connection string and a query once, users only ever see the table, and the statement runs

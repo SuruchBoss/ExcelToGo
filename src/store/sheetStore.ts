@@ -79,7 +79,18 @@ import { isSingleCell, normalizeSelection, singleCellSelection, SelectionRect } 
 import { shiftFormulaRefs } from "@/lib/formulaEngine/shift";
 import { shiftFreeze, toggleFreezeAt } from "@/lib/sheetFreeze";
 import { checkValue, ruleAt, shiftValidation, ValidationRule, withValidation } from "@/lib/dataValidation";
-import { nameKey, nameProblem, refForSelection, shiftNames, withName, withoutName, type NameProblem } from "@/lib/namedRanges";
+import {
+  effectiveNames,
+  findNameHome,
+  nameProblem,
+  refForSelection,
+  shiftNames,
+  visibleNames,
+  withName,
+  withoutName,
+  type NameProblem,
+  type NameTable,
+} from "@/lib/namedRanges";
 import { countUsage } from "@/lib/usage";
 import { getLocale, getMessages } from "@/i18n";
 import type { Locale } from "@/i18n/types";
@@ -514,6 +525,11 @@ function renderPivotSheet(
 
 function activeTab(s: SheetState): SheetTab {
   return s.sheets.find((t) => t.id === s.activeSheetId) ?? s.sheets[0];
+}
+
+/** The index `activeTab` reads, found the same way. */
+function activeIndex(s: SheetState): number {
+  return Math.max(0, s.sheets.indexOf(activeTab(s)));
 }
 
 // A stable reference for "no selection recorded yet" — used as a Zustand selector fallback,
@@ -986,16 +1002,28 @@ export const useSheetStore = create<SheetState>()(
 
         defineName: (label, replacing) => {
           const s = get();
-          const sheet = activeTab(s).sheet;
-          const problem = nameProblem(label, sheet.names, replacing);
+          const self = activeIndex(s);
+          // Taken means taken anywhere this sheet can see: a workbook-level name on another tab is
+          // one a formula here would already mean by that word (#60).
+          const visible: NameTable = {};
+          for (const h of visibleNames(s.sheets, self)) visible[h.key] = h.entry;
+          const problem = nameProblem(label, visible, replacing);
           if (problem) return problem;
           const sel = activeSelectionOf(s);
           const ref = refForSelection(sel);
-          const nextNames = replacing && nameKey(replacing) !== nameKey(label)
-            ? withName(withoutName(sheet.names, replacing) ?? undefined, label, ref)
-            : withName(sheet.names, label, ref);
+          const old = replacing ? findNameHome(s.sheets, self, replacing) : undefined;
           set(() => ({
-            sheets: withActiveSheet(s, () => ({ ...sheet, names: nextNames })),
+            sheets: s.sheets.map((tab, i) => {
+              let names = tab.sheet.names;
+              if (old && i === old.tabIndex) names = withoutName(names, old.entry.label);
+              // Made here, so stored here, where its bare target means this sheet; workbook-level
+              // unless it is redefining a sheet-level one, which keeps its kind.
+              if (i === self) names = withName(names, label, ref, old?.entry.scope);
+              if (names === tab.sheet.names) return tab;
+              const sheet: SheetModel = { ...tab.sheet, names };
+              if (!names) delete sheet.names;
+              return { ...tab, sheet };
+            }),
             ...say(getMessages().names.defined(label.trim(), rangeLabel(sel))),
           }));
           return null;
@@ -1003,17 +1031,19 @@ export const useSheetStore = create<SheetState>()(
 
         deleteName: (label) =>
           set((s) => {
-            const sheet = activeTab(s).sheet;
-            const names = withoutName(sheet.names, label);
-            if (names === sheet.names) return {};
-            const next: SheetModel = { ...sheet, names };
+            // Wherever it lives: a workbook-level name listed here may be stored on another tab.
+            const home = findNameHome(s.sheets, activeIndex(s), label);
+            if (!home) return {};
+            const target = s.sheets[home.tabIndex].sheet;
+            const names = withoutName(target.names, home.entry.label);
+            const next: SheetModel = { ...target, names };
             if (!names) delete next.names;
             // Formulas that used it are left holding the name, which now reads `#NAME?`. Rewriting
             // them back to addresses would be the friendlier-looking choice and the wrong one: it
             // silently rewrites work the person did not ask to have rewritten, and `#NAME?` is
             // both findable and undoable.
             return {
-              sheets: withActiveSheet(s, () => next),
+              sheets: s.sheets.map((tab, i) => (i === home.tabIndex ? { ...tab, sheet: next } : tab)),
               ...say(getMessages().names.deleted(label.trim())),
             };
           }),
@@ -1967,7 +1997,7 @@ export const useSheetStore = create<SheetState>()(
           const raw = formula.startsWith("=") ? formula : `=${formula}`;
           const sel = activeSelectionOf(s);
           const { sheet } = activeTab(s);
-          const at = placeFormula(raw, { row: sel.anchorRow, col: sel.anchorCol }, (r, c) => sheet.cells[r]?.[c] ?? "", sheet.rows, sheet.names);
+          const at = placeFormula(raw, { row: sel.anchorRow, col: sel.anchorCol }, (r, c) => sheet.cells[r]?.[c] ?? "", sheet.rows, effectiveNames(s.sheets, activeIndex(s)));
           if (!at) {
             set(say(getMessages().ai.selfReference(cellRef(sel.anchorRow, sel.anchorCol))));
             return null;
@@ -2019,9 +2049,14 @@ export const useSheetStore = create<SheetState>()(
             // A file longer than the sheet can open is opened as far as it goes — and said out loud,
             // because rows missing without a word is the bug this replaced (#43).
             const clipped = imported.filter((w) => w.rowsInFile !== undefined);
-            if (clipped.length > 0) {
-              const { importClipped } = getMessages().store;
-              alert(clipped.map((w) => importClipped(w.name, w.rowsInFile!, w.sheet.rows)).join("\n"));
+            const dropped = imported[0]?.droppedNames ?? [];
+            if (clipped.length > 0 || dropped.length > 0) {
+              const { importClipped, importNamesDropped } = getMessages().store;
+              // Names said out loud for the same reason (#60): a `#NAME?` with no reason on screen
+              // looks like the app's bug, and the file's own formula names are the usual cause.
+              const lines = clipped.map((w) => importClipped(w.name, w.rowsInFile!, w.sheet.rows));
+              if (dropped.length > 0) lines.push(importNamesDropped(dropped));
+              alert(lines.join("\n"));
             }
           } catch (err) {
             console.error(err);
@@ -2242,6 +2277,11 @@ export function useSampleFollowsLocale() {
 
 export function selectActiveSheet(s: SheetState): SheetModel {
   return activeTab(s).sheet;
+}
+
+/** The names a formula on the sheet in front of the person can use — the workbook's and its own (#60). */
+export function selectActiveNames(s: SheetState): NameTable | undefined {
+  return effectiveNames(s.sheets, activeIndex(s));
 }
 
 export function selectActiveSelection(s: SheetState): SelectionRect {

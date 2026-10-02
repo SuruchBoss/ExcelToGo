@@ -13,7 +13,7 @@
  * moment a rewrite needs to know what the other tabs are called, it belongs somewhere that knows a
  * workbook exists.
  */
-import { shiftNames } from "./namedRanges";
+import { shiftNames, type NameTable } from "./namedRanges";
 import { sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { tokenize } from "./formulaEngine/tokenizer";
 import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
@@ -84,13 +84,14 @@ export function shiftOtherSheetsForStructuralOp(
  */
 export function renameSheetInFormulas(tabs: NamedSheet[], from: string, to: string): SheetModel[] {
   if (from.toLowerCase() === to.toLowerCase() && from === to) return tabs.map((t) => t.sheet);
-  return tabs.map(({ sheet }) =>
-    mapFormulas(sheet, (body) => {
+  return tabs.map(({ sheet }) => {
+    const rewritten = mapFormulas(sheet, (body) => {
       const tokens = tokenize(body);
       let out = "";
       for (const t of tokens) {
         if (t.type === "EOF") continue;
-        if (t.type === "CELL" || t.type === "RANGE") {
+        // `Sheet!Name` too (#60): a sheet-level name reached from another sheet is by the sheet's name.
+        if (t.type === "CELL" || t.type === "RANGE" || (t.type === "NAME" && t.value.includes("!"))) {
           const { sheet: prefix, ref } = splitSheetRef(t.value);
           out += prefix !== null && prefix.toLowerCase() === from.toLowerCase() ? `${sheetRefPrefix(to)}${ref}` : t.value;
           continue;
@@ -100,8 +101,29 @@ export function renameSheetInFormulas(tabs: NamedSheet[], from: string, to: stri
         out += t.type === "STRING" ? `"${t.value.replace(/"/g, '""')}"` : t.value;
       }
       return out;
-    })
-  );
+    });
+    // A name's target is a reference like any other, and one qualified with the old name would
+    // point at a sheet that no longer exists.
+    const names = renameSheetInNames(rewritten.names, from, to);
+    if (names === rewritten.names) return rewritten;
+    return { ...rewritten, names };
+  });
+}
+
+function renameSheetInNames(table: NameTable | undefined, from: string, to: string): NameTable | undefined {
+  if (!table) return table;
+  let changed = false;
+  const next: NameTable = {};
+  for (const [key, entry] of Object.entries(table)) {
+    const { sheet: prefix, ref } = splitSheetRef(entry.ref);
+    if (prefix !== null && prefix.toLowerCase() === from.toLowerCase()) {
+      next[key] = { ...entry, ref: `${sheetRefPrefix(to)}${ref}` };
+      changed = true;
+    } else {
+      next[key] = entry;
+    }
+  }
+  return changed ? next : table;
 }
 
 /**
