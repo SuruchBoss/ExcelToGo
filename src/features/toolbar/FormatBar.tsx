@@ -31,7 +31,7 @@ import { isSingleCell } from "@/types/sheet-ui";
 import { mergeWouldDiscard, rangeHasMerge } from "@/lib/sheetMerges";
 import { isFrozen } from "@/lib/sheetFreeze";
 import { ruleAt } from "@/lib/dataValidation";
-import { selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
+import { selectActiveNames, selectActiveSelection, selectActiveSheet, useAnchorFormat, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import { keepGridFocus } from "./keepGridFocus";
 import { usePointingActive } from "@/features/grid/PointingBar";
@@ -73,6 +73,7 @@ export default function FormatBar() {
   const toggleSidebar = useSheetStore((s) => s.toggleSidebar);
   const cfOpen = useSheetStore((s) => s.sidebarMode === "cf");
   const sheet = useSheetStore(selectActiveSheet);
+  const names = useSheetStore(selectActiveNames);
   const selection = useSheetStore(selectActiveSelection);
   const setCellComment = useSheetStore((s) => s.setCellComment);
   const [commentAt, setCommentAt] = useState<{ x: number; y: number } | null>(null);
@@ -455,7 +456,7 @@ export default function FormatBar() {
         className={clsx(
           "flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium min-[1366px]:h-7 min-[1366px]:min-w-0 min-[1366px]:justify-start",
           IN_SHEET_BTN,
-          sheet.names
+          names
             ? "border-sky-500 bg-sky-50 text-sky-800 hover:bg-sky-100"
             : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
         )}

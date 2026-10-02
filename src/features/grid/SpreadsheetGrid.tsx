@@ -12,6 +12,7 @@ import { awaitsOperand } from "./openFormula";
 import { forgetClosedEditor, lastPressWasTouch, noteFormulaText, pointAt, pointingFormula, registerFormulaEditor, unregisterFormulaEditor, usePointingStore, widenPointed } from "./pointing";
 import {
   selectActiveSelection,
+  selectActiveNames,
   selectActiveSheet,
   useActiveFilters,
   useBoundCells,
@@ -64,6 +65,7 @@ const LONG_PRESS_MS = 500;
 export default function SpreadsheetGrid() {
   const t = useT();
   const sheet = useSheetStore(selectActiveSheet);
+  const names = useSheetStore(selectActiveNames);
   const selection = useSheetStore(selectActiveSelection);
   const setSelection = useSheetStore((s) => s.setSelection);
   const commitCell = useSheetStore((s) => s.setCellRaw);
@@ -578,8 +580,8 @@ export default function SpreadsheetGrid() {
     if (editing || selection.startRow !== selection.endRow || selection.startCol !== selection.endCol) {
       return NO_PRECEDENTS;
     }
-    return precedentsOf(sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "", undefined, sheet.names);
-  }, [editing, selection, sheet.cells, sheet.names]);
+    return precedentsOf(sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "", undefined, names);
+  }, [editing, selection, sheet.cells, names]);
 
   const commitEdit = useCallback(() => {
     if (!editing) return;
