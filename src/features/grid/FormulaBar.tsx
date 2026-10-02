@@ -5,7 +5,14 @@
 
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Paintbrush } from "lucide-react";
-import { selectActiveSelection, selectActiveSheet, useBoundCells, useSelectionAddress, useSheetStore } from "@/store/sheetStore";
+import {
+  selectActiveNames,
+  selectActiveSelection,
+  selectActiveSheet,
+  useBoundCells,
+  useSelectionAddress,
+  useSheetStore,
+} from "@/store/sheetStore";
 import { useTabStore } from "@/store/tabStore";
 import { singleCellSelection } from "@/types/sheet-ui";
 import { useT } from "@/i18n";
@@ -32,6 +39,7 @@ export default function FormulaBar() {
   const t = useT();
   const selection = useSheetStore(selectActiveSelection);
   const sheet = useSheetStore(selectActiveSheet);
+  const names = useSheetStore(selectActiveNames);
   const setCellRaw = useSheetStore((s) => s.setCellRaw);
   const setSelection = useSheetStore((s) => s.setSelection);
   const address = useSelectionAddress();
@@ -95,7 +103,7 @@ export default function FormulaBar() {
    * forty-nine cells and means one range, and the range is the thing worth checking.
    */
   const reads = useMemo(() => {
-    const found = precedentsOf(raw, undefined, sheet.names);
+    const found = precedentsOf(raw, undefined, names);
     const parts = found.ranges.map((r) =>
       r.startRow === r.endRow && r.startCol === r.endCol
         ? cellRef(r.startRow, r.startCol)
@@ -111,7 +119,7 @@ export default function FormulaBar() {
     for (const key of loose.slice(0, 6)) parts.push(cellRef(Math.floor(key / 16384), key % 16384));
     if (parts.length === 0) return "";
     return `${t.formulaBar.reads} ${parts.join(", ")}${found.elsewhere ? ` ${t.formulaBar.readsElsewhere}` : ""}`;
-  }, [raw, sheet.names, t.formulaBar]);
+  }, [raw, names, t.formulaBar]);
 
   return (
     <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-2 py-1.5 sm:px-4 max-lg:short:py-1 sm:max-lg:short:border-b-0 sm:max-lg:short:pl-0">

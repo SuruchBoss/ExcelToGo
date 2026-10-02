@@ -33,6 +33,15 @@ const REF_ERROR_RE = /^#REF!/i;
  */
 const SHEET_QUALIFIED_RE =
   /^(?:'(?:[^']|'')+'|[^\s'!,()+\-*/^&=<>%:]+)!\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?/;
+/**
+ * A name reached through its sheet, `Products!PriceTable` — how Excel writes a sheet-level name used
+ * from another sheet (#60). Tried after `SHEET_QUALIFIED_RE`, so `Sheet1!A1` is still a cell, and
+ * kept as one NAME token for the same reason a qualified reference is one token: split in two, the
+ * sheet would read as a name of its own and the formula as a syntax error.
+ */
+const SHEET_NAME_RE =
+  // equivalent-mutant: ">" → ">=" — inside a regex character class that already holds "=": the class matches the same characters.
+  /^(?:'(?:[^']|'')+'|[^\s'!,()+\-*/^&=<>%:]+)![A-Za-z_\u0E00-\u0E7F][A-Za-z0-9_.\u0E00-\u0E7F]*(?![A-Za-z0-9_.\u0E00-\u0E7F]|\s*\()/;
 const RANGE_RE = /^\$?[A-Za-z]{1,3}\$?\d+:\$?[A-Za-z]{1,3}\$?\d+/;
 const CELL_RE = /^\$?[A-Za-z]{1,3}\$?\d+/;
 /**
@@ -103,6 +112,12 @@ export function tokenize(input: string): Token[] {
       const ref = qualified[0].slice(bang + 1).toUpperCase();
       tokens.push({ type: ref.includes(":") ? "RANGE" : "CELL", value: `${name}!${ref}` });
       s = s.slice(qualified[0].length);
+      continue;
+    }
+    const qualifiedName = SHEET_NAME_RE.exec(s);
+    if (qualifiedName) {
+      tokens.push({ type: "NAME", value: qualifiedName[0] });
+      s = s.slice(qualifiedName[0].length);
       continue;
     }
     const rangeMatch = RANGE_RE.exec(s);

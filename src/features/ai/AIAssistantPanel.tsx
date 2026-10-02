@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { countUsage } from "@/lib/usage";
 import { Sparkles, Loader2, KeyRound, ExternalLink, ChevronDown, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
-import { selectActiveSheet, useAIContext, useSheetStore } from "@/store/sheetStore";
+import { selectActiveNames, selectActiveSheet, useAIContext, useSheetStore } from "@/store/sheetStore";
 import { placeFormula } from "@/lib/aiPlacement";
 import { getFormulaById } from "@/lib/formulaCatalog";
 import { cellRef } from "@/lib/formulaEngine/address";
@@ -32,6 +32,7 @@ export default function AIAssistantPanel() {
   const onInsert = useSheetStore((s) => s.insertAIFormula);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
   const sheet = useSheetStore(selectActiveSheet);
+  const names = useSheetStore(selectActiveNames);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
@@ -51,9 +52,9 @@ export default function AIAssistantPanel() {
   const place = useMemo(
     () =>
       suggestion?.formula
-        ? placeFormula(suggestion.formula, anchor, (r, c) => sheet.cells[r]?.[c] ?? "", sheet.rows, sheet.names)
+        ? placeFormula(suggestion.formula, anchor, (r, c) => sheet.cells[r]?.[c] ?? "", sheet.rows, names)
         : null,
-    [suggestion, anchor, sheet]
+    [suggestion, anchor, sheet, names]
   );
   const placeAddress = place ? cellRef(place.row, place.col) : null;
   const target = place ? (sheet.cells[place.row]?.[place.col] ?? "") : "";
