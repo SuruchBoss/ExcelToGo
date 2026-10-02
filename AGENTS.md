@@ -183,7 +183,12 @@ A survivor that is **equivalent** (the code changes, the result cannot) gets
   "License headers" ใน CI จะแดงถ้าขาด · migration ใน `supabase/migrations/` ได้รับยกเว้น
   Every new source file starts with that copyright and SPDX header; `node scripts/license-headers.mjs --fix`
   adds it, and CI's "License headers" job fails without it. Applied migrations in `supabase/migrations/` are exempt.
-- พัฒนาบนบรานช์ของ session ตัวเอง (Dev: `claude/excel-sheet-ui-builder-8ooz26`) — ไม่ push ตรงเข้า `main`
+- พัฒนาบนบรานช์ของ session ตัวเอง (`claude/<ชื่อที่ session ได้รับ>`) แล้วเปิด PR จากบรานช์นั้น — ไม่ push ตรงเข้า `main` ·
+  บรานช์ประจำเดิม (`claude/excel-sheet-ui-builder-8ooz26`, `claude/friendly-hypatia-51gs8l`) ไม่บังคับแล้ว owner ตัดสินเมื่อ 2026-10-02 ·
+  ถ้างานเริ่มบนบรานช์อื่นแล้วย้ายมา ให้เขียนไว้ในเนื้อ PR ว่าย้ายมาจากบรานช์ไหน
+  Work on your own session's branch (`claude/<name the session was given>`) and open the PR from it — never push to
+  `main`. The old fixed branches are no longer required (owner, 2026-10-02); if the work started on another branch,
+  say which one in the PR body.
 
 ### การ merge เข้า main: Dev เปิด PR → PO ตรวจ → PO merge / Merging into main: PR, PO review, PO merges
 

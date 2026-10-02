@@ -87,6 +87,30 @@ had never tried the headline feature on production, and had never asked the owne
   breaks the Turbopack build; the agent's machine may not reach Vercel — plan to ask the owner for production checks;
   merge through a PR, never a direct push to `main` (it deploys, and a direct push has been blocked for exactly that).
 
+### 8. ตรวจ PR บนเครื่องตัวเองแบบไม่ให้ผลเพี้ยน
+- **verify ที่รันเบื้องหลังรอดข้าม session** · ก่อนเริ่มทุกครั้งเช็ก `ps -eo args | grep -cE "[c]heck-(mutants|a11y|e2e)|[v]itest run|[n]ext-server"` ต้องได้ 0
+- รันด้วย `CHROME_PATH=/opt/pw-browsers/chromium npm run verify` · หยุด server ด้วย `pkill -f "[n]ext-server"` (วงเล็บกันไม่ให้ฆ่าคำสั่งตัวเอง)
+- **"CI เขียว" ไม่พอ** · advisory ใหม่ออกได้ระหว่างวัน (#168) · รัน verify เองบน head ที่จะ merge เสมอ และ `npm ci` ก่อนถ้า lockfile ต่างจากรอบก่อน
+- เทสต์ที่เฉียด timeout 5 วินาที: แดงสองรอบติดถือว่าจริง · แก้ด้วย timeout เฉพาะข้อ ไม่ใช่ขยายทั้งชุด
+- Background verify survives a session: check for leftovers first. Run with `CHROME_PATH`, stop the server with
+  `pkill -f "[n]ext-server"`. Green CI is not enough — advisories land mid-day — so run verify yourself on the exact
+  head, after `npm ci` if the lockfile moved. A test near its 5 s timeout that fails twice running is real.
+
+### 9. งานหลายคนต้องรู้สถานะจริงก่อนเริ่ม
+- **เริ่ม session ด้วยการ list PR ที่เปิดอยู่และอ่านคอมเมนต์ล่าสุด** ไม่เชื่อตาราง PR ใน handoff · คืนเดียวมี PR ใหม่ 9 ใบ
+- **ถาม owner ว่ามี PO session อื่นเปิดอยู่ไหม** · เคยมี PO สองตัวตรวจ #179 พร้อมกันโดยไม่รู้กัน
+- **หลัง merge ทุกครั้ง แจ้งทีมที่มี PR ค้างให้ merge `main` ทันที** · merge #167 ทำให้ #179 conflict ภายในไม่กี่นาที
+- Start from the live PR list and its latest comments, not the handoff's table. Ask whether another PO session is
+  open. After every merge, tell the teams with open PRs to merge `main` at once.
+
+### 10. ลองแบบผู้ใช้ต้องทำ "ขั้นถัดไป" หลังสิ่งที่ PR เปลี่ยน
+- e2e ของ #170 undo แล้วนับแถวว่าถูก แต่ไม่เคยพิมพ์ต่อหลัง undo · PO ลองพิมพ์ต่อแล้วพบว่าเคอร์เซอร์ค้างบนแถวที่ undo ลบไปแล้ว
+  และตารางรับการพิมพ์ไม่ได้อีกจนรีโหลด (ทุกอย่างที่พิมพ์ระหว่างนั้นหายเงียบ)
+- **หลัง undo/redo, ลบ, หรืออะไรที่เปลี่ยนขนาดชีต ให้พิมพ์ต่ออีกหนึ่งค่าเสมอ** และดู `pageerror` ทุกครั้งที่ลอง
+- Try the step after the change, not only the change. The #170 flow counted rows after an undo and never typed again;
+  typing again found the cursor on a row the undo had removed and a grid that took no input until reload. After an
+  undo, a delete or anything that resizes the sheet, type one more value, and always listen for `pageerror`.
+
 ---
 
 ## บันทึกเพิ่ม / Log
@@ -98,3 +122,6 @@ had never tried the headline feature on production, and had never asked the owne
 | 2026-09-28 | push ตรงเข้า `main` ถูกบล็อกว่าเป็นการ deploy production · เปลี่ยนเป็นเปิด PR (#112) แล้ว merge | 7 |
 | 2026-09-28 | Dev UX merge #120 เองก่อนผลตรวจของ PO ออก (ผลผ่าน แต่ production เปลี่ยนก่อนตรวจ) · owner ยืนยันกติกา "Dev เปิด PR → PO ตรวจ → owner สั่ง merge" และเขียนลง `AGENTS.md` หัวข้อ "การ merge เข้า main" | 2, 7 |
 | 2026-09-29 | owner มอบให้ PO merge เองเมื่อตรวจผ่าน ("Merge หน้าที่คุณ ทำเลย") · ยกเว้น PR ที่แตะ CSP/การป้องกัน/ข้อมูลที่ออกนอกเครื่อง/env ของ Vercel หรือผ่านแบบมีเงื่อนไข ยังต้องถามก่อน · merge โดยใส่ `expectedHeadSha` ของ commit ที่ตรวจจริงเสมอ · ประกาศสปรินต์สุดท้ายก่อนพัก (`status:sprint-final`) | 2, 7 |
+| 2026-10-01 | PO สอง session ตรวจ #179 พร้อมกันโดยไม่รู้กัน · merge #167 แล้ว #179 conflict ภายในไม่กี่นาที · handoff เก่าไม่กี่ชั่วโมงตาราง PR ก็ผิดแล้ว | 9 |
+| 2026-10-02 | owner ยอมรับให้ Dev/Dev UX เปิด PR จากบรานช์ของ session ใหม่ · แก้ `AGENTS.md` ตาม | 7 |
+| 2026-10-02 | #179 verify เขียวสิบด่าน แต่ลองแบบผู้ใช้แล้ว undo หลัง Enter ที่แถวสุดท้ายทำตารางค้างจนรีโหลด · ส่งกลับ Dev | 2, 3, 10 |
