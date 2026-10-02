@@ -19,6 +19,7 @@
  * network was unavailable teaches people to ignore it. No registry, no verdict — and it says so.
  */
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 /**
  * Advisories looked at, and what was decided.
@@ -51,6 +52,76 @@ const ACCEPTED = [
   },
 ];
 
+/**
+ * Dependencies kept where they are on purpose, written down the same way (#73).
+ *
+ * An advisory is not the only reason to look at a package again. A dormant library the export
+ * depends on, or a major version blocked by something upstream, is a decision too — and without a
+ * date it stops being one. Each hold names what would change the answer (`trigger`) and when to
+ * look again even if nothing has (`reviewBy`). Past its date the gate fails, whatever the network
+ * is doing: this part needs no registry. And if the installed version no longer matches `range`,
+ * the entry describes a package this project does not have any more, and it fails too.
+ */
+const HELD = [
+  {
+    package: "exceljs",
+    range: /^4\./,
+    why:
+      "Dormant: last release 4.4.0 (2023-10-19), last commit 2025-01, ~800 open issues, not " +
+      "archived. It reads and writes every .xlsx the app touches — cells, styles, merges, " +
+      "validation, the chart parts the export splices in — and it works. Replacing it is a large " +
+      "change to import and export, with nothing broken today to pay for it.",
+    trigger:
+      "Replace it when a new advisory lands on its parse path (opening an untrusted .xlsx), when a " +
+      "file Excel writes stops opening, or when the repository is archived.",
+    reviewBy: "2027-03-31",
+  },
+  {
+    package: "typescript",
+    range: /^5\./,
+    why:
+      "TypeScript 7 is held: typescript-eslint, through eslint-config-next, requires < 6.1. 6.0 is " +
+      "a planned upgrade of its own, not part of the pause. Dependabot ignores >= 7 (dependabot.yml).",
+    trigger: "Lift the hold when eslint-config-next's typescript-eslint accepts the new major.",
+    reviewBy: "2027-03-31",
+  },
+  {
+    package: "eslint",
+    range: /^9\./,
+    why:
+      "ESLint 10 is held: the React, import and jsx-a11y plugins eslint-config-next brings do not " +
+      "support it yet, and it needs Node >= 22.13. Dependabot ignores >= 10 (dependabot.yml).",
+    trigger: "Lift the hold when eslint-config-next supports ESLint 10.",
+    reviewBy: "2027-03-31",
+  },
+];
+
+/** The version actually installed, from its own package.json — what a hold is about. */
+function installed(name) {
+  try {
+    return JSON.parse(readFileSync(`node_modules/${name}/package.json`, "utf8")).version;
+  } catch {
+    return null;
+  }
+}
+
+const holdFailures = [];
+const holdToday = new Date().toISOString().slice(0, 10);
+console.log("check:deps — dependencies held on purpose\n");
+for (const hold of HELD) {
+  const version = installed(hold.package);
+  if (version && !hold.range.test(version)) {
+    holdFailures.push(`stale hold: ${hold.package} is ${version} now; update or delete its entry in HELD`);
+    console.log(`  stale    ${hold.package} ${version} — the hold was written for ${hold.range}`);
+  } else if (hold.reviewBy < holdToday) {
+    holdFailures.push(`expired hold: ${hold.package} was held until ${hold.reviewBy}; decide again (${hold.trigger})`);
+    console.log(`  EXPIRED  ${hold.package} — held until ${hold.reviewBy}`);
+  } else {
+    console.log(`  held     ${hold.package} ${version ?? "(not installed)"} — review by ${hold.reviewBy}`);
+  }
+}
+console.log("");
+
 function audit() {
   try {
     const out = execFileSync("npm", ["audit", "--json"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -61,7 +132,9 @@ function audit() {
     if (text.trim().startsWith("{")) return JSON.parse(text);
     console.log("check:deps — could not reach the registry, so nothing was checked.");
     console.log(`  ${(e.stderr?.toString() ?? e.message).split("\n")[0]}`);
-    process.exit(0);
+    // The holds needed no registry, so what they found still counts.
+    for (const f of holdFailures) console.log(`  ✗ ${f}`);
+    process.exit(holdFailures.length > 0 ? 1 : 0);
   }
 }
 
@@ -80,7 +153,7 @@ for (const [name, entry] of Object.entries(report.vulnerabilities ?? {})) {
   }
 }
 
-const failures = [];
+const failures = [...holdFailures];
 console.log(`check:deps — ${found.size} advisor${found.size === 1 ? "y" : "ies"} in the tree\n`);
 
 for (const advisory of found.values()) {
@@ -110,7 +183,7 @@ for (const accepted of ACCEPTED) {
 if (failures.length > 0) {
   console.log("\ncheck:deps failed:");
   for (const f of failures) console.log(`  ✗ ${f}`);
-  console.log("\nFix it, or add an entry to ACCEPTED in scripts/check-deps.mjs with a reason and a date.");
+  console.log("\nFix it, or add an entry to ACCEPTED (or HELD) in scripts/check-deps.mjs with a reason and a date.");
   process.exit(1);
 }
 console.log("\ncheck:deps — every advisory is either fixed or accounted for.");

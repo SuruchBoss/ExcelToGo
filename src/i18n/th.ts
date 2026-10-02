@@ -161,6 +161,7 @@ export const th: Messages = {
       area: (rows, cols) => `ใช้พื้นที่ ${rows} แถว × ${cols} คอลัมน์`,
       areaOverwrite: (rows, cols) => `⚠ ใช้ ${rows}×${cols} ช่อง — พื้นที่นี้มีข้อมูลอยู่แล้ว จะถูกเขียนทับ`,
       invalidCell: "ชื่อเซลล์ไม่ถูกต้อง เช่น G1",
+      nothingToPick: "ยังไม่มีตัวเลขให้เลือก — เลือกตารางทั้งหมด หรือรอข้อมูลโหลดเสร็จ",
       insert: "ใส่ลงตาราง",
       cancel: "ยกเลิก",
     },
@@ -428,7 +429,7 @@ export const th: Messages = {
     stats: [
       { value: "37", label: "สูตรพร้อมใช้" },
       { value: "66", label: "ฟังก์ชันในเอนจิน" },
-      { value: "1916", label: "เทสต์อัตโนมัติ" },
+      { value: "1921", label: "เทสต์อัตโนมัติ" },
       { value: "325", label: "เทสต์ด้านความปลอดภัย" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],
