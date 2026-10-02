@@ -1494,6 +1494,57 @@ const FLOWS = [
     },
   },
   {
+    // #170: a new sheet has 30 rows, and Enter on the last one left the cursor where it was, so the
+    // next value typed went over the one just entered. The store test covers the undo step; this asks
+    // whether both key paths — Enter from the editor and ↓ from a selected cell — grow the sheet.
+    name: "Enter past the last row adds rows, every value stays where it was typed, and one undo takes one back",
+    async run(page) {
+      const rowCount = () => page.evaluate(() => Number(document.querySelector("[aria-rowcount]")?.getAttribute("aria-rowcount")) - 1);
+      const rows = await rowCount();
+      await cell(page, rows - 1, 5).click();
+      for (const v of ["r30", "r31", "r32", "r33"]) {
+        await page.keyboard.type(v);
+        await page.keyboard.press("Enter");
+      }
+      const typed = await Promise.all([0, 1, 2, 3].map(async (i) => (await cell(page, rows - 1 + i, 5).innerText()).trim()));
+      note(typed.join(",") === "r30,r31,r32,r33", `four values typed down past row ${rows} with Enter stay put (${typed.join(",")})`);
+      note((await rowCount()) === rows + 4, `the sheet grew to hold them and the cursor under them (${await rowCount()} rows)`);
+
+      // ↓ from a selected cell on the last row, then typing: the same room, by the other key path.
+      await page.keyboard.press("Escape");
+      const last = (await rowCount()) - 1;
+      await cell(page, last, 2).click();
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.type("down");
+      await page.keyboard.press("Tab");
+      const below = (await cell(page, last + 1, 2).innerText()).trim();
+      note(below === "down", `↓ on the last row moves into a new one rather than staying (${below || "(empty)"})`);
+
+      // One Ctrl+Z takes back "down" and the rows it needed, not just the value: the one ↓ made, and
+      // the empty one the last Enter made before it, which nothing was typed into.
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Control+z");
+      await page.waitForFunction((n) => Number(document.querySelector("[aria-rowcount]")?.getAttribute("aria-rowcount")) - 1 === n, last, { timeout: 5000 }).catch(() => {});
+      note((await rowCount()) === last, `one undo takes the value and the rows made for it together (${await rowCount()} rows, expected ${last})`);
+      const kept = (await cell(page, rows + 2, 5).innerText()).trim();
+      note(kept === "r33", `what was typed before it is still there (F${rows + 3}: "${kept}")`);
+
+      // PO's review: the undo took away the row the cursor was on, and the cursor stayed there. Typing
+      // landed nowhere, ↓ threw, and the grid took no input until a reload, so the typing is the test.
+      // The cursor comes back to the last row that exists (D, from the Tab above) and keeps the keys.
+      await page.keyboard.type("y");
+      await page.keyboard.press("Enter");
+      const landed = (await cell(page, last - 1, 3).innerText()).trim();
+      note(landed === "y", `after the undo, typing lands on the last row that is left (D${last}: "${landed || "(empty)"}")`);
+      await page.keyboard.press("ArrowDown");
+      await cell(page, 2, 2).click();
+      await page.keyboard.type("q");
+      await page.keyboard.press("Enter");
+      const clicked = (await cell(page, 2, 2).innerText()).trim();
+      note(clicked === "q", `and the grid still takes input anywhere (C3: "${clicked || "(empty)"}")`);
+    },
+  },
+  {
     // Typing a table the Excel way: Tab across a row, Enter at its end, and the cursor is back under
     // the first column. `tabReturn.test.ts` covers the arithmetic; this asks whether both key paths
     // — a cell being edited and a cell only selected — actually go through it.

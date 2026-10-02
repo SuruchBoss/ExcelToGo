@@ -52,10 +52,11 @@ function parseDateValue(v: FormulaValue): Date | null {
   // ISO text — typed in quotes, or kept as text on purpose — means the same date. A date that does
   // not exist (2024-02-31) is not one, as in Excel, rather than rolling over into March.
   const iso = dateLiteral(text.replace("T", " "));
-  if (iso) return dateOfSerial(iso.serial);
-  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(text)) return null;
-  const loose = new Date(text);
-  return Number.isNaN(loose.getTime()) ? null : loose;
+  // Nothing else is a date (#169). This used to fall back to `new Date(text)`, which read the Thai
+  // `1/9/2026` (1 September) as 9 January, at local midnight, so DAY gave 8 in Bangkok and 9 in New
+  // York. `dateLiteral` is what the cell, the importers and `+1` read, so a date function reads
+  // exactly the dates they do; `d/m/yyyy` in the Gregorian year waits for "Convert to dates".
+  return iso ? dateOfSerial(iso.serial) : null;
 }
 
 /** A serial as an instant at UTC, so the UTC accessors read back the calendar date it names. */

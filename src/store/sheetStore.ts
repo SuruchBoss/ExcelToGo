@@ -305,6 +305,13 @@ interface SheetState {
    */
   applyRemoteCell: (tabId: string, row: number, col: number, raw: string, spoken?: string) => void;
   addRow: () => void;
+  /**
+   * One row more at the bottom, for Enter or ↓ on the last row (#170), so the next value typed has
+   * somewhere to go instead of landing on the one just entered. Kept out of the undo history on its
+   * own: the value typed into the new row is what Ctrl+Z takes back, and the row goes with it (see
+   * `rowsGrownForEntry`). False where the sheet cannot grow — a locked template.
+   */
+  growRowForEntry: () => boolean;
   addColumn: () => void;
   /** Grows the active sheet to `cols` columns in one step (one undo). The grid calls it when a cell
    *  past the last column is clicked: those are drawn to the edge of the screen but do not exist yet. */
@@ -825,6 +832,27 @@ function rewriteHistory(tabId: string, row: number, col: number, raw: string): v
   temporal.setState({ pastStates: pastStates.map(fix), futureStates: futureStates.map(fix) });
 }
 
+/**
+ * The rows Enter added at the bottom (#170), until something is typed into them.
+ *
+ * The row is added outside the undo history, so typing into it saves the grown sheet as the step
+ * to go back to — and Ctrl+Z would leave an empty row behind, or take a second press to remove it.
+ * When that step lands, `foldGrowthIntoEdit` swaps it for the sheet from before the row, so one
+ * undo takes back the value and the row it made room for. Matched by reference: once anything else
+ * changes the workbook, the grown sheets are never saved as a step and this is simply never used.
+ */
+let rowsGrownForEntry: { before: SheetTab[]; after: SheetTab[] } | null = null;
+
+function foldGrowthIntoEdit(): void {
+  const grown = rowsGrownForEntry;
+  if (!grown) return;
+  const { pastStates } = useSheetStore.temporal.getState();
+  const last = pastStates[pastStates.length - 1];
+  if (last?.sheets !== grown.after) return;
+  rowsGrownForEntry = null;
+  useSheetStore.temporal.setState({ pastStates: [...pastStates.slice(0, -1), { ...last, sheets: grown.before }] });
+}
+
 /** A dropdown is about a *cell*, so a row inserted above it takes the dropdown down with it. */
 function withShiftedValidation(sheet: SheetModel, axis: Axis, index: number, delta: 1 | -1): SheetModel {
   const moved = shiftValidation(sheet.validation, axis, index, delta);
@@ -1087,6 +1115,28 @@ export const useSheetStore = create<SheetState>()(
                   ...say(getMessages().live.rowAppended(activeTab(s).sheet.rows + 1)),
                 }
           ),
+        growRowForEntry: () => {
+          const before = get().sheets;
+          // A template stays put, without `refusedStructuralChange`'s alert: that is for Insert row,
+          // and here it would pop up on every Enter or ↓ on the last row.
+          if (activeTab(get()).sheet.template) return false;
+          const history = useSheetStore.temporal.getState();
+          history.pause();
+          try {
+            set((s) => ({ sheets: withActiveSheet(s, (tab) => addRow(tab.sheet)) }));
+          } finally {
+            history.resume();
+          }
+          const after = get().sheets;
+          if (after === before) return false;
+          // A second Enter on an untouched new row chains to the first, so one undo still goes back
+          // to the rows there were before either.
+          rowsGrownForEntry = {
+            before: rowsGrownForEntry?.after === before ? rowsGrownForEntry.before : before,
+            after,
+          };
+          return true;
+        },
         addColumn: () =>
           set((s) =>
             refusedStructuralChange(activeTab(s).sheet)
@@ -2246,6 +2296,9 @@ useSheetStore.subscribe((s, prev) => {
   useSheetStore.setState({ activeSheetId: s.sheets[index].id });
 });
 
+// A step saved over rows Enter added is the step from before them (#170).
+useSheetStore.temporal.subscribe(foldGrowthIntoEdit);
+
 /** Reads any autosaved sheets from localStorage once, after the initial render has already
  *  matched the server-rendered HTML. Call once near the root of the app. */
 export function useHydrateSheetStore() {
@@ -2500,12 +2553,44 @@ export function useCanRedo() {
  */
 export function undoSheet() {
   useSheetStore.temporal.getState().undo();
-  useSheetStore.setState(say(getMessages().live.undone));
+  useSheetStore.setState((s) => ({ ...selectionsInsideSheets(s), ...say(getMessages().live.undone) }));
 }
 
 export function redoSheet() {
   useSheetStore.temporal.getState().redo();
-  useSheetStore.setState(say(getMessages().live.redone));
+  useSheetStore.setState((s) => ({ ...selectionsInsideSheets(s), ...say(getMessages().live.redone) }));
+}
+
+/**
+ * Undo and redo bring back `sheets` and nothing else: the selection is not part of the history.
+ * So an undo that takes rows or columns away can leave the cursor on a cell that no longer exists
+ * (#170 review: Enter grew the sheet twice, one Ctrl+Z took both rows back, and the cursor stayed
+ * on row 32 of 30). Typing there landed nowhere, ↓ threw, and the grid took no input until a
+ * reload. Each tab's selection is cut back to its sheet's edges; one that still fits is the same
+ * object, so nothing re-renders for it. Moving the cursor is also what hands focus back to the
+ * grid, since the cell that had it was removed.
+ */
+function selectionsInsideSheets(s: SheetState): Partial<SheetState> {
+  let changed = false;
+  const selectionBySheetId = { ...s.selectionBySheetId };
+  for (const tab of s.sheets) {
+    const sel = selectionBySheetId[tab.id];
+    if (!sel) continue;
+    const row = (r: number) => Math.min(r, tab.sheet.rows - 1);
+    const col = (c: number) => Math.min(c, tab.sheet.cols - 1);
+    const inside: SelectionRect = {
+      anchorRow: row(sel.anchorRow),
+      anchorCol: col(sel.anchorCol),
+      startRow: row(sel.startRow),
+      startCol: col(sel.startCol),
+      endRow: row(sel.endRow),
+      endCol: col(sel.endCol),
+    };
+    if ((Object.keys(inside) as (keyof SelectionRect)[]).every((k) => inside[k] === sel[k])) continue;
+    selectionBySheetId[tab.id] = inside;
+    changed = true;
+  }
+  return changed ? { selectionBySheetId } : {};
 }
 
 /** Global Ctrl/Cmd+Z (undo) and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y (redo) shortcuts. Ignored while
