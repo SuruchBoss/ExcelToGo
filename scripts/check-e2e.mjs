@@ -1527,6 +1527,20 @@ const FLOWS = [
       note((await rowCount()) === last, `one undo takes the value and the rows made for it together (${await rowCount()} rows, expected ${last})`);
       const kept = (await cell(page, rows + 2, 5).innerText()).trim();
       note(kept === "r33", `what was typed before it is still there (F${rows + 3}: "${kept}")`);
+
+      // PO's review: the undo took away the row the cursor was on, and the cursor stayed there. Typing
+      // landed nowhere, ↓ threw, and the grid took no input until a reload, so the typing is the test.
+      // The cursor comes back to the last row that exists (D, from the Tab above) and keeps the keys.
+      await page.keyboard.type("y");
+      await page.keyboard.press("Enter");
+      const landed = (await cell(page, last - 1, 3).innerText()).trim();
+      note(landed === "y", `after the undo, typing lands on the last row that is left (D${last}: "${landed || "(empty)"}")`);
+      await page.keyboard.press("ArrowDown");
+      await cell(page, 2, 2).click();
+      await page.keyboard.type("q");
+      await page.keyboard.press("Enter");
+      const clicked = (await cell(page, 2, 2).innerText()).trim();
+      note(clicked === "q", `and the grid still takes input anywhere (C3: "${clicked || "(empty)"}")`);
     },
   },
   {

@@ -2508,12 +2508,44 @@ export function useCanRedo() {
  */
 export function undoSheet() {
   useSheetStore.temporal.getState().undo();
-  useSheetStore.setState(say(getMessages().live.undone));
+  useSheetStore.setState((s) => ({ ...selectionsInsideSheets(s), ...say(getMessages().live.undone) }));
 }
 
 export function redoSheet() {
   useSheetStore.temporal.getState().redo();
-  useSheetStore.setState(say(getMessages().live.redone));
+  useSheetStore.setState((s) => ({ ...selectionsInsideSheets(s), ...say(getMessages().live.redone) }));
+}
+
+/**
+ * Undo and redo bring back `sheets` and nothing else: the selection is not part of the history.
+ * So an undo that takes rows or columns away can leave the cursor on a cell that no longer exists
+ * (#170 review: Enter grew the sheet twice, one Ctrl+Z took both rows back, and the cursor stayed
+ * on row 32 of 30). Typing there landed nowhere, ↓ threw, and the grid took no input until a
+ * reload. Each tab's selection is cut back to its sheet's edges; one that still fits is the same
+ * object, so nothing re-renders for it. Moving the cursor is also what hands focus back to the
+ * grid, since the cell that had it was removed.
+ */
+function selectionsInsideSheets(s: SheetState): Partial<SheetState> {
+  let changed = false;
+  const selectionBySheetId = { ...s.selectionBySheetId };
+  for (const tab of s.sheets) {
+    const sel = selectionBySheetId[tab.id];
+    if (!sel) continue;
+    const row = (r: number) => Math.min(r, tab.sheet.rows - 1);
+    const col = (c: number) => Math.min(c, tab.sheet.cols - 1);
+    const inside: SelectionRect = {
+      anchorRow: row(sel.anchorRow),
+      anchorCol: col(sel.anchorCol),
+      startRow: row(sel.startRow),
+      startCol: col(sel.startCol),
+      endRow: row(sel.endRow),
+      endCol: col(sel.endCol),
+    };
+    if ((Object.keys(inside) as (keyof SelectionRect)[]).every((k) => inside[k] === sel[k])) continue;
+    selectionBySheetId[tab.id] = inside;
+    changed = true;
+  }
+  return changed ? { selectionBySheetId } : {};
 }
 
 /** Global Ctrl/Cmd+Z (undo) and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y (redo) shortcuts. Ignored while

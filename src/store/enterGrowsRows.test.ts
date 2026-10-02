@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { singleCellSelection } from "@/types/sheet-ui";
 import { redoSheet, undoSheet, useSheetStore } from "./sheetStore";
 
 /**
@@ -100,5 +101,54 @@ describe("Enter on the last row adds one (#170)", () => {
     expect(state().sheets).toBe(before);
     expect(alert).not.toHaveBeenCalled();
     expect(history().pastStates).toHaveLength(0);
+  });
+});
+
+describe("the cursor stays on the sheet when undo or redo changes its size (#170 review)", () => {
+  const selection = () => state().selectionBySheetId[state().activeSheetId];
+
+  it("PO's repro: x1, Enter, x2, Enter, one undo puts the cursor back on the last row that exists", () => {
+    const rows = sheet().rows;
+    state().setSelection(singleCellSelection(rows - 1, 2));
+    state().setCellRaw(rows - 1, 2, "x1");
+    expect(state().growRowForEntry()).toBe(true);
+    state().setSelection(singleCellSelection(rows, 2));
+    state().setCellRaw(rows, 2, "x2");
+    expect(state().growRowForEntry()).toBe(true);
+    state().setSelection(singleCellSelection(rows + 1, 2));
+
+    undoSheet();
+    expect(sheet().rows).toBe(rows);
+    expect(selection()).toEqual(singleCellSelection(rows - 1, 2));
+
+    // And the sheet takes input there again: this is what the stuck grid could not do.
+    state().setCellRaw(selection().anchorRow, selection().anchorCol, "y");
+    expect(sheet().cells[rows - 1][2]).toBe("y");
+  });
+
+  it("a range that ran past the new edge is cut to it, and one inside is left alone", () => {
+    const rows = sheet().rows;
+    state().setCellRaw(rows - 1, 0, "a");
+    expect(state().growRowForEntry()).toBe(true);
+    state().setCellRaw(rows, 0, "b");
+    state().setSelection({ anchorRow: rows - 2, anchorCol: 0, startRow: rows - 2, startCol: 0, endRow: rows, endCol: 1 });
+    undoSheet();
+    expect(selection()).toEqual({ anchorRow: rows - 2, anchorCol: 0, startRow: rows - 2, startCol: 0, endRow: rows - 1, endCol: 1 });
+
+    const inside = singleCellSelection(3, 3);
+    state().setSelection(inside);
+    redoSheet();
+    expect(selection()).toBe(inside);
+  });
+
+  it("an undone column pulls the cursor back in as well", () => {
+    const cols = sheet().cols;
+    state().addColumn();
+    state().setSelection(singleCellSelection(0, cols));
+    state().setCellRaw(0, cols, "z");
+    undoSheet();
+    undoSheet();
+    expect(sheet().cols).toBe(cols);
+    expect(selection()).toEqual(singleCellSelection(0, cols - 1));
   });
 });
