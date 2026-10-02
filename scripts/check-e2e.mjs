@@ -1540,9 +1540,11 @@ const FLOWS = [
       await clean.xlsx.writeFile(file);
       await page.locator('input[type="file"]').setInputFiles(file);
       const choice = page.getByRole("dialog", { name: /เปิดไฟล์นี้อย่างไร|How should this file open/ });
-      if (await choice.isVisible({ timeout: 2000 }).catch(() => false)) await choice.getByRole("button").first().click();
+      await choice.waitFor({ timeout: 5000 });
+      await choice.getByRole("button", { name: /แทนที่งานที่เปิดอยู่|Replace what is open/ }).click();
       await page.waitForTimeout(800);
-      note((await report.count()) === 0, "a clean file shows no report");
+      const a1 = (await cell(page, 0, 0).innerText()).trim();
+      note(a1 === "10" && (await report.count()) === 0, `a clean file opens (A1 "${a1}") and shows no report`);
 
       // A range name the file holds that cannot come in (#60) is one line of the same report, not
       // an alert of its own before it: one open, one message about what the file lost.
@@ -1561,7 +1563,8 @@ const FLOWS = [
       };
       page.on("dialog", onDialog);
       await page.locator('input[type="file"]').setInputFiles(named);
-      if (await choice.isVisible({ timeout: 2000 }).catch(() => false)) await choice.getByRole("button").first().click();
+      await choice.waitFor({ timeout: 5000 });
+      await choice.getByRole("button", { name: /แทนที่งานที่เปิดอยู่|Replace what is open/ }).click();
       await report.waitFor({ timeout: 10_000 });
       const withName = (await report.innerText()).replace(/\s+/g, " ");
       page.off("dialog", onDialog);
