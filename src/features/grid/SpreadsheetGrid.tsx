@@ -11,6 +11,7 @@ import { normalizeSelection, singleCellSelection, type SelectionRect } from "@/t
 import { awaitsOperand } from "./openFormula";
 import { forgetClosedEditor, lastPressWasTouch, noteFormulaText, pointAt, pointingFormula, registerFormulaEditor, unregisterFormulaEditor, usePointingStore, widenPointed } from "./pointing";
 import {
+  announce,
   selectActiveSelection,
   selectActiveNames,
   selectActiveSheet,
@@ -53,6 +54,8 @@ import { afterEnter, afterTab, type TabRun } from "./tabReturn";
 import CellContextMenu from "./CellContextMenu";
 
 
+/** About the width of the "tap again to type" label (#171), to tell whether it fits beside a cell. */
+const TAP_HINT_ROOM = 150;
 /** Half the selection grip's 44px target: the room a flush right edge needs on a touch screen. */
 const GRIP_ROOM = 22;
 
@@ -425,6 +428,8 @@ export default function SpreadsheetGrid() {
   /** Whether the cell a touch landed on was already the selected one, sampled before the tap
    *  changes the selection. See the pointer handlers on each cell for why. */
   const tappedAlreadySelected = useRef(false);
+  /** Where a finger came down, so its lift can tell a tap from a drag or a hold. Cleared by a hold. */
+  const tapStart = useRef<{ x: number; y: number } | null>(null);
   /** A finger held still on a cell opens the cell menu, as a right-click does. iOS never fires
    *  `contextmenu` for it, and on a short screen the menu is where the touch bar's actions went
    *  (#129). Android fires `contextmenu` as well, which opens the same menu in the same place. */
@@ -447,6 +452,16 @@ export default function SpreadsheetGrid() {
    * here synchronously, the keyboard stays, and the new editor takes it over when it mounts.
    */
   const keyboardKeeper = useRef<HTMLInputElement>(null);
+  /**
+   * The cell a finger has just selected with one tap, labelled "tap again to type" (#171).
+   *
+   * One tap selects and a second one opens the editor, the pattern every phone spreadsheet uses
+   * and the one this grid already had. What it lacked was a word about it: someone who typed after
+   * one tap, with a keyboard left up by the cell before, typed into nothing and was told nothing.
+   * Twelve rows went that way in one blind test. Now the keyboard goes when the tap selects, and the
+   * cell says what the next tap does.
+   */
+  const [tapHint, setTapHint] = useState<{ row: number; col: number; shift: number } | null>(null);
   /** The run of Tabs in progress, so Enter can go back to the column it started in. */
   const tabRun = useRef<TabRun | null>(null);
 
@@ -465,6 +480,39 @@ export default function SpreadsheetGrid() {
     if (input) touchSession.current = caretAtEnd.current;
     caretAtEnd.current = false;
   }, [editing?.row, editing?.col]);
+
+  // Enter on a phone parks the keyboard on the keeper until the next cell's editor mounts. If that
+  // cell was not drawn yet — scrolled past the rows the grid keeps rendered — its editor mounts a
+  // frame or two later, after the effect above has run, and every letter typed meanwhile went into
+  // the keeper and nowhere else. Hand focus over whenever the editor turns up (#171).
+  useEffect(() => {
+    const keeper = keyboardKeeper.current;
+    if (!keeper || document.activeElement !== keeper) return;
+    const input = inputRef.current;
+    if (editing && input) {
+      input.focus({ preventScroll: true });
+      input.setSelectionRange(input.value.length, input.value.length);
+      touchSession.current = true;
+    } else if (!editing) {
+      // No editor is coming: the keeper must not hold a keyboard open for text to vanish into.
+      keeper.blur();
+    }
+  });
+
+  // The label goes as soon as it is no longer true: the editor opened, the cursor moved on, or the
+  // tap became the start of a range pulled out with the grip.
+  const tapHintShown =
+    tapHint !== null &&
+    !editing &&
+    selection.startRow === selection.endRow &&
+    selection.startCol === selection.endCol &&
+    tapHint.row === selection.anchorRow &&
+    tapHint.col === selection.anchorCol;
+  useEffect(() => {
+    if (!tapHintShown) return;
+    const timer = window.setTimeout(() => setTapHint(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [tapHintShown, tapHint]);
 
   /**
    * Put the browser's focus where the cursor is.
@@ -564,10 +612,28 @@ export default function SpreadsheetGrid() {
       if (!canEdit(row, col)) return;
       // A tab that is only looking (#47) says so rather than opening an editor it cannot save.
       if (!isEditingTab()) return noteRefusedEdit();
+      setTapHint(null);
       setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
     },
     [rawAt, canEdit, setEditing]
   );
+
+  /**
+   * One tap has selected a cell and opened nothing (#171). Whatever still holds a keyboard is let go,
+   * so there is no keyboard up with nothing behind it, and the cell says what the next tap does.
+   */
+  const tappedToSelect = (row: number, col: number) => {
+    const active = document.activeElement;
+    if (active === keyboardKeeper.current) (active as HTMLElement).blur();
+    if (!canEdit(row, col) || !isEditingTab()) return;
+    // Under the cell from its left edge, moved left by however much of it would run off the grid's
+    // right side — a cell half off a phone screen would otherwise cut its own label in half.
+    const scroller = scrollRef.current;
+    const box = scroller?.querySelector(`td[data-row="${row}"][data-col="${col}"]`)?.getBoundingClientRect();
+    const overhang = scroller && box ? box.left + TAP_HINT_ROOM - (scroller.getBoundingClientRect().right - 4) : 0;
+    setTapHint({ row, col, shift: Math.max(0, Math.round(overhang)) });
+    announce(t.grid.tapAgainToType);
+  };
 
   /**
    * What the selected formula reads, so it can be drawn on the grid.
@@ -858,6 +924,10 @@ export default function SpreadsheetGrid() {
       default:
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
           startEdit(row, col, e.key);
+        } else if (e.key === "Unidentified" || e.key === "Process" || e.nativeEvent.keyCode === 229) {
+          // A phone keyboard typing with no editor open: it names no key, so there is nothing to
+          // start the cell with. It is not dropped in silence either — the cell says how to type (#171).
+          tappedToSelect(row, col);
         }
     }
   };
@@ -942,6 +1012,10 @@ export default function SpreadsheetGrid() {
                   tabIndex={editingHere ? undefined : isActive(r, c) ? 0 : -1}
                   data-row={r}
                   data-col={c}
+                  // "Tap again to type" (#171), drawn under the cell by CSS rather than as text in
+                  // it: the cell's text is its value, to anything that reads it, and the label is
+                  // not. It is said out loud when it appears.
+                  data-tap-hint={tapHintShown && tapHint.row === r && tapHint.col === c ? t.grid.tapAgainToType : undefined}
                   rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
                   colSpan={merge ? merge.endCol - merge.startCol + 1 : undefined}
                   onMouseDown={(e) => {
@@ -966,6 +1040,7 @@ export default function SpreadsheetGrid() {
                   onPointerDown={(e) => {
                     if (e.pointerType !== "touch") return;
                     tappedAlreadySelected.current = isActive(r, c);
+                    tapStart.current = { x: e.clientX, y: e.clientY };
                     endLongPress();
                     // Not on the grip, whose hold is the start of a drag, and not while a formula is
                     // being pointed at, where a touch is an address (#99).
@@ -980,6 +1055,7 @@ export default function SpreadsheetGrid() {
                         // click either, though Chromium sends one: it landed outside the menu and
                         // closed it. Swallowed once, until just after the lift.
                         tappedAlreadySelected.current = false;
+                        tapStart.current = null;
                         const swallow = (ev: Event) => {
                           ev.stopImmediatePropagation();
                           ev.preventDefault();
@@ -1005,11 +1081,19 @@ export default function SpreadsheetGrid() {
                   onPointerCancel={endLongPress}
                   onPointerUp={(e) => {
                     endLongPress();
-                    if (e.pointerType !== "touch" || !tappedAlreadySelected.current) return;
-                    if (!editingHere && !locked) {
-                      caretAtEnd.current = true;
-                      startEdit(r, c);
+                    if (e.pointerType !== "touch") return;
+                    const start = tapStart.current;
+                    tapStart.current = null;
+                    if (tappedAlreadySelected.current) {
+                      if (!editingHere && !locked) {
+                        caretAtEnd.current = true;
+                        startEdit(r, c);
+                      }
+                      return;
                     }
+                    // A drag, a hold or a tap into a formula (#99) is not a tap that selects.
+                    const still = start !== null && Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 10;
+                    if (still && !pointingFormula()) tappedToSelect(r, c);
                   }}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -1028,6 +1112,7 @@ export default function SpreadsheetGrid() {
                   }}
                   className={clsx(
                     "relative border-b border-r border-zinc-200 text-sm outline-none",
+                    "data-tap-hint:after:pointer-events-none data-tap-hint:after:absolute data-tap-hint:after:left-[calc(-1*var(--tap-hint-shift,0px))] data-tap-hint:after:top-full data-tap-hint:after:z-30 data-tap-hint:after:mt-1 data-tap-hint:after:whitespace-nowrap data-tap-hint:after:rounded-md data-tap-hint:after:bg-zinc-800 data-tap-hint:after:px-2 data-tap-hint:after:py-1 data-tap-hint:after:text-xs data-tap-hint:after:font-medium data-tap-hint:after:text-white data-tap-hint:after:shadow-md data-tap-hint:after:content-[attr(data-tap-hint)]",
                     squeezed ? "px-0.5" : "px-2",
                     // A live block reads as one object: tinted fill, a green outline on its edges,
                     // and its header row set apart from the values below it.
@@ -1121,6 +1206,9 @@ export default function SpreadsheetGrid() {
                       ...borders,
                       ...opaque,
                       ...pinned,
+                      ...(tapHintShown && tapHint.row === r && tapHint.col === c
+                        ? ({ "--tap-hint-shift": `${tapHint.shift}px` } as React.CSSProperties)
+                        : null),
                     };
                   })()}
                   title={
@@ -1451,6 +1539,15 @@ export default function SpreadsheetGrid() {
         className="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0"
         style={{ fontSize: 16 }}
         onKeyDown={(e) => e.stopPropagation()}
+        // Letters typed in the moment before the next cell's editor mounts belong to that cell,
+        // not to the keeper (#171). With no editor coming, the cell says how to type instead.
+        onInput={(e) => {
+          const typed = e.currentTarget.value;
+          e.currentTarget.value = "";
+          if (!typed) return;
+          if (editing) setEditingState((prev) => (prev ? { ...prev, value: prev.value + typed } : prev));
+          else tappedToSelect(selection.anchorRow, selection.anchorCol);
+        }}
       />
       {/* While a formula is being pointed at, the grip belongs to the cells in the formula: it
           widens C2 into C2:C10 in the text. The selection's own grip would move the cell being
