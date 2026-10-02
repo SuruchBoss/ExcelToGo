@@ -1486,8 +1486,9 @@ const FLOWS = [
             await page.locator("aside h2", { hasText: /ข้อมูลสด|Live data/ }).waitFor({ timeout: 5000 });
           }
           const text = await page.evaluate(() => document.body.innerText);
-          const hit = text.match(/.{0,30}(เดโม|demo).{0,30}/i)?.[0];
-          note(!hit, `${lang} ${route}: no "demo" in the visible text`, hit);
+          // "Still at the dev stage" said the same thing from the footer (#176).
+          const hit = text.match(/.{0,30}(เดโม|demo|ขั้น dev|dev stage).{0,30}/i)?.[0];
+          note(!hit, `${lang} ${route}: no "demo" or "dev stage" in the visible text`, hit);
         }
       }
     },
@@ -1607,6 +1608,62 @@ const FLOWS = [
       await page.keyboard.press("Enter");
       const values = [(await cell(page, 1, 1).innerText()).trim(), (await cell(page, 2, 1).innerText()).trim()];
       note(values[0] === "one" && values[1] === "two", `both values landed without a tap in between (${values.join(", ")})`);
+    },
+  },
+  {
+    // #171 (blind test R4): typing after one tap lost the text without a word — twelve rows of it
+    // once. One tap selects; the second types. What this holds is the space in between: no keyboard
+    // is left up with no editor behind it, the cell says how to type, and a keystroke that arrives
+    // anyway is answered rather than dropped. Nothing typed into an editor is lost on the way out.
+    name: "on a phone, one tap selects and says to tap again, and nothing typed goes missing (#171)",
+    width: 390,
+    touch: true,
+    async run(page) {
+      const HINT = /แตะอีกครั้งเพื่อพิมพ์|Tap again to type/;
+      const typingInto = () =>
+        page.evaluate(() => {
+          const a = document.activeElement;
+          return a && a.matches("input, textarea, select, [contenteditable]:not([contenteditable='false'])")
+            ? a.getAttribute("aria-label") || a.tagName
+            : null;
+        });
+      // Drawn by CSS from this attribute, so the cell's text stays its value.
+      const hint = page.locator("td[data-tap-hint]");
+      // By coordinates, the way a finger lands: a locator's tap would scroll first.
+      const tapCell = async (row, col) => {
+        const box = await cell(page, row, col).boundingBox();
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        await page.waitForTimeout(100);
+      };
+
+      await tapCell(2, 1);
+      note((await cell(page, 2, 1).locator("input").count()) === 0, "one tap on B3 selects it and opens no editor");
+      note((await typingInto()) === null, `nothing that takes typing has focus after one tap (${await typingInto()})`);
+      note(HINT.test((await cell(page, 2, 1).getAttribute("data-tap-hint")) ?? ""), "B3 says to tap again to type");
+
+      // What a phone keyboard sends to a page with no editor open: a keystroke that names no key.
+      await page.evaluate(() =>
+        document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Unidentified", keyCode: 229, bubbles: true }))
+      );
+      const spoken = await page.evaluate(() => [...document.querySelectorAll('[role="status"][aria-live]')].map((e) => e.textContent).join(" "));
+      note(HINT.test(spoken), "a keystroke with no editor open is answered out loud, not dropped in silence");
+      note((await hint.count()) === 1 && (await cell(page, 2, 1).locator("input").count()) === 0, "…and on the cell, which still has no editor");
+
+      await tapCell(2, 1);
+      await cell(page, 2, 1).locator("input").waitFor({ timeout: 5000 });
+      note((await hint.count()) === 0, "the second tap opens the editor and the label goes");
+      await page.keyboard.insertText("ยอดขาย");
+      await page.keyboard.press("Enter");
+      await cell(page, 3, 1).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("12");
+
+      // One tap elsewhere with the keyboard up: what was typed is kept, and the keyboard goes.
+      await tapCell(1, 2);
+      const b3 = (await cell(page, 2, 1).innerText()).trim();
+      const b4 = (await cell(page, 3, 1).innerText()).trim();
+      note(b3 === "ยอดขาย" && b4 === "12", `both typed values are in their cells (B3 "${b3}", B4 "${b4}")`);
+      note((await typingInto()) === null, `after one tap on C2 no keyboard is left up with nothing behind it (${await typingInto()})`);
+      note(HINT.test((await cell(page, 1, 2).getAttribute("data-tap-hint")) ?? ""), "C2 now says to tap again to type");
     },
   },
   {
