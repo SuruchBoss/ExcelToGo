@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { DEFAULT_DATE_CODE, formatSerial, isDateFormatCode, kindOfDateCode } from "./excelDate";
+import { BE_DATE_CODE, DEFAULT_DATE_CODE, formatSerial, isDateFormatCode, kindOfDateCode } from "./excelDate";
 import { formatNumberCode, isPercentCode } from "./numberFormatCode";
 
 /**
@@ -14,6 +14,25 @@ export type NumberFormat = "general" | "number2" | "percent" | "currency" | "tex
 export const DATE_FORMATS: readonly NumberFormat[] = ["date", "datetime", "time"];
 export const isDateFormat = (fmt: NumberFormat | undefined): fmt is "date" | "datetime" | "time" =>
   fmt === "date" || fmt === "datetime" || fmt === "time";
+/**
+ * What the number-format list offers: the stored formats, and "Date (B.E.)" (#82), which is a date
+ * shown in the Thai Buddhist year — the `date` format with Thai Excel's code, not a format of its
+ * own, so a sheet saved with it opens anywhere that reads the code.
+ */
+export type FormatChoice = NumberFormat | "dateBE";
+
+/** The choice the list shows for a cell. */
+export function formatChoiceOf(numberFormat: NumberFormat | undefined, dateFormat: string | undefined): FormatChoice {
+  if (numberFormat === "date" && dateFormat === BE_DATE_CODE.date) return "dateBE";
+  return numberFormat ?? "general";
+}
+
+/** What picking a choice sets. A code a file brought in goes: picking a format means the app's own. */
+export function formatForChoice(choice: FormatChoice): { numberFormat: NumberFormat; dateFormat: string | undefined; numFmtCode: undefined } {
+  if (choice === "dateBE") return { numberFormat: "date", dateFormat: BE_DATE_CODE.date, numFmtCode: undefined };
+  return { numberFormat: choice, dateFormat: undefined, numFmtCode: undefined };
+}
+
 export type CellAlign = "left" | "center" | "right";
 export type CellVAlign = "top" | "middle" | "bottom";
 

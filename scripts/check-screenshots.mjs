@@ -110,8 +110,15 @@ const SHOWS = {
   "60-pointing-bar.png": [],
   "61-other-tab.png": [],
   "62-picking-bar.png": [],
+  // The convert-to-dates dialog (#82): dates and counts from its own sample, none of them counted figures.
+  "63-ai-declined.png": [],
   "64-short-screen.png": [],
   "65-save-status.png": [],
+  "66-convert-dates.png": [],
+  // Two answers quote a count: the palette's formulas, and the engine's functions.
+  "67-landing-faq.png": ["paletteFormulas", "engineFunctions"],
+  // A formula page's example: the engine's numbers for one lesson's table, none of them counted figures.
+  "68-formula-page.png": [],
   "demo.gif": [],
 };
 

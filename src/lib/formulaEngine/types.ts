@@ -25,7 +25,10 @@ export function isError<T>(v: T): v is Extract<T, FormulaError> {
 // rectangular range of values (rows of cells), used by functions that need
 // to distinguish "a range was passed" (VLOOKUP, SUMIF) from a scalar.
 export type EvalResult =
-  | { kind: "scalar"; value: FormulaValue }
+  // `fromRef` marks a value read from a cell reference (`A1`, `Sheet2!B3`) rather than written into
+  // the formula or computed by it. Excel treats the two apart (#166): `SUM(A1)` skips text in A1 as
+  // `SUM(A1:A3)` does, while `SUM("5")` still reads the 5.
+  | { kind: "scalar"; value: FormulaValue; fromRef?: true }
   | { kind: "range"; rows: FormulaValue[][]; startRow: number; startCol: number };
 
 export function scalar(value: FormulaValue): EvalResult {

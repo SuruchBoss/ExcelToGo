@@ -23,7 +23,8 @@ import { useTabStore } from "@/store/tabStore";
  *
  * 1. this tab is only looking (#47) — every edit made here is refused, and nothing else explains why:
  *    an edit that silently does nothing is the most confusing state the app has (PO, #129: "การแก้ที่ถูก
- *    ปฏิเสธโดยไม่มีคำอธิบายคือกรณีที่งงที่สุด");
+ *    ปฏิเสธโดยไม่มีคำอธิบายคือกรณีที่งงที่สุด"). The same slot says, once, that the editing tab closed
+ *    and this one edits now (#146), since a notice still claiming otherwise would be just as confusing;
  * 2. a save that failed — the work on screen will not survive a reload;
  * 3. a pivot whose source has moved — **the numbers on screen are wrong**, which outranks any advice
  *    about the app (PO, #129: "pivot ล้าสมัยคือตัวเลขบนจอไม่ตรง จึงสำคัญกว่าข้อความแนะนำ");
@@ -33,7 +34,8 @@ import { useTabStore } from "@/store/tabStore";
  * The file-open message is not here: it floats over the foot of the grid (`ImportNotice`).
  */
 export default function MessageSlot() {
-  const viewOnly = useTabStore((s) => s.role === "viewer" || s.role === "handedOff");
+  // The same notice also says, once, that the editing tab closed and this one edits now (#146).
+  const viewOnly = useTabStore((s) => s.role === "viewer" || s.role === "handedOff" || (s.freed && s.role === "editor"));
   const saveStatus = useSyncExternalStore(subscribeSaveStatus, getSaveStatus, () => "ok" as const);
   const pivot = useSheetStore(selectPivotStatus);
   const showingSample = useSheetStore(selectShowingSample);

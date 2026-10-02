@@ -84,8 +84,15 @@ export function countTestFiles(dir = path.join(ROOT, "src")) {
   return n;
 }
 
+/**
+ * One engine function per key of `FUNCTIONS`. A name with a dot has to be quoted (`"RANK.EQ":`),
+ * and the first version of this pattern did not allow the quotes, so the count said 65 for months
+ * while the engine had 66 — found by the FAQ test (#152), which compares with the table itself.
+ */
+export const ENGINE_FUNCTION_KEY = /^  "?([A-Z][A-Z0-9.]*)"?:/gm;
+
 export const counts = () => ({
-  engineFunctions: countMatches("src/lib/formulaEngine/functions.ts", /^  [A-Z][A-Z0-9.]*:/gm),
+  engineFunctions: countMatches("src/lib/formulaEngine/functions.ts", ENGINE_FUNCTION_KEY),
   paletteFormulas: countMatches("src/lib/formulaCatalog.ts", /^    id: "[A-Z][A-Z0-9.]*",/gm),
   tests: countTests(),
   testFiles: countTestFiles(),

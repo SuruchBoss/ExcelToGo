@@ -676,8 +676,10 @@ describe("DATE (#45)", () => {
 describe("gaps the mutation gate found", () => {
   it("COUNT wants text that is a number, not merely text that is present", () => {
     // `v.trim() !== "" && !Number.isNaN(Number(v))` turned into `||` and nothing noticed, because
-    // every COUNT test used a range of numbers, where both halves agree.
-    expect(calc("COUNT(A1:A4)", [[1], ["ไม่ใช่ตัวเลข"], [""], ["7"]])).toBe(2);
+    // every COUNT test used a range of numbers, where both halves agree. Since #166 that rule only
+    // reads text written into the formula; text in cells is never a number to COUNT, as in Excel.
+    expect(calc('COUNT("ไม่ใช่ตัวเลข", "", "7", 1)')).toBe(2);
+    expect(calc("COUNT(A1:A4)", [[1], ["ไม่ใช่ตัวเลข"], [""], ["7"]])).toBe(1);
   });
 
   it("COUNTIFS counts the cells that are there, not one past the end of each row", () => {
