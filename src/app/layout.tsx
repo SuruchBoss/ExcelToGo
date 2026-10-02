@@ -6,6 +6,7 @@ import { serverSourcesConfigured } from "@/lib/demoMode";
 import { connection } from "next/server";
 import { IBM_Plex_Sans_Thai, IBM_Plex_Mono } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
+import { CANONICAL, DESCRIPTIONS, MAKER, OPEN_GRAPH, TITLES } from "@/lib/seo";
 import "./globals.css";
 
 // Geist was here because create-next-app put it here, and it has no Thai glyphs at all — every
@@ -35,55 +36,52 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-// Trimmed to what a visitor without their own API key actually gets (#125): a suggested formula,
-// which the app marks as a keyword guess, not a promise that it works.
-const DESCRIPTION =
-  "ตาราง Excel ในเบราว์เซอร์ พิมพ์บอกสิ่งที่อยากได้แล้วได้สูตรแนะนำพร้อมคำอธิบาย (ไม่มี key แอปจะเดาจากคำสำคัญและบอกว่าเป็นการเดา · ใส่ API key ของคุณเองเพื่อคำตอบจาก AI) — หรือเลือกจากสูตรพร้อมใช้ 37 แบบ เปิดไฟล์ .xlsx เดิมได้ ไม่ต้องสมัคร ไม่ต้องอัปโหลด";
-const TITLE = "ExcelToGo — ตาราง Excel ในเบราว์เซอร์ พิมพ์บอกแล้วได้สูตรแนะนำ";
-
+// What a search result says (#148) comes from `src/lib/seo.ts`, where the tab title the page
+// switches to in English also lives. It leads with what people type — edit an Excel file online,
+// free, no sign-up — and not with the AI suggestion, which for a visitor without a key is a keyword
+// guess (#125).
 export const metadata: Metadata = {
   // Absolute URLs in the Open Graph tags need a base, and og:image is resolved against it — without
   // this the preview image comes out with a relative src and no crawler can fetch it.
   metadataBase: new URL(SITE_URL),
   title: {
-    default: TITLE,
+    default: TITLES.th.home,
     template: "%s · ExcelToGo",
   },
-  // This is the line that shows in search results and link previews, so it says what the app does
-  // rather than what problem it set out to solve.
-  description: DESCRIPTION,
+  description: DESCRIPTIONS.th.home,
   applicationName: "ExcelToGo",
-  authors: [{ name: "Suruch Boss", url: "https://github.com/SuruchBoss" }],
-  creator: "Suruch Boss",
+  authors: [{ name: MAKER.name, url: MAKER.sameAs[0] }],
+  creator: MAKER.name,
+  // Search engines mostly ignore this tag. It still said "Next.js, React, TypeScript", which nobody
+  // looking for a spreadsheet types, so it now says what they do type.
   keywords: [
-    "Excel",
-    "spreadsheet",
-    "xlsx",
-    "formula",
-    "ตารางคำนวณ",
+    "แก้ไฟล์ Excel ออนไลน์",
+    "Excel ออนไลน์ ฟรี",
+    "เปิดไฟล์ Excel บนมือถือ",
+    "แก้ xlsx",
     "สูตร Excel",
-    "Next.js",
-    "React",
-    "TypeScript",
-    "open source",
+    "edit Excel online",
+    "xlsx editor",
   ],
-  // opengraph-image.tsx / twitter-image.tsx supply the image; only the text lives here. Locale is
-  // Thai with English as the alternate, matching the app's own default.
+  // opengraph-image.tsx / twitter-image.tsx supply the image; only the text lives here.
   openGraph: {
-    type: "website",
-    siteName: "ExcelToGo",
-    url: SITE_URL,
-    title: TITLE,
-    description: DESCRIPTION,
-    locale: "th_TH",
-    alternateLocale: ["en_US"],
+    ...OPEN_GRAPH,
+    url: CANONICAL.home,
+    title: TITLES.th.home,
+    description: DESCRIPTIONS.th.home,
   },
   twitter: {
     card: "summary_large_image",
-    title: TITLE,
-    description: DESCRIPTION,
+    title: TITLES.th.home,
+    description: DESCRIPTIONS.th.home,
   },
-  alternates: { canonical: SITE_URL },
+  // No canonical here on purpose (#148): set once in the root layout it was inherited by every
+  // route, and told search engines that /app and /guide were copies of /. Each page declares its
+  // own; `check:e2e` fails if a page in the sitemap does not.
+
+  // Google Search Console ownership check for the production site (#148). Not a secret: the tag is
+  // public by design, and it only proves that whoever controls this deployment added it.
+  verification: { google: "9qpXdFd3GLA-nMaN6FDWw6AUTZJzvEGa_4SLuZQ8VZw" },
 };
 
 /**

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it } from "vitest";
+import JSZip from "jszip";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportWorkbookToXlsxBlob } from "@/lib/excelIO";
 import { computeSheet, createEmptySheet } from "@/lib/sheet";
 import { selectFileLosses, undoSheet, useSheetStore } from "./sheetStore";
@@ -23,6 +24,21 @@ async function cleanFile() {
   return new File([await blob.arrayBuffer()], "clean.xlsx");
 }
 
+/** The fixture with a range name the importer cannot bring in (#60): a whole column. */
+async function fixtureWithName() {
+  const zip = await JSZip.loadAsync(readFileSync(new URL("../lib/fixtures/losses-picture-chart.xlsx", import.meta.url)));
+  const wb = (await zip.file("xl/workbook.xml")!.async("string")).replace(
+    "</sheets>",
+    `</sheets><definedNames><definedName name="WholeColumn">'ข้อมูล'!$B:$B</definedName></definedNames>`
+  );
+  zip.file("xl/workbook.xml", wb);
+  return new File([Uint8Array.from(await zip.generateAsync({ type: "uint8array" }))], "ใบเสนอราคา.xlsx");
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 beforeEach(() => {
   state().startBlank();
   useSheetStore.setState({ fileLosses: null, fileLossesOpen: false });
@@ -40,6 +56,16 @@ describe("the report of what an opened file cannot keep (#83)", () => {
       "unknownFunctions:1:ใบเสนอราคา",
     ]);
     expect(state().fileLossesOpen).toBe(true);
+  });
+
+  it("says the range names that could not come in, in the report rather than an alert of their own (#60)", async () => {
+    const alert = vi.fn();
+    vi.stubGlobal("alert", alert);
+    await state().importFromFile(await fixtureWithName());
+    const names = selectFileLosses(state())?.items.find((i) => i.kind === "names");
+    expect(names).toEqual({ kind: "names", count: 1, sheets: [], names: ["WholeColumn"] });
+    expect(state().fileLossesOpen).toBe(true);
+    expect(alert).not.toHaveBeenCalled();
   });
 
   it("a file with nothing to lose shows nothing", async () => {

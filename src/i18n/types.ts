@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { NumberFormat } from "@/lib/cellFormat";
+import type { FormatChoice } from "@/lib/cellFormat";
 import { CfComparison, CfTest } from "@/lib/conditionalFormat";
 import { ChartKind } from "@/lib/charts";
 
@@ -31,6 +31,8 @@ export interface Messages {
     /** Shows the *other* language's name — clicking it switches to that language. */
     languageToggleLabel: string;
     languageToggleTitle: string;
+    /** The page's one heading on /app, for a screen reader and a crawler; not drawn (#148). */
+    heading: string;
   };
   toolbar: {
     importFile: string;
@@ -180,6 +182,8 @@ export interface Messages {
       area: (rows: number, cols: number) => string;
       areaOverwrite: (rows: number, cols: number) => string;
       invalidCell: string;
+      /** A single value with no number to pick yet: Insert would write a blank (#126). */
+      nothingToPick: string;
       insert: string;
       cancel: string;
     };
@@ -244,6 +248,8 @@ export interface Messages {
     /** The AI promise's limit, beside the promise (#125): no key means a keyword guess. */
     aiNote: string;
     ctaNote: string;
+    /** A text link under the buttons to the formula pages (#149), which are Thai only for now. */
+    formulasLink: string;
     /** Three answers a first visit is looking for — free? private? on my phone? — under the buttons. */
     benefits: string[];
     screenshotAlt: string;
@@ -309,6 +315,14 @@ export interface Messages {
     limits: { title: string; body: string }[];
     limitsMoreText: string;
     limitsMoreCta: string;
+    /**
+     * Questions people type into a search box or ask an AI, each answered in its first sentence
+     * (#152). `answer` is that sentence and `detail` the limits that go with it; both are what the
+     * page shows and what the FAQPage structured data says, word for word.
+     */
+    faqTitle: string;
+    faqLead: string;
+    faq: { q: string; answer: string; detail: string; link?: { href: string; label: string } }[];
     closingTitle: string;
     closingBody: string;
     /** The contact block beside the closing call to action. The addresses themselves are not
@@ -400,6 +414,9 @@ export interface Messages {
     rename: string;
     remove: (name: string) => string;
     empty: string;
+    /** Which kind a listed name is (#60): the whole workbook sees it, or only its own sheet. */
+    scopeWorkbook: string;
+    scopeSheet: string;
     defined: (name: string, range: string) => string;
     deleted: (name: string) => string;
     problem: {
@@ -551,6 +568,12 @@ export interface Messages {
     openSample: string;
   };
   /** Asked before a sort that would give formulas another row's numbers (#48). */
+  pasteWarning: {
+    title: string;
+    body: (hidden: number) => string;
+    pasteAnyway: string;
+    cancel: string;
+  };
   sortWarning: {
     title: string;
     body: (formulas: number) => string;
@@ -567,8 +590,31 @@ export interface Messages {
     viewing: string;
     handedOff: string;
     refused: string;
+    /** The editing tab closed or left, and this one edits now with its latest save (#146). */
+    freed: string;
+    dismiss: string;
   };
   /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
+  /** "Convert to dates" (#82): text dates that need to be told the order and the calendar. */
+  convertDates: {
+    button: string;
+    /** The cell menu's entry: the button's words and an ellipsis, since it opens a dialog. */
+    menu: string;
+    hint: string;
+    title: string;
+    body: string;
+    order: string;
+    orders: { dmy: string; mdy: string; ymd: string };
+    calendar: string;
+    calendars: { be: string; ce: string };
+    preview: string;
+    before: string;
+    after: string;
+    counts: (changed: number, unreadable: number) => string;
+    nothing: string;
+    confirm: (changed: number) => string;
+    cancel: string;
+  };
   /** What an opened file holds that the app does not keep (#83). */
   fileLosses: {
     title: string;
@@ -585,6 +631,7 @@ export interface Messages {
     /** The menu line that opens it again. */
     reopen: string;
   };
+  /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
   newFile: {
     button: string;
     hint: string;
@@ -648,6 +695,7 @@ export interface Messages {
     moreTitle: string;
     moreReadme: string;
     moreSecurity: string;
+    moreFormulas: string;
     openApp: string;
     copy: string;
     copied: string;
@@ -665,6 +713,11 @@ export interface Messages {
     cancel: string;
     doneAppend: (sheets: number) => string;
     doneReplace: (sheets: number) => string;
+    /** A formula page's example (#149): the name the dialog shows in place of a file name, the tab
+     *  it opens as, and what the notice says once it is open. */
+    lessonFile: (id: string) => string;
+    lessonSheet: (id: string) => string;
+    doneLesson: (id: string) => string;
     undo: string;
     dismiss: string;
   };
@@ -713,7 +766,7 @@ export interface Messages {
     /** Headings inside the phone sheet. */
     groups: { cells: string; sort: string; rules: string; summarise: string };
   };
-  numberFormats: Record<NumberFormat, string>;
+  numberFormats: Record<FormatChoice, string>;
   /** The pivot panel, and the sheet it writes. */
   pivot: {
     title: string;
@@ -748,6 +801,9 @@ export interface Messages {
     confirmDelete: (name: string) => string;
     deleteTitle: string;
     addTitle: string;
+    renameLabel: string;
+    /** Why a typed name was refused (#54), keyed by the rule it broke; given the name as typed. */
+    nameProblem: Record<import("@/lib/sheetNames").SheetNameProblem, (name: string) => string>;
   };
   filterPopover: {
     selectAll: string;
@@ -772,6 +828,8 @@ export interface Messages {
     allFiltersCleared: (total: number) => string;
     pasted: (rows: number, cols: number, at: string) => string;
     cleared: (range: string) => string;
+    /** "Convert to dates" (#82): how many changed, and how many were left because they could not be read. */
+    datesConverted: (changed: number, unreadable: number) => string;
     filled: (cells: number, range: string) => string;
     replacedOne: (at: string) => string;
     replacedAll: (cells: number) => string;
@@ -844,6 +902,8 @@ export interface Messages {
     extendSelection: string;
     /** The cell's own editor, named for a screen reader: "Edit B2". */
     editorLabel: (address: string) => string;
+    /** Shown on a cell a finger has just selected (#171): one tap selects, a second one types. */
+    tapAgainToType: string;
     /** The chip that brings a selection scrolled off screen back into view, e.g. "Back to B2:B9". */
     backToSelection: (address: string) => string;
     /** The mouse grip on the same corner, which continues the selection instead. */
@@ -905,6 +965,10 @@ export interface Messages {
     guessBadge: string;
     /** Under a suggestion when the cell it would go in already holds something. */
     overwriteWarning: (address: string) => string;
+    /** The answer reads the only cell it could go into, so it is not offered (#64). */
+    selfReference: (address: string) => string;
+    /** Opens the palette form a declined answer points at (#62). */
+    openForm: (name: string) => string;
     connectionError: string;
     /** Shown when the server refuses because this browser has asked too often. */
     rateLimited: (seconds: number) => string;
@@ -941,6 +1005,8 @@ export interface Messages {
     busyExportingPdf: string;
     busyExportingCsv: string;
     importError: string;
+    /** The .xlsx export threw: the file never arrived, and a silent button is the worst way to learn that (#54). */
+    exportError: string;
     /** A sheet that goes further down than an import opens: its name, the file's last row, and the rows opened. */
     importClipped: (sheet: string, rowsInFile: number, rowsOpened: number) => string;
     csvEmpty: string;
@@ -953,6 +1019,16 @@ export interface Messages {
      *  the old `fallback` handed back SUM for anything unrecognised, which is how "join these
      *  names" became a number nobody questioned. */
     noMatch: string;
+    /** Why it will not guess, each with the palette form it points at instead (#62–#64). */
+    declined: {
+      conditional: (form: string | null) => string;
+      needsRange: (form: string) => string;
+      textColumns: (form: string) => string;
+      lookup: string;
+      ifDetail: string;
+      subtract: string;
+      dates: string;
+    };
     /** The two outcomes the IF suggestion writes into the cell — in the formula, so in the sheet. */
     ifOutcomes: [pass: string, fail: string];
   };

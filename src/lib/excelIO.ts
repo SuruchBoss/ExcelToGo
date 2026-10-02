@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { commentKey } from "./cellComments";
-import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
+import { formattedNumber, literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { chartDataFrom } from "./charts";
 import { dateKindAt, dateTextReader } from "./dateCells";
-import { DEFAULT_DATE_CODE, isoFromSerial, kindOfDateCode } from "./excelDate";
+import { BE_DATE_CODE, DEFAULT_DATE_CODE, dateLiteral, isoFromSerial, kindOfDateCode } from "./excelDate";
 import { chartToSvg, svgToPngDataUrl } from "./chartImage";
 import { chartAnchorOf, columnWidth, rowHeight } from "./gridGeometry";
 import { colToLetters } from "./formulaEngine/address";
@@ -38,11 +38,13 @@ import {
   validationKey,
 } from "./dataValidation";
 import { nameKey, nameProblem, refToNode, type NameTable } from "./namedRanges";
+import { addSheetLevelNames, readRawDefinedNames, type RawDefinedName } from "./xlsxNames";
 import { parseRangeRef, parseCellRef, rangeRefString, sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { MergeRange, parseMergeRef } from "./sheetMerges";
 import { shiftFormulaRefs } from "./formulaEngine/shift";
 import { compileFormula } from "./formulaEngine/formulaProgram";
 import { CfRule, CfComparison, CfTest } from "./conditionalFormat";
+import { fitSheetNames } from "./workbookRefs";
 
 function hexToArgb(hex: string): string {
   return `FF${hex.replace("#", "").toUpperCase()}`;
@@ -58,12 +60,13 @@ function sanitizeSheetName(name: string, usedNames: Set<string>): string {
   const clean = name.replace(/[\\/*?:[\]]/g, " ").trim().slice(0, 31) || "Sheet";
   let unique = clean;
   let i = 2;
-  while (usedNames.has(unique)) {
+  // Lower-cased, as Excel compares them: `sheet1` beside `Sheet1` made ExcelJS throw (#54).
+  while (usedNames.has(unique.toLowerCase())) {
     const suffix = ` (${i})`;
     unique = clean.slice(0, 31 - suffix.length) + suffix;
     i += 1;
   }
-  usedNames.add(unique);
+  usedNames.add(unique.toLowerCase());
   return unique;
 }
 
@@ -519,7 +522,11 @@ function importWorksheet(worksheet: ExcelJS.Worksheet): { sheet: SheetModel; row
       const r = rowNumber - 1;
       const c = colNumber - 1;
       if (r < sheet.rows && c < sheet.cols) {
-        sheet.cells[r][c] = isTextCell(cell) ? rawForText(cellValueToRaw(cell)) : cellValueToRaw(cell);
+        // A cell a merge covers holds nothing in Excel; ExcelJS hands back the top-left cell's value
+        // for it anyway, so a merged 10 over A1:A3 used to arrive as three 10s and SUM said 30 (#55).
+        // Its formatting (borders on the band's edge) still counts; its value does not.
+        const covered = cell.type === ExcelJS.ValueType.Merge;
+        sheet.cells[r][c] = covered ? "" : isTextCell(cell) ? rawForText(cellValueToRaw(cell)) : cellValueToRaw(cell);
         const align = cell.alignment?.horizontal;
         const valign = cell.alignment?.vertical;
         const format = {
@@ -659,6 +666,11 @@ export interface ImportedSheet {
   sheet: SheetModel;
   /** Set when the file goes further down than the sheet could open: the file's last row. */
   rowsInFile?: number;
+  /**
+   * The file's names that could not come in (#60) — a formula, a whole column, a sheet the file does
+   * not have. On the first sheet only, since a name belongs to the file rather than to a sheet.
+   */
+  droppedNames?: string[];
 }
 
 /** Imports every worksheet in the workbook (not just the first) as a separate tab. */
@@ -669,13 +681,14 @@ export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[
   if (workbook.worksheets.length === 0) {
     return [{ name: "Sheet1", sheet: createEmptySheet() }];
   }
-  const named = readDefinedNames(workbook);
-  return workbook.worksheets.map((worksheet) => {
+  const { bySheet: named, dropped } = namesFromFile(await readRawDefinedNames(buffer));
+  return workbook.worksheets.map((worksheet, i) => {
     const name = worksheet.name || "Sheet1";
     const { sheet, rowsInFile } = importWorksheet(worksheet);
     const names = named.get(name.toLowerCase());
     const imported: ImportedSheet = { name, sheet: names ? { ...sheet, names } : sheet };
     if (rowsInFile !== undefined) imported.rowsInFile = rowsInFile;
+    if (i === 0 && dropped.length > 0) imported.droppedNames = dropped;
     return imported;
   });
 }
@@ -734,7 +747,15 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         // A date typed as a date goes out as a date cell: the serial, with a date format Excel
         // recognises (#45). Without one it would open as 45306.
         const kind = dateKindAt(sheet, r, c);
-        if (kind) cell.numFmt = DEFAULT_DATE_CODE[kind];
+        // One typed with a Buddhist year goes out showing it, as it shows in the grid (#82).
+        const be = kind && kind !== "time" && dateLiteral(sheet.cells[r]?.[c] ?? "")?.era === "be";
+        if (kind) cell.numFmt = be ? BE_DATE_CODE[kind] : DEFAULT_DATE_CODE[kind];
+        // A number typed as a screen shows it goes out showing the same way (#52): `1,250` as
+        // #,##0, `12%` as 0%, `฿1,500.00` as "฿"#,##0.00 — not as 1250, 0.12 and 1500.
+        else {
+          const shown = formattedNumber(sheet.cells[r]?.[c] ?? "");
+          if (shown) cell.numFmt = shown.code;
+        }
       }
       // Text that would read as a number goes out marked as text ("@"), which is what stops Excel
       // itself from turning it back into one the first time somebody edits the cell. After the
@@ -878,62 +899,100 @@ const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.s
 /** Builds the workbook, optionally embedding charts as pictures on the way. */
 
 /**
- * Writes the sheets' named ranges as the workbook's defined names.
+ * Writes the sheets' named ranges as the workbook's defined names, each with the scope it has here.
  *
- * The file format has no sheet-scoped names in ExcelJS's model, so what is sheet-scoped here comes
- * out workbook-scoped there. That is a widening rather than a loss — every name still means the
- * range it meant — with one honest consequence: two tabs that both define `ยอดขาย` collide, and
- * the first one wins. Silently renaming the second would produce a file whose formulas point
- * somewhere the person never asked for, so it is dropped and the limit is written down.
+ * Workbook-level ones go through ExcelJS; if two tabs hold one (two files added together), the first
+ * tab's goes out, as it is the one every formula here reads. Sheet-level ones come back as what ExcelJS
+ * cannot write — a `localSheetId` — for `addSheetLevelNames` to put into the finished file (#60).
  *
  * Each target is qualified and absolute on the way out, which is what Excel requires of a defined
- * name and what `refForSelection` already produces; a name whose stored target has no sheet on it
- * (an older workbook, or one hand-edited) is qualified here with the sheet that defines it.
+ * name; one stored bare is qualified with the sheet that holds it, which is what bare means here.
  */
-function writeDefinedNames(workbook: ExcelJS.Workbook, sheets: ExportableSheet[], sheetNames: string[]): void {
+function writeDefinedNames(
+  workbook: ExcelJS.Workbook,
+  sheets: ExportableSheet[],
+  sheetNames: string[]
+): { name: string; localSheetId: number; text: string }[] {
   const model: { name: string; ranges: string[] }[] = [];
+  const local: { name: string; localSheetId: number; text: string }[] = [];
   const taken = new Set<string>();
   sheets.forEach(({ sheet }, i) => {
     for (const entry of Object.values(sheet.names ?? {})) {
-      const key = entry.label.toUpperCase();
-      if (taken.has(key)) continue;
       const { sheet: prefix, ref } = splitSheetRef(entry.ref);
       const absolute = ref.replace(/\$?([A-Z]+)\$?(\d+)/g, "$$$1$$$2");
-      model.push({ name: entry.label, ranges: [`${sheetRefPrefix(prefix ?? sheetNames[i])}${absolute}`] });
+      const text = `${sheetRefPrefix(prefix ?? sheetNames[i])}${absolute}`;
+      if (entry.scope === "sheet") {
+        local.push({ name: entry.label, localSheetId: i, text });
+        continue;
+      }
+      const key = entry.label.toUpperCase();
+      if (taken.has(key)) continue;
+      model.push({ name: entry.label, ranges: [text] });
       taken.add(key);
     }
   });
   if (model.length > 0) workbook.definedNames.model = model;
+  return local;
 }
 
-/** The names a file arrives with, grouped onto the sheet each one points at. */
-function readDefinedNames(workbook: ExcelJS.Workbook): Map<string, NameTable> {
+/**
+ * The names a file arrives with, each stored where this app keeps it (#60).
+ *
+ * - **Workbook-level** (no `localSheetId`): on the sheet it points at, target bare — so the sheet it
+ *   points at reads it as its own cells and every other sheet reaches it through that sheet.
+ * - **Sheet-level**: on the sheet the file names, not the one it points at, marked `scope: "sheet"`,
+ *   its target qualified when it points somewhere else.
+ *
+ * Anything that is not one plain range on a sheet the file has — a formula (`=OFFSET(...)`), a whole
+ * column, a constant, several areas — cannot come in, and is listed in `dropped` for the person to be
+ * told, rather than turning into `#NAME?` with nothing to say why. Excel's own bookkeeping (`_xlnm.`
+ * print areas and filters) and hidden names are not somebody's labels and are passed over quietly.
+ */
+function namesFromFile(file: { sheets: string[]; names: RawDefinedName[] }): {
+  bySheet: Map<string, NameTable>;
+  dropped: string[];
+} {
   const bySheet = new Map<string, NameTable>();
-  for (const entry of workbook.definedNames.model ?? []) {
-    const target = entry.ranges?.[0];
-    if (!target || !entry.name) continue;
-    const { sheet: prefix, ref: address } = splitSheetRef(target);
-    // A name with no sheet in its target, or one pointing at a sheet the file does not contain,
-    // has nowhere to live here. Excel also writes print areas and filter ranges as defined names
-    // (`_xlnm.Print_Area`), which `nameProblem` rejects on the dot — they are the file's own
-    // bookkeeping, not somebody's label.
-    if (!prefix || nameProblem(entry.name, undefined)) continue;
-    if (!refToNode(target)) continue;
-    const table = bySheet.get(prefix.toLowerCase()) ?? {};
-    // Rebuilt rather than stored as it arrived: ExcelJS quotes every non-ASCII sheet name on the
-    // way out, so a name written here as `ใบเสนอราคา!$B$1` comes back as `'ใบเสนอราคา'!$B$1`.
-    // Both resolve; only one of them is what the person would see in the panel twice running.
-    // Stored bare. The prefix has already done its job — it is what said which sheet this name
-    // belongs to — and a target left qualified would be a cross-sheet reference to the evaluator,
-    // needing a workbook resolver that half of `computeSheet`'s callers do not pass.
-    table[nameKey(entry.name)] = { label: entry.name, ref: address };
-    bySheet.set(prefix.toLowerCase(), table);
+  const dropped: string[] = [];
+  const has = new Set(file.sheets.map((n) => n.toLowerCase()));
+  const workbookKeys = new Set<string>();
+  for (const entry of file.names) {
+    if (entry.hidden || entry.name.startsWith("_xl")) continue;
+    const text = entry.text.replace(/^=/, "");
+    const { sheet: target, ref: address } = splitSheetRef(text);
+    const home = entry.localSheetId !== undefined ? file.sheets[entry.localSheetId] : target;
+    if (
+      !target ||
+      !home ||
+      !has.has(target.toLowerCase()) ||
+      !has.has(home.toLowerCase()) ||
+      !refToNode(address) ||
+      nameProblem(entry.name, undefined)
+    ) {
+      dropped.push(entry.name);
+      continue;
+    }
+    const key = nameKey(entry.name);
+    const table = bySheet.get(home.toLowerCase()) ?? {};
+    if (entry.localSheetId !== undefined) {
+      const ref = target.toLowerCase() === home.toLowerCase() ? address : `${sheetRefPrefix(target)}${address}`;
+      table[key] = { label: entry.name, ref, scope: "sheet" };
+    } else {
+      if (workbookKeys.has(key)) continue;
+      workbookKeys.add(key);
+      table[key] = { label: entry.name, ref: address };
+    }
+    bySheet.set(home.toLowerCase(), table);
   }
-  return bySheet;
+  return { bySheet, dropped };
 }
 
-async function buildWorkbook(sheets: ExportableSheet[], picturesForCharts: boolean) {
+async function buildWorkbook(given: ExportableSheet[], picturesForCharts: boolean) {
   const workbook = new ExcelJS.Workbook();
+  // The store keeps names valid (#54); this is the guard for anything that reaches the writer
+  // without passing it, and it renames *with* the formulas that point at a tab, where renaming
+  // here alone once wrote a tab called "Q1 Q2" beside formulas that still said 'Q1/Q2'.
+  const sheets = fitSheetNames(given);
   const usedNames = new Set<string>();
   const names: string[] = [];
   for (const { name, sheet, computed } of sheets) {
@@ -943,8 +1002,9 @@ async function buildWorkbook(sheets: ExportableSheet[], picturesForCharts: boole
     await writeSheetToWorksheet(worksheet, sheet, computed);
     if (picturesForCharts) await writeCharts(workbook, worksheet, sheet, computed);
   }
-  writeDefinedNames(workbook, sheets, names);
-  return { buffer: await workbook.xlsx.writeBuffer(), names };
+  const local = writeDefinedNames(workbook, sheets, names);
+  const written = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
+  return { buffer: await addSheetLevelNames(written, local), names };
 }
 
 /**

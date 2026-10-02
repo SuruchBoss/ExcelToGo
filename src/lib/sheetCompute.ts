@@ -3,7 +3,7 @@
 
 import type { SheetModel } from "./sheet";
 import { evaluate } from "./formulaEngine/evaluator";
-import { nameScope } from "./namedRanges";
+import { effectiveNames, nameScope, type NameTable } from "./namedRanges";
 import {
   compileFormula,
   FormulaProgram,
@@ -13,7 +13,7 @@ import {
 import { FormulaError, FormulaValue } from "./formulaEngine/types";
 import { toDisplayString } from "./formulaEngine/coerce";
 import { formatNumberForDisplay } from "./cellFormat";
-import { literalValue } from "./cellLiteral";
+import { formattedNumber, literalValue } from "./cellLiteral";
 import { dateLiteral } from "./excelDate";
 
 /**
@@ -63,6 +63,12 @@ export type ForeignLookup =
 export interface CrossSheetResolver {
   /** Case-insensitively, the way Excel matches a sheet name written in a formula. */
   lookup(name: string): ForeignLookup;
+  /**
+   * The names a formula on `sheet` can use: the workbook's, and the sheet's own over them (#60).
+   * The same object for the same content, so the caches keyed on it hold. Without a resolver a
+   * sheet sees only the names stored on it.
+   */
+  namesFor?(sheet: SheetModel): NameTable | undefined;
 }
 
 export interface WorkbookTab {
@@ -84,11 +90,21 @@ export interface WorkbookTab {
  */
 export function createWorkbookResolver(tabs: WorkbookTab[]): CrossSheetResolver {
   const byName = new Map<string, SheetModel>();
-  for (const tab of tabs) byName.set(tab.name.toLowerCase(), tab.sheet);
+  // The first tab of a name wins, as the name is fitted on load (#54): a workbook that still holds
+  // two answers to the same name reads the one it was made for.
+  for (const tab of tabs) if (!byName.has(tab.name.toLowerCase())) byName.set(tab.name.toLowerCase(), tab.sheet);
+  const indexOf = new Map<SheetModel, number>();
+  tabs.forEach((tab, i) => {
+    if (!indexOf.has(tab.sheet)) indexOf.set(tab.sheet, i);
+  });
   const done = new Map<string, ComputedSheet>();
   const computing = new Set<string>();
 
   const resolver: CrossSheetResolver = {
+    namesFor(sheet) {
+      const i = indexOf.get(sheet);
+      return i === undefined ? sheet.names : effectiveNames(tabs, i);
+    },
     lookup(name: string): ForeignLookup {
       const key = name.toLowerCase();
       const source = byName.get(key);
@@ -137,6 +153,8 @@ interface Snapshot {
   rangeReaders: Map<number, PrecedentRange[]>;
   /** Formula cells that read the clock, so they are dirty on every pass. */
   volatile: Set<number>;
+  /** The names the formulas were compiled against — the sheet's, or the workbook's through it (#60). */
+  names: NameTable | undefined;
   /**
    * Foreign sheets this result was computed against, by lower-cased name, holding the *computed
    * result* that was read — or null for a name that resolved to nothing.
@@ -190,7 +208,7 @@ const snapshots: Snapshot[] = [];
  * Only the externals, not the whole snapshot: undo history keeps old sheets alive, and their graphs
  * with them would be memory spent on nothing.
  */
-const byIdentity = new WeakMap<SheetModel, Pick<Snapshot, "result" | "externals">>();
+const byIdentity = new WeakMap<SheetModel, Pick<Snapshot, "result" | "externals" | "names">>();
 
 /**
  * Above this many changed cells, rebuilding the graph costs more than recomputing. Bulk edits
@@ -214,6 +232,8 @@ function displayOf(sheet: SheetModel, r: number, c: number, v: FormulaValue): st
   if (typeof v === "number") {
     const raw = sheet.cells[r]?.[c] ?? "";
     if (!isFormula(raw) && dateLiteral(raw)) return raw;
+    // So does a number typed the way a screen shows it — `1,250`, `12%`, `฿1,500.00` (#52).
+    if (!isFormula(raw) && formattedNumber(raw)) return raw.trim();
   }
   return toDisplayString(v);
 }
@@ -242,7 +262,8 @@ function run(
   own: (row: number) => void,
   resolver: CrossSheetResolver | undefined,
   externals: Map<string, ComputedSheet | null>,
-  spill: Map<number, number>
+  spill: Map<number, number>,
+  names: NameTable | undefined
 ): void {
   const { rows, cols } = sheet;
   const computing = new Set<number>();
@@ -349,7 +370,7 @@ function run(
     const raw = sheet.cells[r]?.[c] ?? "";
     let result: FormulaValue;
     if (isFormula(raw)) {
-      const program = programs.get(key) ?? compileFormula(raw.slice(1), nameScope(sheet.names));
+      const program = programs.get(key) ?? compileFormula(raw.slice(1), nameScope(names));
       if (!program.ast) {
         result = program.error!;
       } else {
@@ -423,9 +444,9 @@ function unlink(snap: Snapshot, key: number): void {
   snap.volatile.delete(key);
 }
 
-function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined): Snapshot {
+function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined, table: NameTable | undefined): Snapshot {
   const { rows, cols } = sheet;
-  const names = nameScope(sheet.names);
+  const names = nameScope(table);
   const values: FormulaValue[][] = Array.from({ length: rows }, () => new Array<FormulaValue>(cols));
   const display: string[][] = Array.from({ length: rows }, () => new Array<string>(cols));
 
@@ -438,6 +459,7 @@ function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined
     rangeReaders: new Map(),
     volatile: new Set(),
     externals: new Map(),
+    names: table,
   };
 
   // Compile first: `run` needs every formula's program to be findable, and the graph has to exist
@@ -452,7 +474,7 @@ function fullCompute(sheet: SheetModel, resolver: CrossSheetResolver | undefined
   }
 
   const pending = new Uint8Array(rows * cols).fill(1);
-  run(sheet, values, display, pending, snap.programs, () => {}, resolver, snap.externals, spill);
+  run(sheet, values, display, pending, snap.programs, () => {}, resolver, snap.externals, spill, table);
   return snap;
 }
 
@@ -627,11 +649,12 @@ function incrementalCompute(
     // foreign sheets those happen to read. Dropping the rest would make the next staleness check
     // blind to them.
     externals: new Map(prev.externals),
+    names: prev.names,
   };
   for (const [precedent, readers] of prev.dependents) snap.dependents.set(precedent, new Set(readers));
 
   // Now the graph can be brought up to date, because the closure above is already taken.
-  const names = nameScope(sheet.names);
+  const names = nameScope(prev.names);
   for (const key of diff.changed) {
     const r = Math.floor(key / 16384);
     const c = key % 16384;
@@ -646,7 +669,7 @@ function incrementalCompute(
     const c = key % 16384;
     if (r < rows && c < cols) pending[r * cols + c] = 1;
   }
-  run(sheet, values, display, pending, snap.programs, own, resolver, snap.externals, spill);
+  run(sheet, values, display, pending, snap.programs, own, resolver, snap.externals, spill, prev.names);
 
   // A number format change moves no value, so it only has to be re-rendered.
   for (const key of diff.restyled) {
@@ -663,7 +686,7 @@ function incrementalCompute(
 function remember(snap: Snapshot): ComputedSheet {
   snapshots.unshift(snap);
   if (snapshots.length > HISTORY) snapshots.length = HISTORY;
-  byIdentity.set(snap.sheet, { result: snap.result, externals: snap.externals });
+  byIdentity.set(snap.sheet, { result: snap.result, externals: snap.externals, names: snap.names });
   return snap.result;
 }
 
@@ -678,15 +701,18 @@ export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): 
   // The identity cache has to be asked about the rest of the workbook too. A sheet whose own cells
   // are untouched is still out of date when a sheet it reads has moved, and this fast path is
   // exactly where that would be missed — the object is the same, so nothing else would notice.
+  // So do the names: a workbook-level name defined on another tab changes what this sheet's
+  // formulas mean without touching this sheet at all (#60).
+  const names = resolver?.namesFor ? resolver.namesFor(sheet) : sheet.names;
   const hit = byIdentity.get(sheet);
-  if (hit && !externalsStale(hit, resolver)) {
+  if (hit && hit.names === names && !externalsStale(hit, resolver)) {
     computeStats.identity++;
     return hit.result;
   }
 
   for (let i = 0; i < snapshots.length; i++) {
     const prev = snapshots[i];
-    if (externalsStale(prev, resolver)) continue;
+    if (prev.names !== names || externalsStale(prev, resolver)) continue;
     if (prev.sheet === sheet) {
       computeStats.identity++;
       return prev.result;
@@ -701,7 +727,18 @@ export function computeSheet(sheet: SheetModel, resolver?: CrossSheetResolver): 
   }
 
   computeStats.full++;
-  return remember(fullCompute(sheet, resolver));
+  return remember(fullCompute(sheet, resolver, names));
+}
+
+/**
+ * A sheet that is its whole workbook — a formula page's example (#149), which lives nowhere else.
+ *
+ * Here rather than at the call site because of #58: outside this file nothing calls `computeSheet`
+ * bare, so no caller can forget the rest of a workbook. A lesson has no rest, and saying so by name
+ * keeps that rule a rule rather than a list of exceptions.
+ */
+export function computeStandalone(sheet: SheetModel, name = "Sheet1"): ComputedSheet {
+  return computeSheet(sheet, createWorkbookResolver([{ name, sheet }]));
 }
 
 /**

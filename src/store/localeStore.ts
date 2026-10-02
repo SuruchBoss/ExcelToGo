@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/types";
+import { TITLES, type PageKey } from "@/lib/seo";
 
 interface LocaleState {
   locale: Locale;
@@ -39,20 +40,9 @@ export function pickLocale(languages: readonly string[]): Locale {
   return languages.some((l) => l.toLowerCase().startsWith("th")) ? "th" : "en";
 }
 
-/**
- * The browser tab's title in each language. The metadata is Thai, because that is what a crawler
- * and a first render get; after that the tab follows the language on screen like everything else.
- */
-const TITLES: Record<Locale, { home: string; guide: string }> = {
-  th: {
-    home: "ExcelToGo — ตาราง Excel ในเบราว์เซอร์ พิมพ์บอกแล้วได้สูตรแนะนำ",
-    guide: "คู่มือต่อข้อมูลของคุณเอง · ExcelToGo",
-  },
-  en: {
-    home: "ExcelToGo — a spreadsheet in your browser that suggests formulas",
-    guide: "Connect your own data · ExcelToGo",
-  },
-};
+/** Which page's title the tab should carry, from its path. The titles themselves are in
+ *  `src/lib/seo.ts`, shared with the metadata so the Thai tab and the search result agree. */
+const pageKey = (path: string): PageKey => (path.startsWith("/guide") ? "guide" : path.startsWith("/app") ? "app" : "home");
 
 /** The title the page should have, once a language is known; `null` until then. */
 let wantedTitle: string | null = null;
@@ -69,7 +59,7 @@ let titleGuard: MutationObserver | null = null;
  */
 const syncDocument = (locale: Locale) => {
   document.documentElement.lang = locale;
-  wantedTitle = TITLES[locale][window.location.pathname.startsWith("/guide") ? "guide" : "home"];
+  wantedTitle = TITLES[locale][pageKey(window.location.pathname)];
   if (document.title !== wantedTitle) document.title = wantedTitle;
   if (!titleGuard && typeof MutationObserver !== "undefined") {
     titleGuard = new MutationObserver(() => {

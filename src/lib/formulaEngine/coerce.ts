@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { dateLiteral } from "../excelDate";
+import { formattedNumber } from "../cellLiteral";
 import { FormulaError, FormulaValue, isError, ERR_VALUE } from "./types";
 
 export function toNumber(v: FormulaValue): number | FormulaError {
@@ -14,6 +15,9 @@ export function toNumber(v: FormulaValue): number | FormulaError {
     if (trimmed === "") return 0;
     const n = Number(trimmed);
     if (!Number.isNaN(n)) return n;
+    // `="1,250"*2` is 2500 in Excel: text a cell would read as a number counts as one here too (#52).
+    const shown = formattedNumber(trimmed);
+    if (shown) return shown.value;
     // `="2024-01-15"+1` is a date in Excel too: text that reads as one is its serial (#45).
     const date = dateLiteral(trimmed);
     return date ? date.serial : ERR_VALUE;

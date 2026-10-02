@@ -5,13 +5,19 @@ import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
 import { dateLiteral, partsOfSerial, serialOf } from "../excelDate";
 
-// SUM/AVERAGE/MIN/MAX etc. silently ignore text and blanks found inside a
-// range (matching Excel), but still propagate a genuine formula error and
-// still reject a non-numeric value passed directly as a scalar argument.
+/** Whether an argument was read from cells — a range, or one cell by reference (#166). */
+function fromCells(arg: EvalResult): boolean {
+  return arg.kind === "range" || arg.fromRef === true;
+}
+
+// SUM/AVERAGE/MIN/MAX/PRODUCT skip text, logical values and blanks read from cells, as Excel does
+// (#166), whether the cells come as a range or one by one: `SUM(A1)` over the text `'1,250` is 0,
+// and a column of codes like `0812345678` adds nothing. A value written into the formula is still
+// read — `SUM("5",1)` is 6 and `SUM(TRUE,1)` is 2 — and a genuine formula error still propagates.
 function flattenNumbers(args: EvalResult[]): number[] | FormulaError {
   const out: number[] = [];
   for (const arg of args) {
-    const isRange = arg.kind === "range";
+    const isRange = fromCells(arg);
     for (const v of flattenResult(arg)) {
       if (isBlank(v)) continue;
       if (isError(v)) return v;
@@ -19,11 +25,9 @@ function flattenNumbers(args: EvalResult[]): number[] | FormulaError {
       // 1, TRUE, 2 is 3, not 4. Passed directly it still counts — `SUM(1,TRUE,2)` is 4 — which is
       // why this tests the source and not just the type. Found by the property tests.
       if (isRange && typeof v === "boolean") continue;
-      if (isRange && typeof v === "string") {
-        const n = Number(v.trim());
-        if (!Number.isNaN(v.trim() === "" ? NaN : n)) out.push(n);
-        continue;
-      }
+      // Text in a cell is text, even when it looks like a number: a code kept as text (`00123`, a
+      // phone number) adds nothing, as in Excel. Before #166 it was read as the number it spelt.
+      if (isRange && typeof v === "string") continue;
       const n = toNumber(v);
       if (isError(n)) return n;
       out.push(n);
@@ -48,10 +52,11 @@ function parseDateValue(v: FormulaValue): Date | null {
   // ISO text — typed in quotes, or kept as text on purpose — means the same date. A date that does
   // not exist (2024-02-31) is not one, as in Excel, rather than rolling over into March.
   const iso = dateLiteral(text.replace("T", " "));
-  if (iso) return dateOfSerial(iso.serial);
-  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(text)) return null;
-  const loose = new Date(text);
-  return Number.isNaN(loose.getTime()) ? null : loose;
+  // Nothing else is a date (#169). This used to fall back to `new Date(text)`, which read the Thai
+  // `1/9/2026` (1 September) as 9 January, at local midnight, so DAY gave 8 in Bangkok and 9 in New
+  // York. `dateLiteral` is what the cell, the importers and `+1` read, so a date function reads
+  // exactly the dates they do; `d/m/yyyy` in the Gregorian year waits for "Convert to dates".
+  return iso ? dateOfSerial(iso.serial) : null;
 }
 
 /** A serial as an instant at UTC, so the UTC accessors read back the calendar date it names. */
@@ -401,9 +406,12 @@ export const FUNCTIONS: Record<string, FnImpl> = {
   COUNT: (args) => {
     let count = 0;
     for (const arg of args) {
+      // Text read from cells is not a number here either (#166); text written into the formula
+      // still counts when it reads as one, as Excel's `COUNT("1")` does.
+      const cells = fromCells(arg);
       for (const v of flattenResult(arg)) {
         if (typeof v === "number") count++;
-        else if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) count++;
+        else if (!cells && typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) count++;
       }
     }
     return count;
@@ -743,9 +751,10 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     for (let r = 0; r < range.length; r++) {
       for (let c = 0; c < range[r].length; c++) {
         if (matchCriteria(range[r][c], criteria)) {
+          // Only numbers are added, as in Excel (#166): text in the sum range — a code kept as
+          // text, a `'7` — used to be read as the number it spelt.
           const target = sumRange[r]?.[c];
-          const n = toNumber(target ?? 0);
-          if (!isError(n)) total += n;
+          if (typeof target === "number") total += target;
         }
       }
     }
@@ -1045,8 +1054,9 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       // equivalent-mutant: "<" → "<=" — the extra cell is undefined, read as 0, and adding 0 changes nothing.
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
-        const n = toNumber(target[r][c] ?? 0);
-        if (!isError(n)) total += n;
+        // Numbers only, as SUMIF (#166).
+        const v = target[r][c];
+        if (typeof v === "number") total += v;
       }
     }
     return total;
@@ -1116,11 +1126,10 @@ function roundToStep(args: EvalResult[], direction: "up" | "down"): FormulaValue
 }
 
 /** Text and blanks are zero here, as they are to Excel's SUMPRODUCT. */
+/** SUMPRODUCT's reading of an entry: a number, or 0 for anything else — text and TRUE/FALSE
+ *  included, as Excel does (#166). Text used to be read as the number it spelt. */
 function numericOrZero(v: FormulaValue): number {
-  if (typeof v === "number") return v;
-  if (typeof v === "boolean") return v ? 1 : 0;
-  const n = Number(toDisplayString(v).trim());
-  return Number.isFinite(n) ? n : 0;
+  return typeof v === "number" ? v : 0;
 }
 
 /** RANK / RANK.EQ: position within a range, ties sharing the higher place. */

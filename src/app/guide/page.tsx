@@ -235,6 +235,11 @@ export default function Guide() {
           <Head id="more">{g.moreTitle}</Head>
           <ul className="mt-2">
             <li className="border-b border-rule">
+              <Link href="/formulas" className="flex min-h-12 items-center justify-between gap-3 py-2 text-[15px] font-medium text-ledger-ink hover:text-ink">
+                {g.moreFormulas} <span aria-hidden className="font-mono">→</span>
+              </Link>
+            </li>
+            <li className="border-b border-rule">
               <a href={README_LIVE_DATA[locale]} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-between gap-3 py-2 text-[15px] font-medium text-ledger-ink hover:text-ink">
                 {g.moreReadme} <span aria-hidden className="font-mono">↗</span>
               </a>

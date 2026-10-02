@@ -3,7 +3,7 @@
 
 import ExcelJS from "exceljs";
 import { beforeEach, describe, expect, it } from "vitest";
-import { literalValue, looksNumeric, rawForText } from "./cellLiteral";
+import { formattedNumber, literalValue, looksNumeric, rawForText } from "./cellLiteral";
 import { computeSheet, createEmptySheet, setCellRaw, setRangeFormat, SheetModel } from "./sheet";
 import { computeStats, resetComputeCache } from "./sheetCompute";
 import { sortRange } from "./sheetSort";
@@ -114,11 +114,10 @@ describe("formulas reading a phone number stored as text", () => {
     expect(evalWith('=A1&""')).toBe(PHONE);
   });
 
-  it("=SUM(A1:A3) is left as it was before #23", () => {
-    // Pinned, not endorsed. Excel's answer is 0 — SUM skips text in a range — and this engine
-    // adds numeric-looking text up. Changing that changes what existing sheets total to, so it is
-    // its own issue: #38. When #38 lands this expectation is the one that should move.
-    expect(evalWith("=SUM(A1:A3)", [PHONE, CODE, "1"])).toBe(812345678 + 123 + 1);
+  it("=SUM(A1:A3) skips them, as Excel does (#166)", () => {
+    // Until #166 this was pinned at 812345678 + 123 + 1: the engine added up numeric-looking text
+    // that Excel skips, so a column of phone numbers and codes gave a total nobody could explain.
+    expect(evalWith("=SUM(A1:A3)", [PHONE, CODE, "1"])).toBe(1);
   });
 });
 
@@ -313,5 +312,58 @@ describe('the "text" number format', () => {
     const [{ sheet }] = await importWorkbookFromFile(new File([await wb.xlsx.writeBuffer()], "x.xlsx"));
     expect(sheet.formats[0][0]?.numberFormat).toBe("text");
     expect(computeSheet(sheet).display[0][0]).toBe("00123");
+  });
+});
+
+/**
+ * Numbers written the way a screen shows them (#52): what Excel and Google Sheets put on the
+ * clipboard. A pasted column of them used to be text, and its SUM was 0.
+ */
+describe("a number with commas, % or a currency sign is a number (#52)", () => {
+  it("reads the issue's values, with 50% as 0.5 the way #53 stores a percent", () => {
+    expect(literalValue("1,250")).toBe(1250);
+    expect(literalValue("2,000")).toBe(2000);
+    expect(literalValue("15%")).toBe(0.15);
+    expect(literalValue("50%")).toBe(0.5);
+    expect(literalValue("฿1,234.50")).toBe(1234.5);
+    expect(literalValue("12,345,678.9")).toBe(12345678.9);
+    expect(literalValue("-฿1,500")).toBe(-1500);
+    expect(literalValue("฿-1,500")).toBe(-1500);
+    expect(literalValue("$3.50")).toBe(3.5);
+    expect(literalValue("12.5%")).toBe(0.125);
+  });
+
+  it("leaves codes, phone numbers and accounts the text they are", () => {
+    for (const raw of [CODE, PHONE, ID_CARD, "01,250", "1,25", "1,2345", "12,34,567", "081-234-5678", "123-4-56789-0", "฿", "%", "1,250฿", "--1"]) {
+      expect(literalValue(raw), raw).toBe(raw);
+    }
+  });
+
+  it("shows as typed, and counts: SUM over the pasted column is Excel's 4,484.65", () => {
+    const sheet = sheetWith(["Amount", "1,250", "2,000", "15%", "฿1,234.50", "=SUM(A2:A5)"]);
+    const c = computeSheet(sheet);
+    expect(c.display.slice(1, 5).map((r) => r[0])).toEqual(["1,250", "2,000", "15%", "฿1,234.50"]);
+    expect(c.values[5][0]).toBeCloseTo(4484.65, 10);
+  });
+
+  it("a formula over it, and over the same text in quotes, reads the number", () => {
+    const sheet = sheetWith(["1,000", "=A1*2", '="1,250"*2']);
+    const c = computeSheet(sheet);
+    expect([c.values[1][0], c.values[2][0]]).toEqual([2000, 2500]);
+  });
+
+  it("goes out to Excel as a number with the format it was typed in", async () => {
+    const sheet = sheetWith(["1,250", "12%", "฿1,500.00", "$3.5", "1,250.75"]);
+    const blob = await exportWorkbookToXlsxBlob([{ name: "S", sheet, computed: computeSheet(sheet) }]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    const ws = wb.worksheets[0];
+    expect([1, 2, 3, 4, 5].map((r) => ws.getCell(r, 1).value)).toEqual([1250, 0.12, 1500, 3.5, 1250.75]);
+    expect([1, 2, 3, 4, 5].map((r) => ws.getCell(r, 1).numFmt)).toEqual(["#,##0", "0%", '"฿"#,##0.00', '"$"#,##0.0', "#,##0.00"]);
+  });
+
+  it("names the Excel code each shape goes out with", () => {
+    expect(formattedNumber("1250")).toBeNull();
+    expect(formattedNumber("12.5%")?.code).toBe("0.0%");
   });
 });

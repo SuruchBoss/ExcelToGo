@@ -22,19 +22,23 @@ import { tokenize } from "./formulaEngine/tokenizer";
 import { FUNCTIONS } from "./formulaEngine/functions";
 import type { SheetModel } from "./sheet";
 
-export type LossKind = "pictures" | "shapes" | "charts" | "pivots" | "macros" | "externalLinks" | "unknownFunctions";
+export type LossKind = "pictures" | "shapes" | "charts" | "pivots" | "macros" | "externalLinks" | "unknownFunctions" | "names";
 
 export interface FileLoss {
   kind: LossKind;
   count: number;
   /** The sheets it is on, in the file's order; empty when it belongs to the workbook (macros, links). */
   sheets: string[];
-  /** For `unknownFunctions`: the function names, so the notice can say which. */
+  /** For `unknownFunctions` the function names, for `names` the range names, so the notice can say which. */
   names?: string[];
 }
 
 /** The order the notice lists them in: what a person sees in the file first, then what runs. */
-const ORDER: LossKind[] = ["pictures", "charts", "shapes", "pivots", "unknownFunctions", "externalLinks", "macros"];
+/**
+ * Range names sit next to unknown functions because both end in `#NAME?` on screen; a person who
+ * reads one line about `#NAME?` should find the other cause right under it.
+ */
+const ORDER: LossKind[] = ["pictures", "charts", "shapes", "pivots", "unknownFunctions", "names", "externalLinks", "macros"];
 
 interface Rel {
   type: string;
@@ -120,19 +124,25 @@ export function unknownFunctionsIn(formulaBody: string): string[] {
  * Everything in an `.xlsx` package the app is known not to keep, counted and placed.
  *
  * `sheets` are the sheets as the importer produced them — the formulas are read from there, since
- * those are the formulas the app will actually run (and show `#NAME?` for).
+ * those are the formulas the app will actually run (and show `#NAME?` for). The first one carries
+ * the file's range names the importer could not bring in (#60), which are reported here rather than
+ * in an alert of their own: one open, one message about what the file lost.
  */
 export async function findFileLosses(
   data: ArrayBuffer | Uint8Array,
-  sheets: { name: string; sheet: SheetModel }[]
+  sheets: { name: string; sheet: SheetModel; droppedNames?: string[] }[]
 ): Promise<FileLoss[]> {
+  const droppedNames = sheets[0]?.droppedNames ?? [];
+  const namesLoss: FileLoss[] = droppedNames.length > 0 ? [{ kind: "names", count: droppedNames.length, sheets: [], names: droppedNames }] : [];
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(data);
   } catch {
-    return [];
+    // The importer read the package, so this should not happen; the names it dropped are still owed.
+    return namesLoss;
   }
   const tally = new Tally();
+  tally.add("names", droppedNames.length);
 
   // Sheet names by part: workbook.xml names them by relationship id.
   const workbook = (await zip.file("xl/workbook.xml")?.async("string")) ?? "";
@@ -189,7 +199,8 @@ export async function findFileLosses(
   for (const kind of ORDER) {
     const entry = tally.get(kind);
     if (!entry) continue;
-    out.push({ kind, count: entry.count, sheets: entry.sheets, ...(kind === "unknownFunctions" ? { names: functionNames } : {}) });
+    const names = kind === "unknownFunctions" ? functionNames : kind === "names" ? droppedNames : undefined;
+    out.push({ kind, count: entry.count, sheets: entry.sheets, ...(names ? { names } : {}) });
   }
   return out;
 }

@@ -120,3 +120,39 @@ describe("the kinds no tool here writes, as the spec shapes them", () => {
     expect(await findFileLosses(new TextEncoder().encode("not a zip"), [])).toEqual([]);
   });
 });
+
+/** The fixture with range names the importer cannot bring in (#60): a formula and a whole column. */
+async function fixtureWithNames(): Promise<Uint8Array> {
+  const zip = await JSZip.loadAsync(readFileSync(FIXTURE));
+  const wb = (await zip.file("xl/workbook.xml")!.async("string")).replace(
+    "</sheets>",
+    "</sheets><definedNames>" +
+      `<definedName name="Dynamic">OFFSET('ข้อมูล'!$A$1,0,0,COUNTA('ข้อมูล'!$A:$A),1)</definedName>` +
+      `<definedName name="WholeColumn">'ข้อมูล'!$B:$B</definedName>` +
+      "</definedNames>"
+  );
+  zip.file("xl/workbook.xml", wb);
+  return zip.generateAsync({ type: "uint8array" });
+}
+
+describe("range names a file holds that cannot come in (#60), in the same report", () => {
+  it("are one line of it, right under the functions the engine lacks, since both read #NAME?", async () => {
+    const { sheets, losses } = await openFixture(await fixtureWithNames());
+    expect(sheets[0].droppedNames).toEqual(["Dynamic", "WholeColumn"]);
+    expect(losses.map((l) => l.kind)).toEqual(["pictures", "charts", "unknownFunctions", "names"]);
+    expect(losses.at(-1)).toEqual({ kind: "names", count: 2, sheets: [], names: ["Dynamic", "WholeColumn"] });
+  });
+
+  it("are the whole report for a file with nothing else to lose", async () => {
+    const sheet = createEmptySheet();
+    sheet.cells[0][0] = "10";
+    const blob = await exportWorkbookToXlsxBlob([{ name: "Sheet1", sheet, computed: computeSheet(sheet) }]);
+    const losses = await findFileLosses(new Uint8Array(await blob.arrayBuffer()), [{ name: "Sheet1", sheet, droppedNames: ["Dynamic"] }]);
+    expect(losses).toEqual([{ kind: "names", count: 1, sheets: [], names: ["Dynamic"] }]);
+  });
+
+  it("are still said when the package cannot be read again", async () => {
+    const losses = await findFileLosses(new TextEncoder().encode("not a zip"), [{ name: "Sheet1", sheet: createEmptySheet(), droppedNames: ["Dynamic"] }]);
+    expect(losses).toEqual([{ kind: "names", count: 1, sheets: [], names: ["Dynamic"] }]);
+  });
+});
