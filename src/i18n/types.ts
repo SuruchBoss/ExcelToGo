@@ -885,6 +885,8 @@ export interface Messages {
     extendSelection: string;
     /** The cell's own editor, named for a screen reader: "Edit B2". */
     editorLabel: (address: string) => string;
+    /** Shown on a cell a finger has just selected (#171): one tap selects, a second one types. */
+    tapAgainToType: string;
     /** The chip that brings a selection scrolled off screen back into view, e.g. "Back to B2:B9". */
     backToSelection: (address: string) => string;
     /** The mouse grip on the same corner, which continues the selection instead. */

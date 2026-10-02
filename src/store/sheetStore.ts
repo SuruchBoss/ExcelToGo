@@ -793,6 +793,11 @@ export function resetAnnouncements() {
   announceSeq = 0;
 }
 
+/** Says something out loud that changed nothing in the sheet, such as a hint from the grid (#171). */
+export function announce(text: string) {
+  useSheetStore.setState(say(text));
+}
+
 /**
  * Writes somebody else's edit into this person's undo history as well as into the document.
  *
