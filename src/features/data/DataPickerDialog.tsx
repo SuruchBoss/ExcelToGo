@@ -7,7 +7,7 @@ import { useId, useRef, useState } from "react";
 import { Hash, Table2, X } from "lucide-react";
 import clsx from "clsx";
 import { PublicDataSource } from "@/lib/dataSources/types";
-import { aggregateColumn, blockExtent, LiveAggregate, LiveBlock, regionHasContent, valueOptionsFor } from "@/lib/liveBlocks";
+import { aggregateColumn, blockExtent, LiveBlock, pickerChoice, regionHasContent, ValueOption, valueOptionsFor } from "@/lib/liveBlocks";
 import { cellRef, parseCellRef } from "@/lib/formulaEngine/address";
 import { useDataSourceStore } from "@/store/dataSourceStore";
 import { selectActiveSelection, selectActiveSheet, useLiveBlocks, useSheetStore } from "@/store/sheetStore";
@@ -42,33 +42,33 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
   const replaceLiveBlock = useSheetStore((s) => s.replaceLiveBlock);
   const setSidebarMode = useSheetStore((s) => s.setSidebarMode);
 
-  const singleRow = !table || table.rows.length <= 1;
-  const [kind, setKind] = useState<"table" | "value">(replacing?.kind ?? (singleRow ? "value" : "table"));
-  const [picked, setPicked] = useState<{ column: string; aggregate: LiveAggregate }>(() => {
-    if (replacing?.column) return { column: replacing.column, aggregate: replacing.aggregate ?? "first" };
-    const first = table ? valueOptionsFor(table)[0] : undefined;
-    return first ?? { column: "", aggregate: "first" };
-  });
+  // Only what the person chose is state; the defaults are worked out from the table on every
+  // render, because the table can arrive after the dialog opens (#126). See `pickerChoice`.
+  const [chosenKind, setKind] = useState<LiveBlock["kind"] | null>(replacing?.kind ?? null);
+  const [chosenPick, setPicked] = useState<ValueOption | null>(
+    replacing?.column ? { column: replacing.column, aggregate: replacing.aggregate ?? "first" } : null
+  );
   const [target, setTarget] = useState(() =>
     replacing ? cellRef(replacing.anchorRow, replacing.anchorCol) : cellRef(selection.anchorRow, selection.anchorCol)
   );
 
   if (!table) return null;
 
+  const { kind, picked, ready } = pickerChoice(table, chosenKind, chosenPick);
   const anchor = parseCellRef(target);
   const extent = blockExtent(kind, table);
   const overwrites =
     anchor && regionHasContent(sheet, anchor.row, anchor.col, extent.rows, extent.cols, blocks, replacing);
 
   const insert = () => {
-    if (!anchor) return;
+    if (!anchor || !ready) return;
     const input = {
       sourceId: source.id,
       anchorRow: anchor.row,
       anchorCol: anchor.col,
       kind,
-      column: kind === "value" ? picked.column : undefined,
-      aggregate: kind === "value" ? picked.aggregate : undefined,
+      column: kind === "value" ? picked?.column : undefined,
+      aggregate: kind === "value" ? picked?.aggregate : undefined,
     };
     if (replacing) replaceLiveBlock(replacing.id, input, table);
     else addLiveBlock(input, table);
@@ -184,7 +184,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
           ) : (
             <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(158px,1fr))]">
               {valueOptionsFor(table).map((opt) => {
-                const isPicked = opt.column === picked.column && opt.aggregate === picked.aggregate;
+                const isPicked = opt.column === picked?.column && opt.aggregate === picked?.aggregate;
                 return (
                   <button
                     key={`${opt.aggregate}:${opt.column}`}
@@ -215,10 +215,12 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
               className="w-20 rounded-md border border-zinc-300 px-2 py-1 font-mono text-[13px] uppercase outline-none focus:border-emerald-500"
             />
           </label>
-          <span className={clsx("text-xs", anchor && !overwrites ? "text-zinc-500" : "text-amber-700")}>
+          <span className={clsx("text-xs", anchor && ready && !overwrites ? "text-zinc-500" : "text-amber-700")}>
             {!anchor
               ? t.data.picker.invalidCell
-              : overwrites
+              : !ready
+                ? t.data.picker.nothingToPick
+                : overwrites
                 ? t.data.picker.areaOverwrite(extent.rows, extent.cols)
                 : t.data.picker.area(extent.rows, extent.cols)}
           </span>
@@ -228,7 +230,7 @@ export default function DataPickerDialog({ source, replacing, onClose }: Props) 
             </button>
             <button
               onClick={insert}
-              disabled={!anchor}
+              disabled={!anchor || !ready}
               className="rounded-md bg-emerald-700 px-4.5 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t.data.picker.insert}

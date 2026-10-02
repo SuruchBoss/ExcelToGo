@@ -128,6 +128,36 @@ export function valueOptionsFor(table: TableData): ValueOption[] {
   ];
 }
 
+/** What the data picker would put in the sheet, and whether it is something (#126). */
+export interface PickerChoice {
+  kind: LiveBlock["kind"];
+  /** The number a single-value block shows; null when there is nothing to pick from. */
+  picked: ValueOption | null;
+  /** False when inserting would write a blank: a single value with no number picked. */
+  ready: boolean;
+}
+
+/**
+ * The picker's choice, worked out from the table **as it is now** (#126).
+ *
+ * The dialog used to fix its defaults on its first render. A source that had not answered yet
+ * looked like a one-row table, so the default was "a single summary number" with no column picked
+ * — and when the five rows arrived a moment later nothing looked again, Insert was enabled, and
+ * the target cell was replaced with a permanent blank. So only what the person actually chose is
+ * state (`chosenKind`, `chosenPick`); everything else is derived from the current table on every
+ * render, and a single value with nothing to show is not ready to insert.
+ */
+export function pickerChoice(
+  table: TableData,
+  chosenKind: LiveBlock["kind"] | null,
+  chosenPick: ValueOption | null
+): PickerChoice {
+  const kind = chosenKind ?? (table.rows.length <= 1 ? "value" : "table");
+  const keep = chosenPick && table.columns.some((c) => c.key === chosenPick.column) ? chosenPick : null;
+  const picked = keep ?? valueOptionsFor(table)[0] ?? null;
+  return { kind, picked, ready: kind === "table" || picked !== null };
+}
+
 /** How many cells a block of this kind would occupy (a table adds its header row). */
 export function blockExtent(kind: LiveBlock["kind"], table: TableData): { rows: number; cols: number } {
   return kind === "value" ? { rows: 1, cols: 1 } : { rows: table.rows.length + 1, cols: table.columns.length };

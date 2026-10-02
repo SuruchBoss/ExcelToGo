@@ -162,6 +162,7 @@ export const en: Messages = {
       area: (rows, cols) => `Uses ${rows} rows × ${cols} columns`,
       areaOverwrite: (rows, cols) => `⚠ Uses ${rows}×${cols} cells — this area already has data and will be overwritten`,
       invalidCell: "Not a valid cell name, e.g. G1",
+      nothingToPick: "No number to pick yet — choose the whole table, or wait for the data to load",
       insert: "Insert into sheet",
       cancel: "Cancel",
     },
@@ -429,7 +430,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1917", label: "automated tests" },
+      { value: "1922", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],

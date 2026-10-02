@@ -1473,6 +1473,40 @@ const FLOWS = [
     },
   },
   {
+    // #126. The picker used to fix its choice on its first render, and a source that had not
+    // answered yet looked like one row: "a single summary number", nothing picked, Insert enabled.
+    // When the rows came the choice stayed, and the cell under the cursor became a blank that every
+    // refresh wrote again. The seam is the picker opening before its data, so the source's answer
+    // is held back here until after the dialog is up — the order a slow network produces.
+    name: "a live source that answers after the picker opens never blanks the cell (#126)",
+    async run(page) {
+      let calls = 0;
+      await page.route(ORIGIN + "/api/sample/sales**", async (route) => {
+        calls += 1;
+        // The form's Test answers at once; what the picker waits on is held back.
+        if (calls > 1) await delay(2500);
+        await route.continue();
+      });
+      await typeInCell(page, 0, 0, "Product");
+      await cell(page, 0, 0).click();
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.trySales }).click();
+      const form = page.getByRole("dialog");
+      await form.getByRole("button", { name: label.test }).click();
+      await form.getByText(/ได้ข้อมูล 5 แถว|Got 5 rows/).waitFor({ timeout: 15_000 });
+      await form.getByRole("button", { name: label.saveAndAdd }).click();
+      const insert = page.getByRole("dialog").getByRole("button", { name: label.insert });
+      await insert.waitFor({ timeout: 15_000 });
+      note(await insert.isEnabled(), "once the rows arrive, Insert has something to insert");
+      await insert.click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "CF-01", null, { timeout: 15_000 });
+      await page.waitForTimeout(6000); // past the source's 5-second refresh, when the blank used to come back
+      const a1 = (await cell(page, 0, 0).innerText()).trim();
+      note(a1 !== "", `A1 is the table's heading, not a blank (A1 "${a1}")`);
+      await page.unroute(ORIGIN + "/api/sample/sales**");
+    },
+  },
+  {
     // #109: there is no demo. The word was on the guide, the panel and the landing page, and it
     // told people the real app was a trial.
     name: "no page calls itself a demo, in either language",
