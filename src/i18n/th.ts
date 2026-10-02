@@ -428,7 +428,7 @@ export const th: Messages = {
     stats: [
       { value: "37", label: "สูตรพร้อมใช้" },
       { value: "66", label: "ฟังก์ชันในเอนจิน" },
-      { value: "1916", label: "เทสต์อัตโนมัติ" },
+      { value: "1917", label: "เทสต์อัตโนมัติ" },
       { value: "325", label: "เทสต์ด้านความปลอดภัย" },
       { value: "0", label: "ไลบรารีคำนวณสูตร" },
     ],
@@ -1162,6 +1162,7 @@ export const th: Messages = {
     extendSelection: "ลากเพื่อขยายช่วงที่เลือก",
     editorLabel: (address) => `แก้ไข ${address}`,
     tapAgainToType: "แตะอีกครั้งเพื่อพิมพ์",
+    editDropped: (address) => `ยกเลิกสิ่งที่กำลังพิมพ์ใน ${address} แล้ว เพราะการเลิกทำเอาแถวหรือคอลัมน์นั้นออกไป`,
     backToSelection: (address) => `กลับไปที่ ${address}`,
     fillHandle: "ลากเพื่อเติมค่าต่อ",
     label: "ตารางคำนวณ",

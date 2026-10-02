@@ -152,3 +152,20 @@ describe("the cursor stays on the sheet when undo or redo changes its size (#170
     expect(selection()).toEqual(singleCellSelection(0, cols - 1));
   });
 });
+
+describe("a write that arrives for a cell undo took away (#191)", () => {
+  it("is refused rather than thrown, and the sheet is left as it was", () => {
+    const rows = sheet().rows;
+    state().setCellRaw(rows - 1, 2, "x1");
+    expect(state().growRowForEntry()).toBe(true);
+    undoSheet();
+    expect(sheet().rows).toBe(rows);
+    const before = state().sheets;
+    // The editor on the phone still held C31 here: its commit is the write that used to throw.
+    expect(() => state().setCellRaw(rows, 2, "abc")).not.toThrow();
+    expect(state().sheets).toBe(before);
+    expect(() => state().setCellRaw(0, sheet().cols, "abc")).not.toThrow();
+    expect(state().sheets).toBe(before);
+  });
+});
+

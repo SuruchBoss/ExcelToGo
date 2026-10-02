@@ -314,6 +314,26 @@ export default function SpreadsheetGrid() {
     reportEditing(next?.row ?? 0, next ? next.col : null);
     setEditingState(next);
   }, []);
+  /**
+   * The editor's cell has to stay on the sheet (#191).
+   *
+   * The editor keeps its own row and column, and undo does not know about it. On a phone the
+   * toolbar's undo takes no focus, so an editor open on a row Enter grew stayed open while undo
+   * took the row away: the next tap committed into a row that no longer existed and threw, and
+   * what was typed went with the exception. So the editor closes during the render in which the
+   * sheet stops reaching it, before any handler can use it. What was typed there is dropped, as
+   * Excel drops an edit that undo interrupts, and said out loud rather than lost in silence.
+   */
+  const [droppedEdit, setDroppedEdit] = useState<{ said: string | null } | null>(null);
+  if (editing && (editing.row >= sheet.rows || editing.col >= sheet.cols)) {
+    setEditingState(null);
+    setDroppedEdit({ said: editing.value.trim() ? t.grid.editDropped(cellRef(editing.row, editing.col)) : null });
+  }
+  useEffect(() => {
+    if (!droppedEdit) return;
+    reportEditing(0, null);
+    if (droppedEdit.said) announce(droppedEdit.said);
+  }, [droppedEdit]);
   // The cell's editor closes by unmounting, which fires no blur: tell the pointing state it is gone.
   useEffect(() => {
     if (!editing) forgetClosedEditor();
