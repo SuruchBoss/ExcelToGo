@@ -412,6 +412,9 @@ export interface Messages {
     rename: string;
     remove: (name: string) => string;
     empty: string;
+    /** Which kind a listed name is (#60): the whole workbook sees it, or only its own sheet. */
+    scopeWorkbook: string;
+    scopeSheet: string;
     defined: (name: string, range: string) => string;
     deleted: (name: string) => string;
     problem: {
@@ -987,6 +990,8 @@ export interface Messages {
     exportError: string;
     /** A sheet that goes further down than an import opens: its name, the file's last row, and the rows opened. */
     importClipped: (sheet: string, rowsInFile: number, rowsOpened: number) => string;
+    /** The file's names that could not come in (#60), so their `#NAME?` has a reason on screen. */
+    importNamesDropped: (names: string[]) => string;
     csvEmpty: string;
   };
   /** Explanations for the keyword-based fallback AI suggester (used when no

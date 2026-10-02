@@ -5,14 +5,15 @@
 
 import { useRef, useState } from "react";
 import { Tag, Trash2 } from "lucide-react";
-import { listNames, type NameProblem } from "@/lib/namedRanges";
-import { selectActiveSelection, selectActiveSheet, useSheetStore } from "@/store/sheetStore";
-import { rangeRefString } from "@/lib/formulaEngine/address";
+import { visibleNames, type NameProblem } from "@/lib/namedRanges";
+import { selectActiveSelection, useSheetStore } from "@/store/sheetStore";
+import { rangeRefString, sheetRefPrefix, splitSheetRef } from "@/lib/formulaEngine/address";
 import { useT } from "@/i18n";
 import { useClickAway } from "./useClickAway";
 
 /**
- * Names the selected range, and lists the names this sheet already has.
+ * Names the selected range, and lists the names this sheet can use — its own sheet-level ones and
+ * every workbook-level one, each saying which it is and where it points (#60).
  *
  * The list is half the feature. A name nobody can find is a name that gets defined twice under two
  * spellings, and the formula bar only ever shows the one being used right now — so the panel that
@@ -20,7 +21,8 @@ import { useClickAway } from "./useClickAway";
  */
 export default function NamesPopover({ anchor, onClose }: { anchor: { x: number; y: number }; onClose: () => void }) {
   const t = useT();
-  const sheet = useSheetStore(selectActiveSheet);
+  const sheets = useSheetStore((s) => s.sheets);
+  const self = useSheetStore((s) => Math.max(0, s.sheets.findIndex((t) => t.id === s.activeSheetId)));
   const selection = useSheetStore(selectActiveSelection);
   const defineName = useSheetStore((s) => s.defineName);
   const deleteName = useSheetStore((s) => s.deleteName);
@@ -29,7 +31,13 @@ export default function NamesPopover({ anchor, onClose }: { anchor: { x: number;
   const inputRef = useRef<HTMLInputElement>(null);
   useClickAway(true, onClose);
 
-  const names = listNames(sheet.names);
+  const names = visibleNames(sheets, self);
+  /** Where a name points, with its sheet whenever that is not the one in front of the person. */
+  const target = (tabIndex: number, ref: string) => {
+    const { sheet, ref: address } = splitSheetRef(ref);
+    const on = sheet ?? sheets[tabIndex]?.name ?? "";
+    return on.toLowerCase() === (sheets[self]?.name ?? "").toLowerCase() ? address : `${sheetRefPrefix(on)}${address}`;
+  };
   const here = rangeRefString(selection.startRow, selection.startCol, selection.endRow, selection.endCol);
 
   const submit = () => {
@@ -92,10 +100,13 @@ export default function NamesPopover({ anchor, onClose }: { anchor: { x: number;
 
       <ul className="mt-3 max-h-44 space-y-1 overflow-y-auto border-t border-zinc-100 pt-2">
         {names.length === 0 && <li className="text-[11px] text-zinc-500">{t.names.empty}</li>}
-        {names.map((entry) => (
-          <li key={entry.key} className="flex items-center gap-1.5">
+        {names.map(({ key, tabIndex, entry }) => (
+          <li key={`${tabIndex}:${key}`} className="flex items-center gap-1.5">
             <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-zinc-800">{entry.label}</span>
-            <span className="shrink-0 font-mono text-[11px] text-zinc-500">{entry.ref}</span>
+            <span className="shrink-0 rounded bg-zinc-100 px-1 text-[10px] text-zinc-600">
+              {entry.scope === "sheet" ? t.names.scopeSheet : t.names.scopeWorkbook}
+            </span>
+            <span className="max-w-[7rem] shrink-0 truncate font-mono text-[11px] text-zinc-500">{target(tabIndex, entry.ref)}</span>
             <button
               onClick={() => deleteName(entry.label)}
               title={t.names.remove(entry.label)}

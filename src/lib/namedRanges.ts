@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { AstNode } from "./formulaEngine/ast";
-import { parseCellRef, parseRangeRef, rangeRefString, splitSheetRef } from "./formulaEngine/address";
+import { parseCellRef, parseRangeRef, rangeRefString, sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { adjustFormulaForStructuralOp, type Axis, type ShiftScope } from "./formulaEngine/structuralShift";
 import { FUNCTIONS } from "./formulaEngine/functions";
 
@@ -16,12 +16,13 @@ import { FUNCTIONS } from "./formulaEngine/functions";
  *
  * Three decisions worth stating, because each closed off something:
  *
- * 1. **Names are scoped to the sheet that defines them.** Excel has both workbook-scoped and
- *    sheet-scoped names; this has only the second. The reason is mechanical rather than
- *    principled — `computeSheet(sheet)` takes a sheet, and fifteen call sites pass one with no
- *    workbook in reach. A name whose *target* names another tab (`ยอดขาย → ข้อมูล!B2:B500`) works
- *    fine, which covers the lookup-table case; what does not work is defining a name once and
- *    using it from every tab. That is written down as a gap rather than half-built.
+ * 1. **A name belongs to the workbook unless it says otherwise (#60)**, as in Excel: one defined
+ *    on `ข้อมูล` works from every tab. It is still *stored* on a sheet — the one it was made on, or
+ *    the one it points at when it came from a file — because that is where undo, autosave, the
+ *    cloud copy and live editing already carry a sheet's things, and a target written bare there
+ *    means that sheet. `scope: "sheet"` marks the other kind, which only formulas on its own sheet
+ *    see, or others as `Sheet!Name`. What a formula sees is `effectiveNames`: every workbook name,
+ *    qualified with its sheet, and its own sheet's names over them.
  * 2. **A name is resolved when the formula compiles, not when it evaluates.** That is what keeps
  *    the dependency graph honest: precedents are read off the tree, so the tree has to hold the
  *    real rectangle by the time anything looks at it. The compile cache is keyed by the name
@@ -39,11 +40,23 @@ export type NameTable = Record<string, NamedRange>;
 export interface NamedRange {
   /** Spelled the way it was typed, for showing back. Matching is on the key, which is upper-cased. */
   label: string;
-  /** The target, as reference text. */
+  /** The target, as reference text. Bare, it means the sheet the name is stored on. */
   ref: string;
+  /** Absent for a workbook-level name, which is the default (#60); `"sheet"` for one that only its
+   *  own sheet sees — how a file's `localSheetId` names arrive. */
+  scope?: "sheet";
 }
 
-export const nameKey = (name: string) => name.trim().toUpperCase();
+/**
+ * The key a name is matched on: upper-cased, and for `Sheet!Name` the sheet's own name without its
+ * quotes, so `'ใบ ขาย'!ยอด` and `ใบ ขาย!ยอด` written two ways are one key.
+ */
+export function nameKey(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed.includes("!")) return trimmed.toUpperCase();
+  const { sheet, ref } = splitSheetRef(trimmed);
+  return sheet === null ? trimmed.toUpperCase() : `${sheet.toUpperCase()}!${ref.trim().toUpperCase()}`;
+}
 
 /** What is wrong with a proposed name, or null when nothing is. */
 export type NameProblem = "empty" | "looksLikeRef" | "badChars" | "reserved" | "tooLong" | "taken";
@@ -152,9 +165,11 @@ export function substituteNames(node: AstNode, scope: NameScope): AstNode {
   }
 }
 
-/** Adds or replaces one name, returning a new table. */
-export function withName(table: NameTable | undefined, label: string, ref: string): NameTable {
-  return { ...(table ?? {}), [nameKey(label)]: { label: label.trim(), ref: ref.trim() } };
+/** Adds or replaces one name, returning a new table. Workbook-level unless `scope` says otherwise. */
+export function withName(table: NameTable | undefined, label: string, ref: string, scope?: "sheet"): NameTable {
+  const entry: NamedRange = { label: label.trim(), ref: ref.trim() };
+  if (scope) entry.scope = scope;
+  return { ...(table ?? {}), [nameKey(label)]: entry };
 }
 
 /** Removes one, and the table itself once it is empty — an empty object would still key the
@@ -201,12 +216,9 @@ export function shiftNames(
 /**
  * The reference text for a selected rectangle, written absolutely so the name does not drift.
  *
- * Unqualified, even though names are sheet-scoped and a prefix would be more explicit. A qualified
- * target is a *cross-sheet* reference to the evaluator, and a cross-sheet reference needs the
- * workbook resolver — which half the `computeSheet` callers do not pass. Naming a range on the
- * sheet you are looking at would then read `#REF!` in a PDF export and be fine on screen. The
- * sheet prefix is put back where it is genuinely needed, on the way into an `.xlsx`, whose defined
- * names are workbook-wide.
+ * Unqualified: the name is stored on the sheet it was made on, and a bare target means that sheet.
+ * `effectiveNames` puts the prefix on for every other sheet (#60), and the export puts it on for
+ * the file, whose defined names always carry one.
  */
 export function refForSelection(sel: { startRow: number; startCol: number; endRow: number; endCol: number }): string {
   return rangeRefString(sel.startRow, sel.startCol, sel.endRow, sel.endCol)
@@ -220,4 +232,91 @@ export function listNames(table: NameTable | undefined): (NamedRange & { key: st
   return Object.entries(table ?? {})
     .map(([key, entry]) => ({ key, ...entry }))
     .sort((a, b) => a.label.localeCompare(b.label, "th"));
+}
+
+export interface NamedTab {
+  name: string;
+  sheet: { names?: NameTable };
+}
+
+/**
+ * A target as a formula on `self` must see it: qualified with the sheet the name lives on, unless
+ * that is `self`, where a prefix would send the reference through the workbook resolver back into
+ * the sheet being computed — a cycle, not a value.
+ */
+function targetFrom(ref: string, home: string, self: string): string {
+  const { sheet, ref: address } = splitSheetRef(ref.trim());
+  const on = sheet ?? home;
+  return on.toLowerCase() === self.toLowerCase() ? address : `${sheetRefPrefix(on)}${address}`;
+}
+
+/** Recent effective tables by content, so an unchanged workbook hands back the same object. */
+const effective = new Map<string, NameTable | undefined>();
+const EFFECTIVE_KEPT = 64;
+
+/**
+ * The names a formula on `tabs[selfIndex]` can use (#60).
+ *
+ * - Every workbook-level name, from whichever sheet holds it; if two sheets hold one (two files
+ *   added together), the first tab's wins — the same rule the export already follows.
+ * - The sheet's own sheet-level names over those, as in Excel.
+ * - Every sheet-level name of every sheet as `Sheet!Name`, which is how Excel reaches one.
+ *
+ * The result is the same object for the same content. The compute cache and the compile cache are
+ * both keyed on that identity, so a table rebuilt on every render would recompile every formula.
+ */
+export function effectiveNames(tabs: readonly NamedTab[], selfIndex: number): NameTable | undefined {
+  const self = tabs[selfIndex];
+  if (!self || !tabs.some((t) => t.sheet.names)) return undefined;
+  const table: NameTable = {};
+  for (const tab of tabs) {
+    for (const [key, entry] of Object.entries(tab.sheet.names ?? {})) {
+      const ref = targetFrom(entry.ref, tab.name, self.name);
+      if (entry.scope === "sheet") table[`${tab.name.toUpperCase()}!${key}`] = { ...entry, ref };
+      else if (!(key in table)) table[key] = { label: entry.label, ref };
+    }
+  }
+  for (const [key, entry] of Object.entries(self.sheet.names ?? {})) {
+    if (entry.scope === "sheet") table[key] = { ...entry, ref: targetFrom(entry.ref, self.name, self.name) };
+  }
+  const keys = Object.keys(table).sort();
+  if (keys.length === 0) return undefined;
+  const fingerprint = keys.map((k) => `${k}=${table[k].ref}`).join("|");
+  if (effective.has(fingerprint)) return effective.get(fingerprint);
+  if (effective.size >= EFFECTIVE_KEPT) effective.delete(effective.keys().next().value!);
+  effective.set(fingerprint, table);
+  return table;
+}
+
+/** Where a name the person can see lives: the tab that holds it, and whether it is sheet-level. */
+export interface NameHome {
+  tabIndex: number;
+  key: string;
+  entry: NamedRange;
+}
+
+/**
+ * The names the name box lists for the sheet in front of the person: its own sheet-level names,
+ * then every workbook-level name, each with the tab it lives on.
+ */
+export function visibleNames(tabs: readonly NamedTab[], selfIndex: number): NameHome[] {
+  const out: NameHome[] = [];
+  const seen = new Set<string>();
+  for (const [key, entry] of Object.entries(tabs[selfIndex]?.sheet.names ?? {})) {
+    if (entry.scope === "sheet") out.push({ tabIndex: selfIndex, key, entry });
+  }
+  tabs.forEach((tab, tabIndex) => {
+    for (const [key, entry] of Object.entries(tab.sheet.names ?? {})) {
+      if (entry.scope === "sheet" || seen.has(key)) continue;
+      seen.add(key);
+      out.push({ tabIndex, key, entry });
+    }
+  });
+  return out.sort((a, b) => a.entry.label.localeCompare(b.entry.label, "th"));
+}
+
+/** The one a formula on `selfIndex` means by `label`: its own sheet-level name first, as in Excel. */
+export function findNameHome(tabs: readonly NamedTab[], selfIndex: number, label: string): NameHome | undefined {
+  const key = nameKey(label);
+  return visibleNames(tabs, selfIndex).find((h) => h.key === key);
 }
