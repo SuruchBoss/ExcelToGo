@@ -1021,6 +1021,10 @@ export const useSheetStore = create<SheetState>()(
             // Covers the formula bar as well as the grid, so there's one place a locked cell
             // can't be written rather than a guard per entry point.
             const { sheet } = activeTab(s);
+            // A backstop, not the fix: a write for a cell outside the sheet comes from a caller
+            // holding an address that undo took away (#191, an editor left open on a row Enter
+            // grew). The grid closes that editor itself; this keeps a stale caller from throwing.
+            if (row < 0 || col < 0 || row >= sheet.rows || col >= sheet.cols) return {};
             if (isTemplateLocked(sheet.template, row, col)) return {};
             // Refused rather than warned about afterwards: a warning on a cell that already holds
             // the wrong thing is a note about a mistake; refusing is the mistake not happening.

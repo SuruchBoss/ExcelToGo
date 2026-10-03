@@ -50,6 +50,20 @@ const ACCEPTED = [
       "parts of the export.",
     reviewBy: "2026-12-31",
   },
+  {
+    id: "GHSA-vfj7-8cjw-p6xm",
+    package: "braces",
+    production: false,
+    why:
+      "Stack exhaustion on deeply nested brace patterns. braces arrives only through lint: " +
+      "eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch → braces, all under " +
+      "devDependencies, so none of it is in the bundle a visitor loads. The patterns it expands come " +
+      "from the lint config in this repository, never from outside input. No fixed braces exists yet " +
+      "(every version up to 3.0.3, the latest, is affected), and npm's only offer is eslint-config-next " +
+      "14, which this Next 16 project cannot use. Review sooner if braces ships a fix: the entry then " +
+      "goes stale and fails the gate on its own.",
+    reviewBy: "2026-11-30",
+  },
 ];
 
 /**

@@ -904,6 +904,8 @@ export interface Messages {
     editorLabel: (address: string) => string;
     /** Shown on a cell a finger has just selected (#171): one tap selects, a second one types. */
     tapAgainToType: string;
+    /** Said when undo took away the row or column an open editor was on, with what was typed in it (#191). */
+    editDropped: (address: string) => string;
     /** The chip that brings a selection scrolled off screen back into view, e.g. "Back to B2:B9". */
     backToSelection: (address: string) => string;
     /** The mouse grip on the same corner, which continues the selection instead. */
