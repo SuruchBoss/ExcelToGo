@@ -5,9 +5,9 @@
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import Link from "next/link";
-import { BookOpen, ChevronRight, Cloud, FileDown, FilePlus, FileSpreadsheet, FileText, FileUp, Plug, Rows3, Columns3, X } from "lucide-react";
+import { BookOpen, ChevronRight, Cloud, FileDown, FileWarning, FilePlus, FileSpreadsheet, FileText, FileUp, Plug, Rows3, Columns3, X } from "lucide-react";
 import clsx from "clsx";
-import { useSheetStore } from "@/store/sheetStore";
+import { selectFileLosses, useSheetStore } from "@/store/sheetStore";
 import { isCloudConfigured } from "@/lib/cloud/config";
 import { useT } from "@/i18n";
 
@@ -30,6 +30,9 @@ export default function MobileMenu({ onClose, onImport, onNewFile }: { onClose: 
   const exportCsv = useSheetStore((s) => s.exportCsv);
   const addRow = useSheetStore((s) => s.addRow);
   const addColumn = useSheetStore((s) => s.addColumn);
+  // Only while the file that had something to report is open (#83).
+  const hasLosses = useSheetStore((s) => selectFileLosses(s) !== null);
+  const showFileLosses = useSheetStore((s) => s.showFileLosses);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -131,6 +134,11 @@ export default function MobileMenu({ onClose, onImport, onNewFile }: { onClose: 
           <button onClick={act(exportXlsx)} className={line}>
             {row(<FileDown size={17} />, t.toolbar.exportExcel)}
           </button>
+          {hasLosses && (
+            <button onClick={act(showFileLosses)} className={line}>
+              {row(<FileWarning size={17} className="text-amber-700" />, t.fileLosses.reopen)}
+            </button>
+          )}
           <button onClick={act(exportPdf)} className={line}>
             {row(<FileText size={17} />, t.toolbar.exportPdf)}
           </button>

@@ -257,6 +257,8 @@ function sceneKit(browser, lang, M) {
 const W = {
   th: {
     header: ["สินค้า", "หมวดหมู่", "ราคา", "จำนวน", "รวม"],
+    /** The first cell of `fixtures/losses-picture-chart.xlsx` (#83). */
+    lossFirstCell: "สินค้า",
     items: [["กาแฟลาเต้", "เครื่องดื่ม"]],
     findReplaceWith: "น้ำอัดลม",
     aiQuestion: "หาค่าเฉลี่ยราคา",
@@ -307,6 +309,7 @@ const W = {
   },
   en: {
     header: ["Product", "Category", "Price", "Qty", "Total"],
+    lossFirstCell: "Product",
     items: [["Caffè latte", "Drinks"]],
     findReplaceWith: "Beverages",
     aiQuestion: "Find the average price",
@@ -1523,6 +1526,19 @@ const SCENES = [
         fullPage: true,
         clip: { x: main.x, y: main.y, width: main.width, height: example.y + example.height - main.y + 24 },
       });
+    },
+  },
+  {
+    // What a file cannot keep, said as it opens (#83): a real package with a picture, an Excel
+    // chart and a function the engine lacks — the report lists all three, with the sheet.
+    file: "69-file-losses.png",
+    async take(k) {
+      await k.open("/app", { width: 1280, height: 800, blank: true });
+      const fixture = k.lang === "th" ? "losses-picture-chart.xlsx" : "losses-picture-chart.en.xlsx";
+      await importFile(k, path.join(process.cwd(), "src/lib/fixtures", fixture), W[k.lang].lossFirstCell);
+      await k.page.getByRole("dialog", { name: k.t.fileLosses.title }).waitFor();
+      await k.settle(400);
+      await k.shot(this.file);
     },
   },
   {

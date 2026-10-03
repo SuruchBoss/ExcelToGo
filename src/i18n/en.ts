@@ -430,7 +430,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1922", label: "automated tests" },
+      { value: "1937", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -804,6 +804,32 @@ export const en: Messages = {
     nothing: "Nothing in the selection reads as a date this way",
     confirm: (changed) => `Convert ${changed} ${changed === 1 ? "cell" : "cells"}`,
     cancel: "Cancel",
+  },
+  fileLosses: {
+    title: "This file has things ExcelToGo can't keep",
+    intro: (fileName, kinds) =>
+      `"${fileName}" has ${kinds} ${kinds === 1 ? "kind of thing" : "kinds of things"} we know the app can't keep yet. If you export and save over the original, ${kinds === 1 ? "it" : "they"} will be gone:`,
+    item: {
+      pictures: (n) => `${n} ${n === 1 ? "picture" : "pictures"}`,
+      charts: (n) => `${n} Excel ${n === 1 ? "chart" : "charts"}`,
+      shapes: (n) => `${n} ${n === 1 ? "shape or text box" : "shapes or text boxes"}`,
+      pivots: (n) => `${n} Excel ${n === 1 ? "PivotTable" : "PivotTables"}`,
+      unknownFunctions: (n, names) => `${n} ${n === 1 ? "formula uses" : "formulas use"} a function the app doesn't have yet (${names.join(", ")})`,
+      names: (n, names) => `${n} range ${n === 1 ? "name" : "names"} that could not be brought in (${names.join(", ")})`,
+      externalLinks: (n) => `${n} ${n === 1 ? "link" : "links"} to other files`,
+      macros: () => "Macros (VBA)",
+    },
+    detail: {
+      unknownFunctions: "The app shows #NAME? for them, but the exported file keeps the formula as it was, and Excel can calculate it",
+      names: "Formulas using them read #NAME?, and the exported file won't have these names. Only a name for one range on a sheet of the file comes in — not a formula, a whole column or several areas",
+      externalLinks: "Values pulled from other files won't update in the app",
+      macros: "The app doesn't run macros, and the exported file doesn't carry them",
+    },
+    onSheets: (sheets) => (sheets.length === 0 ? "" : ` · ${sheets.length === 1 ? "sheet" : "sheets"} ${sheets.map((s) => `"${s}"`).join(", ")}`),
+    notComplete:
+      "These are the things we know aren't kept, not a complete list. If the file matters, keep the original and export under a new name.",
+    understood: "Got it",
+    reopen: "What this file can't keep",
   },
   newFile: {
     button: "New file",
@@ -1270,8 +1296,6 @@ export const en: Messages = {
     exportError: "The Excel export didn't work. Everything in the sheet is still here — try again, or export as CSV for now.",
     importClipped: (sheet, rowsInFile, rowsOpened) =>
       `Sheet "${sheet}" goes down to row ${rowsInFile.toLocaleString("en-US")}, but only ${rowsOpened.toLocaleString("en-US")} rows can be opened — the rows past that were not imported (the original file is untouched).`,
-    importNamesDropped: (names) =>
-      `These names in the file could not be brought in, so formulas using them read #NAME?: ${names.join(", ")}. Only a name for one range on a sheet of the file comes in — not a formula, a whole column or several areas.`,
     csvEmpty: "This sheet is empty, so there is nothing to export.",
   },
   aiHeuristic: {

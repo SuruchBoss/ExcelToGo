@@ -119,6 +119,7 @@ const SHOWS = {
   "67-landing-faq.png": ["paletteFormulas", "engineFunctions"],
   // A formula page's example: the engine's numbers for one lesson's table, none of them counted figures.
   "68-formula-page.png": [],
+  "69-file-losses.png": [],
   "demo.gif": [],
 };
 

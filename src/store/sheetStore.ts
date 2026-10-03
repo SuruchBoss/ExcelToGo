@@ -5,6 +5,7 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { create, useStore, type StateCreator } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { temporal } from "zundo";
+import type { FileLoss } from "@/lib/fileLosses";
 import {
   addColumn,
   addRow,
@@ -246,6 +247,16 @@ interface SheetState {
    */
   /** What a file (or a lesson's example, #149) just opened, for the notice with its undo. */
   importNotice: { sheets: number; mode: ImportMode; lesson?: string } | null;
+  /**
+   * What the last opened `.xlsx` held that the app does not keep (#83), and the tabs it opened as.
+   * Null when the file had nothing to report. Not part of the undo history: `selectFileLosses`
+   * hides it once none of its tabs are left, which is what undoing the open does.
+   */
+  fileLosses: FileLossReport | null;
+  /** The report's dialog is showing: right after the open, or when reopened from the menu. */
+  fileLossesOpen: boolean;
+  showFileLosses: () => void;
+  closeFileLosses: () => void;
   /**
    * The last thing worth saying out loud, and a sequence number.
    *
@@ -648,6 +659,20 @@ const initialTab = newTab("Sheet1");
  */
 export type ImportMode = "append" | "replace";
 
+/** What an opened `.xlsx` held that the app does not keep, and the tabs it opened as (#83). */
+export interface FileLossReport {
+  fileName: string;
+  tabIds: string[];
+  items: FileLoss[];
+}
+
+/**
+ * The report while any tab the file opened as is still here. Undo takes a file back out, and a new
+ * file replaces the tabs; either way the report is about something that is no longer open.
+ */
+export const selectFileLosses = (s: SheetState): FileLossReport | null =>
+  s.fileLosses && s.sheets.some((t) => s.fileLosses!.tabIds.includes(t.id)) ? s.fileLosses : null;
+
 /**
  * Puts opened sheets in the workbook — from a file or a lesson's example. `replace` is what opening
  * a file always did; `append` keeps the work that was open and adds the new sheets after it,
@@ -914,6 +939,8 @@ export const useSheetStore = create<SheetState>()(
         formatBarOpen: true,
         busy: null,
         importNotice: null,
+        fileLosses: null,
+        fileLossesOpen: false,
         announcement: null,
         clipboard: null,
         dataPicker: null,
@@ -2078,12 +2105,16 @@ export const useSheetStore = create<SheetState>()(
            * name is already taken (and the file's own formulas that point at it).
            */
           // A CSV is named after its file, which can hold what a sheet name cannot (#54);
-          // placeIncoming fits the names before anything else sees them.
-          const place = (incoming: { name: string; sheet: SheetModel }[]) =>
-            set(placeIncoming(get(), incoming, mode, {
+          // placeIncoming fits the names before anything else sees them. Returns the tabs the
+          // file opened as, which the report of what it cannot keep is tied to (#83).
+          const place = (incoming: { name: string; sheet: SheetModel }[]) => {
+            const next = placeIncoming(get(), incoming, mode, {
               importNotice: { sheets: incoming.length, mode },
               ...say(getMessages().live.imported(incoming.length)),
-            }));
+            });
+            set(next);
+            return next.sheets.slice(-incoming.length);
+          };
           try {
             // A .csv is plain text, so it never reaches ExcelJS — which would reject it anyway.
             // The delimiter is sniffed rather than assumed: Excel writes the list separator of the
@@ -2102,20 +2133,29 @@ export const useSheetStore = create<SheetState>()(
               place([{ name, sheet: sheetFromGrid(rows) }]);
               return;
             }
-            const { importWorkbookFromFile } = await import("@/lib/excelIO");
+            const [{ importWorkbookFromFile }, { findFileLosses }] = await Promise.all([
+              import("@/lib/excelIO"),
+              import("@/lib/fileLosses"),
+            ]);
             const imported = await importWorkbookFromFile(file);
-            place(imported.map((w) => ({ name: w.name, sheet: w.sheet })));
+            const tabs = place(imported.map((w) => ({ name: w.name, sheet: w.sheet })));
+            // Said before the first edit, while the file is still as it came (#83). Read from the
+            // package again rather than from `imported`: what the importer returned is exactly
+            // the thing that no longer has the pictures in it.
+            const items = await findFileLosses(await file.arrayBuffer(), imported);
+            if (items.length > 0) {
+              set({ fileLosses: { fileName: file.name, tabIds: tabs.map((t) => t.id), items }, fileLossesOpen: true });
+            } else if (mode === "replace") {
+              set({ fileLosses: null, fileLossesOpen: false });
+            }
             // A file longer than the sheet can open is opened as far as it goes — and said out loud,
             // because rows missing without a word is the bug this replaced (#43).
+            // The file's range names that could not come in (#60) are not said here but in the
+            // report above, with the rest of what the file cannot keep: one message per open.
             const clipped = imported.filter((w) => w.rowsInFile !== undefined);
-            const dropped = imported[0]?.droppedNames ?? [];
-            if (clipped.length > 0 || dropped.length > 0) {
-              const { importClipped, importNamesDropped } = getMessages().store;
-              // Names said out loud for the same reason (#60): a `#NAME?` with no reason on screen
-              // looks like the app's bug, and the file's own formula names are the usual cause.
-              const lines = clipped.map((w) => importClipped(w.name, w.rowsInFile!, w.sheet.rows));
-              if (dropped.length > 0) lines.push(importNamesDropped(dropped));
-              alert(lines.join("\n"));
+            if (clipped.length > 0) {
+              const { importClipped } = getMessages().store;
+              alert(clipped.map((w) => importClipped(w.name, w.rowsInFile!, w.sheet.rows)).join("\n"));
             }
           } catch (err) {
             console.error(err);
@@ -2140,6 +2180,8 @@ export const useSheetStore = create<SheetState>()(
         },
 
         dismissImportNotice: () => set({ importNotice: null }),
+        showFileLosses: () => set({ fileLossesOpen: true }),
+        closeFileLosses: () => set({ fileLossesOpen: false }),
 
         /**
          * Swaps the whole document for another one — opening a workbook from the optional cloud

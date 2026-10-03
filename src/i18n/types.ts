@@ -615,6 +615,23 @@ export interface Messages {
     confirm: (changed: number) => string;
     cancel: string;
   };
+  /** What an opened file holds that the app does not keep (#83). */
+  fileLosses: {
+    title: string;
+    /** The file's name and how many kinds of thing were found. */
+    intro: (fileName: string, kinds: number) => string;
+    /** One line per kind: how many, and what it is. Sheets and names are added by `onSheets`. */
+    item: Record<import("@/lib/fileLosses").LossKind, (count: number, names: string[]) => string>;
+    /** A second, quieter line under a kind, where one is owed (formulas, links, macros). */
+    detail: Partial<Record<import("@/lib/fileLosses").LossKind, string>>;
+    onSheets: (sheets: string[]) => string;
+    /** The report must not claim to be complete: it lists what is known not to be kept. */
+    notComplete: string;
+    understood: string;
+    /** The menu line that opens it again. */
+    reopen: string;
+  };
+  /** "New file": one empty sheet in place of the workbook, asked first when there is work. */
   newFile: {
     button: string;
     hint: string;
@@ -994,8 +1011,6 @@ export interface Messages {
     exportError: string;
     /** A sheet that goes further down than an import opens: its name, the file's last row, and the rows opened. */
     importClipped: (sheet: string, rowsInFile: number, rowsOpened: number) => string;
-    /** The file's names that could not come in (#60), so their `#NAME?` has a reason on screen. */
-    importNamesDropped: (names: string[]) => string;
     csvEmpty: string;
   };
   /** Explanations for the keyword-based fallback AI suggester (used when no

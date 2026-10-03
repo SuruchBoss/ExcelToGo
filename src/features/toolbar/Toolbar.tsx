@@ -4,9 +4,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FilePlus, FileUp, FileDown, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, Database, Cloud, Menu } from "lucide-react";
+import { FilePlus, FileUp, FileDown, FileWarning, FileText, FileSpreadsheet, Plus, Sparkles, Sigma, Undo2, Redo2, Database, Cloud, Menu } from "lucide-react";
 import clsx from "clsx";
-import { selectHasWork, useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
+import { selectFileLosses, selectHasWork, useCanRedo, useCanUndo, redoSheet, undoSheet, useSheetStore } from "@/store/sheetStore";
 import { useT } from "@/i18n";
 import { keepGridFocus } from "./keepGridFocus";
 import LanguageToggle from "./LanguageToggle";
@@ -71,6 +71,8 @@ export default function Toolbar() {
   const addColumn = useSheetStore((s) => s.addColumn);
   const toggleSidebar = useSheetStore((s) => s.toggleSidebar);
   const cloudOpen = useSheetStore((s) => s.sidebarMode === "cloud");
+  const hasLosses = useSheetStore((s) => selectFileLosses(s) !== null);
+  const showFileLosses = useSheetStore((s) => s.showFileLosses);
   const canUndo = useCanUndo();
   const canRedo = useCanRedo();
 
@@ -150,6 +152,20 @@ export default function Toolbar() {
       >
         <FileDown size={15} /> {t.toolbar.exportExcel}
       </button>
+
+      {/* What the open file holds that its export will not (#83), again. Below 1366px it is a line
+          in the menu instead, and this row has no room for another button; here it is an icon,
+          named for a screen reader and on hover, next to the export it warns about. */}
+      {hasLosses && (
+        <button
+          onClick={showFileLosses}
+          aria-label={t.fileLosses.reopen}
+          title={t.fileLosses.reopen}
+          className="hidden shrink-0 items-center justify-center rounded-md border border-amber-300 bg-amber-50 p-1.5 text-amber-800 hover:bg-amber-100 min-[1366px]:flex"
+        >
+          <FileWarning size={17} />
+        </button>
+      )}
 
       <button
         onClick={exportPdf}
