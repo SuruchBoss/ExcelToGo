@@ -430,7 +430,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1937", label: "automated tests" },
+      { value: "1941", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -808,7 +808,7 @@ export const en: Messages = {
   fileLosses: {
     title: "This file has things ExcelToGo can't keep",
     intro: (fileName, kinds) =>
-      `"${fileName}" has ${kinds} ${kinds === 1 ? "kind of thing" : "kinds of things"} we know the app can't keep yet. If you export and save over the original, ${kinds === 1 ? "it" : "they"} will be gone:`,
+      `"${fileName}" has ${kinds} ${kinds === 1 ? "kind of thing" : "kinds of things"} we know the app can't keep yet. In the app ${kinds === 1 ? "it won't work" : "they won't work"}, and if you export and save over the original, ${kinds === 1 ? "it may not be kept" : "some of them won't be kept"}:`,
     item: {
       pictures: (n) => `${n} ${n === 1 ? "picture" : "pictures"}`,
       charts: (n) => `${n} Excel ${n === 1 ? "chart" : "charts"}`,

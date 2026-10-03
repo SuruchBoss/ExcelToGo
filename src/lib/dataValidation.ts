@@ -118,6 +118,24 @@ export function choicesAt(sheet: SheetModel, row: number, col: number): string[]
 }
 
 /**
+ * What typing into a dropdown cell saves: the option it names, or nothing (#198).
+ *
+ * Typing used to go to the `<select>`, whose type-ahead jumped to the first option starting with
+ * the first key and saved it — `C02` became `C01` without a word. Now the typing is read in full
+ * and matched here. Excel matches a list case-insensitively, so `c02` names `C02` and is saved as
+ * the option is spelled, keeping the column one spelling for a SUMIF. Text that names no option is
+ * `null`, for the caller to refuse; it is never swapped for a nearby option. Empty clears the cell,
+ * and a formula passes, as `checkValue` lets them.
+ */
+export function matchChoice(choices: string[], raw: string): string | null {
+  const value = raw.trim();
+  if (value === "" || value.startsWith("=")) return value;
+  if (choices.includes(value)) return value;
+  const folded = value.toLocaleLowerCase();
+  return choices.find((choice) => choice.toLocaleLowerCase() === folded) ?? null;
+}
+
+/**
  * Parses what somebody typed into the options box.
  *
  * Commas and newlines both, because people paste a column out of another sheet as often as they

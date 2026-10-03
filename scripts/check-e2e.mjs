@@ -1572,6 +1572,61 @@ const FLOWS = [
       note(alerts.length === 0, `and no alert of its own came first (${alerts.join(" | ")})`);
     },
   },
+  ...[1280, 390].map((width) => ({
+    // #198: typing into a dropdown cell went to its <select>, whose type-ahead jumped to the first
+    // option starting with the first key and saved it there and then: C02 + Enter stored C01, with
+    // no word about it. Codes in a list share a prefix, so it was the wrong one most of the time.
+    name: `typing into a dropdown cell saves what was typed, refuses what is not on the list, and a pick still saves (${width}px)`,
+    width,
+    touch: width < 640,
+    async run(page) {
+      await page.evaluate(() => {
+        const sheet = { rows: 30, cols: 10, cells: { "0,0": "รหัส" }, rest: { validation: { "1,0": { kind: "list", values: ["C01", "C02", "C03"] } } } };
+        localStorage.setItem("exceltogo-sheet-v2", JSON.stringify({ state: { sheets: [{ id: "list", name: "Sheet1", sheet }], activeSheetId: "list" }, version: 1 }));
+      });
+      await page.reload({ waitUntil: "networkidle" });
+      const phone = width < 640;
+      const a2 = async () => (await cell(page, 1, 0).innerText()).trim();
+      const press = (r, c) => (phone ? cell(page, r, c).tap() : cell(page, r, c).click());
+
+      await press(1, 0);
+      await page.keyboard.type("C02");
+      await page.keyboard.press("Enter");
+      note((await a2()) === "C02", `C02 + Enter saves C02, not the first option that starts with C (A2 "${await a2()}")`);
+
+      await press(1, 0);
+      await page.keyboard.type("C9");
+      await page.keyboard.press("Enter");
+      const spoken = await page.evaluate(() => [...document.querySelectorAll('[role="status"][aria-live]')].map((e) => e.textContent).join(" "));
+      note((await a2()) === "C02", `C9 + Enter is not swapped for an option, and A2 keeps C02 (A2 "${await a2()}")`);
+      note(/A2/.test(spoken), `and the refusal is said, naming the cell ("${spoken.trim().slice(0, 80)}")`);
+
+      // A pick from the open list is a choice, saved as it is made.
+      await press(1, 0);
+      if (phone) await cell(page, 1, 0).tap();
+      else await cell(page, 1, 0).dblclick();
+      const list = cell(page, 1, 0).locator("select");
+      await list.waitFor({ timeout: 5000 });
+      await list.selectOption("C03");
+      await page.waitForTimeout(100);
+      note((await a2()) === "C03" && (await page.locator("td select").count()) === 0, `picking C03 saves it and closes the list (A2 "${await a2()}")`);
+
+      if (!phone) {
+        // The arrow keys browse without saving, so Escape after them keeps the cell; Enter chooses
+        // what they landed on.
+        await cell(page, 1, 0).dblclick();
+        await list.waitFor({ timeout: 5000 });
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("Escape");
+        const browsed = await a2();
+        await cell(page, 1, 0).dblclick();
+        await list.waitFor({ timeout: 5000 });
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("Enter");
+        note(browsed === "C03" && (await a2()) === "C02", `↑ then Escape keeps C03, and ↑ then Enter saves C02 (after Escape "${browsed}", after Enter "${await a2()}")`);
+      }
+    },
+  })),
   {
     // #109: there is no demo. The word was on the guide, the panel and the landing page, and it
     // told people the real app was a trial.

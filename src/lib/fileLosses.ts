@@ -33,9 +33,9 @@ export interface FileLoss {
   names?: string[];
 }
 
-/** The order the notice lists them in: what a person sees in the file first, then what runs. */
 /**
- * Range names sit next to unknown functions because both end in `#NAME?` on screen; a person who
+ * The order the notice lists them in: what a person sees in the file first, then what runs. Range
+ * names sit next to unknown functions because both end in `#NAME?` on screen; a person who
  * reads one line about `#NAME?` should find the other cause right under it.
  */
 const ORDER: LossKind[] = ["pictures", "charts", "shapes", "pivots", "unknownFunctions", "names", "externalLinks", "macros"];

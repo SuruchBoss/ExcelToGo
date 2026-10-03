@@ -7,6 +7,7 @@ import {
   checkValue,
   choicesAt,
   fromExcelValidation,
+  matchChoice,
   parseList,
   ruleAt,
   shiftValidation,
@@ -63,6 +64,33 @@ describe("what a rule lets through", () => {
 
   it("lets everything through where there is no rule", () => {
     expect(checkValue(undefined, "anything at all")).toBeNull();
+  });
+});
+
+describe("what typing into a dropdown cell saves (#198)", () => {
+  const codes = ["C01", "C02", "C03"];
+
+  it("saves the option typed in full, not the first one sharing its first key", () => {
+    expect(matchChoice(codes, "C02")).toBe("C02");
+    expect(matchChoice(codes, "C03")).toBe("C03");
+  });
+
+  it("matches the way Excel does, ignoring case and stray spaces, and saves the option's spelling", () => {
+    expect(matchChoice(codes, "c02")).toBe("C02");
+    expect(matchChoice(codes, " C02 ")).toBe("C02");
+    expect(matchChoice(["สาขา 1", "สาขา 2"], "สาขา 2")).toBe("สาขา 2");
+  });
+
+  it("names nothing for text that is not an option, even a prefix of one", () => {
+    expect(matchChoice(codes, "C9")).toBeNull();
+    expect(matchChoice(codes, "C")).toBeNull();
+    expect(matchChoice(codes, "C0")).toBeNull();
+  });
+
+  it("lets a cell be cleared and a formula through, as the rule itself does", () => {
+    expect(matchChoice(codes, "")).toBe("");
+    expect(matchChoice(codes, "  ")).toBe("");
+    expect(matchChoice(codes, "=A1")).toBe("=A1");
   });
 });
 
