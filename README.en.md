@@ -42,7 +42,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1937%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1941%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -63,7 +63,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1937 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1941 automated tests.
 
 ---
 
@@ -107,7 +107,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1937 passing tests could not catch
+### 🧪 What 1941 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -118,7 +118,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1937 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1941 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -393,7 +393,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1937-case Vitest suite |
+| `npm test` | Run the 1941-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -401,7 +401,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 50 flows: a file with a picture and a chart saying what it will lose as it opens, a plain one saying nothing, and range names that could not come in in the same report (#83), a live source that answers after the picker opens never blanking the cell (#126), one tap on a phone only selecting and saying to tap again, with nothing typed lost in silence (#171), Enter or ↓ on the last row adding a row with nothing typed over and one undo taking the value and its row back with typing still landing after it (#170), on a phone an undo with an editor open on a row Enter grew closing the editor, saying what it dropped, and the next value landing (#191), a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), duplicate or invalid sheet names fixed on load, refused when typed, and exported with the right names and formulas (#54), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 52 flows: typing into a dropdown cell saving what was typed in full, text off the list refused and a pick from the list still saving, at 1280 and 390 (#198), a file with a picture and a chart saying what it will lose as it opens, a plain one saying nothing, and range names that could not come in in the same report (#83), a live source that answers after the picker opens never blanking the cell (#126), one tap on a phone only selecting and saying to tap again, with nothing typed lost in silence (#171), Enter or ↓ on the last row adding a row with nothing typed over and one undo taking the value and its row back with typing still landing after it (#170), on a phone an undo with an editor open on a row Enter grew closing the editor, saying what it dropped, and the next value landing (#191), a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), duplicate or invalid sheet names fixed on load, refused when typed, and exported with the right names and formulas (#54), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -1371,9 +1371,12 @@ are left alone, and so are the rows a filter hides, as every command on a filter
   Gregorian year, and text dates are for the convert command.
 
 **Limits:**
-- **The code written out (`[$-107041E]d/m/yyyy;@`) has not yet been checked against a file Thai Excel
-  saved itself.** Reading accepts every form known; writing picks one, and no real file was at hand to
-  compare with.
+- **Not yet tried with an `.xlsx` saved by a Thai-locale Excel**, in either direction. What works today is a
+  Buddhist-Era date typed in the app and the Convert to dates command. Whether a Thai Excel file whose dates
+  carry a Buddhist-calendar format opens with the right dates, and whether the code written out
+  (`[$-107041E]d/m/yyyy;@`) is the one Thai Excel writes itself, is not proven: no real file was at hand (#82).
+  **If you have one, [send it in an issue](https://github.com/SuruchBoss/ExcelToGo/issues)** — a file with one or two date cells in a B.E. format is
+  enough to fix it at the source.
 - Date text an `.xlsx` stores **as text** stays text, as the file says (the same rule as #45). Formulas
   still read it as a date, and Convert to dates makes it one.
 - Thai digits (`๑๕/๐๑/๒๕๖๙`) and times written `13.45 น.` are not read yet.
@@ -1602,7 +1605,15 @@ sheet model, and a cell with no value isn't. The loss is in the reader, not the 
 
 Select a range, hit **Limit** in the format bar, and say what those cells will accept: one of a
 list, a number in a range, or a length cap. A cell carrying a rule gets a **thin emerald ring**,
-and a list rule turns it into a dropdown while you type.
+and a list rule opens as a dropdown on a double-click, F2 or a second tap.
+
+**Typing into a dropdown cell saves what was typed, in full** (#198). `C02` then Enter saves `C02`; case
+does not matter, as in Excel (`c02` is saved as the list spells it, `C02`), and something not on the list,
+like `C9`, is refused with the cell left as it was, never swapped for the nearest option. Before, the
+first key opened the dropdown and the browser's type-ahead jumped to the first option starting with it
+and saved it there and then, so `C02` became `C01` without a word. In an open dropdown a pick with the
+mouse or a finger saves at once; the arrow keys only browse, Enter or leaving the cell chooses, and Esc
+cancels.
 
 **Typing something outside the rule is refused rather than saved and flagged.** A warning on a cell
 that *already holds* the wrong thing is a note about a mistake; refusing the write is the mistake
@@ -2964,7 +2975,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1937 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1941 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3984,20 +3995,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1937 cases across 137 files, via Vitest
+npm test      # 1941 cases across 137 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1937 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1941 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 50 flows in a real browser (needs a build)
+npm run check:e2e   # 52 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -4109,10 +4120,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1937 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1941 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1937 passing tests could not catch](#-what-1937-passing-tests-could-not-catch), repeatable
+> [What 1941 passing tests could not catch](#-what-1941-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4166,7 +4177,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `cloud/sheetDiff.test.ts` | 11 | What changed between two workbooks: one cell, an emptied cell, another tab, an added row → reload, 200+ cells at once → reload · and a count of how many rows were read, so copy-on-write staying true is a test |
 | `cloud/realtimeChannel.test.ts` | 9 | Turning presence into a list of people — where `id` and `from` disagreed and quietly produced "nobody else is here" |
 | `precedents.test.ts` | 11 | Which cells a formula is about: every argument rather than the first, through arithmetic and nested calls, a cross-sheet reference dropped rather than drawn at the same address here, and a whole-column range measured before it is built rather than after |
-| `dataValidation.test.ts` | 28 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated |
+| `dataValidation.test.ts` | 32 | What a cell will accept: empty values and formulas always pass, rules move with inserted and deleted rows, a list containing a comma is refused rather than written truncated, and a validation type this app has no equivalent for is ignored rather than approximated · typing into a dropdown cell saves the option typed in full, not the first one sharing its first key, ignores case as Excel does, and never swaps text off the list for another option (#198) |
 | `namedRanges.test.ts` | 26 | Named ranges: a name that is also an address, has a space, or is reserved is refused with the reason; the name is substituted throughout the tree; precedents point at the real rectangle; repointing a name really does recompute (the cache is keyed by the name table); and a name does not shift when filled |
 | `store/fileLossReport.test.ts` | 5 | The #83 report through the store: up as the file opens with its items and sheets, range names that could not come in listed there with no alert of their own, nothing for a plain file, closed and reopened from the menu, and gone when a clean file replaces it or the open is undone |
 | `workbookNames.test.ts` | 11 | Workbook-level names (#60): the issue's file gives 60 and 20 from another sheet; a sheet-level name wins on its own sheet and is reached from others as `Sheet!Name`; naming a range on one sheet recomputes a formula waiting on another; the table is the same object while nothing changes (so the caches hold); an inserted row and a renamed sheet keep names pointing right; a duplicate or invalid sheet name fixed on load (#54) leaves `Sheet!Name` on the sheet the formula was written for; a file with `localSheetId` opens with the same scopes, a name that cannot come in is named, and export then import keeps every scope |
@@ -4423,7 +4434,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 50 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 52 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel
@@ -4523,8 +4534,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [x] **Thai dates (#82)** — done (see [Buddhist-Era dates](#-buddhist-era-dates)): Buddhist-Era years and Thai months read
       as Gregorian dates, a Convert to dates command for `15/01/69` and Gregorian `dd/mm/yyyy`, a "Date (B.E.)" format
       that round-trips through `.xlsx`
-- [ ] **Check the Buddhist-Era code going out against a file Thai Excel saved itself** — `[$-107041E]d/m/yyyy;@` has
-      not been compared with a real one
+- [ ] **Try a file Thai-locale Excel saved itself** — both opening one whose dates carry a B.E. format and the
+      `[$-107041E]d/m/yyyy;@` code going out are still uncompared with a real file, waiting on a sample (see
+      [the Buddhist-Era limits](#-buddhist-era-dates))
 - [ ] **Thai digits and times written `13.45 น.`** — not read as dates or times yet
 - [ ] **A CSV field starting with `'`** — on import the first `'` is read as Excel's "the rest is text" marker and
       not shown. A file that means the apostrophe literally (a name like `'s-Hertogenbosch`) loses it for now

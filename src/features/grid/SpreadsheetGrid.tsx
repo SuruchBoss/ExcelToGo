@@ -33,7 +33,7 @@ import { reportEditing } from "@/store/liveStore";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 import { isTemplateLocked, templateChoices } from "@/lib/sheetTemplate";
-import { choicesAt, ruleAt } from "@/lib/dataValidation";
+import { choicesAt, matchChoice, ruleAt } from "@/lib/dataValidation";
 import { mergeLookup } from "@/lib/sheetMerges";
 import { evaluateConditionalFormats } from "@/lib/conditionalFormat";
 import { DEFAULT_FONT_SIZE } from "@/lib/cellFormat";
@@ -302,7 +302,13 @@ export default function SpreadsheetGrid() {
     return true;
   };
 
-  const [editing, setEditingState] = useState<{ row: number; col: number; value: string } | null>(null);
+  /**
+   * `typed` is an editor the keyboard opened by typing into the cell. On a dropdown cell it is a text
+   * editor checked against the list when it commits (#198), never the `<select>`, whose type-ahead
+   * would pick the first option that starts with the first key and save it.
+   */
+  type Editing = { row: number; col: number; value: string; typed?: boolean };
+  const [editing, setEditingState] = useState<Editing | null>(null);
   /**
    * Opening and closing the editor, with the live session told either way.
    *
@@ -310,7 +316,7 @@ export default function SpreadsheetGrid() {
    * an editor. An edit arriving from someone else has to wait while this cell is open, and the
    * call site that gets forgotten is the one where somebody's typing is overwritten mid-word.
    */
-  const setEditing = useCallback((next: { row: number; col: number; value: string } | null) => {
+  const setEditing = useCallback((next: Editing | null) => {
     reportEditing(next?.row ?? 0, next ? next.col : null);
     setEditingState(next);
   }, []);
@@ -463,6 +469,13 @@ export default function SpreadsheetGrid() {
 
   /** Set by a finger opening the editor, read once when the editor mounts. */
   const caretAtEnd = useRef(false);
+  /** A dropdown's value moved by the keyboard, which is browsing the options rather than choosing one (#198). */
+  const selectBrowsed = useRef(false);
+  /**
+   * The dropdown editor already saved or closed. Its blur can still arrive as it unmounts, holding
+   * the value from before the choice, and must not save that over the choice just made.
+   */
+  const selectClosed = useRef<Editing | null>(null);
   /** Whether the open editor was opened by a finger, so Enter keeps the phone keyboard up. */
   const touchSession = useRef(false);
   /**
@@ -499,7 +512,8 @@ export default function SpreadsheetGrid() {
     }
     if (input) touchSession.current = caretAtEnd.current;
     caretAtEnd.current = false;
-  }, [editing?.row, editing?.col]);
+    // `typed` too: a letter typed into a dropdown swaps its `<select>` for a text editor in the same cell (#198).
+  }, [editing?.row, editing?.col, editing?.typed]);
 
   // Enter on a phone parks the keyboard on the keeper until the next cell's editor mounts. If that
   // cell was not drawn yet — scrolled past the rows the grid keeps rendered — its editor mounts a
@@ -633,7 +647,7 @@ export default function SpreadsheetGrid() {
       // A tab that is only looking (#47) says so rather than opening an editor it cannot save.
       if (!isEditingTab()) return noteRefusedEdit();
       setTapHint(null);
-      setEditing({ row, col, value: initialValue ?? rawAt(row, col) });
+      setEditing({ row, col, value: initialValue ?? rawAt(row, col), typed: initialValue !== undefined });
     },
     [rawAt, canEdit, setEditing]
   );
@@ -669,11 +683,28 @@ export default function SpreadsheetGrid() {
     return precedentsOf(sheet.cells[selection.anchorRow]?.[selection.anchorCol] ?? "", undefined, names);
   }, [editing, selection, sheet.cells, names]);
 
+  /**
+   * Saves what was typed into a cell. On a dropdown cell the text has to name one of its options
+   * (#198): it is saved as the option, or refused out loud with the rule's own words and the cell
+   * left as it was. Text the cell already holds is let through, so closing an editor on an older
+   * value that is not in the list does not announce a refusal nobody asked for.
+   */
+  const commitTyped = useCallback(
+    (row: number, col: number, text: string) => {
+      const choices = templateChoices(sheet.template, row, col) ?? choicesAt(sheet, row, col);
+      if (!choices || text === rawAt(row, col)) return commitCell(row, col, text);
+      const value = matchChoice(choices, text);
+      if (value === null) return announce(t.validation.refused.notInList(cellRef(row, col)));
+      commitCell(row, col, value);
+    },
+    [sheet, rawAt, commitCell, t]
+  );
+
   const commitEdit = useCallback(() => {
     if (!editing) return;
-    commitCell(editing.row, editing.col, editing.value);
+    commitTyped(editing.row, editing.col, editing.value);
     setEditing(null);
-  }, [editing, commitCell, setEditing]);
+  }, [editing, commitTyped, setEditing]);
 
   const handleMouseDown = (row: number, col: number, shiftKey: boolean) => {
     if (editing && (editing.row !== row || editing.col !== col)) commitEdit();
@@ -1241,16 +1272,54 @@ export default function SpreadsheetGrid() {
                           : cellRef(r, c)
                   }
                 >
-                  {editingHere && choices ? (
+                  {editingHere && choices && !editing.typed ? (
                     <select
                       autoFocus
                       className="absolute inset-0 z-40 h-full w-full border-2 border-emerald-500 bg-white px-1 text-sm outline-none"
                       value={editing.value}
+                      // Saved on a choice, not on every change (#198). A pick from the open list is a
+                      // choice; the arrow keys only browse, and Enter or leaving the cell chooses
+                      // what they landed on. A letter swaps in a text editor, so what is typed is
+                      // read in full instead of fed to the browser's type-ahead.
+                      onKeyDown={(e) => {
+                        if (e.key.length === 1 && e.key !== " " && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                          // Not prevented: as with a letter typed on the grid, the text editor takes
+                          // focus during this keydown and the key itself lands in it.
+                          selectClosed.current = editing;
+                          setEditing({ row: r, col: c, value: e.key, typed: true });
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          selectClosed.current = editing;
+                          if (editing.value !== rawAt(r, c)) commitCell(r, c, editing.value);
+                          setEditing(null);
+                          const to = enterFrom(r, c, e.shiftKey);
+                          tabRun.current = null;
+                          setSelection(singleCellSelection(to.row, to.col));
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          selectClosed.current = editing;
+                          setEditing(null);
+                        } else if (/^(Arrow|Home|End|Page)/.test(e.key)) {
+                          selectBrowsed.current = true;
+                        }
+                      }}
+                      onKeyUp={() => {
+                        selectBrowsed.current = false;
+                      }}
                       onChange={(e) => {
+                        if (selectBrowsed.current) {
+                          setEditing({ row: r, col: c, value: e.target.value });
+                          return;
+                        }
+                        selectClosed.current = editing;
                         commitCell(r, c, e.target.value);
                         setEditing(null);
                       }}
-                      onBlur={() => setEditing(null)}
+                      onBlur={() => {
+                        if (selectClosed.current === editing) return;
+                        if (editing.value !== rawAt(r, c)) commitCell(r, c, editing.value);
+                        setEditing(null);
+                      }}
                     >
                       <option value="">{t.template.choosePlaceholder}</option>
                       {choices.map((choice) => (
@@ -1266,7 +1335,7 @@ export default function SpreadsheetGrid() {
                       className="absolute inset-0 z-40 h-full w-full border-2 border-blue-500 bg-white px-2 text-sm outline-none"
                       value={editing.value}
                       onChange={(e) => {
-                        setEditing({ row: r, col: c, value: e.target.value });
+                        setEditing({ row: r, col: c, value: e.target.value, typed: editing.typed });
                         noteFormulaText(e.currentTarget, e.target.value);
                       }}
                       // Tapping cells into a formula (#99): the pointing bar and the grid write
@@ -1275,7 +1344,7 @@ export default function SpreadsheetGrid() {
                         registerFormulaEditor({
                           input: e.currentTarget,
                           commit: (text) => {
-                            commitCell(r, c, text);
+                            commitTyped(r, c, text);
                             setEditing(null);
                           },
                           cancel: () => setEditing(null),
