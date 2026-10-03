@@ -1696,6 +1696,42 @@ const FLOWS = [
     },
   },
   {
+    // #191: on a phone, Enter on the last row opens the new row's editor. The toolbar's undo takes
+    // no focus, so the editor stayed open on a row undo had taken away: the next tap committed into
+    // it and threw `reading 'slice'`, and what was typed there went with the exception. The editor
+    // now closes when the sheet stops reaching it, and says what it dropped.
+    name: "on a phone, undo with an editor open on a row Enter grew drops the text out loud, and the next value lands",
+    width: 390,
+    touch: true,
+    async run(page) {
+      const rowCount = () => page.evaluate(() => Number(document.querySelector("[aria-rowcount]")?.getAttribute("aria-rowcount")) - 1);
+      const rows = await rowCount();
+      await cell(page, rows - 1, 2).tap();
+      await cell(page, rows - 1, 2).tap();
+      await cell(page, rows - 1, 2).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("x1");
+      await page.keyboard.press("Enter");
+      await cell(page, rows, 2).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("abc");
+      await page.getByRole("button", { name: label.undo }).first().tap();
+      await page.waitForFunction((n) => Number(document.querySelector("[aria-rowcount]")?.getAttribute("aria-rowcount")) - 1 === n, rows, { timeout: 5000 }).catch(() => {});
+      note((await rowCount()) === rows, `the toolbar's undo takes the grown row away (${await rowCount()} rows)`);
+      note((await page.locator("td input").count()) === 0, "and the editor that was on it is closed");
+      const spoken = await page.evaluate(() => [...document.querySelectorAll('[role="status"][aria-live]')].map((e) => e.textContent).join(" "));
+      note(/C31/.test(spoken), `what was typed in C31 is said to be dropped, not lost in silence ("${spoken.trim().slice(0, 120)}")`);
+
+      // The next taps: one selects, the second types, and the value lands with no page error.
+      await cell(page, 2, 1).tap();
+      await cell(page, 2, 1).tap();
+      await cell(page, 2, 1).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("q");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(150);
+      const landed = (await cell(page, 2, 1).innerText()).trim();
+      note(landed === "q", `the next value typed lands (B3: "${landed || "(empty)"}")`);
+    },
+  },
+  {
     // #171 (blind test R4): typing after one tap lost the text without a word — twelve rows of it
     // once. One tap selects; the second types. What this holds is the space in between: no keyboard
     // is left up with no editor behind it, the cell says how to type, and a keystroke that arrives

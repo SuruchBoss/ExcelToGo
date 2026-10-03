@@ -430,7 +430,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1921", label: "automated tests" },
+      { value: "1922", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -1169,6 +1169,7 @@ export const en: Messages = {
     extendSelection: "Drag to extend the selection",
     editorLabel: (address) => `Edit ${address}`,
     tapAgainToType: "Tap again to type",
+    editDropped: (address) => `What you were typing in ${address} was dropped: undo took that row or column away`,
     backToSelection: (address) => `Back to ${address}`,
     fillHandle: "Drag to continue the series",
     label: "Spreadsheet",
