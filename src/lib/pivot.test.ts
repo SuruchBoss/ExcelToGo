@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { FormulaValue } from "./formulaEngine/types";
-import { ERR_DIV0 } from "./formulaEngine/types";
+import { ERR_DIV0, ERR_NA } from "./formulaEngine/types";
 import { IMPORT_MAX_CELLS } from "./excelIO";
 import {
   PIVOT_MAX_CELLS,
@@ -72,6 +72,17 @@ describe("aggregate", () => {
   it("trims float noise off an average", () => {
     expect(aggregate([0.1, 0.2], "average")).toBe(0.15);
   });
+
+  // A total that steps over #DIV/0! reads as clean and is not; Excel's pivot shows the error (#222).
+  it("answers with the group's first error for everything but count", () => {
+    for (const agg of ["sum", "average", "min", "max"] as const) {
+      expect(aggregate([100, ERR_DIV0], agg), agg).toBe(ERR_DIV0);
+      expect(aggregate([ERR_NA, 5, ERR_DIV0], agg), agg).toBe(ERR_NA);
+    }
+    // Text and blanks are still stepped over, and count still counts an error as a filled cell.
+    expect(aggregate([100, "n/a", null, 50], "sum")).toBe(150);
+    expect(aggregate([100, ERR_DIV0], "count")).toBe(2);
+  });
 });
 
 describe("compareLabels", () => {
@@ -90,6 +101,31 @@ describe("compareLabels", () => {
 });
 
 describe("buildPivot", () => {
+  // The issue's sheet: North 100 and =1/0, South 80. Every expected value is what the issue gives
+  // for Excel's PivotTable (#222).
+  it("shows an error in every cell whose group holds one, and in the totals that include it", () => {
+    const withError: FormulaValue[][] = [
+      ["Region", "Month", "Amount"],
+      ["North", "M01", 100],
+      ["North", "M02", ERR_DIV0],
+      ["South", "M01", 80],
+    ];
+    const flat = buildPivot(withError, { rowFields: [0], colField: null, valueField: 2, agg: "sum" }, labels);
+    expect(flat.rows).toEqual([
+      ["North", "#DIV/0!", "#DIV/0!"],
+      ["South", 80, 80],
+    ]);
+    expect(flat.totalRow).toEqual(["Total", "#DIV/0!", "#DIV/0!"]);
+
+    // Split by month, only the column that holds the error is one; the other keeps its number.
+    const split = buildPivot(withError, { rowFields: [0], colField: 1, valueField: 2, agg: "max" }, labels);
+    expect(split.rows).toEqual([
+      ["North", 100, "#DIV/0!", "#DIV/0!"],
+      ["South", 80, null, 80],
+    ]);
+    expect(split.totalRow).toEqual(["Total", 100, "#DIV/0!", "#DIV/0!"]);
+  });
+
   it("groups by one row field and sums a value", () => {
     const p = buildPivot(SALES, { rowFields: [0], colField: null, valueField: 2, agg: "sum" }, labels);
     expect(p.header).toEqual(["Region", "sum of Qty", "Total"]);
