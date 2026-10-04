@@ -40,7 +40,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="เปิดแอป" src="https://img.shields.io/badge/▶_ลองใช้เลย-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1956%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1958%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -61,7 +61,7 @@ and saying so when data came back incomplete. A range can be given a name (in Th
 what it means, and a cell can carry a rule about what may go in it, refused before it is written rather than
 flagged afterwards. Conditional formatting re-colours cells from their current values — comparisons,
 top/bottom ranks, colour scales and data bars — and round-trips through Excel's own rule format. Bilingual UI
-(Thai/English), 1956 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
+(Thai/English), 1958 automated tests. บันทึกบนคลาวด์และการแก้พร้อมกันหลายคนมีให้เลือกใช้ได้ โดยต่อ backend ของคุณเอง
 
 ---
 
@@ -106,7 +106,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 
 ---
 
-### 🧪 สิ่งที่เทสต์ 1956 เคสจับไม่ได้
+### 🧪 สิ่งที่เทสต์ 1958 เคสจับไม่ได้
 
 เทสต์ของผู้ช่วย AI ใช้ **mock ทั้งหมด** — มันตอบตามที่ผมคิดว่ามันจะตอบ พอเอา API key จริงมายิงคำถามธรรมดา
 14 ข้อ **6 คำตอบใช้ฟังก์ชันที่เอนจินนี้ไม่มี** (`TEXTJOIN` `FIND` `RANK.EQ` `SUMPRODUCT` `CEILING` `CHAR`)
@@ -116,7 +116,7 @@ top/bottom ranks, colour scales and data bars — and round-trips through Excel'
 มันจึงตอบคำถาม *"ต่อชื่อทั้งหมดเป็นบรรทัดเดียว"* ด้วย `=SUM(A2:A20)` ซึ่งได้ `0` โดยไม่มีอะไรบอกว่าผิด
 **เปลี่ยน error ที่มองเห็น เป็นตัวเลขผิดที่มองไม่เห็น**
 
-**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1956 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
+**แล้วมันก็เกิดอีก คนละที่** ตอนที่ทุกด่านเขียวหมด — 1958 เทสต์ผ่าน, `axe` ไม่มี violation ทั้งสองหน้า
 ที่สองความกว้าง — ผมลองไล่คลิก build สาธารณะแบบคนที่เพิ่งเข้ามาครั้งแรกอยู่ชั่วโมงหนึ่ง แล้วเจอสามอย่าง
 ที่ไม่มีด่านไหนมองเห็น:
 
@@ -381,7 +381,7 @@ npm run dev
 | `npm run build` | build เป็นเวอร์ชัน production |
 | `npm run start` | รันเวอร์ชันที่ build แล้ว (ต้อง `npm run build` ก่อน) |
 | `npm run lint` | ตรวจสอบคุณภาพโค้ดด้วย ESLint |
-| `npm test` | รัน unit test 1956 เคสด้วย Vitest |
+| `npm test` | รัน unit test 1958 เคสด้วย Vitest |
 | `npm run check:readme` | ตรวจว่า README ยังตรงกับโค้ด (ลิงก์/ภาพ/จำนวนเทสต์/โมดูลใหม่/สองภาษาตรงกัน) |
 | `npm run check:screens` | ตัวเลขที่พิมพ์อยู่บนภาพหน้าจอยังตรงกับซอร์สไหม |
 | `npm run check:rls` | ยิงจริงสองบัญชีบน Supabase ของคุณ ว่าฐานข้อมูลปฏิเสธตามที่ policy เขียนไว้ไหม (ต้องตั้ง env) |
@@ -2613,7 +2613,7 @@ stack ของ `font-mono` จึงต่อท้ายด้วย Plex Sans
 | `@anthropic-ai/sdk` | เชื่อมต่อ Claude API สำหรับผู้ช่วย AI |
 | `lucide-react` | ไอคอน UI |
 | `clsx` | รวม className แบบมีเงื่อนไข |
-| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1956 เคส) |
+| `vitest` | unit test เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, แปลง JSON เป็นตาราง, การแบ่งหน้า/rate limit, แม่แบบ/รูปแบบจากไฟล์ และบล็อกข้อมูลสด (1958 เคส) |
 
 > **หมายเหตุ:** ไม่ได้ใช้ไลบรารีคำนวณสูตรสำเร็จรูป (เช่น HyperFormula) แต่เขียน **เอนจินคำนวณสูตรขึ้นเอง**
 > ทั้ง tokenizer, parser, evaluator และฟังก์ชันต่างๆ เพื่อควบคุมพฤติกรรมได้เต็มที่ ดูรายละเอียดที่หัวข้อ
@@ -3508,13 +3508,13 @@ B อ่านและแก้ได้ แต่ยังยึดเป็�
 ## 🧪 การทดสอบ
 
 ```bash
-npm test      # 1956 เคส ใน 138 ไฟล์ ด้วย Vitest
+npm test      # 1958 เคส ใน 138 ไฟล์ ด้วย Vitest
 ```
 
 โฟกัสเทสต์ไปที่ **เอนจินคำนวณสูตร, ตรรกะเรียงข้อมูล, การแปลง JSON เป็นตาราง, การไล่ดึงหน้าถัดไป, การถอยเมื่อโดน rate limit, แม่แบบจากไฟล์ Excel, กฎจัดรูปแบบตามเงื่อนไข และการวางบล็อกข้อมูลสด** — ส่วนที่เป็น pure function ล้วน ไม่ต้องพึ่ง React/DOM
 จึงเทสต์ได้เร็วและมั่นใจได้สูง
 
-**แต่ 1956 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
+**แต่ 1958 เคสนั้นไม่มีสักเคสที่เปิดแอป** และบั๊กที่โปรเจกต์นี้เจอด้วยการนั่งกดเอง อยู่ที่รอยต่อระหว่างชิ้นส่วนที่ผ่านเทสต์
 ทุกตัวแทบทั้งหมด — ปุ่ม "+ แถว" บนแถบเครื่องมือเรียก `addRow` ที่ไม่ประกาศอะไรเลย ขณะที่ `insertRowAtSelection`
 ข้าง ๆ ประกาศถูกต้อง (ทั้งคู่เทสต์ผ่าน) · ผู้ช่วย AI ส่งช่วงที่รวมหัวคอลัมน์ไปด้วย เพราะตัวประกอบ context อ่าน
 `sheet.cells` ที่เป็นสูตรดิบแทนค่าที่คำนวณแล้ว (ทั้งคู่เทสต์ผ่าน) · ปุ่มใหม่หนึ่งปุ่มดันปุ่มสลับภาษาตกขอบจอไป 42px
@@ -3614,9 +3614,9 @@ seed ถูกปักไว้ ด่านที่แดงจึงแด�
 ในตารางแล้วสองข้อในflow ที่สามตกทันที (ครั้งแรกที่ลองปิดยังเขียวอยู่ เพราะ `case` ที่แทรกเข้าไปไปอยู่หลัง
 `case "ArrowRight"` เดิม กลายเป็นโค้ดตาย — การพิสูจน์ต้องเช็กด้วยว่าของที่ตั้งใจทำให้พังนั้นพังจริง)
 
-> **1956 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
+> **1958 เคสผ่านหมด แต่ 43% ของคำตอบจากผู้ช่วย AI ใช้ไม่ได้** — เพราะเทสต์ส่วนนั้น mock ตัวโมเดลไว้
 > มันจึงตอบตามที่คนเขียนเทสต์คิดว่ามันจะตอบ จำนวนเทสต์บอกได้แค่ว่าเราถามอะไรไปบ้าง ไม่ได้บอกว่าเราถาม
-> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1956 เคสจับไม่ได้](#-สิ่งที่เทสต์-1956-เคสจับไม่ได้)
+> ครบหรือยัง เรื่องนี้เจอได้ก็ต่อเมื่อเอา API key จริงมายิง — ดู [สิ่งที่เทสต์ 1958 เคสจับไม่ได้](#-สิ่งที่เทสต์-1958-เคสจับไม่ได้)
 > และรันซ้ำเองได้ด้วย `npm run check:ai`
 
 | ไฟล์ | เคส | ทดสอบอะไร |
