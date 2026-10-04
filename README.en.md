@@ -22,8 +22,8 @@ right here, with the URL, the header and the data never passing through our serv
 >
 > All of that happens on a `.xlsx` that **still looks like itself when it opens** (colour bands,
 > merged cells, borders, row heights), computed by a **hand-written formula engine** (no
-> third-party library), entirely in your browser — the file never leaves your machine (the one thing
-> that does is a question and its column headers, when you ask the AI: [where they go](#-ask-ai-for-a-formula)), and there
+> third-party library), entirely in your browser — the file never leaves your machine (except that
+> asking the AI sends the question and its column headers: [where they go](#-ask-ai-for-a-formula)), and there
 > is no account to create.
 >
 > Four things build on that: **[your own API feeding the cells](#-live-data-from-an-api--csv-prototype)**, with no script to write —
