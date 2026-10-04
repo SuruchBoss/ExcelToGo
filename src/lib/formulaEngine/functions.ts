@@ -754,6 +754,9 @@ export const FUNCTIONS: Record<string, FnImpl> = {
           // Only numbers are added, as in Excel (#166): text in the sum range — a code kept as
           // text, a `'7` — used to be read as the number it spelt.
           const target = sumRange[r]?.[c];
+          // An error in a row that matched is the answer, as in Excel (#96). Skipping it turned a
+          // broken total into a believable ฿0.00. One in a row that did not match stays unread.
+          if (isError(target)) return target;
           if (typeof target === "number") total += target;
         }
       }
@@ -777,6 +780,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       for (let c = 0; c < range[r].length; c++) {
         if (matchCriteria(range[r][c], criteria)) {
           const v = avgRange[r]?.[c] ?? null;
+          if (isError(v)) return v; // as SUMIF (#96)
           // Skipped, not counted as zero — the same rule AVERAGEIFS already had. Reading a blank
           // as 0 dragged the average down: 10 here where AVERAGEIFS said 15 on the same cells.
           if (isBlank(v) || typeof v === "string") continue;
@@ -1032,6 +1036,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
         const v = target[r][c];
+        if (isError(v)) return v; // as SUMIF (#96)
         // Blanks and text inside the averaged range are skipped rather than counted as zero,
         // which would drag the average down towards it.
         if (isBlank(v) || typeof v === "string") continue;
@@ -1054,8 +1059,9 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       // equivalent-mutant: "<" → "<=" — the extra cell is undefined, read as 0, and adding 0 changes nothing.
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
-        // Numbers only, as SUMIF (#166).
+        // Numbers only, as SUMIF (#166), and an error in a matching row is the answer (#96).
         const v = target[r][c];
+        if (isError(v)) return v;
         if (typeof v === "number") total += v;
       }
     }
