@@ -108,6 +108,13 @@ function cellValueToRaw(cell: ExcelJS.Cell): string {
   if ("text" in v && typeof v.text === "string") {
     return v.text;
   }
+  // A constant error, `<c t="e"><v>#DIV/0!</v></c>`. Kept as its code rather than dropped (#227):
+  // it opened blank, and a total over it came out as a clean number. The grid holds it as text
+  // until error values can live in a cell (#226); the open report says so, and export writes it
+  // back as the error it was.
+  if ("error" in v && typeof v.error === "string") {
+    return v.error;
+  }
   if ("result" in v) {
     const result = v.result;
     return result === undefined || result === null ? "" : String(result);
@@ -693,6 +700,9 @@ export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[
   });
 }
 
+/** The error values Excel writes into a file as `t="e"` cells. */
+const EXCEL_ERROR_CODES = new Set(["#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A"]);
+
 /** Whether a cell's format sets anything, so an empty cell that only carries a fill still goes out. */
 function hasAnyFormat(format: CellFormat | undefined): boolean {
   return !!format && Object.values(format).some((v) => v !== undefined && v !== false);
@@ -720,6 +730,11 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         };
       } else if (raw === "") {
         // leave blank
+      } else if (EXCEL_ERROR_CODES.has(raw) && format?.numberFormat !== "text") {
+        // An error code as Excel spells it goes out as the error value, the way Excel itself stores
+        // `#N/A` typed into a cell. Written as text, a file that held `#DIV/0!` came back to Excel
+        // with SUM stepping over it (#227). An apostrophe or a Text format still keeps it text.
+        cell.value = { error: raw } as ExcelJS.CellErrorValue;
       } else {
         // The engine's own reading, not a second copy of it: a file that decided differently from
         // the grid is how `0812345678` went out as the number 812345678 (#23).

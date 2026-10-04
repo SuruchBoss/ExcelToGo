@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
 import { computeSheet, createEmptySheet, createWorkbookResolver, setCellRaw, SheetModel } from "./sheet";
@@ -703,5 +704,65 @@ describe("a merged cell imports as Excel holds it", () => {
     const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(sheet, "Merged")));
     expect(ws.model?.merges).toEqual(expect.arrayContaining(["A1:A3", "D1:F2"]));
     expect(ws.getCell("A1").value).toBe(10);
+  });
+});
+
+/**
+ * A constant error cell, as Excel writes one: `<c t="e"><v>#DIV/0!</v></c>` with no formula (#227).
+ * The importer had no branch for it, so it opened blank and a total over it came out clean.
+ */
+async function errorCellsFile(): Promise<File> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("ยอดขาย");
+  ws.getCell("A1").value = { error: "#DIV/0!" } as ExcelJS.CellErrorValue;
+  ws.getCell("A2").value = { error: "#N/A" } as ExcelJS.CellErrorValue;
+  ws.getCell("A3").value = 5;
+  ws.getCell("A4").value = { formula: "SUM(A1:A3)", result: { error: "#DIV/0!" } } as ExcelJS.CellFormulaValue;
+  return new File([await wb.xlsx.writeBuffer()], "errors.xlsx");
+}
+
+/** The `<c>` element for one cell, straight from the package, so a test sees what Excel will read. */
+async function cellXml(data: Blob | ArrayBuffer, address: string): Promise<string> {
+  const zip = await JSZip.loadAsync(data instanceof Blob ? await data.arrayBuffer() : data);
+  const xml = (await zip.file("xl/worksheets/sheet1.xml")?.async("string")) ?? "";
+  return new RegExp(`<c r="${address}"[^>]*?(?:/>|>[\\s\\S]*?</c>)`).exec(xml)?.[0] ?? "";
+}
+
+describe("a constant error cell in an opened file (#227)", () => {
+  it("keeps its code instead of opening blank", async () => {
+    const file = await errorCellsFile();
+    // The file holds the cells the way Excel writes them: an error type and no formula.
+    expect(await cellXml(await file.arrayBuffer(), "A1")).toMatch(/t="e"[^>]*>\s*<v>#DIV\/0!<\/v>/);
+    expect(await cellXml(await file.arrayBuffer(), "A1")).not.toContain("<f>");
+
+    const [{ sheet }] = await importWorkbookFromFile(file);
+    expect(sheet.cells.slice(0, 4).map((row) => row[0])).toEqual(["#DIV/0!", "#N/A", "5", "=SUM(A1:A3)"]);
+  });
+
+  it("goes back out as an error value, so Excel's own SUM over it still says #DIV/0!", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await errorCellsFile());
+    const blob = await exportWorkbookToXlsxBlob(exportable(sheet, "ยอดขาย"));
+    expect(await cellXml(blob, "A1")).toMatch(/t="e"[^>]*>\s*<v>#DIV\/0!<\/v>/);
+    expect(await cellXml(blob, "A2")).toMatch(/t="e"[^>]*>\s*<v>#N\/A<\/v>/);
+
+    // And open → export → open keeps them.
+    const [{ sheet: again }] = await importWorkbookFromFile(new File([await blob.arrayBuffer()], "again.xlsx"));
+    expect(again.cells.slice(0, 4).map((row) => row[0])).toEqual(["#DIV/0!", "#N/A", "5", "=SUM(A1:A3)"]);
+  });
+
+  it("text that only looks like an error stays text: after an apostrophe, or in a cell formatted as text", async () => {
+    const sheet = createEmptySheet(5, 2);
+    sheet.cells[0][0] = "'#N/A";
+    sheet.cells[1][0] = "#N/A";
+    sheet.formats[1][0] = { numberFormat: "text" };
+    sheet.cells[2][0] = "#REF!";
+    sheet.cells[3][0] = "#n/a";
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(sheet, "Codes")));
+    expect(ws.getCell("A1").value).toBe("#N/A");
+    expect(ws.getCell("A2").value).toBe("#N/A");
+    // Typed as Excel spells it, it is the error Excel would make of it.
+    expect(ws.getCell("A3").value).toEqual({ error: "#REF!" });
+    // Only the exact spelling Excel writes in a file goes out as an error; any other spelling stays as typed.
+    expect(ws.getCell("A4").value).toBe("#n/a");
   });
 });
