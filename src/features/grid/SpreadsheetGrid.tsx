@@ -464,6 +464,10 @@ export default function SpreadsheetGrid() {
   const tappedAlreadySelected = useRef(false);
   /** Where a finger came down, so its lift can tell a tap from a drag or a hold. Cleared by a hold. */
   const tapStart = useRef<{ x: number; y: number } | null>(null);
+  /** The cell a finger came down on, for the mouse events the browser sends after the tap. Those
+   *  are hit-tested once the tap has already run, and a second tap on a formula cell moves the page
+   *  above the grid as its editor opens, so their own target can be two rows down (#201). */
+  const touchedCell = useRef<{ row: number; col: number } | null>(null);
   /** A finger held still on a cell opens the cell menu, as a right-click does. iOS never fires
    *  `contextmenu` for it, and on a short screen the menu is where the touch bar's actions went
    *  (#129). Android fires `contextmenu` as well, which opens the same menu in the same place. */
@@ -1098,7 +1102,11 @@ export default function SpreadsheetGrid() {
                     setCellMenu({ x: e.clientX, y: e.clientY });
                   }}
                   onMouseEnter={() => handleMouseEnter(r, c)}
-                  onDoubleClick={() => startEdit(r, c)}
+                  // Not after a touch: the second tap has already opened the editor on its lift, and the
+                  // `dblclick` the browser adds is hit-tested after the page has moved (#201).
+                  onDoubleClick={() => {
+                    if (!lastPressWasTouch()) startEdit(r, c);
+                  }}
                   // Touch has no keyboard to start typing into and no comfortable double-tap, so
                   // a second tap on the cell already selected opens the editor — the pattern
                   // every mobile spreadsheet uses. Sampled on pointerdown because mousedown has
@@ -1106,6 +1114,7 @@ export default function SpreadsheetGrid() {
                   // very first tap open the editor.
                   onPointerDown={(e) => {
                     if (e.pointerType !== "touch") return;
+                    touchedCell.current = { row: r, col: c };
                     tappedAlreadySelected.current = isActive(r, c);
                     tapStart.current = { x: e.clientX, y: e.clientY };
                     endLongPress();
@@ -1481,26 +1490,47 @@ export default function SpreadsheetGrid() {
       className="relative h-full overflow-auto bg-white"
       tabIndex={-1}
       onKeyDown={handleKeyDown}
+      // Every press starts with no touched cell; a cell's own touch handler sets it (#201, below).
+      onPointerDownCapture={() => (touchedCell.current = null)}
       // A click or tap anywhere on the grid while the cell's editor holds a formula waiting for an
       // address (`=`, `=SUM(`) used to save that half-formula over the cell (#99). Stopped here, on
       // the way down, so neither the cell's own mousedown nor the editor's blur ever sees it.
       //
       // On a touch screen the tap does more than nothing: while either editor holds a formula, the
       // tapped cell's address goes into it (pointing, #99) and the editor keeps focus and keyboard.
+      //
+      // After a tap, the `mousedown` the browser adds acts on the cell the finger touched rather than
+      // whatever is under that point by then (#201). A second tap on a formula cell opens its editor
+      // and the page above the grid moves for a moment as it does, so the hit-test landed two rows
+      // down: the editor closed, the selection stretched to there, and typing went over that cell.
       onMouseDownCapture={(e) => {
         const target = e.target as HTMLElement;
+        const touched = lastPressWasTouch() ? touchedCell.current : null;
+        touchedCell.current = null;
         if (target.closest("input, select")) return;
+        const td = target.closest<HTMLElement>("td[data-row]");
+        const hit = td ? { row: Number(td.dataset.row), col: Number(td.dataset.col) } : null;
         const formula = pointingFormula();
         if (formula && lastPressWasTouch()) {
           e.preventDefault();
           e.stopPropagation();
-          const td = target.closest<HTMLElement>("td[data-row]");
-          if (td) pointAt(Number(td.dataset.row), Number(td.dataset.col));
+          const at = touched ?? hit;
+          if (at) pointAt(at.row, at.col);
           return;
         }
-        if (!editing || !awaitsOperand(editing.value)) return;
-        e.preventDefault();
-        e.stopPropagation();
+        if (editing && awaitsOperand(editing.value)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        if (touched && (hit?.row !== touched.row || hit?.col !== touched.col)) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleMouseDown(touched.row, touched.col, false);
+          // A finger drags a range by the grip, never by mouse events; one that came in late must
+          // not stretch the selection to wherever the layout was when it did.
+          isSelecting.current = false;
+        }
       }}
     >
       {/*

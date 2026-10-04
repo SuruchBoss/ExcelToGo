@@ -1912,6 +1912,53 @@ const FLOWS = [
     },
   },
   {
+    // #201, from the PO's review: on a phone, a second tap on a formula cell opens its editor, and
+    // the page above the grid moves for a moment as it does. The mouse events the browser sends
+    // after a tap are hit-tested after that move, so the `mousedown` landed two rows down: the
+    // editor closed, the selection stretched to A2:A4, and what was typed went over A4. On main the
+    // same `mousedown` pointed A4 into the formula instead (`=A1*2A4`). A tap's mouse events now
+    // act on the cell the finger touched.
+    name: "on a phone, a second tap on a formula cell opens its editor, and what is typed goes into that formula, not two rows down",
+    width: 390,
+    touch: true,
+    async run(page) {
+      const put = async (row, col, text) => {
+        await cell(page, row, col).tap();
+        await cell(page, row, col).tap();
+        await cell(page, row, col).locator("input").waitFor({ timeout: 5000 });
+        await page.keyboard.insertText(text);
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(100);
+      };
+      await put(0, 0, "100");
+      await put(1, 0, "=A1*2");
+      await put(3, 0, "999");
+      const bar = page.getByPlaceholder(label.formulaBar);
+      const text = async (row, col) => (await cell(page, row, col).innerText()).trim();
+
+      await cell(page, 1, 0).tap();
+      await page.waitForTimeout(150);
+      await cell(page, 1, 0).tap();
+      await page.waitForTimeout(200);
+      const input = cell(page, 1, 0).locator("input");
+      const opened = (await input.count()) === 1 ? await input.inputValue() : null;
+      const editors = await page.locator("td input").count();
+      note(opened === "=A1*2" && editors === 1, `the second tap opens A2's editor with =A1*2 in it (A2 editor "${opened}", editors open: ${editors})`);
+
+      // A second tap edits in place, as on a value (#202), so the 5 goes on the end of the formula.
+      await page.keyboard.insertText("5");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
+      note((await text(1, 0)) === "2500", `what is typed lands in A2's formula (A2 "${await text(1, 0)}")`);
+      note((await text(3, 0)) === "999", `the cell two rows down keeps its value (A4 "${await text(3, 0)}")`);
+      await cell(page, 1, 0).tap();
+      await page.waitForTimeout(100);
+      note((await bar.inputValue()) === "=A1*25", `A2 holds =A1*25, with no address put into it (bar "${await bar.inputValue()}")`);
+    },
+  },
+  {
     // #191: on a phone, Enter on the last row opens the new row's editor. The toolbar's undo takes
     // no focus, so the editor stayed open on a row undo had taken away: the next tap committed into
     // it and threw `reading 'slice'`, and what was typed there went with the exception. The editor
