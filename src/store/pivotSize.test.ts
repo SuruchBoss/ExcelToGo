@@ -10,7 +10,7 @@ import { computeTab, useSheetStore } from "./sheetStore";
  * A pivot sheet as big as its answer (#56).
  *
  * The result was written into a new sheet of the default 30×10 and whatever did not fit was dropped:
- * a breakdown of 35 products lost five of them and its Grand total row, and twelve months across the
+ * a breakdown of 35 products kept 29 of them and lost its Grand total row, and twelve months across the
  * top lost three and the Grand total column. What was left looked complete.
  */
 const state = () => useSheetStore.getState();
