@@ -2410,6 +2410,9 @@ Details that were worth getting right:
   than by code point — and blank groups always sink to the bottom.
 - **A row that is blank in the grouping column but carries a number** still counts, as a `(blank)` group,
   rather than being dropped silently.
+- **The summary sheet is as big as the answer.** 35 groups give 35 rows and the Grand total row; twelve
+  months give twelve columns and the Grand total column. A new sheet used to stop at 30×10, and what did
+  not fit was dropped without a word, totals included (#56).
 
 **A summary remembers where it came from, and says when the source moves.** The sheet keeps the range it
 read, the fields that were picked, and a fingerprint of the values at the time. Change the source and a
@@ -4202,6 +4205,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/liveEmptyResult.test.ts` | 2 | A source answering with an empty list (#65): the block keeps its last header, the rows under it are cleared, a SUM reads 0 rather than the envelope, and it fills again when rows come back |
 | `store/workbookCompute.test.ts` | 3 | Every path in the store computes with the workbook (#58): a pivot counts a value read from another sheet (175.3, not 105.3), a sort orders cross-sheet values by their numbers, and a guard that fails on any bare `computeSheet` outside the engine |
 | `store/datePivot.test.ts` | 1 | A pivot by day (#45): its rows are headed with dates, not serials |
+| `store/pivotSize.test.ts` | 4 | A summary sheet as big as its answer (#56): all 35 products with the Grand total row in bold, all twelve months with the Grand total column, the same after a refresh, and a small result still opening on a 30×10 sheet with room to work |
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/convertDates.test.ts` | 5 | "Convert to dates" and "Date (B.E.)" through the store (#82): converted cells show the Buddhist year while unreadable ones and formulas stay, A.D. month-first, one undo for all, a chosen format kept, the B.E. format shown and switched back |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |

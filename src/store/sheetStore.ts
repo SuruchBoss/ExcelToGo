@@ -29,6 +29,8 @@ import {
   type CrossSheetResolver,
   copyRange,
   createEmptySheet,
+  DEFAULT_COLS,
+  DEFAULT_ROWS,
   deleteColumn,
   deleteRow,
   detectSortRange,
@@ -522,19 +524,22 @@ function renderPivotSheet(
   });
   if (result.header.length === 0 || result.rows.length === 0) return null;
 
-  const out = createEmptySheet();
   const lines = [result.header, ...result.rows, ...(result.totalRow ? [result.totalRow] : [])];
+  // As big as the answer, and never smaller than a new sheet. The default 30×10 used to be the
+  // limit, and everything past it was dropped without a word, the Grand total row and column
+  // included (#56). No cap is needed: a pivot has at most one row per source row and one column per
+  // source row, and the source already fits in a sheet.
+  const out = createEmptySheet(Math.max(DEFAULT_ROWS, lines.length), Math.max(DEFAULT_COLS, result.header.length));
   lines.forEach((line, r) => {
     line.forEach((cell, c) => {
-      if (r < out.rows && c < out.cols) out.cells[r][c] = cell === null ? "" : String(cell);
+      out.cells[r][c] = cell === null ? "" : String(cell);
     });
   });
   // The header and the closing total are the two rows a reader scans for, so they are bold rather
   // than left to be picked out of a wall of numbers.
-  for (let c = 0; c < result.header.length && c < out.cols; c++) {
+  for (let c = 0; c < result.header.length; c++) {
     out.formats[0][c] = { bold: true };
-    const last = lines.length - 1;
-    if (result.totalRow && last < out.rows) out.formats[last][c] = { bold: true };
+    if (result.totalRow) out.formats[lines.length - 1][c] = { bold: true };
   }
 
   out.pivot = { sheetId: sourceSheetId, range, config, hash: hashValues(rows) };
