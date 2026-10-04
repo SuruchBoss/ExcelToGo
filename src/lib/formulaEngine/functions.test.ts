@@ -410,6 +410,15 @@ describe("TEXT writes the value the way its format says, as Excel does (#29)", (
     expect(calc('TEXT("0.25","0%")')).toBe("25%");
     expect(calc('TEXT("abc","0.00")')).toBe("abc");
   });
+
+  // Not Excel's answers: what TEXT gives for the codes it cannot write yet. A plain number reads as
+  // "not formatted"; 12:00 for 36 hours would read as a fact. Excel: 3/4, 1.23E+04, 36:00.
+  it("gives the plain number for fractions, E+ and elapsed time, rather than a wrong one", () => {
+    expect(calc('TEXT(0.75,"# ?/?")')).toBe("0.75");
+    expect(calc('TEXT(12345,"0.00E+00")')).toBe("12345");
+    expect(calc('TEXT(1.5,"[h]:mm")')).toBe("1.5");
+    expect(calc('TEXT(0.1,"[mm]:ss")')).toBe("0.1");
+  });
 });
 
 describe("SUMIFS", () => {

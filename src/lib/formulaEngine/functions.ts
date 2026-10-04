@@ -673,6 +673,10 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const n = isBlank(v) ? 0 : toNumber(v);
     if (isError(n)) return toDisplayString(v);
     if (code === "") return "";
+    // Elapsed time ([h]:mm, [mm]:ss) counts past a day, and the date formatter reads [h] as the hour
+    // of the day: 1.5 would come out 12:00 where Excel says 36:00. Until it counts them, the plain
+    // number, as for fractions and E+ (#29) — a number nobody mistakes for a time, not a wrong one.
+    if (/\[[hms]+\]/i.test(code)) return toDisplayString(n);
     return isDateFormatCode(code) ? formatSerial(n, code) : formatNumberCode(n, code);
   },
   // Both are serials (#45), in the reader's own time zone: NOW used to be UTC while TODAY was local,
