@@ -384,6 +384,34 @@ describe("INDEX/MATCH together", () => {
   });
 });
 
+describe("TEXT writes the value the way its format says, as Excel does (#29)", () => {
+  // 45000 is 15 March 2023. Every expected value is Excel's.
+  it("formats numbers with percent, decimals and thousands", () => {
+    expect(calc('TEXT(0.5,"0%")')).toBe("50%");
+    expect(calc('TEXT(0.125,"0.0%")')).toBe("12.5%");
+    expect(calc('TEXT(1234.5,"#,##0.00")')).toBe("1,234.50");
+    expect(calc('TEXT(-1234.5,"#,##0.00")')).toBe("-1,234.50");
+    expect(calc('TEXT(3.14159,"0.00")')).toBe("3.14");
+    expect(calc('TEXT(1234567,"#,##0")')).toBe("1,234,567");
+    expect(calc('TEXT(5,"000")')).toBe("005");
+    expect(calc('TEXT(2.5,"0")')).toBe("3");
+  });
+
+  it("formats a serial as a date or a time", () => {
+    expect(calc('TEXT(45000,"dd/mm/yyyy")')).toBe("15/03/2023");
+    expect(calc('TEXT(45000,"d mmm yyyy")')).toBe("15 Mar 2023");
+    expect(calc('TEXT(45000,"yyyy-mm-dd")')).toBe("2023-03-15");
+    expect(calc('TEXT(45000.75,"hh:mm")')).toBe("18:00");
+  });
+
+  it("reads numbers from cells and text that spells one, and leaves other text as it is", () => {
+    expect(calc('TEXT(A1,"#,##0.00")', [[1234.5]])).toBe("1,234.50");
+    expect(calc('"Total: "&TEXT(A1,"#,##0.00")', [[1234.5]])).toBe("Total: 1,234.50");
+    expect(calc('TEXT("0.25","0%")')).toBe("25%");
+    expect(calc('TEXT("abc","0.00")')).toBe("abc");
+  });
+});
+
 describe("SUMIFS", () => {
   it("sums the rows meeting two conditions at once", () => {
     expect(calc('SUMIFS(C2:C6,A2:A6,"กรุงเทพ",B2:B6,"Q2")', sales)).toBe(260);

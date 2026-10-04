@@ -3645,6 +3645,13 @@ forgotten is `#NAME?`, not a silent 0 that reads as "no sales in the north". Tha
 (`COUNTIF`, `UPPER`, `VLOOKUP`…) except those made to look at errors: `IF`, `IFERROR`, `IFNA`, `COUNT`,
 `COUNTA` and `COUNTBLANK`. A defined name, `TRUE` and `FALSE` are not unknown names.
 
+**`TEXT` formats by its code, as Excel does (#29)** — `=TEXT(0.5,"0%")` is `50%`, `=TEXT(1234.5,"#,##0.00")` is
+`1,234.50` and `=TEXT(45000,"dd/mm/yyyy")` is `15/03/2023`. The code used to be ignored, so a label like
+`="Total: "&TEXT(A1,"#,##0.00")` printed the raw number. It uses the same code readers the grid shows a file's own
+formats with: numbers, percent, decimals, thousands, sections (`0;(0)`), quoted text, dates and times, Thai month
+names and the Buddhist year (`bbbb`). Text that is not a number comes back as it is. **Not yet:** fractions
+(`# ?/?`) and scientific notation (`0.00E+00`) come back as the plain number, right but unformatted.
+
 **Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
 position inside a block. `MROUND` is not in the engine. Arithmetic that overflows (`10^308*10`) still
 shows as Infinity rather than Excel's `#NUM!`; only `^` and `POWER` were fixed. A chain of `^` still
@@ -4156,7 +4163,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `crash/crashTest.test.ts` | 4 | The crash the gates use to reach the rescue screen (#145): only an automated browser that asked for it crashes · a browser a person uses never does, whatever its storage holds · automation that did not ask does not · storage that cannot be read does not |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 136 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `functions.test.ts` | 139 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones, and `TEXT` formatting by its code as Excel does (#29) |
 | `textDates.test.ts` | 4 | The text `1/9/2026` (Gregorian d/m/yyyy) is `#VALUE!` in `DAY`, `MONTH`, `YEAR` and `DATEDIF`, in a cell or written in the formula, while a B.E. date, ISO text and a serial from a file still read right — each case run twice, in the Bangkok and New York time zones, in one process (#169) |
 | `textFromCells.test.ts` | 14 | Text and TRUE/FALSE read from cells skipped by `SUM`, `AVERAGE`, `MIN`, `MAX`, `PRODUCT` and `COUNT`, in a single cell and a range, while a value written in the formula still converts (`SUM("5",1)` = 6); `C2*2` over `'1,250` still 2500; `SUMIF`/`SUMIFS`/`AVERAGEIF`/`SUMPRODUCT` adding only numbers; and a name nothing defines being `#NAME?` in every function but those that look at errors (#166) |
 | `seo.test.ts` | 23 | Each page's search result (#148): title/description length, no AI promise, the formula count matching the palette, its own canonical, JSON-LD that parses and claims no rating · The FAQ (#152): FAQPage matching the page word for word, seven questions in both languages, yes/no questions opening with the answer, no ranking words, counts that match, what an export loses, and Supabase only with "your own server" · The formula pages (#149): titles and descriptions that fit, "สูตร NAME:" first, the breadcrumb trail, and every page in the sitemap |
