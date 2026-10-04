@@ -56,6 +56,8 @@ import CellContextMenu from "./CellContextMenu";
 
 /** About the width of the "tap again to type" label (#171), to tell whether it fits beside a cell. */
 const TAP_HINT_ROOM = 150;
+/** The widest the note under a cell that refused an edit (#207) grows before it wraps: `max-w-56`. */
+const REFUSAL_ROOM = 224;
 /** Half the selection grip's 44px target: the room a flush right edge needs on a touch screen. */
 const GRIP_ROOM = 22;
 
@@ -569,6 +571,28 @@ export default function SpreadsheetGrid() {
   }, [tapHintShown, tapHint]);
 
   /**
+   * A cell that refused an edit, and why (#207).
+   *
+   * A live-data cell, or a template's structure, cannot be typed over, and it used to refuse in
+   * silence: no editor opened, the keys went nowhere, Enter moved on, and what was typed was gone
+   * with only a hover tooltip to explain it. Now the cell says so under itself, the way the tap
+   * hint does, and says it out loud once. Every keystroke that is refused keeps it up a little longer.
+   */
+  const [refusal, setRefusal] = useState<{ row: number; col: number; shift: number; text: string } | null>(null);
+  const refusalShown =
+    refusal !== null &&
+    !editing &&
+    selection.startRow === selection.endRow &&
+    selection.startCol === selection.endCol &&
+    refusal.row === selection.anchorRow &&
+    refusal.col === selection.anchorCol;
+  useEffect(() => {
+    if (!refusalShown) return;
+    const timer = window.setTimeout(() => setRefusal(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [refusalShown, refusal]);
+
+  /**
    * Put the browser's focus where the cursor is.
    *
    * Two jobs in one effect, because they are the same move.
@@ -661,16 +685,36 @@ export default function SpreadsheetGrid() {
     [boundCells, sheet.template]
   );
 
-  const startEdit = useCallback(
-    (row: number, col: number, initialValue?: string) => {
-      if (!canEdit(row, col)) return;
-      // A tab that is only looking (#47) says so rather than opening an editor it cannot save.
-      if (!isEditingTab()) return noteRefusedEdit();
-      setTapHint(null);
-      setEditing({ row, col, value: initialValue ?? rawAt(row, col), typed: initialValue !== undefined });
-    },
-    [rawAt, canEdit, setEditing]
-  );
+  /**
+   * How far a label `room` pixels wide, drawn under the cell from its left edge, has to move left
+   * to stay inside the grid — a cell half off a phone screen would otherwise cut its label in half.
+   */
+  const labelShift = (row: number, col: number, room: number) => {
+    const scroller = scrollRef.current;
+    const box = scroller?.querySelector(`td[data-row="${row}"][data-col="${col}"]`)?.getBoundingClientRect();
+    const overhang = scroller && box ? box.left + room - (scroller.getBoundingClientRect().right - 4) : 0;
+    return Math.max(0, Math.round(overhang));
+  };
+
+  /** Say under the cell why it did not take an edit (#207), out loud only the first time in a row. */
+  const refuseEdit = (row: number, col: number) => {
+    const text = boundCells.has(`${row},${col}`)
+      ? t.data.liveCellRefused(cellRef(row, col))
+      : t.template.lockedCellRefused(cellRef(row, col));
+    const again = refusalShown && refusal.row === row && refusal.col === col;
+    setTapHint(null);
+    setRefusal({ row, col, shift: labelShift(row, col, REFUSAL_ROOM), text });
+    if (!again) announce(text);
+  };
+
+  const startEdit = (row: number, col: number, initialValue?: string) => {
+    if (!canEdit(row, col)) return refuseEdit(row, col);
+    // A tab that is only looking (#47) says so rather than opening an editor it cannot save.
+    if (!isEditingTab()) return noteRefusedEdit();
+    setTapHint(null);
+    setRefusal(null);
+    setEditing({ row, col, value: initialValue ?? rawAt(row, col), typed: initialValue !== undefined });
+  };
 
   /**
    * One tap has selected a cell and opened nothing (#171). Whatever still holds a keyboard is let go,
@@ -680,12 +724,7 @@ export default function SpreadsheetGrid() {
     const active = document.activeElement;
     if (active === keyboardKeeper.current) (active as HTMLElement).blur();
     if (!canEdit(row, col) || !isEditingTab()) return;
-    // Under the cell from its left edge, moved left by however much of it would run off the grid's
-    // right side — a cell half off a phone screen would otherwise cut its own label in half.
-    const scroller = scrollRef.current;
-    const box = scroller?.querySelector(`td[data-row="${row}"][data-col="${col}"]`)?.getBoundingClientRect();
-    const overhang = scroller && box ? box.left + TAP_HINT_ROOM - (scroller.getBoundingClientRect().right - 4) : 0;
-    setTapHint({ row, col, shift: Math.max(0, Math.round(overhang)) });
+    setTapHint({ row, col, shift: labelShift(row, col, TAP_HINT_ROOM) });
     announce(t.grid.tapAgainToType);
   };
 
@@ -781,6 +820,15 @@ export default function SpreadsheetGrid() {
     if (editing) return;
     const row = selection.anchorRow;
     const col = selection.anchorCol;
+    // While a cell says it refused what was typed (#207), Enter and Escape put the note away and
+    // leave the cursor where it is, as they dismiss Excel's own "this cell is protected" message.
+    // Typing and pressing Enter in one go was how the value vanished: the note came with the first
+    // key and the cursor left with Enter, taking the note with it before anyone could read it.
+    if (refusalShown && (e.key === "Enter" || e.key === "Escape") && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      setRefusal(null);
+      e.preventDefault();
+      return;
+    }
     const bounds = { rows: sheet.rows, cols: sheet.cols };
     const isEmpty = (r: number, c: number) => (sheet.cells[r]?.[c] ?? "") === "";
     const jump = e.ctrlKey || e.metaKey;
@@ -973,6 +1021,7 @@ export default function SpreadsheetGrid() {
       case "Delete":
       case "Backspace":
         if (!isBound(row, col)) clearSelection();
+        else refuseEdit(row, col);
         e.preventDefault();
         break;
       case "F2":
@@ -1001,8 +1050,10 @@ export default function SpreadsheetGrid() {
           startEdit(row, col, e.key);
         } else if (e.key === "Unidentified" || e.key === "Process" || e.nativeEvent.keyCode === 229) {
           // A phone keyboard typing with no editor open: it names no key, so there is nothing to
-          // start the cell with. It is not dropped in silence either — the cell says how to type (#171).
-          tappedToSelect(row, col);
+          // start the cell with. It is not dropped in silence either — the cell says how to type (#171),
+          // or, on a cell that takes no typing, why not (#207).
+          if (canEdit(row, col)) tappedToSelect(row, col);
+          else refuseEdit(row, col);
         }
     }
   };
@@ -1091,6 +1142,8 @@ export default function SpreadsheetGrid() {
                   // it: the cell's text is its value, to anything that reads it, and the label is
                   // not. It is said out loud when it appears.
                   data-tap-hint={tapHintShown && tapHint.row === r && tapHint.col === c ? t.grid.tapAgainToType : undefined}
+                  // Why this cell did not take what was typed (#207), drawn the same way.
+                  data-refused={refusalShown && refusal.row === r && refusal.col === c ? refusal.text : undefined}
                   rowSpan={merge ? merge.endRow - merge.startRow + 1 : undefined}
                   colSpan={merge ? merge.endCol - merge.startCol + 1 : undefined}
                   onMouseDown={(e) => {
@@ -1165,7 +1218,7 @@ export default function SpreadsheetGrid() {
                     const start = tapStart.current;
                     tapStart.current = null;
                     if (tappedAlreadySelected.current) {
-                      if (!editingHere && !locked) {
+                      if (!editingHere) {
                         caretAtEnd.current = true;
                         startEdit(r, c);
                       }
@@ -1193,6 +1246,7 @@ export default function SpreadsheetGrid() {
                   className={clsx(
                     "relative border-b border-r border-zinc-200 text-sm outline-none",
                     "data-tap-hint:after:pointer-events-none data-tap-hint:after:absolute data-tap-hint:after:left-[calc(-1*var(--tap-hint-shift,0px))] data-tap-hint:after:top-full data-tap-hint:after:z-30 data-tap-hint:after:mt-1 data-tap-hint:after:whitespace-nowrap data-tap-hint:after:rounded-md data-tap-hint:after:bg-zinc-800 data-tap-hint:after:px-2 data-tap-hint:after:py-1 data-tap-hint:after:text-xs data-tap-hint:after:font-medium data-tap-hint:after:text-white data-tap-hint:after:shadow-md data-tap-hint:after:content-[attr(data-tap-hint)]",
+                    "data-refused:after:pointer-events-none data-refused:after:absolute data-refused:after:left-[calc(-1*var(--refused-shift,0px))] data-refused:after:top-full data-refused:after:z-30 data-refused:after:mt-1 data-refused:after:w-max data-refused:after:max-w-56 data-refused:after:whitespace-normal data-refused:after:rounded-md data-refused:after:border data-refused:after:border-amber-300 data-refused:after:bg-amber-50 data-refused:after:px-2 data-refused:after:py-1 data-refused:after:text-xs data-refused:after:font-medium data-refused:after:text-amber-900 data-refused:after:shadow-md data-refused:after:content-[attr(data-refused)]",
                     squeezed ? "px-0.5" : "px-2",
                     // A live block reads as one object: tinted fill, a green outline on its edges,
                     // and its header row set apart from the values below it.
@@ -1288,6 +1342,9 @@ export default function SpreadsheetGrid() {
                       ...pinned,
                       ...(tapHintShown && tapHint.row === r && tapHint.col === c
                         ? ({ "--tap-hint-shift": `${tapHint.shift}px` } as React.CSSProperties)
+                        : null),
+                      ...(refusalShown && refusal.row === r && refusal.col === c
+                        ? ({ "--refused-shift": `${refusal.shift}px` } as React.CSSProperties)
                         : null),
                     };
                   })()}

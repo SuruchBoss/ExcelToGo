@@ -1509,6 +1509,58 @@ const FLOWS = [
     },
   },
   {
+    // #207 (blind test R4, N7). A live-data cell takes no typing, rightly, but it used to refuse in
+    // silence: `999` then Enter left the cell as it was, moved the cursor on, and said nothing — the
+    // only word about it was a hover tooltip. The seam is the keyboard meeting a cell the grid will
+    // not open, which no unit test reaches.
+    name: "typing over a live cell says why nothing was saved, and Enter keeps the cursor on it (#207)",
+    async run(page) {
+      const REFUSED = /^B2 (เป็นข้อมูลสด|is live data)/;
+      const active = () => page.evaluate(() => {
+        const td = document.querySelector('[role="grid"] td[tabindex="0"]');
+        return td ? `${td.dataset.row},${td.dataset.col}` : null;
+      });
+      const spoken = () => page.evaluate(() => [...document.querySelectorAll('[role="status"][aria-live]')].map((e) => e.textContent).join(" "));
+      const refused = () => cell(page, 1, 1).getAttribute("data-refused");
+
+      await cell(page, 0, 0).click();
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.trySales }).click();
+      const form = page.getByRole("dialog");
+      await form.getByRole("button", { name: label.test }).click();
+      await form.getByText(/ได้ข้อมูล 5 แถว|Got 5 rows/).waitFor({ timeout: 15_000 });
+      await form.getByRole("button", { name: label.saveAndAdd }).click();
+      const insert = page.getByRole("dialog").getByRole("button", { name: label.insert });
+      await insert.waitFor({ timeout: 15_000 });
+      await insert.click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "CF-01", null, { timeout: 15_000 });
+
+      await cell(page, 1, 1).click();
+      const before = (await cell(page, 1, 1).innerText()).trim();
+      await page.keyboard.type("999");
+      note((await cell(page, 1, 1).locator("input").count()) === 0, "typing on the live cell B2 opens no editor");
+      note(REFUSED.test((await refused()) ?? ""), `B2 says under itself why ("${await refused()}")`);
+      const said = await spoken();
+      note(/B2 (เป็นข้อมูลสด|is live data)/.test(said), `and says it out loud ("${said.slice(0, 120)}")`);
+
+      await page.keyboard.press("Enter");
+      note((await active()) === "1,1", `Enter puts the note away and leaves the cursor on B2 (${await active()})`);
+      note((await refused()) === null, "the note is gone after Enter");
+      note((await cell(page, 1, 1).innerText()).trim() === before, `B2 still holds the source's value ("${before}")`);
+      await page.keyboard.press("Enter");
+      note((await active()) === "2,1", `with no note up, Enter moves down as always (${await active()})`);
+
+      await page.keyboard.press("ArrowUp");
+      await page.keyboard.press("Delete");
+      note(REFUSED.test((await refused()) ?? "") && (await cell(page, 1, 1).innerText()).trim() === before, "Delete on B2 is refused out loud too, and the value stays");
+      await page.keyboard.press("Escape");
+      note((await refused()) === null && (await active()) === "1,1", "Escape puts the note away and the cursor stays");
+
+      await cell(page, 1, 1).dblclick();
+      note((await cell(page, 1, 1).locator("input").count()) === 0 && REFUSED.test((await refused()) ?? ""), "a double-click opens no editor and says why");
+    },
+  },
+  {
     // #83. The app is used to open a file, fix it and send it back, and a file with pictures or
     // Excel's own charts loses them on the way — which the person used to hear from whoever got
     // the file. The fixture is a real package (ExcelJS wrote the picture, the app's chart writer
