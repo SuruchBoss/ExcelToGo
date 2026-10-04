@@ -44,7 +44,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1975%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1979%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -65,7 +65,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1975 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1979 automated tests.
 
 ---
 
@@ -109,7 +109,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1975 passing tests could not catch
+### 🧪 What 1979 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -120,7 +120,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1975 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1979 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -395,7 +395,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1975-case Vitest suite |
+| `npm test` | Run the 1979-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -2418,6 +2418,9 @@ Details that were worth getting right:
   answers.
 - **Count counts the cells that hold something.** Text counts, blanks do not, as with Count in an Excel
   pivot: a group of 12 rows with one Amount left empty gives 11, not 12 (#57).
+- **Sum, Average, Min and Max of a group with an error show the error**, as an Excel pivot does: North with a `=1/0`
+  in it shows `#DIV/0!` in its row and in the Grand total, not a number that stepped over the error (#222). Text
+  and blanks are still stepped over, and Count still counts an error as a cell that holds something.
 - **Groups sort numerically when the labels are numbers**, otherwise by locale — so Thai sorts as Thai rather
   than by code point — and blank groups always sink to the bottom.
 - **A row that is blank in the grouping column but carries a number** still counts, as a `(blank)` group,
@@ -3011,7 +3014,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1975 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1979 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -4051,13 +4054,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1975 cases across 139 files, via Vitest
+npm test      # 1979 cases across 140 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1975 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1979 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -4176,10 +4179,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1975 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1979 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1975 passing tests could not catch](#-what-1975-passing-tests-could-not-catch), repeatable
+> [What 1979 passing tests could not catch](#-what-1979-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4246,6 +4249,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/workbookCompute.test.ts` | 3 | Every path in the store computes with the workbook (#58): a pivot counts a value read from another sheet (175.3, not 105.3), a sort orders cross-sheet values by their numbers, and a guard that fails on any bare `computeSheet` outside the engine |
 | `store/datePivot.test.ts` | 1 | A pivot by day (#45): its rows are headed with dates, not serials |
 | `store/pivotSize.test.ts` | 6 | A summary sheet as big as its answer (#56): all 35 products with the Grand total row in bold, all twelve months with the Grand total column, the same after a refresh, a small result still opening on a 30×10 sheet with room to work, a result too big for a sheet built nowhere and its size said, and a refresh too big for one alerting while the old pivot stays |
+| `store/pivotError.test.ts` | 2 | A pivot over a source with an error (#222): Sum, Average, Min and Max of the group holding `#DIV/0!` and the Grand total show `#DIV/0!` while the other group keeps its number, when built and when refreshed after the source gains the error |
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/convertDates.test.ts` | 5 | "Convert to dates" and "Date (B.E.)" through the store (#82): converted cells show the Buddhist year while unreadable ones and formulas stay, A.D. month-first, one undo for all, a chosen format kept, the B.E. format shown and switched back |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |
