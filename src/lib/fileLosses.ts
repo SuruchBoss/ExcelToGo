@@ -22,7 +22,16 @@ import { tokenize } from "./formulaEngine/tokenizer";
 import { FUNCTIONS } from "./formulaEngine/functions";
 import type { SheetModel } from "./sheet";
 
-export type LossKind = "pictures" | "shapes" | "charts" | "pivots" | "macros" | "externalLinks" | "unknownFunctions" | "names";
+export type LossKind =
+  | "pictures"
+  | "shapes"
+  | "charts"
+  | "pivots"
+  | "macros"
+  | "externalLinks"
+  | "unknownFunctions"
+  | "names"
+  | "errorValues";
 
 export interface FileLoss {
   kind: LossKind;
@@ -36,9 +45,10 @@ export interface FileLoss {
 /**
  * The order the notice lists them in: what a person sees in the file first, then what runs. Range
  * names sit next to unknown functions because both end in `#NAME?` on screen; a person who
- * reads one line about `#NAME?` should find the other cause right under it.
+ * reads one line about `#NAME?` should find the other cause right under it. Error values follow,
+ * the last thing that changes what a formula reads.
  */
-const ORDER: LossKind[] = ["pictures", "charts", "shapes", "pivots", "unknownFunctions", "names", "externalLinks", "macros"];
+const ORDER: LossKind[] = ["pictures", "charts", "shapes", "pivots", "unknownFunctions", "names", "errorValues", "externalLinks", "macros"];
 
 interface Rel {
   type: string;
@@ -77,6 +87,23 @@ function resolve(dir: string, target: string): string {
 }
 
 const endsWith = (type: string, kind: string) => type.endsWith(`/${kind}`);
+
+/**
+ * Cells holding a constant error, `<c t="e"><v>#DIV/0!</v></c>` (#227). The app keeps the code as
+ * text until #226, so a formula that reads one does not see an error; that is what the notice owes.
+ * A cell with a formula is not one of them: its error is a result, and the app calculates it again.
+ */
+export function countConstantErrors(sheetXml: string): number {
+  if (!sheetXml.includes('t="e"')) return 0;
+  let n = 0;
+  for (const m of sheetXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?c>)/g)) {
+    if (!/\bt="e"/.test(m[1])) continue;
+    const inner = m[2] ?? "";
+    if (/<(?:[A-Za-z_][\w.-]*:)?f[\s>/]/.test(inner)) continue;
+    if (/<(?:[A-Za-z_][\w.-]*:)?v[\s>]/.test(inner)) n += 1;
+  }
+  return n;
+}
 
 /** Count of elements with this local name, whatever prefix the writer chose (`xdr:pic`, `pic`). */
 function countElements(xml: string, local: string): number {
@@ -162,6 +189,8 @@ export async function findFileLosses(
       tally.add("charts", 1, part.name);
       continue;
     }
+    const sheetXml = (await zip.file(part.path)?.async("string")) ?? "";
+    tally.add("errorValues", countConstantErrors(sheetXml), part.name);
     const rels = await relsOf(zip, part.path);
     for (const rel of rels.values()) {
       if (endsWith(rel.type, "pivotTable")) tally.add("pivots", 1, part.name);

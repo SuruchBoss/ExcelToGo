@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync } from "node:fs";
+import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { findFileLosses, unknownFunctionsIn } from "./fileLosses";
@@ -154,5 +155,32 @@ describe("range names a file holds that cannot come in (#60), in the same report
   it("are still said when the package cannot be read again", async () => {
     const losses = await findFileLosses(new TextEncoder().encode("not a zip"), [{ name: "Sheet1", sheet: createEmptySheet(), droppedNames: ["Dynamic"] }]);
     expect(losses).toEqual([{ kind: "names", count: 1, sheets: [], names: ["Dynamic"] }]);
+  });
+});
+
+describe("constant error cells (#227), shown as text until #226", () => {
+  /** Two sheets: errors typed into the first, as Excel writes them, and a formula that errs in the second. */
+  async function errorsFile(): Promise<Uint8Array> {
+    const wb = new ExcelJS.Workbook();
+    const sales = wb.addWorksheet("ยอดขาย");
+    sales.getCell("A1").value = { error: "#DIV/0!" } as ExcelJS.CellErrorValue;
+    sales.getCell("A2").value = { error: "#N/A" } as ExcelJS.CellErrorValue;
+    sales.getCell("A3").value = 5;
+    sales.getCell("A4").value = { formula: "SUM(A1:A3)", result: { error: "#DIV/0!" } } as ExcelJS.CellFormulaValue;
+    const other = wb.addWorksheet("อื่นๆ");
+    other.getCell("B2").value = { formula: "1/0", result: { error: "#DIV/0!" } } as ExcelJS.CellFormulaValue;
+    return new Uint8Array(await wb.xlsx.writeBuffer());
+  }
+
+  it("are counted and placed; a formula whose result is an error is not, since it calculates again", async () => {
+    const { losses } = await openFixture(await errorsFile());
+    expect(losses).toEqual([{ kind: "errorValues", count: 2, sheets: ["ยอดขาย"] }]);
+  });
+
+  it("are still there, and still said, after the file goes out of the app and back in", async () => {
+    const { sheets } = await openFixture(await errorsFile());
+    const blob = await exportWorkbookToXlsxBlob(sheets.map(({ name, sheet }) => ({ name, sheet, computed: computeSheet(sheet) })));
+    const { losses } = await openFixture(new Uint8Array(await blob.arrayBuffer()));
+    expect(losses).toEqual([{ kind: "errorValues", count: 2, sheets: ["ยอดขาย"] }]);
   });
 });
