@@ -1627,6 +1627,51 @@ const FLOWS = [
       }
     },
   })),
+  ...[1280, 390].map((width) => ({
+    // #203: opening Ask AI left focus on the selected cell, so a question typed straight away went
+    // into that cell while the question box stayed empty. On a phone the panel is a sheet over the
+    // grid, so the cell was overwritten out of sight. And Escape did not close the panel.
+    name: `opening Ask AI puts the typing in the question box, and Escape closes it back to the cell (${width}px)`,
+    width,
+    touch: width < 640,
+    async run(page) {
+      const phone = width < 640;
+      if (phone) {
+        await cell(page, 0, 0).tap();
+        await cell(page, 0, 0).tap();
+        await cell(page, 0, 0).locator("input").waitFor({ timeout: 5000 });
+        await page.keyboard.insertText("111");
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(100);
+        await cell(page, 0, 0).tap();
+      } else {
+        await typeInCell(page, 0, 0, "111");
+        await page.keyboard.press("ArrowUp");
+      }
+      const askAi = page.locator('button[aria-label="ถาม AI"]').first();
+      if (phone) await askAi.tap();
+      else await askAi.click();
+      const question = page.locator("aside textarea");
+      await question.waitFor({ timeout: 5000 });
+      await page.waitForTimeout(100);
+      const inBox = await question.evaluate((el) => el === document.activeElement);
+      note(inBox, "opening the panel puts focus in the question box");
+
+      await page.keyboard.type("total");
+      const a1 = (await cell(page, 0, 0).innerText()).trim();
+      note((await question.inputValue()) === "total" && a1 === "111", `"total" goes into the question, and A1 keeps 111 (box "${await question.inputValue()}", A1 "${a1}")`);
+
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
+      const open = await page.locator("aside textarea").count();
+      const back = await page.evaluate(() => {
+        const td = document.activeElement?.closest("td");
+        return td ? `${td.getAttribute("data-row")},${td.getAttribute("data-col")}` : document.activeElement?.tagName;
+      });
+      note(open === 0 && back === "0,0", `Escape closes the panel and focus is back on A1 (panel open: ${open > 0}, focus on ${back})`);
+    },
+  })),
   {
     // #109: there is no demo. The word was on the guide, the panel and the landing page, and it
     // told people the real app was a trial.
