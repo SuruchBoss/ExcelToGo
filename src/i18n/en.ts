@@ -430,7 +430,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1945", label: "automated tests" },
+      { value: "1956", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -468,7 +468,7 @@ export const en: Messages = {
         q: "Is my file uploaded to a server?",
         answer: "No. The file is read and edited in your browser and is not sent anywhere.",
         detail:
-          "The one exception: if you add your own API key and ask the AI, the question, the selected cells and the column headers go straight to Anthropic, never the file. The page's security policy (CSP) stops scripts from sending data anywhere else.",
+          "The exception is asking the AI, which sends your question, the selected range's address and the column headers, never the file. With your own API key they go from your browser straight to Anthropic. Without one they go to this site's server, which guesses a formula from keywords, and on to Anthropic if the site has a key set. Either way no cell values are sent beyond the words you typed into the question. The page's security policy (CSP) stops scripts from sending data anywhere else.",
       },
       {
         q: "Will the file come back broken?",
@@ -1252,6 +1252,8 @@ export const en: Messages = {
     textareaPlaceholder: "e.g. I want to total all sales in this column",
     askButton: "Ask AI",
     heuristicNote: "No API key yet, so this is a keyword guess — check the formula before using it, or open \"Use your own API key\" below for a real answer from Claude",
+    serverNote:
+      "No key: the question, range and headers go to this site's server for a guess (then to Anthropic, if the site has a key). Never the file.",
     guessBadge: "Keyword guess",
     overwriteWarning: (address) => `${address} already holds something — inserting overwrites it (you can undo)`,
     selfReference: (address) => `This formula reads ${address} itself, so putting it there would make it circular (#CIRCULAR!). Click an empty cell outside the range and ask again.`,

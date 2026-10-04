@@ -23,18 +23,19 @@ describe("parseFormula", () => {
     });
   });
 
-  it("makes ^ right-associative", () => {
-    // 2^3^2 should be 2^(3^2), not (2^3)^2
+  it("chains ^ from the left, as Excel does (#79)", () => {
+    // 2^3^2 is (2^3)^2 = 64 in Excel. This test used to pin 2^(3^2) = 512, the textbook order,
+    // which gave formulas copied out of Excel a different value with no error.
     expect(parseFormula("2^3^2")).toEqual({
       type: "binop",
       op: "^",
-      left: { type: "number", value: 2 },
-      right: {
+      left: {
         type: "binop",
         op: "^",
-        left: { type: "number", value: 3 },
-        right: { type: "number", value: 2 },
+        left: { type: "number", value: 2 },
+        right: { type: "number", value: 3 },
       },
+      right: { type: "number", value: 2 },
     });
   });
 

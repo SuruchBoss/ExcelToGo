@@ -172,6 +172,10 @@ export default function AIAssistantPanel() {
         {t.ai.selectionLabel} <span className="font-medium text-zinc-700">{selectionAddress}</span>
       </div>
 
+      {/* Said before the first question, not after an answer (#213): without a key the question goes
+          to this app's server, and the FAQ says so too. With a key the privacy note below covers it. */}
+      {!savedKey && <p className="text-[11px] leading-relaxed text-zinc-600">{t.ai.serverNote}</p>}
+
       <textarea
         ref={questionRef}
         value={question}
