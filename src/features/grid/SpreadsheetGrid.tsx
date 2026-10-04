@@ -728,7 +728,11 @@ export default function SpreadsheetGrid() {
 
   const handleMouseDown = (row: number, col: number, shiftKey: boolean) => {
     if (editing && (editing.row !== row || editing.col !== col)) commitEdit();
-    isSelecting.current = true;
+    // Only a mouse drags a range through the cells. A finger widens one by the grip, and the mouse
+    // events a browser adds after a tap land wherever the layout is by then: closing a formula
+    // editor moves the page back, so the `mouseup` came two rows up and stretched the selection
+    // to B4:B6 (#210).
+    isSelecting.current = !lastPressWasTouch();
     if (shiftKey) {
       setSelection(normalizeSelection({ row: selection.anchorRow, col: selection.anchorCol }, { row, col }));
     } else {
@@ -1503,6 +1507,7 @@ export default function SpreadsheetGrid() {
       // whatever is under that point by then (#201). A second tap on a formula cell opens its editor
       // and the page above the grid moves for a moment as it does, so the hit-test landed two rows
       // down: the editor closed, the selection stretched to there, and typing went over that cell.
+      // `handleMouseDown` starts no mouse drag for a touch, whichever cell the `mousedown` hit.
       onMouseDownCapture={(e) => {
         const target = e.target as HTMLElement;
         const touched = lastPressWasTouch() ? touchedCell.current : null;
@@ -1527,9 +1532,6 @@ export default function SpreadsheetGrid() {
           e.preventDefault();
           e.stopPropagation();
           handleMouseDown(touched.row, touched.col, false);
-          // A finger drags a range by the grip, never by mouse events; one that came in late must
-          // not stretch the selection to wherever the layout was when it did.
-          isSelecting.current = false;
         }
       }}
     >
