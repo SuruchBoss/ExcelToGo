@@ -64,6 +64,18 @@ describe("showing a serial the way a format code says", () => {
     expect(formatSerial(t, "dd\\.mm\\.yyyy")).toBe("15.01.2024");
   });
 
+  // A timesheet's total in [h]:mm is hours elapsed, not the hour of the day it lands on (#219).
+  it("counts elapsed time past a day in [h], [mm] and [ss]", () => {
+    expect(formatSerial(1.5, "[h]:mm")).toBe("36:00");
+    expect(formatSerial(3.75, "[h]:mm")).toBe("90:00");
+    expect(formatSerial(2.25, "[h]:mm:ss")).toBe("54:00:00");
+    expect(formatSerial(0.25, "[hh]:mm")).toBe("06:00");
+    expect(formatSerial(0.1, "[mm]:ss")).toBe("144:00");
+    expect(formatSerial(1 + 61 / 86_400, "[ss]")).toBe("86461");
+    // The plain tokens still show the time of day.
+    expect(formatSerial(1.5, "h:mm")).toBe("12:00");
+  });
+
   it("tells a date code from a number code", () => {
     for (const code of ["yyyy-mm-dd", "dd/mm/yyyy", "mm-dd-yy", "h:mm", "[$-409]d-mmm-yy;@", "d mmmm yyyy"]) expect(isDateFormatCode(code), code).toBe(true);
     for (const code of ["General", "@", "0.00", "#,##0", '0.00"%"', '"฿"#,##0.00', '"days"0']) expect(isDateFormatCode(code), code).toBe(false);
