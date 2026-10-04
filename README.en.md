@@ -2406,6 +2406,8 @@ Details that were worth getting right:
   averages is not the average; summing what's on screen would print a number wrong in a way nobody questions.
 - **A group with no numbers gives a blank, not 0.** "Nothing here" and "adds up to nothing" are different
   answers.
+- **Count counts the cells that hold something.** Text counts, blanks do not, as with Count in an Excel
+  pivot: a group of 12 rows with one Amount left empty gives 11, not 12 (#57).
 - **Groups sort numerically when the labels are numbers**, otherwise by locale — so Thai sorts as Thai rather
   than by code point — and blank groups always sink to the bottom.
 - **A row that is blank in the grouping column but carries a number** still counts, as a `(blank)` group,
