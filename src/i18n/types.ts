@@ -789,6 +789,8 @@ export interface Messages {
     aggNames: Record<"sum" | "count" | "average" | "min" | "max", string>;
     needRows: string;
     pickRowField: string;
+    /** The result would not fit in a sheet (#56): its size, and what to pick instead. */
+    tooBig: (rows: number, cols: number) => string;
   };
   formulaBar: {
     /** The ranges the selected formula reads, shown beside it and read out. */

@@ -4,7 +4,17 @@
 import { describe, expect, it } from "vitest";
 import { FormulaValue } from "./formulaEngine/types";
 import { ERR_DIV0 } from "./formulaEngine/types";
-import { PivotLabels, aggregate, buildPivot, compareLabels, hashValues, keyOf } from "./pivot";
+import { IMPORT_MAX_CELLS } from "./excelIO";
+import {
+  PIVOT_MAX_CELLS,
+  PIVOT_MAX_COLS,
+  PivotLabels,
+  aggregate,
+  buildPivot,
+  compareLabels,
+  hashValues,
+  keyOf,
+} from "./pivot";
 
 const labels: PivotLabels = {
   blank: "(blank)",
@@ -44,6 +54,12 @@ describe("aggregate", () => {
 
   it("counts every entry, text included — that is what makes count useful", () => {
     expect(aggregate(["a", "b", 3], "count")).toBe(3);
+  });
+
+  // Excel's pivot Count counts the cells that hold something; a blank is not one (#57).
+  it("does not count blank cells", () => {
+    expect(aggregate([1, null, "", "a", 0], "count")).toBe(3);
+    expect(aggregate([null, ""], "count")).toBeNull();
   });
 
   // "no numbers here" and "they add up to nothing" are different answers.
@@ -181,6 +197,35 @@ describe("buildPivot", () => {
     ]);
   });
 
+  // QA pass 2 counted 12 for a region with 11 Amounts filled in, and 59 for a total of 54 (#57).
+  it("counts only the filled-in values, in each group, each column and the totals (#57)", () => {
+    const withGaps: FormulaValue[][] = [
+      ["Region", "Month", "Amount"],
+      ["North", "M01", 100],
+      ["North", "M01", null],
+      ["North", "M02", 250],
+      ["North", "M02", ""],
+      ["South", "M01", 80],
+      ["South", "M02", null],
+      ["East", "M01", null],
+    ];
+    const flat = buildPivot(withGaps, { rowFields: [0], colField: null, valueField: 2, agg: "count" }, labels);
+    expect(flat.rows).toEqual([
+      ["East", null, null],
+      ["North", 2, 2],
+      ["South", 1, 1],
+    ]);
+    expect(flat.totalRow).toEqual(["Total", 3, 3]);
+
+    const split = buildPivot(withGaps, { rowFields: [0], colField: 1, valueField: 2, agg: "count" }, labels);
+    expect(split.rows).toEqual([
+      ["East", null, null, null],
+      ["North", 1, 1, 2],
+      ["South", 1, null, 1],
+    ]);
+    expect(split.totalRow).toEqual(["Total", 2, 1, 3]);
+  });
+
   it("orders groups with the same first key by the second", () => {
     const p = buildPivot(SALES, { rowFields: [0, 1], colField: null, valueField: 2, agg: "sum" }, labels);
     expect(p.rows.map((r) => `${r[0]}/${r[1]}`)).toEqual([
@@ -219,5 +264,45 @@ describe("hashValues", () => {
 
   it("treats a blank and an empty string the same, because a pivot does", () => {
     expect(hashValues([[null]] as never)).toBe(hashValues([[""]] as never));
+  });
+});
+
+/**
+ * A result bigger than a sheet is refused with its size rather than cut to fit (#56): a summary with
+ * groups missing and its totals still there reads as complete.
+ */
+describe("a pivot too big for a sheet", () => {
+  /** n rows where every row is its own group and its own column: an (n + 2) × (n + 2) result. */
+  const allDifferent = (n: number): FormulaValue[][] => [
+    ["Key", "Split", "Amount"],
+    ...Array.from({ length: n }, (_, i) => [`k${i}`, `s${i}`, 1]),
+  ];
+
+  it("says how big it would be instead of building it", () => {
+    const p = buildPivot(allDifferent(2000), { rowFields: [0], colField: 1, valueField: 2, agg: "sum" }, labels);
+    expect(p.tooBig).toEqual({ rows: 2002, cols: 2002 });
+    expect(p.rows).toEqual([]);
+    expect(p.totalRow).toBeNull();
+  });
+
+  it("builds the same source when it is not split across the top", () => {
+    const p = buildPivot(allDifferent(2000), { rowFields: [0], colField: null, valueField: 2, agg: "sum" }, labels);
+    expect(p.tooBig).toBeUndefined();
+    expect(p.rows).toHaveLength(2000);
+    expect(p.totalRow).toEqual(["Total", 2000, 2000]);
+  });
+
+  it("refuses more columns than Excel has, however few rows", () => {
+    // One group, so the cell count stays small; only the width is over.
+    const wide: FormulaValue[][] = [
+      ["Key", "Split", "Amount"],
+      ...Array.from({ length: PIVOT_MAX_COLS }, (_, i) => ["only", `s${i}`, 1]),
+    ];
+    const p = buildPivot(wide, { rowFields: [0], colField: 1, valueField: 2, agg: "sum" }, labels);
+    expect(p.tooBig).toEqual({ rows: 3, cols: PIVOT_MAX_COLS + 2 });
+  });
+
+  it("allows as many cells as a file opens with", () => {
+    expect(PIVOT_MAX_CELLS).toBe(IMPORT_MAX_CELLS);
   });
 });
