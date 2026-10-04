@@ -892,6 +892,24 @@ describe("a leading minus binds tighter than ^, as in Excel (#25)", () => {
   });
 });
 
+describe("a chain of ^ runs left to right, as in Excel (#79)", () => {
+  it("gives the answers Excel gives", () => {
+    expect(calc("2^3^2")).toBe(64);
+    expect(calc("2^2^3")).toBe(64);
+    expect(calc("(2^3)^2")).toBe(64);
+    expect(calc("2^(3^2)")).toBe(512);
+    expect(calc("-2^2^3")).toBe(64);
+    expect(calc("2^-1^2")).toBe(0.25);
+  });
+
+  it("leaves #25's answers as they were", () => {
+    expect(calc("-2^2")).toBe(4);
+    expect(calc("0-2^2")).toBe(-4);
+    expect(calc("2*-3^2")).toBe(18);
+    expect(calc("-(2^2)")).toBe(-4);
+  });
+});
+
 
 /**
  * Written from the mutation gate's survivors (see `check:mutants`): each is a change to the engine

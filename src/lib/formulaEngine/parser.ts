@@ -89,17 +89,18 @@ class Parser {
    * stays looser than `^` — `0-2^2` is -4 — because that one is parsed a level up, in
    * `parseAdditive`, before a `^` is ever looked for.
    *
-   * Still right-associative: `2^3^2` is `2^(3^2)` = 512, which `parser.test.ts` pins. Excel chains
-   * `^` from the left and gets 64; that is a separate difference, not changed here.
+   * A chain of `^` runs left to right, as Excel's does: `2^3^2` is `(2^3)^2` = 64 (#79). It used to
+   * be `2^(3^2)` = 512, the textbook order, which gave a formula copied out of Excel another value
+   * with no error to show for it — the same kind of silent difference as #25.
    */
   private parsePower(): AstNode {
-    const base = this.parseUnary();
-    if (this.peek().type === "OP" && this.peek().value === "^") {
+    let left = this.parseUnary();
+    while (this.peek().type === "OP" && this.peek().value === "^") {
       this.next();
-      const exp = this.parsePower();
-      return { type: "binop", op: "^", left: base, right: exp };
+      const right = this.parseUnary();
+      left = { type: "binop", op: "^", left, right };
     }
-    return base;
+    return left;
   }
 
   private parseUnary(): AstNode {
