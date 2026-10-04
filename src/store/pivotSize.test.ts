@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMessages } from "@/i18n";
 import { sheetFromGrid } from "@/lib/sheet";
 import { computeTab, useSheetStore } from "./sheetStore";
@@ -82,5 +82,52 @@ describe("a pivot sheet holds the whole result (#56)", () => {
     expect(state().buildPivotSheet({ rowFields: [1], colField: null, valueField: 3, agg: "sum" })).toBe(true);
     expect(pivotTab().sheet.rows).toBe(30);
     expect(pivotTab().sheet.cols).toBe(10);
+  });
+});
+
+describe("a pivot too big for a sheet is said, not cut (#56)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** 2,000 rows, each its own group and its own column: a 2,002 × 2,002 result. */
+  const tooWide = () => {
+    const grid = [["Key", "Split", "Amount"]];
+    for (let i = 0; i < 2000; i++) grid.push([`k${i}`, `s${i}`, "1"]);
+    return grid;
+  };
+
+  it("builds nothing, and says how big it would have been", () => {
+    useSheetStore.setState((s) => ({
+      sheets: s.sheets.map((t) => (t.id === s.activeSheetId ? { ...t, sheet: sheetFromGrid(tooWide()) } : t)),
+    }));
+    state().setSelection({ startRow: 0, startCol: 0, endRow: 2000, endCol: 2, anchorRow: 0, anchorCol: 0 });
+    const before = state().sheets;
+    const answer = state().buildPivotSheet({ rowFields: [0], colField: 1, valueField: 2, agg: "sum" });
+    expect(answer).toBe(getMessages().pivot.tooBig(2002, 2002));
+    expect(answer).toContain("2,002");
+    expect(state().sheets).toBe(before);
+  });
+
+  it("a refresh that would not fit keeps the pivot it had, and says why", () => {
+    expect(state().buildPivotSheet({ rowFields: [1], colField: 0, valueField: 3, agg: "sum" })).toBe(true);
+    const pivotId = pivotTab().id;
+    const kept = pivotTab().sheet;
+    // The source grows into 2,000 products, each one in its own column.
+    const sourceId = state().sheets[0].id;
+    const grown = [["Product", "Region", "Month", "Amount"]];
+    for (let i = 0; i < 2000; i++) grown.push([`P${i}`, `R${i}`, "M01", "10"]);
+    useSheetStore.setState((s) => ({
+      sheets: s.sheets.map((t) =>
+        t.id === sourceId
+          ? { ...t, sheet: sheetFromGrid(grown) }
+          : t.id === pivotId
+            ? { ...t, sheet: { ...t.sheet, pivot: { ...t.sheet.pivot!, range: { startRow: 0, startCol: 0, endRow: 2000, endCol: 3 } } } }
+            : t
+      ),
+    }));
+    const alerts: string[] = [];
+    vi.stubGlobal("alert", (message: string) => void alerts.push(message));
+    expect(state().refreshPivot()).toBe(false);
+    expect(alerts).toEqual([getMessages().pivot.tooBig(2002, 2002)]);
+    expect(pivotTab().sheet.cells).toBe(kept.cells);
   });
 });
