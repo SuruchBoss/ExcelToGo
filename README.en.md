@@ -16,12 +16,14 @@ right here, with the URL, the header and the data never passing through our serv
 > of typing addresses.
 >
 > **Try it without a key: the app guesses a formula from keywords and always says it's a guess — check
-> before you use it.** Add your own Anthropic API key for real AI answers from Claude — the key stays in
+> before you use it.** (That way the question, the range address and the column headers go to this
+> site's server for the guess.) Add your own Anthropic API key for real AI answers from Claude — the key stays in
 > your browser, and the question goes straight to Anthropic, never through this app's server.
 >
 > All of that happens on a `.xlsx` that **still looks like itself when it opens** (colour bands,
 > merged cells, borders, row heights), computed by a **hand-written formula engine** (no
-> third-party library), entirely in your browser — the data never leaves your machine, and there
+> third-party library), entirely in your browser — the file never leaves your machine (the one thing
+> that does is a question and its column headers, when you ask the AI: [where they go](#-ask-ai-for-a-formula)), and there
 > is no account to create.
 >
 > Four things build on that: **[your own API feeding the cells](#-live-data-from-an-api--csv-prototype)**, with no script to write —
@@ -222,7 +224,7 @@ the outcome under a double rule like a total.
 
 **Solved by**
 
-1. **[Runs entirely in the browser](#-security--what-was-actually-tested)** — No account, no upload, the file never leaves the machine, and the page's security policy (CSP) closes the route for data to be sent anywhere else — an e2e flow fires at it for real
+1. **[Runs entirely in the browser](#-security--what-was-actually-tested)** — No account, no upload, the file never leaves the machine, and the page's security policy (CSP) closes the route for data to be sent anywhere else — an e2e flow fires at it for real · except asking the AI, which sends the question and column headers to Anthropic (with your key) or to this site's server (without one)
 2. **[AI on your own key](#-bring-your-own-api-key-byok)** — Questions go from the browser straight to Anthropic on your key, never through this site's server — only the question, the selected range and the column headers, never the file
 3. **[Usage counted without identifying anyone](#-a-usage-count-that-provably-cannot-identify-anyone)** — It can tell how many times the app was opened today, nothing more: no IP, no cookie, and Do Not Track is honoured · error reports (if switched on) strip Thai text and keys before they leave
 4. **[Cloud on your own backend](#️-cloud-save-bring-your-own-backend)** — Want to save online or edit together? Connect your own Supabase project — and its row-level access rules are under test
@@ -527,6 +529,14 @@ view instead of appearing somewhere below the fold.
 **Opening the panel puts you in the question box** (#203). Focus used to stay on the cell, so what you typed
 went into the cell the panel was covering while the question box stayed empty · **Escape closes the panel** and
 gives focus back to the selected cell, so the arrow keys carry on from there, on a desktop and on a phone.
+
+**What leaves, and where it goes** (#213). The file goes nowhere either way. What goes is the question, the
+selected range's address, the column headers (name, column letter, the data range under it, whether it is
+numeric), the cursor's row, and up to five sheet values you already typed into the question; no other cell
+values are sent. **With your own key** it goes from your browser straight to Anthropic, never through this
+site's server. **Without one** it goes to this site's `/api/ai/formula`, which guesses a formula from
+keywords, and on to Claude if whoever runs the site set `ANTHROPIC_API_KEY`. The panel says so in one line
+**as it opens, before you ask**, not after an answer, and the FAQ on the landing page gives both paths.
 
 **What only a real key could show.** Every test of this feature mocks Anthropic — which means it
 returns whatever the test author imagined it would. Put a real API key behind it and ask fourteen
