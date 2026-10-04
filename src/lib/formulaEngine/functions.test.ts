@@ -412,12 +412,20 @@ describe("TEXT writes the value the way its format says, as Excel does (#29)", (
   });
 
   // Not Excel's answers: what TEXT gives for the codes it cannot write yet. A plain number reads as
-  // "not formatted"; 12:00 for 36 hours would read as a fact. Excel: 3/4, 1.23E+04, 36:00.
-  it("gives the plain number for fractions, E+ and elapsed time, rather than a wrong one", () => {
+  // "not formatted"; a made-up fraction would read as a fact. Excel: 3/4, 1.23E+04.
+  it("gives the plain number for fractions and E+, rather than a wrong one", () => {
     expect(calc('TEXT(0.75,"# ?/?")')).toBe("0.75");
     expect(calc('TEXT(12345,"0.00E+00")')).toBe("12345");
-    expect(calc('TEXT(1.5,"[h]:mm")')).toBe("1.5");
-    expect(calc('TEXT(0.1,"[mm]:ss")')).toBe("0.1");
+  });
+
+  // Elapsed time counts past a day: 1.5 days is 36 hours, not 12:00 (#219).
+  it("counts elapsed hours, minutes and seconds past a day", () => {
+    expect(calc('TEXT(1.5,"[h]:mm")')).toBe("36:00");
+    expect(calc('TEXT(1.0625,"[h]:mm")')).toBe("25:30");
+    expect(calc('TEXT(2.25,"[h]:mm:ss")')).toBe("54:00:00");
+    expect(calc('TEXT(0.25,"[hh]:mm")')).toBe("06:00");
+    expect(calc('TEXT(0.1,"[mm]:ss")')).toBe("144:00");
+    expect(calc('TEXT(0.5,"[s]")')).toBe("43200");
   });
 });
 

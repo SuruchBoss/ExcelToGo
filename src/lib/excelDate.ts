@@ -273,9 +273,10 @@ function tokenizeWithLocale(code: string): { tokens: Token[]; locale: DateLocale
     } else if (ch === "[") {
       const end = section.indexOf("]", i);
       const inner = section.slice(i + 1, end === -1 ? undefined : end);
-      // Elapsed-time brackets ([h], [mm]) read as their plain token; a locale tag may set the calendar
-      // and the language (#82); colour tags do nothing.
-      if (/^[hms]+$/i.test(inner)) out.push({ kind: "tok", text: inner.toLowerCase() });
+      // Elapsed time ([h], [mm], [ss]) keeps its brackets: it counts past a day, which the plain
+      // token does not (#219). A locale tag may set the calendar and the language (#82); colour
+      // tags do nothing.
+      if (/^[hms]+$/i.test(inner)) out.push({ kind: "tok", text: `[${inner.toLowerCase()}]` });
       else if (inner.startsWith("$")) {
         const tag = dateLocaleOf(inner);
         locale.be ||= tag.be;
@@ -317,17 +318,20 @@ export function formatSerial(serial: number, code: string): string {
   const shortMonth = (m: number) => (locale.thai ? THAI_MONTHS_SHORT[m - 1] : MONTHS[m - 1].slice(0, 3));
   const beYear = p.year + BE_OFFSET;
   const twelve = tokens.some((t) => t.kind === "tok" && (t.text === "AM/PM" || t.text === "A/P"));
+  // An elapsed token ([h]) is still an hour to the `mm` after it.
+  const unit = (t: Token): string => t.text.replace(/^\[/, "")[0];
   const isMinute = (index: number): boolean => {
     for (let k = index - 1; k >= 0; k--) {
       const t = tokens[k];
-      if (t.kind === "tok") return t.text.startsWith("h");
+      if (t.kind === "tok") return unit(t) === "h";
     }
     for (let k = index + 1; k < tokens.length; k++) {
       const t = tokens[k];
-      if (t.kind === "tok") return t.text.startsWith("s");
+      if (t.kind === "tok") return unit(t) === "s";
     }
     return false;
   };
+  const totalSeconds = Math.round(serial * 86_400);
   const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
   const hour12 = p.hour % 12 === 0 ? 12 : p.hour % 12;
   return tokens
@@ -335,6 +339,12 @@ export function formatSerial(serial: number, code: string): string {
       if (t.kind === "lit") return t.text;
       const s = t.text;
       switch (s[0]) {
+        case "[": {
+          // Elapsed time counts the whole serial, days included: 1.5 in [h] is 36 (#219).
+          const inner = s.slice(1, -1);
+          const per = inner[0] === "h" ? 3600 : inner[0] === "m" ? 60 : 1;
+          return String(Math.floor(totalSeconds / per)).padStart(inner.length, "0");
+        }
         case "y": {
           const year = locale.be ? beYear : p.year;
           return s.length <= 2 ? two(year % 100) : String(year);
