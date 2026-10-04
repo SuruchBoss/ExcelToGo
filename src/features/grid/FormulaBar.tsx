@@ -157,6 +157,11 @@ export default function FormulaBar() {
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             commit();
+            // Back to the grid, as Excel's Enter does (#201). Kept focused, the bar went on showing
+            // the next cell's formula as if it were being edited: a tap then pointed into it, and
+            // typing went on the end of it. With the bar blurred, the grid takes focus onto the
+            // cell the cursor moves to, so the arrow keys carry on from there.
+            inputRef.current?.blur();
             setSelection(singleCellSelection(Math.min(selection.anchorRow + 1, sheet.rows - 1), selection.anchorCol));
           } else if (e.key === "Escape") {
             draftRef.current = null;
