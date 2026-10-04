@@ -7,7 +7,7 @@ import { parseFormula } from "./parser";
 import { evaluate } from "./evaluator";
 import { colToLetters } from "./address";
 import { adjustFormulaForStructuralOp } from "./structuralShift";
-import { FormulaValue, isError } from "./types";
+import { FormulaError, FormulaValue, isError } from "./types";
 import { serialOf } from "../excelDate";
 
 const grid = [
@@ -418,6 +418,54 @@ describe("TEXT writes the value the way its format says, as Excel does (#29)", (
     expect(calc('TEXT(12345,"0.00E+00")')).toBe("12345");
     expect(calc('TEXT(1.5,"[h]:mm")')).toBe("1.5");
     expect(calc('TEXT(0.1,"[mm]:ss")')).toBe("0.1");
+  });
+});
+
+describe("the *IF(S) functions pass on an error they read, as Excel does (#96)", () => {
+  // A1:B3 — "a" 1 · "b" #REF! · "a" 3. Every expected value is Excel's.
+  const broken: FormulaValue[][] = [
+    ["a", 1],
+    ["b", new FormulaError("#REF!")],
+    ["a", 3],
+  ];
+
+  it("answers with the error in a row the condition matched, instead of ฿0.00", () => {
+    expect(code(calc('SUMIFS(B1:B3,A1:A3,"b")', broken))).toBe("#REF!");
+    expect(code(calc('SUMIFS(B1:B3,A1:A3,"*")', broken))).toBe("#REF!");
+    expect(code(calc('SUMIF(A1:A3,"b",B1:B3)', broken))).toBe("#REF!");
+    expect(code(calc('AVERAGEIF(A1:A3,"b",B1:B3)', broken))).toBe("#REF!");
+    expect(code(calc('AVERAGEIFS(B1:B3,A1:A3,"b")', broken))).toBe("#REF!");
+  });
+
+  it("leaves an error alone in a row the condition did not match", () => {
+    expect(calc('SUMIFS(B1:B3,A1:A3,"a")', broken)).toBe(4);
+    expect(calc('SUMIF(A1:A3,"a",B1:B3)', broken)).toBe(4);
+    expect(calc('AVERAGEIF(A1:A3,"a",B1:B3)', broken)).toBe(2);
+    expect(calc('AVERAGEIFS(B1:B3,A1:A3,"a")', broken)).toBe(2);
+  });
+
+  it("counts past an error, which only fails to match", () => {
+    expect(calc('COUNTIF(B1:B3,">0")', broken)).toBe(2);
+    expect(calc('COUNTIFS(B1:B3,">0")', broken)).toBe(2);
+    // An error in a criteria range does not match either: the rows around it still add up.
+    const criteriaError: FormulaValue[][] = [
+      ["a", 1],
+      [new FormulaError("#N/A"), 2],
+      ["a", 3],
+    ];
+    expect(calc('SUMIFS(B1:B3,A1:A3,"a")', criteriaError)).toBe(4);
+    expect(calc('SUMIF(A1:A3,"a",B1:B3)', criteriaError)).toBe(4);
+  });
+
+  // The issue's second case, `SUMIFS(#REF!, …)` reading #VALUE!, is already right on main: the
+  // evaluator passes an error written into a formula straight through. Pinned here so it stays so.
+  it("answers #REF! for a range that was deleted, not #VALUE!", () => {
+    expect(code(calc('SUMIFS(#REF!,A1:A3,"a")', broken))).toBe("#REF!");
+    expect(code(calc('SUMIFS(B1:B3,#REF!,"a")', broken))).toBe("#REF!");
+    expect(code(calc('SUMIF(#REF!,"a")', broken))).toBe("#REF!");
+    expect(code(calc('AVERAGEIFS(#REF!,A1:A3,"a")', broken))).toBe("#REF!");
+    expect(code(calc('COUNTIF(#REF!,"a")', broken))).toBe("#REF!");
+    expect(code(calc('COUNTIFS(#REF!,"a")', broken))).toBe("#REF!");
   });
 });
 
@@ -878,6 +926,24 @@ describe("a leading minus binds tighter than ^, as in Excel (#25)", () => {
     expect(calc("+2^2")).toBe(4);
     expect(calc("-2^-2")).toBe(0.25);
     expect(calc("-2^3")).toBe(-8);
+  });
+});
+
+describe("a chain of ^ runs left to right, as in Excel (#79)", () => {
+  it("gives the answers Excel gives", () => {
+    expect(calc("2^3^2")).toBe(64);
+    expect(calc("2^2^3")).toBe(64);
+    expect(calc("(2^3)^2")).toBe(64);
+    expect(calc("2^(3^2)")).toBe(512);
+    expect(calc("-2^2^3")).toBe(64);
+    expect(calc("2^-1^2")).toBe(0.25);
+  });
+
+  it("leaves #25's answers as they were", () => {
+    expect(calc("-2^2")).toBe(4);
+    expect(calc("0-2^2")).toBe(-4);
+    expect(calc("2*-3^2")).toBe(18);
+    expect(calc("-(2^2)")).toBe(-4);
   });
 });
 
