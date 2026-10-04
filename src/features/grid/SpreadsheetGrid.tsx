@@ -308,6 +308,12 @@ export default function SpreadsheetGrid() {
    * would pick the first option that starts with the first key and save it.
    */
   type Editing = { row: number; col: number; value: string; typed?: boolean };
+  /**
+   * The editor Enter opened on a phone, whose old value typing should replace, as it does after
+   * Enter on a desktop or in Excel (#202). Until something is typed, the old value is selected; the
+   * first letters the keeper catches before the editor mounts replace it rather than follow it.
+   */
+  const replaceOnType = useRef(false);
   const [editing, setEditingState] = useState<Editing | null>(null);
   /**
    * Opening and closing the editor, with the live session told either way.
@@ -318,6 +324,8 @@ export default function SpreadsheetGrid() {
    */
   const setEditing = useCallback((next: Editing | null) => {
     reportEditing(next?.row ?? 0, next ? next.col : null);
+    // An editor closing takes its pending "type over me" with it (#202), whichever kind it was.
+    if (!next) replaceOnType.current = false;
     setEditingState(next);
   }, []);
   /**
@@ -505,12 +513,17 @@ export default function SpreadsheetGrid() {
     // finger does not: selected text plus one ⌫ was a cell wiped when all anyone meant was to fix
     // one letter, and on a phone there is no tap that moves the caret inside a selection. So a
     // tap-opened editor puts the caret at the end, the way the phone keyboard expects.
-    if (input && caretAtEnd.current) {
+    // Enter on a phone is the exception (#202): it opens the next cell to be typed over, not fixed,
+    // so its old value is selected like a mouse-opened one, and the caret-at-end is for a second tap.
+    if (input && caretAtEnd.current && !replaceOnType.current) {
       input.setSelectionRange(input.value.length, input.value.length);
     } else {
       input?.select();
     }
-    if (input) touchSession.current = caretAtEnd.current;
+    if (input) {
+      touchSession.current = caretAtEnd.current;
+      replaceOnType.current = false;
+    }
     caretAtEnd.current = false;
     // `typed` too: a letter typed into a dropdown swaps its `<select>` for a text editor in the same cell (#198).
   }, [editing?.row, editing?.col, editing?.typed]);
@@ -525,7 +538,10 @@ export default function SpreadsheetGrid() {
     const input = inputRef.current;
     if (editing && input) {
       input.focus({ preventScroll: true });
-      input.setSelectionRange(input.value.length, input.value.length);
+      // Nothing typed yet: the old value is still there to be typed over (#202).
+      if (replaceOnType.current) input.select();
+      else input.setSelectionRange(input.value.length, input.value.length);
+      replaceOnType.current = false;
       touchSession.current = true;
     } else if (!editing) {
       // No editor is coming: the keeper must not hold a keyboard open for text to vanish into.
@@ -1371,6 +1387,7 @@ export default function SpreadsheetGrid() {
                             tabRun.current = null;
                             setSelection(singleCellSelection(to.row, to.col));
                             caretAtEnd.current = true;
+                            replaceOnType.current = true;
                             startEdit(to.row, to.col);
                           } else {
                             commitEdit();
@@ -1634,7 +1651,11 @@ export default function SpreadsheetGrid() {
           const typed = e.currentTarget.value;
           e.currentTarget.value = "";
           if (!typed) return;
-          if (editing) setEditingState((prev) => (prev ? { ...prev, value: prev.value + typed } : prev));
+          // The first letters after Enter replace the cell's old value, as typing would once the
+          // editor had it selected (#202); later ones, and those in an empty cell, follow it.
+          const replace = replaceOnType.current;
+          replaceOnType.current = false;
+          if (editing) setEditingState((prev) => (prev ? { ...prev, value: replace ? typed : prev.value + typed } : prev));
           else tappedToSelect(selection.anchorRow, selection.anchorCol);
         }}
       />

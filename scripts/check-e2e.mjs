@@ -1817,6 +1817,50 @@ const FLOWS = [
     },
   },
   {
+    // #202: Enter on a phone opened the next cell's editor with its old value and the caret at the
+    // end, so typing into a filled cell went on the end of it: 599, then 650, saved 599650. Typing
+    // after Enter replaces the value, as on a desktop and in Excel; a second tap still fixes it in place.
+    name: "on a phone, typing after Enter into a filled cell replaces its value, and a second tap still edits it in place",
+    width: 390,
+    touch: true,
+    async run(page) {
+      await cell(page, 1, 0).tap();
+      await cell(page, 1, 0).tap();
+      await cell(page, 1, 0).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("599");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(100);
+
+      await cell(page, 0, 0).tap();
+      await cell(page, 0, 0).tap();
+      await cell(page, 0, 0).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("1");
+      await page.keyboard.press("Enter");
+      const editor = cell(page, 1, 0).locator("input");
+      await editor.waitFor({ timeout: 5000 });
+      const picked = await editor.evaluate((el) => [el.value, el.selectionStart, el.selectionEnd]);
+      note(picked[0] === "599" && picked[1] === 0 && picked[2] === 3, `Enter opens A2 with its 599 selected, ready to be typed over (${JSON.stringify(picked)})`);
+      await page.keyboard.insertText("650");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(100);
+      const a2 = (await cell(page, 1, 0).innerText()).trim();
+      note(a2 === "650", `typing 650 there saves 650, not 599650 (A2 "${a2}")`);
+
+      // A second tap is a deliberate edit: the caret goes to the end and the value is kept.
+      await cell(page, 1, 0).tap();
+      await cell(page, 1, 0).tap();
+      await cell(page, 1, 0).locator("input").waitFor({ timeout: 5000 });
+      await page.keyboard.insertText("1");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(100);
+      const fixed = (await cell(page, 1, 0).innerText()).trim();
+      note(fixed === "6501", `a second tap still adds to the value in place (A2 "${fixed}")`);
+    },
+  },
+  {
     // #191: on a phone, Enter on the last row opens the new row's editor. The toolbar's undo takes
     // no focus, so the editor stayed open on a row undo had taken away: the next tap committed into
     // it and threw `reading 'slice'`, and what was typed there went with the exception. The editor
