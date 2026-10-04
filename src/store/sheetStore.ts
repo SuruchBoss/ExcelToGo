@@ -29,6 +29,8 @@ import {
   type CrossSheetResolver,
   copyRange,
   createEmptySheet,
+  DEFAULT_COLS,
+  DEFAULT_ROWS,
   deleteColumn,
   deleteRow,
   detectSortRange,
@@ -412,10 +414,12 @@ interface SheetState {
   clearColumnFilter: (col: number) => void;
   clearAllFilters: () => void;
 
-  /** Summarises the selected range onto a brand-new sheet. Returns false when the selection is
-   *  too small to pivot, so the panel can say so instead of silently doing nothing. */
-  buildPivotSheet: (config: PivotConfig) => boolean;
-  /** Rebuilds the active pivot sheet from its source. False when it has no source, or the source is gone. */
+  /** Summarises the selected range onto a brand-new sheet. Returns true, or the reason it could not
+   *  (the selection is too small, or the result would not fit in a sheet), in words the panel shows
+   *  instead of silently doing nothing. */
+  buildPivotSheet: (config: PivotConfig) => true | string;
+  /** Rebuilds the active pivot sheet from its source. False when it has no source, the source is gone,
+   *  or the result no longer fits in a sheet, which is said in an alert. */
   refreshPivot: () => boolean;
   addChart: (kind: ChartKind) => void;
   removeChart: (id: string) => void;
@@ -488,6 +492,11 @@ interface RenderedPivot {
   cols: number;
 }
 
+/** A result too big for a sheet, which is said rather than cut to fit (#56). */
+interface PivotTooBig {
+  tooBig: { rows: number; cols: number };
+}
+
 /**
  * The block a pivot reads, as values — except a date, which is grouped by the text the grid shows
  * (#45). Its value is a serial, and a pivot by day would otherwise have 45306 as a row heading.
@@ -510,7 +519,7 @@ function renderPivotSheet(
   config: PivotConfig,
   sourceSheetId: string,
   sheets: readonly SheetTab[]
-): RenderedPivot | null {
+): RenderedPivot | PivotTooBig | null {
   if (range.endRow <= range.startRow) return null;
   const rows = pivotSourceRows(sourceSheet, range, sheets);
 
@@ -520,21 +529,24 @@ function renderPivotSheet(
     grandTotal: m.pivot.grandTotal,
     valueHeading: (agg, field) => m.pivot.valueHeading(m.pivot.aggNames[agg], field),
   });
+  if (result.tooBig) return { tooBig: result.tooBig };
   if (result.header.length === 0 || result.rows.length === 0) return null;
 
-  const out = createEmptySheet();
   const lines = [result.header, ...result.rows, ...(result.totalRow ? [result.totalRow] : [])];
+  // As big as the answer, and never smaller than a new sheet. The default 30×10 used to be the
+  // limit, and everything past it was dropped without a word, the Grand total row and column
+  // included (#56). One that would not fit at all came back as `tooBig` above, never cut.
+  const out = createEmptySheet(Math.max(DEFAULT_ROWS, lines.length), Math.max(DEFAULT_COLS, result.header.length));
   lines.forEach((line, r) => {
     line.forEach((cell, c) => {
-      if (r < out.rows && c < out.cols) out.cells[r][c] = cell === null ? "" : String(cell);
+      out.cells[r][c] = cell === null ? "" : String(cell);
     });
   });
   // The header and the closing total are the two rows a reader scans for, so they are bold rather
   // than left to be picked out of a wall of numbers.
-  for (let c = 0; c < result.header.length && c < out.cols; c++) {
+  for (let c = 0; c < result.header.length; c++) {
     out.formats[0][c] = { bold: true };
-    const last = lines.length - 1;
-    if (result.totalRow && last < out.rows) out.formats[last][c] = { bold: true };
+    if (result.totalRow) out.formats[lines.length - 1][c] = { bold: true };
   }
 
   out.pivot = { sheetId: sourceSheetId, range, config, hash: hashValues(rows) };
@@ -1659,9 +1671,10 @@ export const useSheetStore = create<SheetState>()(
             endCol: selection.endCol,
           };
           const out = renderPivotSheet(source.sheet, range, config, source.id, s.sheets);
-          if (!out) return false;
-
           const m = getMessages();
+          if (!out) return m.pivot.needRows;
+          if ("tooBig" in out) return m.pivot.tooBig(out.tooBig.rows, out.tooBig.cols);
+
           const tab = newTab(nextPivotName(s.sheets, m.pivot.sheetName), out.sheet);
           set({
             sheets: [...s.sheets, tab],
@@ -1691,6 +1704,12 @@ export const useSheetStore = create<SheetState>()(
 
           const out = renderPivotSheet(source.sheet, spec.range, spec.config, spec.sheetId, s.sheets);
           if (!out) return false;
+          if ("tooBig" in out) {
+            // The notice has a button and nowhere to put a sentence, so this one is an alert, as a
+            // file opened short is (#43). The old pivot stays as it was.
+            alert(getMessages().pivot.tooBig(out.tooBig.rows, out.tooBig.cols));
+            return false;
+          }
           set({
             sheets: s.sheets.map((t) => (t.id === target.id ? { ...t, sheet: out.sheet } : t)),
             ...say(getMessages().live.pivotRefreshed(out.rows, out.cols)),

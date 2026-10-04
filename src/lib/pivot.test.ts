@@ -4,7 +4,17 @@
 import { describe, expect, it } from "vitest";
 import { FormulaValue } from "./formulaEngine/types";
 import { ERR_DIV0 } from "./formulaEngine/types";
-import { PivotLabels, aggregate, buildPivot, compareLabels, hashValues, keyOf } from "./pivot";
+import { IMPORT_MAX_CELLS } from "./excelIO";
+import {
+  PIVOT_MAX_CELLS,
+  PIVOT_MAX_COLS,
+  PivotLabels,
+  aggregate,
+  buildPivot,
+  compareLabels,
+  hashValues,
+  keyOf,
+} from "./pivot";
 
 const labels: PivotLabels = {
   blank: "(blank)",
@@ -254,5 +264,45 @@ describe("hashValues", () => {
 
   it("treats a blank and an empty string the same, because a pivot does", () => {
     expect(hashValues([[null]] as never)).toBe(hashValues([[""]] as never));
+  });
+});
+
+/**
+ * A result bigger than a sheet is refused with its size rather than cut to fit (#56): a summary with
+ * groups missing and its totals still there reads as complete.
+ */
+describe("a pivot too big for a sheet", () => {
+  /** n rows where every row is its own group and its own column: an (n + 2) × (n + 2) result. */
+  const allDifferent = (n: number): FormulaValue[][] => [
+    ["Key", "Split", "Amount"],
+    ...Array.from({ length: n }, (_, i) => [`k${i}`, `s${i}`, 1]),
+  ];
+
+  it("says how big it would be instead of building it", () => {
+    const p = buildPivot(allDifferent(2000), { rowFields: [0], colField: 1, valueField: 2, agg: "sum" }, labels);
+    expect(p.tooBig).toEqual({ rows: 2002, cols: 2002 });
+    expect(p.rows).toEqual([]);
+    expect(p.totalRow).toBeNull();
+  });
+
+  it("builds the same source when it is not split across the top", () => {
+    const p = buildPivot(allDifferent(2000), { rowFields: [0], colField: null, valueField: 2, agg: "sum" }, labels);
+    expect(p.tooBig).toBeUndefined();
+    expect(p.rows).toHaveLength(2000);
+    expect(p.totalRow).toEqual(["Total", 2000, 2000]);
+  });
+
+  it("refuses more columns than Excel has, however few rows", () => {
+    // One group, so the cell count stays small; only the width is over.
+    const wide: FormulaValue[][] = [
+      ["Key", "Split", "Amount"],
+      ...Array.from({ length: PIVOT_MAX_COLS }, (_, i) => ["only", `s${i}`, 1]),
+    ];
+    const p = buildPivot(wide, { rowFields: [0], colField: 1, valueField: 2, agg: "sum" }, labels);
+    expect(p.tooBig).toEqual({ rows: 3, cols: PIVOT_MAX_COLS + 2 });
+  });
+
+  it("allows as many cells as a file opens with", () => {
+    expect(PIVOT_MAX_CELLS).toBe(IMPORT_MAX_CELLS);
   });
 });

@@ -59,9 +59,10 @@ export default function PivotPanel() {
 
   const build = () => {
     if (blocked) return;
-    // A false result means the selection produced no groups — say so rather than switching to a
-    // sheet that turned out empty.
-    setProblem(buildPivotSheet({ rowFields, colField, valueField, agg }) ? null : t.pivot.needRows);
+    // Anything but true is why it was not built — no groups, or more than a sheet holds — said here
+    // rather than switching to a sheet that turned out empty or cut short.
+    const built = buildPivotSheet({ rowFields, colField, valueField, agg });
+    setProblem(built === true ? null : built);
   };
 
   const chip = (active: boolean) =>

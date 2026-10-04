@@ -430,7 +430,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1958", label: "automated tests" },
+      { value: "1968", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -1039,6 +1039,8 @@ export const en: Messages = {
     aggNames: { sum: "Sum", count: "Count", average: "Average", min: "Min", max: "Max" },
     needRows: "Select at least 2 rows — the first one is used as the header.",
     pickRowField: "Pick at least one column to group by.",
+    tooBig: (rows, cols) =>
+      `This summary would be ${rows.toLocaleString("en-US")} rows by ${cols.toLocaleString("en-US")} columns, more than a sheet can hold, so it was not built. Split the columns by a field with fewer different values, or don't split them.`,
   },
   formulaBar: {
     reads: "reads",
