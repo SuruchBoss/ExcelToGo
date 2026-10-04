@@ -56,6 +56,12 @@ describe("aggregate", () => {
     expect(aggregate(["a", "b", 3], "count")).toBe(3);
   });
 
+  // Excel's pivot Count counts the cells that hold something; a blank is not one (#57).
+  it("does not count blank cells", () => {
+    expect(aggregate([1, null, "", "a", 0], "count")).toBe(3);
+    expect(aggregate([null, ""], "count")).toBeNull();
+  });
+
   // "no numbers here" and "they add up to nothing" are different answers.
   it("gives null rather than 0 for a group with no numbers", () => {
     expect(aggregate(["a", "b"], "sum")).toBeNull();
@@ -189,6 +195,35 @@ describe("buildPivot", () => {
       ["North", 3, 3],
       ["South", 2, 2],
     ]);
+  });
+
+  // QA pass 2 counted 12 for a region with 11 Amounts filled in, and 59 for a total of 54 (#57).
+  it("counts only the filled-in values, in each group, each column and the totals (#57)", () => {
+    const withGaps: FormulaValue[][] = [
+      ["Region", "Month", "Amount"],
+      ["North", "M01", 100],
+      ["North", "M01", null],
+      ["North", "M02", 250],
+      ["North", "M02", ""],
+      ["South", "M01", 80],
+      ["South", "M02", null],
+      ["East", "M01", null],
+    ];
+    const flat = buildPivot(withGaps, { rowFields: [0], colField: null, valueField: 2, agg: "count" }, labels);
+    expect(flat.rows).toEqual([
+      ["East", null, null],
+      ["North", 2, 2],
+      ["South", 1, 1],
+    ]);
+    expect(flat.totalRow).toEqual(["Total", 3, 3]);
+
+    const split = buildPivot(withGaps, { rowFields: [0], colField: 1, valueField: 2, agg: "count" }, labels);
+    expect(split.rows).toEqual([
+      ["East", null, null, null],
+      ["North", 1, 1, 2],
+      ["South", 1, null, 1],
+    ]);
+    expect(split.totalRow).toEqual(["Total", 2, 1, 3]);
   });
 
   it("orders groups with the same first key by the second", () => {

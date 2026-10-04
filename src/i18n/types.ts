@@ -965,6 +965,8 @@ export interface Messages {
     textareaPlaceholder: string;
     askButton: string;
     heuristicNote: string;
+    /** Shown before the first question when there is no key: what goes to this site's server (#213). */
+    serverNote: string;
     /** On a keyword guess, above the formula. */
     guessBadge: string;
     /** Under a suggestion when the cell it would go in already holds something. */

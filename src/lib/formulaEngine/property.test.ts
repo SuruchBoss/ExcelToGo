@@ -320,5 +320,23 @@ describe("a leading minus and ^, against Excel's rule", () => {
       }
     }
   });
+
+  it("reads a^b^c as (a^b)^c, Excel's left-to-right chain (#79)", () => {
+    // The brackets written out by hand are the oracle. Exponents stay small so every power is exact,
+    // and start at 1: 0^0 is #NUM! in Excel, which `**` would call 1.
+    for (let i = 0; i < CASES; i++) {
+      const r = rng(BASE_SEED + 810_000 + i);
+      const [a, b, c] = [int(r, 1, 5), int(r, 1, 3), int(r, 1, 3)];
+      const cases: [string, number][] = [
+        [`${a}^${b}^${c}`, (a ** b) ** c],
+        [`-${a}^${b}^${c}`, ((-a) ** b) ** c],
+        [`${a}^(${b}^${c})`, a ** (b ** c)],
+      ];
+      for (const [text, oracle] of cases) {
+        const got = calcValue(text);
+        if (got !== oracle) expect.fail(`seed ${BASE_SEED + 810_000 + i}: ${text} gave ${String(got)}, expected ${oracle}`);
+      }
+    }
+  });
 });
 

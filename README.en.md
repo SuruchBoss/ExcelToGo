@@ -16,12 +16,14 @@ right here, with the URL, the header and the data never passing through our serv
 > of typing addresses.
 >
 > **Try it without a key: the app guesses a formula from keywords and always says it's a guess — check
-> before you use it.** Add your own Anthropic API key for real AI answers from Claude — the key stays in
+> before you use it.** (That way the question, the range address and the column headers go to this
+> site's server for the guess.) Add your own Anthropic API key for real AI answers from Claude — the key stays in
 > your browser, and the question goes straight to Anthropic, never through this app's server.
 >
 > All of that happens on a `.xlsx` that **still looks like itself when it opens** (colour bands,
 > merged cells, borders, row heights), computed by a **hand-written formula engine** (no
-> third-party library), entirely in your browser — the data never leaves your machine, and there
+> third-party library), entirely in your browser — the file never leaves your machine (except that
+> asking the AI sends the question and its column headers: [where they go](#-ask-ai-for-a-formula)), and there
 > is no account to create.
 >
 > Four things build on that: **[your own API feeding the cells](#-live-data-from-an-api--csv-prototype)**, with no script to write —
@@ -42,7 +44,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1945%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1958%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -63,7 +65,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1945 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1958 automated tests.
 
 ---
 
@@ -107,7 +109,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1945 passing tests could not catch
+### 🧪 What 1958 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -118,7 +120,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1945 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1958 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -222,7 +224,7 @@ the outcome under a double rule like a total.
 
 **Solved by**
 
-1. **[Runs entirely in the browser](#-security--what-was-actually-tested)** — No account, no upload, the file never leaves the machine, and the page's security policy (CSP) closes the route for data to be sent anywhere else — an e2e flow fires at it for real
+1. **[Runs entirely in the browser](#-security--what-was-actually-tested)** — No account, no upload, the file never leaves the machine, and the page's security policy (CSP) closes the route for data to be sent anywhere else — an e2e flow fires at it for real · except asking the AI, which sends the question and column headers to Anthropic (with your key) or to this site's server (without one)
 2. **[AI on your own key](#-bring-your-own-api-key-byok)** — Questions go from the browser straight to Anthropic on your key, never through this site's server — only the question, the selected range and the column headers, never the file
 3. **[Usage counted without identifying anyone](#-a-usage-count-that-provably-cannot-identify-anyone)** — It can tell how many times the app was opened today, nothing more: no IP, no cookie, and Do Not Track is honoured · error reports (if switched on) strip Thai text and keys before they leave
 4. **[Cloud on your own backend](#️-cloud-save-bring-your-own-backend)** — Want to save online or edit together? Connect your own Supabase project — and its row-level access rules are under test
@@ -393,7 +395,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1945-case Vitest suite |
+| `npm test` | Run the 1958-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -527,6 +529,14 @@ view instead of appearing somewhere below the fold.
 **Opening the panel puts you in the question box** (#203). Focus used to stay on the cell, so what you typed
 went into the cell the panel was covering while the question box stayed empty · **Escape closes the panel** and
 gives focus back to the selected cell, so the arrow keys carry on from there, on a desktop and on a phone.
+
+**What leaves, and where it goes** (#213). The file goes nowhere either way. What goes is the question, the
+selected range's address, the column headers (name, column letter, the data range under it, whether it is
+numeric), the cursor's row, and up to five sheet values you already typed into the question; no other cell
+values are sent. **With your own key** it goes from your browser straight to Anthropic, never through this
+site's server. **Without one** it goes to this site's `/api/ai/formula`, which guesses a formula from
+keywords, and on to Claude if whoever runs the site set `ANTHROPIC_API_KEY`. The panel says so in one line
+**as it opens, before you ask**, not after an answer, and the FAQ on the landing page gives both paths.
 
 **What only a real key could show.** Every test of this feature mocks Anthropic — which means it
 returns whatever the test author imagined it would. Put a real API key behind it and ask fourteen
@@ -2406,6 +2416,8 @@ Details that were worth getting right:
   averages is not the average; summing what's on screen would print a number wrong in a way nobody questions.
 - **A group with no numbers gives a blank, not 0.** "Nothing here" and "adds up to nothing" are different
   answers.
+- **Count counts the cells that hold something.** Text counts, blanks do not, as with Count in an Excel
+  pivot: a group of 12 rows with one Amount left empty gives 11, not 12 (#57).
 - **Groups sort numerically when the labels are numbers**, otherwise by locale — so Thai sorts as Thai rather
   than by code point — and blank groups always sink to the bottom.
 - **A row that is blank in the grouping column but carries a number** still counts, as a `(blank)` group,
@@ -2995,7 +3007,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1945 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1958 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3428,7 +3440,7 @@ flowchart LR
 - **Tokenizer** splits the formula string into tokens (numbers, strings, cell refs `A1`, range refs `A1:B10`,
   functions, operators), supporting absolute references (`$A$1`) and the literal `#REF!` token.
 - **Parser** is a plain recursive-descent parser that gets operator precedence right (`^` before `* /` before
-  `+ -` before comparisons), with `^` as right-associative.
+  `+ -` before comparisons), with a chain of `^` run left to right as Excel does (#79).
 - **Evaluator** walks the AST to compute a result, distinguishing a scalar result from a range result (so
   functions like `VLOOKUP`/`SUMIF` know which argument is a range), and detects **circular references** with a
   `Set` of cells currently being computed — looping back to a cell already in progress returns `#CIRCULAR!`
@@ -3637,6 +3649,10 @@ so `1E3` quietly became `1E4`.
 `=0-2^2` is still -4, because that minus is a subtraction rather than a sign (#25). Both used to
 give -4, so a formula copied out of Excel flipped its sign with nothing to say so.
 
+**A chain of `^` runs left to right, as in Excel (#79)** — `=2^3^2` is 64 (`(2^3)^2`), while `=2^(3^2)` with the
+brackets written in is still 512. It used to read as `2^(3^2)` and give 512, the same kind of silent difference as
+#25. **A sheet that already holds an `a^b^c` formula will show a new value**, the one Excel gives.
+
 **Text read from a cell is not a number to `SUM`, as in Excel (#166)** — `SUM`, `AVERAGE`, `MIN`, `MAX`,
 `PRODUCT` and `COUNT` skip text and TRUE/FALSE that come from a cell, in a range or referred to alone, even
 when the text spells a number: a code like `0812345678` or a `'1,250` in the column is no longer added in.
@@ -3647,15 +3663,28 @@ before: `=C2*2` over `'1,250` is 2500. `COUNTA` counts every non-empty cell as b
 summed range now totals what Excel gives** — on purpose, since its export already showed that other total
 once Excel opened it.
 
+**`SUMIF`, `SUMIFS`, `AVERAGEIF` and `AVERAGEIFS` pass on an error in a row that matched, as Excel does (#96)** — a
+`#REF!` in the summed range, on a row the condition picked, makes the result `#REF!` rather than a believable ฿0.00
+(the error used to be skipped in silence). An error on a row that did not match is never read, so the total still
+comes out, and `COUNTIF`/`COUNTIFS` still count past one, since to Excel an error simply does not match.
+
 **A name nothing defines is `#NAME?` everywhere (#166)** — `=SUMIF(A2:A6,North,C2:C6)` with the quotes
 forgotten is `#NAME?`, not a silent 0 that reads as "no sales in the north". That holds for every function
 (`COUNTIF`, `UPPER`, `VLOOKUP`…) except those made to look at errors: `IF`, `IFERROR`, `IFNA`, `COUNT`,
 `COUNTA` and `COUNTBLANK`. A defined name, `TRUE` and `FALSE` are not unknown names.
 
+**`TEXT` formats by its code, as Excel does (#29)** — `=TEXT(0.5,"0%")` is `50%`, `=TEXT(1234.5,"#,##0.00")` is
+`1,234.50` and `=TEXT(45000,"dd/mm/yyyy")` is `15/03/2023`. The code used to be ignored, so a label like
+`="Total: "&TEXT(A1,"#,##0.00")` printed the raw number. It uses the same code readers the grid shows a file's own
+formats with: numbers, percent, decimals, thousands, sections (`0;(0)`), quoted text, dates and times, Thai month
+names and the Buddhist year (`bbbb`). Text that is not a number comes back as it is. **Not yet:** fractions
+(`# ?/?`), scientific notation (`0.00E+00`) and elapsed time past a day (`[h]:mm`) come back as the plain number,
+right but unformatted. `[h]` is kept from the date formatter on purpose: it reads `[h]` as the hour of the day, so 36
+hours would come out as `12:00`, which looks like a real value.
+
 **Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
 position inside a block. `MROUND` is not in the engine. Arithmetic that overflows (`10^308*10`) still
-shows as Infinity rather than Excel's `#NUM!`; only `^` and `POWER` were fixed. A chain of `^` still
-works right to left: `=2^3^2` is 512, where Excel works left to right and gets 64.
+shows as Infinity rather than Excel's `#NUM!`; only `^` and `POWER` were fixed.
 
 Full support for arithmetic/comparison/concatenation operators (`+ - * / ^ = <> < > <= >= &`) and Excel-style
 error values: `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`.
@@ -4015,13 +4044,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1945 cases across 138 files, via Vitest
+npm test      # 1958 cases across 138 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1945 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1958 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -4140,16 +4169,16 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1945 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1958 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1945 passing tests could not catch](#-what-1945-passing-tests-could-not-catch), repeatable
+> [What 1958 passing tests could not catch](#-what-1958-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
 |---|---|---|
 | `tokenizer.test.ts` | 10 | Literals, cell/range refs (including absolute `$`), operators, string escaping, the `#REF!` token |
-| `property.test.ts` | 9 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, and SUM against adding the cells by hand |
+| `property.test.ts` | 10 | Property-based: each test generates hundreds of formulas and checks a rule that must always hold — arithmetic against an oracle sharing no engine code, precedence on expressions with no parentheses at all, evaluation never throwing, a zero shift being identity, two shifts equalling the shift of their sum, insert-then-delete of a row leaving every reference where it was, SUM against adding the cells by hand, and `a^b^c` equal to `(a^b)^c` as in Excel (#79) |
 | `csvInjection.test.ts` | 11 | CSV injection from the attacker's side: every DDE payload has to leave unable to run, from the export button and from the crash rescue alike · negative numbers, Thai text and blanks must be untouched · export-then-import returns the original however many times it goes round |
 | `xlsxFormulaExport.test.ts` | 4 | An exported `.xlsx` holds only formulas the engine can read: `=1+1` from a CSV is still a formula, one the engine cannot read goes out as text, on both the CSV → xlsx and xlsx → xlsx paths · opening that file again keeps it text |
 | `arrayFormulas.test.ts` | 27 | Formulas that answer with a shape and where the answer lands: spilling into the right cells, `#SPILL!` when something is in the way or the sheet ends and **nothing written at all when it refuses**, a formula reading spilled cells getting the right total even when it sits above the array, operators applied across a range, and all five array functions |
@@ -4163,7 +4192,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `crash/crashTest.test.ts` | 4 | The crash the gates use to reach the rescue screen (#145): only an automated browser that asked for it crashes · a browser a person uses never does, whatever its storage holds · automation that did not ask does not · storage that cannot be read does not |
 | `parser.test.ts` | 20 | Operator precedence/associativity, ranges, function calls, syntax errors, arguments left out mid-call |
 | `evaluator.test.ts` | 10 | Arithmetic, comparisons, concatenation, reading cells/ranges, error propagation |
-| `functions.test.ts` | 136 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones |
+| `functions.test.ts` | 146 | The whole function library across aggregate/rounding/logic/text/lookup, including Excel's own results for ROUND (half away from zero, several decimals, negative digits), POWER/`^`/SQRT, AVERAGEIF and LEFT/RIGHT/MID, INDEX/MATCH (leftward lookups, whole rows/columns, unsorted data), SUMIFS (several conditions, mismatched ranges), XLOOKUP (leftward lookups, a not-found fallback, nearest match on unsorted data, searching from the end) and DATEDIF (all six units, the month borrow, dates that don't exist) — plus dates that must not shift across timezones, and `SUMIF(S)`/`AVERAGEIF(S)` passing on an error in a matching row as Excel does (#96), and `TEXT` formatting by its code as Excel does (#29) |
 | `textDates.test.ts` | 4 | The text `1/9/2026` (Gregorian d/m/yyyy) is `#VALUE!` in `DAY`, `MONTH`, `YEAR` and `DATEDIF`, in a cell or written in the formula, while a B.E. date, ISO text and a serial from a file still read right — each case run twice, in the Bangkok and New York time zones, in one process (#169) |
 | `textFromCells.test.ts` | 14 | Text and TRUE/FALSE read from cells skipped by `SUM`, `AVERAGE`, `MIN`, `MAX`, `PRODUCT` and `COUNT`, in a single cell and a range, while a value written in the formula still converts (`SUM("5",1)` = 6); `C2*2` over `'1,250` still 2500; `SUMIF`/`SUMIFS`/`AVERAGEIF`/`SUMPRODUCT` adding only numbers; and a name nothing defines being `#NAME?` in every function but those that look at errors (#166) |
 | `seo.test.ts` | 23 | Each page's search result (#148): title/description length, no AI promise, the formula count matching the palette, its own canonical, JSON-LD that parses and claims no rating · The FAQ (#152): FAQPage matching the page word for word, seven questions in both languages, yes/no questions opening with the answer, no ranking words, counts that match, what an export loses, and Supabase only with "your own server" · The formula pages (#149): titles and descriptions that fit, "สูตร NAME:" first, the breadcrumb trail, and every page in the sitemap |

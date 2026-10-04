@@ -3,7 +3,8 @@
 
 import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_NUM, ERR_VALUE } from "./types";
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
-import { dateLiteral, partsOfSerial, serialOf } from "../excelDate";
+import { dateLiteral, formatSerial, isDateFormatCode, partsOfSerial, serialOf } from "../excelDate";
+import { formatNumberCode } from "../numberFormatCode";
 
 /** Whether an argument was read from cells — a range, or one cell by reference (#166). */
 function fromCells(arg: EvalResult): boolean {
@@ -652,9 +653,31 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const from = Math.trunc(start) - 1;
     return s.slice(from, from + Math.trunc(len));
   },
+  /**
+   * TEXT(value, format) — the value written the way an Excel format code says (#29).
+   *
+   * The format used to be ignored, so `TEXT(0.5,"0%")` was "0.5" and a label like
+   * `="Total: "&TEXT(A1,"#,##0.00")` printed the raw number. It now uses the same code readers the
+   * grid shows a file's own formats with: numbers through `formatNumberCode` (`0%`, `0.00`,
+   * `#,##0`, sections, literals), dates and times through `formatSerial` (`dd/mm/yyyy`, `mmm`,
+   * `hh:mm`, the Buddhist `bbbb`). Text that is not a number comes back as it is, as in Excel.
+   */
   TEXT: (args) => {
+    if (args.length < 2) return ERR_VALUE;
     const v = scalarOf(args[0]);
-    return toDisplayString(v);
+    if (isError(v)) return v;
+    const format = scalarOf(args[1]);
+    if (isError(format)) return format;
+    const code = toDisplayString(format);
+    if (typeof v === "boolean") return toDisplayString(v);
+    const n = isBlank(v) ? 0 : toNumber(v);
+    if (isError(n)) return toDisplayString(v);
+    if (code === "") return "";
+    // Elapsed time ([h]:mm, [mm]:ss) counts past a day, and the date formatter reads [h] as the hour
+    // of the day: 1.5 would come out 12:00 where Excel says 36:00. Until it counts them, the plain
+    // number, as for fractions and E+ (#29) — a number nobody mistakes for a time, not a wrong one.
+    if (/\[[hms]+\]/i.test(code)) return toDisplayString(n);
+    return isDateFormatCode(code) ? formatSerial(n, code) : formatNumberCode(n, code);
   },
   // Both are serials (#45), in the reader's own time zone: NOW used to be UTC while TODAY was local,
   // so in Bangkok between midnight and 7am the two disagreed about the date.
@@ -754,6 +777,9 @@ export const FUNCTIONS: Record<string, FnImpl> = {
           // Only numbers are added, as in Excel (#166): text in the sum range — a code kept as
           // text, a `'7` — used to be read as the number it spelt.
           const target = sumRange[r]?.[c];
+          // An error in a row that matched is the answer, as in Excel (#96). Skipping it turned a
+          // broken total into a believable ฿0.00. One in a row that did not match stays unread.
+          if (isError(target)) return target;
           if (typeof target === "number") total += target;
         }
       }
@@ -777,6 +803,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       for (let c = 0; c < range[r].length; c++) {
         if (matchCriteria(range[r][c], criteria)) {
           const v = avgRange[r]?.[c] ?? null;
+          if (isError(v)) return v; // as SUMIF (#96)
           // Skipped, not counted as zero — the same rule AVERAGEIFS already had. Reading a blank
           // as 0 dragged the average down: 10 here where AVERAGEIFS said 15 on the same cells.
           if (isBlank(v) || typeof v === "string") continue;
@@ -1032,6 +1059,7 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
         const v = target[r][c];
+        if (isError(v)) return v; // as SUMIF (#96)
         // Blanks and text inside the averaged range are skipped rather than counted as zero,
         // which would drag the average down towards it.
         if (isBlank(v) || typeof v === "string") continue;
@@ -1054,8 +1082,9 @@ export const FUNCTIONS: Record<string, FnImpl> = {
       // equivalent-mutant: "<" → "<=" — the extra cell is undefined, read as 0, and adding 0 changes nothing.
       for (let c = 0; c < target[r].length; c++) {
         if (!pairs.every(({ range, criteria }) => matchCriteria(range[r]?.[c] ?? null, criteria))) continue;
-        // Numbers only, as SUMIF (#166).
+        // Numbers only, as SUMIF (#166), and an error in a matching row is the answer (#96).
         const v = target[r][c];
+        if (isError(v)) return v;
         if (typeof v === "number") total += v;
       }
     }
