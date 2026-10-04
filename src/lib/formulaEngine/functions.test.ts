@@ -384,6 +384,43 @@ describe("INDEX/MATCH together", () => {
   });
 });
 
+describe("TEXT writes the value the way its format says, as Excel does (#29)", () => {
+  // 45000 is 15 March 2023. Every expected value is Excel's.
+  it("formats numbers with percent, decimals and thousands", () => {
+    expect(calc('TEXT(0.5,"0%")')).toBe("50%");
+    expect(calc('TEXT(0.125,"0.0%")')).toBe("12.5%");
+    expect(calc('TEXT(1234.5,"#,##0.00")')).toBe("1,234.50");
+    expect(calc('TEXT(-1234.5,"#,##0.00")')).toBe("-1,234.50");
+    expect(calc('TEXT(3.14159,"0.00")')).toBe("3.14");
+    expect(calc('TEXT(1234567,"#,##0")')).toBe("1,234,567");
+    expect(calc('TEXT(5,"000")')).toBe("005");
+    expect(calc('TEXT(2.5,"0")')).toBe("3");
+  });
+
+  it("formats a serial as a date or a time", () => {
+    expect(calc('TEXT(45000,"dd/mm/yyyy")')).toBe("15/03/2023");
+    expect(calc('TEXT(45000,"d mmm yyyy")')).toBe("15 Mar 2023");
+    expect(calc('TEXT(45000,"yyyy-mm-dd")')).toBe("2023-03-15");
+    expect(calc('TEXT(45000.75,"hh:mm")')).toBe("18:00");
+  });
+
+  it("reads numbers from cells and text that spells one, and leaves other text as it is", () => {
+    expect(calc('TEXT(A1,"#,##0.00")', [[1234.5]])).toBe("1,234.50");
+    expect(calc('"Total: "&TEXT(A1,"#,##0.00")', [[1234.5]])).toBe("Total: 1,234.50");
+    expect(calc('TEXT("0.25","0%")')).toBe("25%");
+    expect(calc('TEXT("abc","0.00")')).toBe("abc");
+  });
+
+  // Not Excel's answers: what TEXT gives for the codes it cannot write yet. A plain number reads as
+  // "not formatted"; 12:00 for 36 hours would read as a fact. Excel: 3/4, 1.23E+04, 36:00.
+  it("gives the plain number for fractions, E+ and elapsed time, rather than a wrong one", () => {
+    expect(calc('TEXT(0.75,"# ?/?")')).toBe("0.75");
+    expect(calc('TEXT(12345,"0.00E+00")')).toBe("12345");
+    expect(calc('TEXT(1.5,"[h]:mm")')).toBe("1.5");
+    expect(calc('TEXT(0.1,"[mm]:ss")')).toBe("0.1");
+  });
+});
+
 describe("the *IF(S) functions pass on an error they read, as Excel does (#96)", () => {
   // A1:B3 — "a" 1 · "b" #REF! · "a" 3. Every expected value is Excel's.
   const broken: FormulaValue[][] = [

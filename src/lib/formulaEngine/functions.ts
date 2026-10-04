@@ -3,7 +3,8 @@
 
 import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_NUM, ERR_VALUE } from "./types";
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
-import { dateLiteral, partsOfSerial, serialOf } from "../excelDate";
+import { dateLiteral, formatSerial, isDateFormatCode, partsOfSerial, serialOf } from "../excelDate";
+import { formatNumberCode } from "../numberFormatCode";
 
 /** Whether an argument was read from cells — a range, or one cell by reference (#166). */
 function fromCells(arg: EvalResult): boolean {
@@ -652,9 +653,31 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const from = Math.trunc(start) - 1;
     return s.slice(from, from + Math.trunc(len));
   },
+  /**
+   * TEXT(value, format) — the value written the way an Excel format code says (#29).
+   *
+   * The format used to be ignored, so `TEXT(0.5,"0%")` was "0.5" and a label like
+   * `="Total: "&TEXT(A1,"#,##0.00")` printed the raw number. It now uses the same code readers the
+   * grid shows a file's own formats with: numbers through `formatNumberCode` (`0%`, `0.00`,
+   * `#,##0`, sections, literals), dates and times through `formatSerial` (`dd/mm/yyyy`, `mmm`,
+   * `hh:mm`, the Buddhist `bbbb`). Text that is not a number comes back as it is, as in Excel.
+   */
   TEXT: (args) => {
+    if (args.length < 2) return ERR_VALUE;
     const v = scalarOf(args[0]);
-    return toDisplayString(v);
+    if (isError(v)) return v;
+    const format = scalarOf(args[1]);
+    if (isError(format)) return format;
+    const code = toDisplayString(format);
+    if (typeof v === "boolean") return toDisplayString(v);
+    const n = isBlank(v) ? 0 : toNumber(v);
+    if (isError(n)) return toDisplayString(v);
+    if (code === "") return "";
+    // Elapsed time ([h]:mm, [mm]:ss) counts past a day, and the date formatter reads [h] as the hour
+    // of the day: 1.5 would come out 12:00 where Excel says 36:00. Until it counts them, the plain
+    // number, as for fractions and E+ (#29) — a number nobody mistakes for a time, not a wrong one.
+    if (/\[[hms]+\]/i.test(code)) return toDisplayString(n);
+    return isDateFormatCode(code) ? formatSerial(n, code) : formatNumberCode(n, code);
   },
   // Both are serials (#45), in the reader's own time zone: NOW used to be UTC while TODAY was local,
   // so in Bangkok between midnight and 7am the two disagreed about the date.
