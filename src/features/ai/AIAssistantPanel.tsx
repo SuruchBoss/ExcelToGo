@@ -31,6 +31,7 @@ export default function AIAssistantPanel() {
   const { address: selectionAddress, range, headers, anchor, row, rangeIsText, columns, mentionsIn } = useAIContext();
   const onInsert = useSheetStore((s) => s.insertAIFormula);
   const openFormulaPanel = useSheetStore((s) => s.openFormulaPanel);
+  const setSidebarMode = useSheetStore((s) => s.setSidebarMode);
   const sheet = useSheetStore(selectActiveSheet);
   const names = useSheetStore(selectActiveNames);
   const [question, setQuestion] = useState("");
@@ -47,6 +48,30 @@ export default function AIAssistantPanel() {
   // line at 1366×768, when the question is what people open this panel for.
   const [keyOpen, setKeyOpen] = useState(false);
   const answerRef = useRef<HTMLDivElement>(null);
+  const questionRef = useRef<HTMLTextAreaElement>(null);
+
+  /**
+   * Opening the panel puts the typing where the question goes (#203).
+   *
+   * Focus stayed on the selected cell, so a question typed straight away went into that cell. On a
+   * phone, or at 200% zoom, the panel is a sheet over the grid: the cell was overwritten out of
+   * sight while the question box stayed empty.
+   */
+  useEffect(() => {
+    questionRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  /**
+   * Escape closes the panel and hands the keyboard back to the cell it was opened from (#203), as
+   * the menu and the app's dialogs already do. The grid's own cursor cell is the one to return to:
+   * the toolbar button that opened the panel never takes focus from it.
+   */
+  const close = () => {
+    setSidebarMode("none");
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>('[role="grid"] td[tabindex="0"]')?.focus({ preventScroll: true })
+    );
+  };
   // Where Insert would write, by the same rule the store follows (#64): not into a cell the formula
   // reads — under the column for a total, and nowhere when there is no such cell.
   const place = useMemo(
@@ -127,7 +152,15 @@ export default function AIAssistantPanel() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div
+      className="flex h-full flex-col gap-3"
+      onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      }}
+    >
       <div>
         <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
           <Sparkles size={16} className="text-emerald-600" /> {t.ai.title}
@@ -140,6 +173,7 @@ export default function AIAssistantPanel() {
       </div>
 
       <textarea
+        ref={questionRef}
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         onKeyDown={(e) => {

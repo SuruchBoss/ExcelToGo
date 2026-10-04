@@ -1627,6 +1627,51 @@ const FLOWS = [
       }
     },
   })),
+  ...[1280, 390].map((width) => ({
+    // #203: opening Ask AI left focus on the selected cell, so a question typed straight away went
+    // into that cell while the question box stayed empty. On a phone the panel is a sheet over the
+    // grid, so the cell was overwritten out of sight. And Escape did not close the panel.
+    name: `opening Ask AI puts the typing in the question box, and Escape closes it back to the cell (${width}px)`,
+    width,
+    touch: width < 640,
+    async run(page) {
+      const phone = width < 640;
+      if (phone) {
+        await cell(page, 0, 0).tap();
+        await cell(page, 0, 0).tap();
+        await cell(page, 0, 0).locator("input").waitFor({ timeout: 5000 });
+        await page.keyboard.insertText("111");
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(100);
+        await cell(page, 0, 0).tap();
+      } else {
+        await typeInCell(page, 0, 0, "111");
+        await page.keyboard.press("ArrowUp");
+      }
+      const askAi = page.locator('button[aria-label="ถาม AI"]').first();
+      if (phone) await askAi.tap();
+      else await askAi.click();
+      const question = page.locator("aside textarea");
+      await question.waitFor({ timeout: 5000 });
+      await page.waitForTimeout(100);
+      const inBox = await question.evaluate((el) => el === document.activeElement);
+      note(inBox, "opening the panel puts focus in the question box");
+
+      await page.keyboard.type("total");
+      const a1 = (await cell(page, 0, 0).innerText()).trim();
+      note((await question.inputValue()) === "total" && a1 === "111", `"total" goes into the question, and A1 keeps 111 (box "${await question.inputValue()}", A1 "${a1}")`);
+
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
+      const open = await page.locator("aside textarea").count();
+      const back = await page.evaluate(() => {
+        const td = document.activeElement?.closest("td");
+        return td ? `${td.getAttribute("data-row")},${td.getAttribute("data-col")}` : document.activeElement?.tagName;
+      });
+      note(open === 0 && back === "0,0", `Escape closes the panel and focus is back on A1 (panel open: ${open > 0}, focus on ${back})`);
+    },
+  })),
   {
     // #109: there is no demo. The word was on the guide, the panel and the landing page, and it
     // told people the real app was a trial.
@@ -1918,7 +1963,7 @@ const FLOWS = [
     // editor closed, the selection stretched to A2:A4, and what was typed went over A4. On main the
     // same `mousedown` pointed A4 into the formula instead (`=A1*2A4`). A tap's mouse events now
     // act on the cell the finger touched.
-    name: "on a phone, a second tap on a formula cell opens its editor, and what is typed goes into that formula, not two rows down",
+    name: "on a phone, a second tap on a formula cell opens its editor, what is typed goes into that formula, not two rows down, and a tap away selects one cell",
     width: 390,
     touch: true,
     async run(page) {
@@ -1934,8 +1979,29 @@ const FLOWS = [
       await put(0, 0, "100");
       await put(1, 0, "=A1*2");
       await put(3, 0, "999");
+      await put(3, 1, "777");
       const bar = page.getByPlaceholder(label.formulaBar);
       const text = async (row, col) => (await cell(page, row, col).innerText()).trim();
+      const selected = () => page.evaluate(() => [...document.querySelectorAll('td[aria-selected="true"]')].map((e) => e.dataset.row + "," + e.dataset.col).join(" "));
+
+      // #210, the closing side: a formula opened with a second tap and left with a tap on B6,
+      // nothing typed. The page moves back as the editor closes, and the `mouseup` used to land two
+      // rows up and stretch the selection to B4:B6, so a Clear would have taken B4 with it.
+      await cell(page, 1, 0).tap();
+      await page.waitForTimeout(150);
+      await cell(page, 1, 0).tap();
+      await cell(page, 1, 0).locator("input").waitFor({ timeout: 5000 });
+      await cell(page, 5, 1).tap();
+      await page.waitForTimeout(200);
+      const leftFor = await selected();
+      note(leftFor === "5,1", `leaving an opened formula with a tap on B6 selects B6 alone (selected: ${leftFor || "none"})`);
+      await cell(page, 5, 1).tap();
+      await cell(page, 5, 1).locator("input").waitFor({ timeout: 5000 }).catch(() => {});
+      await page.keyboard.insertText("5");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
+      note((await text(5, 1)) === "5" && (await text(3, 1)) === "777" && (await text(1, 0)) === "200", `5 lands in B6, and B4 and A2 are untouched (B6 "${await text(5, 1)}", B4 "${await text(3, 1)}", A2 "${await text(1, 0)}")`);
 
       await cell(page, 1, 0).tap();
       await page.waitForTimeout(150);
