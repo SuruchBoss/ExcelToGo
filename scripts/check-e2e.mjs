@@ -1817,6 +1817,57 @@ const FLOWS = [
     },
   },
   {
+    // #201: Enter in the formula bar on a phone moved to the next cell and kept the bar focused,
+    // showing that cell's formula as if it were being edited. One tap on any cell then pointed into
+    // it: `=A1*2` became `=A1*2B4` and A2 read #SYNTAX!, with no word. Enter now hands focus back to
+    // the grid, and a tap points only into a formula somebody has typed into.
+    name: "on a phone, a tap after Enter in the formula bar selects the cell, and a formula only opened to look at is not pointed into",
+    width: 390,
+    touch: true,
+    async run(page) {
+      const put = async (row, col, text) => {
+        await cell(page, row, col).tap();
+        await cell(page, row, col).tap();
+        await cell(page, row, col).locator("input").waitFor({ timeout: 5000 });
+        await page.keyboard.insertText(text);
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(100);
+      };
+      await put(0, 0, "100");
+      await put(1, 0, "=A1*2");
+      await put(3, 1, "7");
+      const bar = page.getByPlaceholder(label.formulaBar);
+      const text = async (row, col) => (await cell(page, row, col).innerText()).trim();
+
+      // A2's formula opened in the bar only to look at it: a tap on B4 goes to B4, not into A2.
+      await cell(page, 1, 0).tap();
+      await bar.tap();
+      await page.waitForTimeout(100);
+      await cell(page, 3, 1).tap();
+      await page.waitForTimeout(150);
+      const looked = await bar.inputValue();
+      await cell(page, 1, 0).tap();
+      await page.waitForTimeout(100);
+      note(looked === "7" && (await bar.inputValue()) === "=A1*2" && (await text(1, 0)) === "200", `a formula opened in the bar to look at is left alone by a tap (bar then "${looked}", A2 "${await bar.inputValue()}" = ${await text(1, 0)})`);
+
+      await cell(page, 0, 0).tap();
+      await bar.tap();
+      await bar.fill("200");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(100);
+      const barFocused = await bar.evaluate((el) => el === document.activeElement);
+      note((await text(1, 0)) === "400" && !barFocused, `Enter in the bar saves A1 and lets go of the bar (A2 "${await text(1, 0)}", bar focused: ${barFocused})`);
+
+      await cell(page, 3, 1).tap();
+      await page.waitForTimeout(100);
+      note((await bar.inputValue()) === "7", `one tap on B4 then selects B4 (the bar reads "${await bar.inputValue()}")`);
+      await cell(page, 1, 0).tap();
+      await page.waitForTimeout(100);
+      note((await bar.inputValue()) === "=A1*2" && (await text(1, 0)) === "400", `A2 keeps =A1*2 and 400 ("${await bar.inputValue()}", "${await text(1, 0)}")`);
+    },
+  },
+  {
     // #191: on a phone, Enter on the last row opens the new row's editor. The toolbar's undo takes
     // no focus, so the editor stayed open on a row undo had taken away: the next tap committed into
     // it and threw `reading 'slice'`, and what was typed there went with the exception. The editor

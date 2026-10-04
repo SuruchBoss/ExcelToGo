@@ -1348,6 +1348,9 @@ export default function SpreadsheetGrid() {
                             setEditing(null);
                           },
                           cancel: () => setEditing(null),
+                          // Opened by typing (`=`, or letters the keeper caught), it is a formula
+                          // being built; opened on a saved formula, not yet (#201).
+                          edited: e.currentTarget.value !== rawAt(r, c),
                         })
                       }
                       onBlur={(e) => {

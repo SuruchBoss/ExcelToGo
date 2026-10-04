@@ -24,6 +24,11 @@ export interface FormulaEditor {
   commit: (text: string) => void;
   /** Drop the draft; the cell keeps what it had. */
   cancel: () => void;
+  /**
+   * Whether it already holds something typed rather than the cell's saved text — an editor opened
+   * by typing `=`, say. Taps point only into a formula somebody is building (#201).
+   */
+  edited?: boolean;
 }
 
 export interface PointedRange {
@@ -37,19 +42,21 @@ interface PointingState {
   editor: FormulaEditor | null;
   /** The editor's text as it stands, so the bar and the grid redraw as it changes. */
   text: string;
+  /** Something has been typed into the editor since it opened (#201). */
+  edited: boolean;
   /** Cells the last tap put into the formula, outlined on the grid, and where they sit in the text. */
   pointed: { range: PointedRange; span: PointSpan } | null;
 }
 
-export const usePointingStore = create<PointingState>(() => ({ editor: null, text: "", pointed: null }));
+export const usePointingStore = create<PointingState>(() => ({ editor: null, text: "", edited: false, pointed: null }));
 
 export function registerFormulaEditor(editor: FormulaEditor) {
-  usePointingStore.setState({ editor, text: editor.input.value, pointed: null });
+  usePointingStore.setState({ editor, text: editor.input.value, edited: editor.edited ?? false, pointed: null });
 }
 
 export function unregisterFormulaEditor(input: HTMLInputElement) {
   if (usePointingStore.getState().editor?.input === input) {
-    usePointingStore.setState({ editor: null, text: "", pointed: null });
+    usePointingStore.setState({ editor: null, text: "", edited: false, pointed: null });
   }
 }
 
@@ -60,7 +67,7 @@ export function unregisterFormulaEditor(input: HTMLInputElement) {
  */
 export function forgetClosedEditor() {
   const { editor } = usePointingStore.getState();
-  if (editor && !editor.input.isConnected) usePointingStore.setState({ editor: null, text: "", pointed: null });
+  if (editor && !editor.input.isConnected) usePointingStore.setState({ editor: null, text: "", edited: false, pointed: null });
 }
 
 /** Called from the editors' onChange, so typing keeps the bar and the outline current. */
@@ -69,13 +76,26 @@ export function noteFormulaText(input: HTMLInputElement, text: string) {
   if (state.editor?.input !== input) return;
   // Typing over the address a tap put in ends the outline: it no longer says what the text says.
   const pointed = state.pointed && text.slice(state.pointed.span.start, state.pointed.span.end) === state.pointed.span.ref ? state.pointed : null;
-  usePointingStore.setState({ text, pointed });
+  usePointingStore.setState({ text, edited: true, pointed });
 }
 
-/** Whether a tap on the grid should point rather than select: a formula is open in an editor. */
-export function pointingFormula(): FormulaEditor | null {
+/** A formula open in an editor, typed into or not: what the bar's keys type into. */
+export function formulaInEditor(): FormulaEditor | null {
   const { editor } = usePointingStore.getState();
   return editor && editor.input.value.startsWith("=") ? editor : null;
+}
+
+/**
+ * Whether a tap on the grid should point rather than select: a formula is open in an editor *and*
+ * somebody has typed into it (#201).
+ *
+ * A formula merely shown was enough before. Enter in the formula bar moved it to the next cell's
+ * formula and kept focus, so the next tap anywhere put that cell's address on the end of a formula
+ * nobody was editing — `=A1*2` became `=A1*2B4` and `#SYNTAX!` with no word. A formula opened to
+ * look at, or to replace, is not one being built; the first key typed makes it one.
+ */
+export function pointingFormula(): FormulaEditor | null {
+  return usePointingStore.getState().edited ? formulaInEditor() : null;
 }
 
 // ── How the last press was made ──────────────────────────────────────────────────────────────
@@ -122,7 +142,7 @@ export function pointAt(row: number, col: number) {
 
 /** The grip on the pointed cell dragged: the address in the formula becomes the range. */
 export function widenPointed(range: PointedRange) {
-  const editor = pointingFormula();
+  const editor = formulaInEditor();
   const { pointed } = usePointingStore.getState();
   if (!editor || !pointed) return;
   const ref =
@@ -137,7 +157,7 @@ export function widenPointed(range: PointedRange) {
 
 /** One of the bar's keys: `(`, `)`, `,`, `:`, `+`, `-`. */
 export function typeKey(chars: string) {
-  const editor = pointingFormula();
+  const editor = formulaInEditor();
   if (!editor) return;
   const { input } = editor;
   const result = typeInto(input.value, input.selectionStart ?? input.value.length, input.selectionEnd ?? input.value.length, chars);
