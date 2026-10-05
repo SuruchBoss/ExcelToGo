@@ -648,6 +648,22 @@ const OPENED_STATES = [
     },
   },
   {
+    // #207: what a live-data cell says under itself when it is typed into. It goes by itself after a
+    // few seconds, so the scan runs while it is up.
+    name: "live cell refused typing",
+    path: "/app",
+    async open(page) {
+      await unlockedData(page);
+      await page.getByRole("button", { name: "ใส่ลงตาราง", exact: true }).first().click();
+      const picker = page.getByRole("dialog");
+      await picker.getByRole("button", { name: "ใส่ลงตาราง", exact: true }).click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "CF-01", null, { timeout: 15_000 });
+      await page.locator('td[data-row="1"][data-col="1"]').click();
+      await page.keyboard.type("9");
+      await page.locator('td[data-row="1"][data-col="1"][data-refused]').waitFor({ state: "attached", timeout: 3000 });
+    },
+  },
+  {
     name: "phone menu",
     path: "/app",
     widths: [390],

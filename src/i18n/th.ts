@@ -63,6 +63,8 @@ export const th: Messages = {
     unlink: "เอาออก",
     liveCellTitle: (source) => `ข้อมูลสดจาก "${source}" — คลิกเพื่อดูตัวเลือก`,
     liveCellReadOnly: "เซลล์นี้เป็นข้อมูลสด แก้ไขเองไม่ได้ — กด \"เอาออก\" ก่อนถ้าต้องการพิมพ์ทับ",
+    // U+2060 (word joiner) keeps a button's name on one line when the note under the cell wraps.
+    liveCellRefused: (address) => `${address} เป็นข้อมูลสด พิมพ์ทับไม่ได้ — กด "เอา\u2060ออก" ก่อนถ้าจะแก้เอง`,
     partial: (rows) => `ได้มาแค่ ${rows.toLocaleString("th-TH")} แถวแรก`,
     partialHint: "แหล่งข้อมูลนี้ยังมีข้อมูลมากกว่านี้ — เพิ่มขีดจำกัดแถวได้ที่การตั้งค่าแหล่งข้อมูล",
     partialSizeHint: (mb) =>
@@ -520,6 +522,7 @@ export const th: Messages = {
     fieldCount: (fields) => `กรอกได้ ${fields} ช่อง`,
     hint: "ช่องสีขาวคือช่องที่กรอกได้ ช่องสีเทาเป็นโครงของแม่แบบ แก้ไม่ได้",
     lockedCell: "ช่องนี้เป็นโครงของแม่แบบ แก้ไม่ได้ — กด \"ปลดล็อกทั้งชีต\" ถ้าต้องการแก้",
+    lockedCellRefused: (address) => `${address} เป็นโครงของแม่แบบ แก้ไม่ได้ — กด "ปลด\u2060ล็อก\u2060ทั้ง\u2060ชีต" ถ้าต้องการแก้`,
     unlock: "ปลดล็อกทั้งชีต",
     confirmUnlock: "ปลดล็อกแม่แบบ? จะแก้ได้ทุกช่องเหมือนตารางทั่วไป และตัวเลือก dropdown จะหายไป (กด Ctrl+Z ย้อนได้)",
     unlocked: "ปลดล็อกแล้ว — แก้ได้ทุกช่อง",
