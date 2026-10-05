@@ -44,7 +44,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-1979%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-1984%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -65,7 +65,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1979 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 1984 automated tests.
 
 ---
 
@@ -109,7 +109,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 1979 passing tests could not catch
+### 🧪 What 1984 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -120,7 +120,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 1979 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 1984 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -395,7 +395,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 1979-case Vitest suite |
+| `npm test` | Run the 1984-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1253,6 +1253,7 @@ share one rule (`src/lib/cellLiteral.ts`), in this order:
 | A cell formatted as **Text** (number format menu · Excel's `@`) | `123` | text — for a whole column of codes |
 | An integer with a leading zero | `0812345678`, `00123` | text, automatically (`0` and `0.5` are still numbers) |
 | Twelve digits or more, nothing else | `1234567890123` | text, automatically (eleven digits or fewer, or with a point or sign, are numbers) |
+| An error code as Excel spells it (#226) | `#N/A`, `#DIV/0!` | **the error value**, as in Excel — `#1` or `#N/A please` stay text |
 | A number as a screen shows it — commas at the thousands, a trailing `%`, or a currency sign in front (#52) | `1,250`, `12%`, `฿1,500.00` | **a number** — `12%` is 0.12 (as #53 stores it) · the cell shows what was typed |
 | Everything else | `-3`, `12.50`, `10000000000` | a number, as before |
 
@@ -2518,7 +2519,6 @@ package again as it opens and **says so before anything is edited**: what, how m
 | Excel PivotTables | values only | static numbers, not a PivotTable |
 | Formulas calling a function the engine lacks | `#NAME?` | **the formula is kept**, and Excel calculates it |
 | Range names that cannot come in (a formula, a whole column, several areas, or a sheet the file lacks) | formulas using them read `#NAME?` | the name is lost; formulas still carry it |
-| Cells holding a constant error value (`#DIV/0!`, `#N/A`) | shown as the text of the code; a formula that reads one does not see an error, so `SUM` steps over it (until [#226](https://github.com/SuruchBoss/ExcelToGo/issues/226)) | **written back as the error value** |
 | External links to other files | values do not update | lost |
 | Macros (VBA) | not run | lost |
 
@@ -2526,8 +2526,8 @@ package again as it opens and **says so before anything is edited**: what, how m
 
 - **A plain file sees nothing.** The report comes up only when something is actually lost.
 - **A constant error cell used to open blank, with nothing said** (#227), and a total over it read as a clean number. It now
-  keeps its code and goes back out as the error it was. An error code typed as Excel spells it (`#N/A`, `#DIV/0!`) also
-  goes out as the error, as Excel would store it; a leading apostrophe or the Text format keeps it text.
+  opens as the error value itself (#226), so a formula that reads it sees an error as in Excel, and it goes back out as
+  the error it was. Nothing about it is lost, so it is no longer in this report.
 - **Got it** closes it. It opens again from the **menu** (or the amber button beside Export Excel from 1366px) for as long
   as the file's sheets are open; undoing the open, or opening another file over it, takes the report away too.
 - It reads the original package, not what the importer returned, because what the importer returned is exactly what
@@ -3023,7 +3023,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1979 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (1984 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3297,7 +3297,7 @@ src/
     fillSeries.ts            # What dragging the corner continues into — numbers, Thai days and months, quarters, formulas
     sheetSearch.ts           # Find and replace over the raw text rather than the displayed result
     workbookRefs.ts          # The formula rewrites that are not a fact about one sheet: cross-sheet shifts, renames
-    fileLosses.ts            # What an opened file holds that the app can't keep (pictures, charts, PivotTables, macros, links, missing functions, constant error values), read from the package (#83)
+    fileLosses.ts            # What an opened file holds that the app can't keep (pictures, charts, PivotTables, macros, links, missing functions), read from the package (#83)
     sheetNames.ts            # Excel's sheet-name rules in one place: ≤31 chars, no \ / ? * [ ] :, unique ignoring case (#54)
     byok.ts                  # The visitor's own API key: this tab only, masked when shown
     sheet.ts                 # The core sheet data model, whole-sheet computation, applying a formula by scope,
@@ -3708,6 +3708,12 @@ shows as Infinity rather than Excel's `#NUM!`; only `^` and `POWER` were fixed.
 Full support for arithmetic/comparison/concatenation operators (`+ - * / ^ = <> < > <= >= &`) and Excel-style
 error values: `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`.
 
+**An error code held in a cell as a value is the error itself, as in Excel (#226).** `#N/A`, `#DIV/0!`, `#VALUE!`,
+`#REF!`, `#NAME?`, `#NUM!` and `#NULL!` typed into a cell, pasted from Excel, opened from a file or written by a pivot used
+to be text, so `SUM` stepped over them to a clean-looking total and `IFERROR` let them through. Now `SUM` gives the
+error and `IFERROR`/`IFNA` catch it. A leading apostrophe, the Text format, or text that only starts with `#` (`#1`,
+`#N/A please`) stays text, and so does a file's text cell that happens to read `#N/A`, as Excel stores it.
+
 Want to add a formula to the drag-and-drop palette? Add the real function in `functions.ts`, then add its entry
 plus both languages' text in `formulaCatalog.ts` and `i18n/th.ts`/`en.ts`.
 
@@ -4063,13 +4069,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 1979 cases across 140 files, via Vitest
+npm test      # 1984 cases across 141 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 1979 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 1984 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -4188,10 +4194,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **1979 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **1984 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 1979 passing tests could not catch](#-what-1979-passing-tests-could-not-catch), repeatable
+> [What 1984 passing tests could not catch](#-what-1984-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4232,7 +4238,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `sheetNames.test.ts` | 7 | Excel's sheet-name rules (#54): each rule broken, case counted as one name, cleaning a name and finding a free one, + never reusing a name after a delete, an old save's duplicate keeping its formulas on the first tab, an invalid name renamed with its formulas |
 | `sheetMerges.test.ts` | 35 | Which cells a merge swallows, shifting merges on row/column insert and delete, dropping one that collapses to a single cell |
 | `sheetTemplate.test.ts` | 14 | Which cells are locked vs. fields, inline and range-backed dropdown options, column-width conversion |
-| `fileLosses.test.ts` | 12 | What an opened file can't keep (#83): a real file with a picture, a chart and a function the engine lacks, counted with its sheet; that formula exported as it was; a plain file reporting nothing; `_xlfn.` spelling of a function the engine has not counted; PivotTables, shapes, macros, links and a chart sheet as the spec lays them out; a non-zip not failing the open; range names that cannot come in (#60) as one line of the same report, after the missing functions, the whole report for a file with nothing else, and still said when the package cannot be read again; constant error cells (#227) counted with their sheet while a formula whose result is an error is not, and still counted after an export and a reopen |
+| `fileLosses.test.ts` | 11 | What an opened file can't keep (#83): a real file with a picture, a chart and a function the engine lacks, counted with its sheet; that formula exported as it was; a plain file reporting nothing; `_xlfn.` spelling of a function the engine has not counted; PivotTables, shapes, macros, links and a chart sheet as the spec lays them out; a non-zip not failing the open; range names that cannot come in (#60) as one line of the same report, after the missing functions, the whole report for a file with nothing else, and still said when the package cannot be read again; constant error cells (#227) no longer reported, since the app reads them as the errors they are from #226 |
 | `excelIO.test.ts` | 58 | Builds a real .xlsx and round-trips it: reading fields/dropdowns/widths, an unprotected file isn't a template, export→import comes back identical, and styling (fills/font sizes/borders/row heights/merges) round-trips, as do all five kinds of conditional formatting rule and cell notes (both the plain-string and Excel's rich-text form), cross-sheet dropdowns read from the sheet the rule names (quoted names, a hidden sheet, a missing one, and the PaynEat ERP draft-0 template), a column exactly width 9 still 9 after export (#136), a merge in the file holding its value in the top-left cell only with SUM/COUNTA matching Excel and the merge still exported (#55), a real `t="e"` cell opening as its error code rather than blank, going back out as `t="e"` and still there on a reopen, while `'#N/A` and a Text-formatted cell go out as text (#227) |
 | `charts.test.ts` | 42 | Reading a range into series and labels (including a text label column), gaps for non-numbers, a zero-anchored axis, moving/resizing/clamping a chart's frame, what the legend names per kind, shifting on edits |
 | `server/urlGuard.test.ts` | 31 | Addresses the server refuses to reach (loopback, private ranges, cloud metadata, IPv6 link-local), IPv4 embedded in IPv6 (`::ffff:`, `::`, SIIT, NAT64, 6to4, Teredo), non-http schemes, and the allowlist |
@@ -4259,6 +4265,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/datePivot.test.ts` | 1 | A pivot by day (#45): its rows are headed with dates, not serials |
 | `store/pivotSize.test.ts` | 6 | A summary sheet as big as its answer (#56): all 35 products with the Grand total row in bold, all twelve months with the Grand total column, the same after a refresh, a small result still opening on a 30×10 sheet with room to work, a result too big for a sheet built nowhere and its size said, and a refresh too big for one alerting while the old pivot stays |
 | `store/pivotError.test.ts` | 2 | A pivot over a source with an error (#222): Sum, Average, Min and Max of the group holding `#DIV/0!` and the Grand total show `#DIV/0!` while the other group keeps its number, when built and when refreshed after the source gains the error |
+| `store/errorLiterals.test.ts` | 4 | An error code held in a cell as a value is the error (#226), by every way in: typed (`SUM` gives `#DIV/0!`, `IFERROR`/`IFNA` catch it), pasted as Excel copies it (`#1`, `#N/A please`, `'#N/A` stay text), opened from a file (a `t="e"` cell is the error, a string cell reading `#N/A` stays text), and `SUM`/`IFERROR` over a pivot sheet holding an error |
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/convertDates.test.ts` | 5 | "Convert to dates" and "Date (B.E.)" through the store (#82): converted cells show the Buddhist year while unreadable ones and formulas stay, A.D. month-first, one undo for all, a chosen format kept, the B.E. format shown and switched back |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |

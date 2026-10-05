@@ -193,7 +193,8 @@ export function parseCsv(text: string): string[][] {
 /**
  * A CSV field is text until it reads as a number — by the grid's own rule (#36), not `Number()`, so
  * a branch code `007` or a phone number keeps its zeros instead of arriving as `7`. `literalValue`
- * imports only types, so the server's copy of this file pulls in nothing from the browser side.
+ * pulls in nothing from the browser side, so neither does the server's copy of this file. An error
+ * code (#226) comes back as its text here; the cell it lands in reads it as the error.
  */
 function coerce(s: string): CellValue {
   const t = s.trim();

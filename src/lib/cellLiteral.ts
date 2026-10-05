@@ -3,7 +3,7 @@
 
 import type { NumberFormat } from "./cellFormat";
 import { dateLiteral } from "./excelDate";
-import type { FormulaValue } from "./formulaEngine/types";
+import { FormulaError, type FormulaValue } from "./formulaEngine/types";
 
 /**
  * What a non-formula cell holds: a number when it reads as one, its text otherwise.
@@ -33,7 +33,11 @@ import type { FormulaValue } from "./formulaEngine/types";
  *    a pasted column of them used to add up to 0. The text stays in the cell and shows as typed; the
  *    file gets the number with a matching format (`formattedNumber`). Commas in the wrong places
  *    (`1,25`), dashes (`081-234-5678`, `123-4-56789-0`) and a leading zero (`01,250`) stay text.
- * 7. Anything else that `Number()` accepts is a number.
+ * 7. **An error code as Excel spells it** (`#N/A`, `#DIV/0!`, …) is that error (#226), as when it is
+ *    typed into Excel: `SUM` over it gives the error and `IFERROR` catches it. It used to be text,
+ *    so a pasted or imported `#DIV/0!` was stepped over and the total came out clean. Text that only
+ *    starts with `#` (`#1`, `#N/A please`) is still text.
+ * 8. Anything else that `Number()` accepts is a number.
  *
  * Nothing is stored to make the automatic rules work, so a sheet saved before they existed shows
  * its zeros again the moment it is opened.
@@ -42,6 +46,8 @@ export function literalValue(raw: string, numberFormat?: NumberFormat): FormulaV
   if (raw === "") return null;
   if (raw.startsWith("'")) return raw.slice(1);
   if (numberFormat === "text") return raw;
+  const error = errorLiteral(raw);
+  if (error) return error;
   if (LEADING_ZERO.test(raw) || LONG_DIGITS.test(raw)) return raw;
   const date = dateLiteral(raw);
   if (date) return date.serial;
@@ -52,6 +58,14 @@ export function literalValue(raw: string, numberFormat?: NumberFormat): FormulaV
 }
 
 const LEADING_ZERO = /^0\d+$/;
+
+/** The error values a cell can hold as a constant, the seven Excel writes into a file as `t="e"`. */
+export const ERROR_CODES: readonly string[] = ["#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A"];
+
+/** The error a cell's text stands for, or null when the text is not exactly one of `ERROR_CODES`. */
+export function errorLiteral(raw: string): FormulaError | null {
+  return ERROR_CODES.includes(raw) ? new FormulaError(raw) : null;
+}
 
 /**
  * A number with thousands commas, a trailing percent or a leading currency sign: sign, then
