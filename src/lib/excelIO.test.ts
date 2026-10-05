@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { exportWorkbookToXlsxBlob, importWorkbookFromFile } from "./excelIO";
+import { formatNumberForDisplay } from "./cellFormat";
 import { computeSheet, createEmptySheet, createWorkbookResolver, setCellRaw, SheetModel } from "./sheet";
 import { evaluateConditionalFormats } from "./conditionalFormat";
 import { cellKey } from "./sheetTemplate";
@@ -764,5 +765,70 @@ describe("a constant error cell in an opened file (#227)", () => {
     expect(ws.getCell("A3").value).toEqual({ error: "#REF!" });
     // Excel makes the error of a typed #n/a too, so it goes out as #N/A (checked in Excel, #226).
     expect(ws.getCell("A4").value).toEqual({ error: "#N/A" });
+  });
+});
+
+/**
+ * Zero and negative numbers under a date or time format, as a timesheet holds them (#241).
+ * ExcelJS hands such a cell over as a `Date`, and the importer wrote it as year-1899 ISO text that
+ * no date reading accepts: the cell became text, SUM skipped it and export wrote the text back.
+ */
+async function negativeTimesFile(): Promise<File> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Hours");
+  const put = (address: string, value: number, numFmt: string) => {
+    ws.getCell(address).value = value;
+    ws.getCell(address).numFmt = numFmt;
+  };
+  put("A1", 0, "dd/mm/yyyy");
+  put("A2", -1, "dd/mm/yyyy");
+  put("A3", -1.5, "[h]:mm");
+  put("A4", 1.5, "[h]:mm");
+  put("A5", 45366, "dd/mm/yyyy");
+  ws.getCell("A8").value = { formula: "SUM(A2:A4)", result: -1 } as ExcelJS.CellFormulaValue;
+  ws.getCell("A8").numFmt = "[h]:mm";
+  ws.getCell("B2").value = { formula: "A2+2", result: 1 } as ExcelJS.CellFormulaValue;
+  return new File([await wb.xlsx.writeBuffer()], "hours.xlsx");
+}
+
+describe("zero and negative date or time cells in an opened file (#241)", () => {
+  const shown = (sheet: SheetModel, r: number, c: number) => {
+    const value = computeSheet(sheet).values[r][c];
+    const format = sheet.formats[r][c];
+    return typeof value === "number" && format?.numberFormat
+      ? formatNumberForDisplay(value, format.numberFormat, format.dateFormat, format.numFmtCode)
+      : String(value);
+  };
+
+  it("open as the numbers they are, shown as Excel shows them", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await negativeTimesFile());
+    expect([0, 1, 2].map((r) => sheet.cells[r][0])).toEqual(["0", "-1", "-1.5"]);
+    expect([0, 1, 2, 3, 4].map((r) => computeSheet(sheet).values[r][0])).toEqual([0, -1, -1.5, 1.5, 45366]);
+    expect(shown(sheet, 0, 0)).toBe("00/01/1900");
+    expect(shown(sheet, 1, 0)).toBe("########");
+    expect(shown(sheet, 2, 0)).toBe("########");
+    // Positive dates and times open as they always did.
+    expect(shown(sheet, 3, 0)).toBe("36:00");
+    expect(shown(sheet, 4, 0)).toBe("15/03/2024");
+  });
+
+  it("and formulas read them as numbers: A2+2 is 1, the total of A2:A4 is -1", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await negativeTimesFile());
+    const { values } = computeSheet(sheet);
+    expect(values[1][1]).toBe(1);
+    expect(values[7][0]).toBe(-1);
+  });
+
+  it("and go back out as the same numbers with their formats", async () => {
+    const [{ sheet }] = await importWorkbookFromFile(await negativeTimesFile());
+    const ws = await readBack(await exportWorkbookToXlsxBlob(exportable(sheet, "Hours")));
+    const out = (address: string) => {
+      const value = ws.getCell(address).value;
+      // ExcelJS reads a date-formatted number back as a Date; turn it into its serial.
+      return value instanceof Date ? Math.round(((value.getTime() - Date.UTC(1899, 11, 30)) / 86_400_000) * 86_400) / 86_400 : value;
+    };
+    expect(["A1", "A2", "A3", "A4", "A5"].map(out)).toEqual([0, -1, -1.5, 1.5, 45366]);
+    expect(["A1", "A2", "A3"].map((a) => ws.getCell(a).numFmt)).toEqual(["dd/mm/yyyy", "dd/mm/yyyy", "[h]:mm"]);
+    expect(await cellXml(await exportWorkbookToXlsxBlob(exportable(sheet, "Hours")), "A2")).not.toContain('t="s"');
   });
 });
