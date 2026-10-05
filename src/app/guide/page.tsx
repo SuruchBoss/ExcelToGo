@@ -14,7 +14,7 @@ const REPO_URL = "https://github.com/SuruchBoss/ExcelToGo";
 /** The README section each language's reader should land on. Anchors follow GitHub's slugs. */
 const README_LIVE_DATA = {
   th: `${REPO_URL}#-ข้อมูลสดจาก-api--csv-prototype`,
-  en: `${REPO_URL}/blob/main/README.en.md#-live-data-from-an-api--csv-prototype`,
+  en: `${REPO_URL}/blob/main/README.en.md#live-data-from-an-api--csv-prototype`,
 } as const;
 
 /**

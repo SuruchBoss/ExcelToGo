@@ -163,16 +163,16 @@ const featureCount = (text, start, end) => {
   if (from === -1 || to === -1) return null;
   return (text.slice(from, to).match(/^### /gm) ?? []).length;
 };
-const thFeatures = featureCount(docs["README.md"], "## ✨ ฟีเจอร์", "## 🛠 เทคโนโลยีที่ใช้");
-const enFeatures = featureCount(docs["README.en.md"], "## ✨ Features", "## 🛠 Tech stack");
+const thFeatures = featureCount(docs["README.md"], "## ฟีเจอร์", "## เทคโนโลยีที่ใช้");
+const enFeatures = featureCount(docs["README.en.md"], "## Features", "## Tech stack");
 if (thFeatures === null || enFeatures === null) fail("couldn't locate the Features section in one of the READMEs");
 else if (thFeatures !== enFeatures) fail(`Features sections are out of sync: Thai has ${thFeatures}, English has ${enFeatures}`);
 else notes.push(`${thFeatures} feature sections, matching in both languages`);
 
 // --- 6. …and every feature section should be reachable from the contents -----------------------
 for (const [file, text, start, end] of [
-  ["README.md", docs["README.md"], "## ✨ ฟีเจอร์", "## 🛠 เทคโนโลยีที่ใช้"],
-  ["README.en.md", docs["README.en.md"], "## ✨ Features", "## 🛠 Tech stack"],
+  ["README.md", docs["README.md"], "## ฟีเจอร์", "## เทคโนโลยีที่ใช้"],
+  ["README.en.md", docs["README.en.md"], "## Features", "## Tech stack"],
 ]) {
   const from = text.indexOf(start);
   const to = text.indexOf(end);

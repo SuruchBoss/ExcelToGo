@@ -478,7 +478,7 @@ export const en: Messages = {
           "Mostly not. Colours, font sizes, bold, borders, merged cells, column widths, number formats, dates and formulas are read in and written back to .xlsx.",
         detail:
           "What is not kept: pictures, Excel's own charts and PivotTables, and macros; they are not in the exported file. A formula using a function the app does not have yet shows #NAME?. CSV files must be UTF-8.",
-        link: { href: "https://github.com/SuruchBoss/ExcelToGo/blob/main/README.en.md#-import-an-existing-excel-file", label: "Every limitation" },
+        link: { href: "https://github.com/SuruchBoss/ExcelToGo/blob/main/README.en.md#import-an-existing-excel-file", label: "Every limitation" },
       },
       {
         q: "Can I use Excel formulas, and do I need an AI key?",
