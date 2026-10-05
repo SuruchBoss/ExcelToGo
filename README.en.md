@@ -1,41 +1,11 @@
-# 📊 ExcelToGo — describe what you want, get a suggested Excel formula
+# ExcelToGo
+
+**A browser-based spreadsheet that suggests Excel formulas from a plain-language description and processes everything in the browser**
 
 **Language:** [ไทย](README.md) · English
 
-### [Try it — nothing to install](https://excel-to-go.vercel.app)
-
-**Status (Sep 2026):** closing a last set of fixes before new features pause ([the list](https://github.com/SuruchBoss/ExcelToGo/issues?q=label%3Astatus%3Asprint-final)). After that the app stays free and open as it is, and [bug reports](https://github.com/SuruchBoss/ExcelToGo/issues) and security ([SECURITY.md](SECURITY.md)) are still looked after.
-
-Runs in your browser; your data stays on your machine.
-This site is the real app — free, no sign-up, not a trial — and you can [connect your own API from the browser](#from-your-browser-restcsv--works-on-this-site)
-right here, with the URL, the header and the data never passing through our server.
-
-> **Type "total sales for the northern branch" and get a suggested Excel formula back**, with a sentence
-> saying what it does — one click puts it in the cell. No remembering which argument SUMIF takes
-> first. Or skip the typing: **pick from 37 ready-made formulas** and drag across the cells instead
-> of typing addresses.
->
-> **Try it without a key: the app guesses a formula from keywords and always says it's a guess — check
-> before you use it.** (That way the question, the range address and the column headers go to this
-> site's server for the guess.) Add your own Anthropic API key for real AI answers from Claude — the key stays in
-> your browser, and the question goes straight to Anthropic, never through this app's server.
->
-> All of that happens on a `.xlsx` that **still looks like itself when it opens** (colour bands,
-> merged cells, borders, row heights), computed by a **hand-written formula engine** (no
-> third-party library), entirely in your browser — the file never leaves your machine (except that
-> asking the AI sends the question and its column headers: [where they go](#ask-ai-for-a-formula)), and there
-> is no account to create.
->
-> Four things build on that: **[your own API feeding the cells](#live-data-from-an-api--csv-prototype)**, with no script to write —
-> [straight from your browser on this site](#from-your-browser-restcsv--works-on-this-site), including APIs behind a VPN or in the office, or a database
-> when you run the app yourself — keeping cells current on its own (following paginated APIs and backing off when rate-limited),
-> **[imported files keeping their look](#it-looks-like-the-file-you-opened)** (colour bands, large type,
-> borders, merged cells), **[templates read straight out of an Excel file](#templates-from-an-excel-file)**
-> that already know which cells are yours to fill in, and **[Pivot summaries](#pivot-summarise-a-range)**
-> that group a range and write the result out as a new sheet.
->
-> Charts exported with the `.xlsx` are **real charts you can keep editing in Excel**, not pictures —
-> the OOXML chart part is written by hand, because ExcelJS cannot write one.
+[Open the app](https://excel-to-go.vercel.app) · [Data connection guide](https://excel-to-go.vercel.app/guide) ·
+[Report an issue](https://github.com/SuruchBoss/ExcelToGo/issues) · [Security policy](SECURITY.md)
 
 <p align="center">
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white">
@@ -48,24 +18,64 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
-Describe what you want in plain Thai or English and get a suggested Excel formula back, with a sentence
-explaining it; one click puts it in the cell. Without a key that is a local keyword guess — free, marked as a
-guess every time, to be checked before use — and pasting your own Anthropic API key sends the question to the
-real Claude, from your browser straight to Anthropic, never through this app's server.
+> [!NOTE]
+> **Project status (October 2026):** the final set of work before the development pause
+> ([label `status:sprint-final`](https://github.com/SuruchBoss/ExcelToGo/issues?q=label%3Astatus%3Asprint-final))
+> was completed on 5 October 2026, and new feature development is now paused. The app remains free to use,
+> and the project continues to accept [issue reports](https://github.com/SuruchBoss/ExcelToGo/issues) and to
+> handle security matters as described in [SECURITY.md](SECURITY.md).
 
-Beyond the assistant, a Next.js web app that turns an Excel-style grid into a friendlier UI: drag-and-drop ready-made formulas instead
-of memorizing syntax, an AI assistant that suggests formulas from a natural-language question (Thai or English),
-and a hand-written formula engine (tokenizer → parser → evaluator, no third-party formula library) supporting
-cell/range references, relative & structural reference adjustment, circular-reference detection, multi-sheet
-workbooks, named ranges (in Thai, substituted at compile time so the dependency graph stays honest), rules on
-what a cell will accept that refuse a value rather than flag it afterwards, conditional formatting that
-re-colours cells from their current values, pivot summaries over a selected range, live data from a REST/CSV
-endpoint fetched by your own browser (on the public site, nothing to install, nothing through its server) or,
-self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and nobody downstream ever sees SQL —
-and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
-bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
-bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 2017 automated tests.
+## Overview
+
+ExcelToGo is a browser-based spreadsheet for people who use Excel every day but do not write formulas as part
+of their job. The user describes what they need in Thai or English, for example _"total sales for the northern
+branch"_, and receives a suggested Excel formula with an explanation before choosing whether to insert it.
+Alternatively, the user picks one of 37 ready-made formulas and selects the ranges directly in the grid instead
+of typing cell addresses.
+
+All formulas are computed by an engine written for this project, without a third-party formula library.
+Imported `.xlsx` files keep their appearance, and exported files keep their formulas as formulas. The site
+linked above is the production application, not a trial; it is free to use and requires no account.
+
+## Key capabilities
+
+- **Formula assistant** — [ask in Thai or English](#ask-ai-for-a-formula) and receive a formula with an
+  explanation. Without an API key, the app offers a keyword-based guess and labels it as a guess to be checked
+  before use. With the user's own [Anthropic API key](#bring-your-own-api-key-byok), the question is sent from
+  the browser directly to Claude.
+- **Drag-and-drop formulas** — [choose a formula from the list](#drag-and-drop-formulas), fill in one field at a
+  time, and select ranges from the grid without remembering the argument order.
+- **Hand-written formula engine** — [tokenizer → parser → evaluator](#formula-engine), with cell and range
+  references, reference adjustment on copy and on row or column insertion, circular-reference detection,
+  multiple sheets and [named ranges in Thai](#named-ranges).
+- **Excel import and export** — [imported files keep their appearance](#it-looks-like-the-file-you-opened)
+  (colour bands, merged cells, borders, row heights), and files can be [exported](#export) to `.xlsx`, CSV or
+  PDF; charts in an exported `.xlsx` are native charts that remain editable in Excel.
+- **Templates from Excel files** — [a protected workbook is read as a template](#templates-from-an-excel-file)
+  that knows which cells the user is expected to fill in.
+- **Live data from APIs** — [connect a REST/CSV API from the browser](#from-your-browser-restcsv--works-on-this-site)
+  on this site, including APIs behind a VPN or on an office network, or connect
+  [PostgreSQL / MySQL](#straight-into-a-database-postgresql--mysql) when self-hosting. Cells refresh on a
+  schedule, with support for paginated APIs and back-off when rate-limited.
+- **Pivot summaries** — [group a range](#pivot-summarise-a-range) and write the result to a new sheet, with a
+  notice when the source data changes.
+- **Mobile and bilingual use** — [touch support](#works-on-a-phone) and a
+  [Thai and English interface](#bilingual-thai--english).
+- **Cloud save and co-editing (optional)** — [on a backend the user operates](#cloud-save-bring-your-own-backend).
+
+## Data handling
+
+Sheets, imported files and exported files are processed entirely in the user's browser. Data leaves the device
+only in the following cases.
+
+| Case | What is sent | Destination |
+|---|---|---|
+| Asking the AI without an API key | The question, the range address, the column headers and any values the user typed into the question ([details](#ask-ai-for-a-formula)) | This site's server |
+| Asking the AI with the user's own API key | The same information | Anthropic, directly from the browser |
+| Live data connected from the browser | Requests to the API the user configured | That API directly, not through this site's server |
+| Usage counter (when enabled by the operator) | Event names from a fixed list, with no cell contents and no identifiers ([details](#a-usage-count-that-provably-cannot-identify-anyone)) | This site's server |
+| Crash report (when configured by the operator) | The error message and a stack trace with keys, tokens, email addresses and Thai text removed | An endpoint chosen by the operator |
+| Cloud save (when enabled) | The workbook | A backend the user configures |
 
 ---
 
@@ -73,74 +83,40 @@ an undo that does not erase the other person's work. Bilingual UI (Thai/English)
 
 <p align="center"><img src="public/screenshots/en/demo.gif" width="900" alt="The three steps: change a price and the totals move, build a pivot, and the summary flags its source as stale"></p>
 
-<p align="center"><sub>The three steps below, recorded from the running app — no edits</sub></p>
+<p align="center"><sub>The three steps below, recorded from the running application without editing</sub></p>
 
-If you only have a minute — [**open the app**](https://excel-to-go.vercel.app/app), press **Try it with
-sample data** on the green bar, and do these three things in order. Nothing to install, no sign-up.
+[**Open the app**](https://excel-to-go.vercel.app/app), press **Try it with sample data** on the green bar, and
+follow the three steps below. No installation or account is required.
 
-The app opens on a **blank sheet**, because the first thing a person does is their own work, and a grid
-already full of somebody else's coffee prices read as data left behind (it used to open on the sample,
-and the first person to try it asked why the app had data left over). So the nine sample rows are one
-press away, and every total in them is a **formula**, not a number. Undo takes the sample away again, and
-**Start from a blank sheet** does too.
+The application opens on a **blank sheet**, since most users start with their own work, and a sheet that already
+contained sample data was taken for leftover data. The nine sample rows are therefore one press away, and every
+total in them is a **formula**, not a number. The sample can be removed again with undo or with
+**Start from a blank sheet**.
 
-| | Do this | What you'll see |
+| | Step | Result |
 |---|---|---|
 | **1** | Click **C2** (the latte's price), type a different number, press Enter | The **Total** column and the **Grand total** row move with it — every total is a real formula, not a number somebody typed once |
 | **2** | Select **A1:E10**, press **Summarise (Pivot)** → group by *Category* → value *Total* → **Build summary sheet** | A new sheet summarising by category. Go back and change a price, then watch the **"the source data has changed"** notice appear on the summary |
 | **3** | Select **A1:E10** again and press **Export Excel** | Open it in real Excel — the formulas are still formulas, not baked-in values. Add a chart first and it exports as **a real chart you can keep editing** |
 
-Want the harder parts: [embedding a Thai font in the PDF, with stacked tone marks](#export) ·
-[hand-written OOXML chart parts](#charts-from-the-sheet) · [an accessibility gate in CI](#testing) ·
+Related technical detail: [embedding a Thai font in the PDF, with stacked tone marks](#export) ·
+[hand-written OOXML chart parts](#charts-from-the-sheet) · [the accessibility gate in CI](#testing) ·
 [the formula engine](#formula-engine)
 
-> Every section explains the decision behind it, including **what it still can't do** — see
-> [What's next](#whats-next).
+> Each section records the reasoning behind its design decisions, including **what is not yet supported**,
+> which is collected in [What's next](#whats-next).
+
+---
 
 ## Screenshots
 
 <p align="center"><img src="public/screenshots/en/01-overview.png" width="900"></p>
 <p align="center"><sub><b>Main screen</b> — the data grid with the drag-and-drop formula panel on the right</sub></p>
 
-> The rest of the screenshots live in [**Features**](#features) below, each one next to the feature it shows.
-> Every shot is from a production build, not a mockup.
+> Further screenshots appear under [**Features**](#features), each next to the feature it illustrates.
+> All screenshots are taken from a production build, not mock-ups.
 
 ---
-
----
-
-### What 2017 passing tests could not catch
-
-Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
-API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
-does not have** (`TEXTJOIN`, `FIND`, `RANK.EQ`, `SUMPRODUCT`, `CEILING`, `CHAR`). All valid Excel;
-all `#NAME?` in the cell, right after pressing a button labelled "insert".
-
-Then **the first fix made it worse.** The rule started as "give the closest formula the list
-allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
-error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
-
-**And it happened again, in a different place.** With every gate green — 2017 tests, `axe` clean on
-both pages at two widths — an hour of clicking through the public build the way a first-time visitor
-would found three things no gate can see:
-
-- Half-insert a formula from the palette and **all six sidebar buttons went dead.** They still set
-  the mode in the store; a `pending ? … : mode` render just outranked it. Escape did nothing either,
-  so the press arrived later, attached to whichever click finally cancelled the formula.
-- The keyword matcher — which on the public site, with no key set, is not a fallback but the *only* thing anyone sees
-  — answered _"add up all the sales"_ with `=SUM(E2)`, the total of one cell, and _"join the product
-  name and the category"_ with `=SUM(E2)` again. The system prompt has forbidden the model from
-  substituting like that since the fix above. Nothing had ever told the matcher.
-- `axe` passed the grid at four viewport/page combinations while it was, to a screen reader, an
-  ordinary table you could not drive: no `role="grid"`, no `aria-selected`, no `scope` on the
-  headers, every cell tabbable, and **the browser's focus stayed on A1 while Ctrl+↓ moved the cursor
-  to A10** — the sheet moved in silence. axe was right to pass. A `<table>` with `<th>` *is* a valid
-  table. It just was not what this is.
-
-All four are fixed. The lesson each time is the same one: a green suite says the code does what the
-tests say, and nothing whatever about whether that is the right thing.
-
-→ [The whole story, and the fix](#ask-ai-for-a-formula) · repeatable with `npm run check:ai`
 
 ## Problems it solves
 
@@ -254,10 +230,13 @@ the outcome under a double rule like a total.
 
 ## Table of Contents
 
+- [Overview](#overview)
+- [Key capabilities](#key-capabilities)
+- [Data handling](#data-handling)
 - [Try it in 60 seconds](#try-it-in-60-seconds)
 - [Screenshots](#screenshots)
 - [Problems it solves](#problems-it-solves)
-- [Why this project](#why-this-project)
+- [Project goals](#project-goals)
 - [Getting started](#getting-started)
 - [Features](#features)
   - [Ask AI for a formula](#ask-ai-for-a-formula)
@@ -327,28 +306,29 @@ the outcome under a double rule like a total.
 
 ---
 
-## Why this project
+## Project goals
 
-The starting point was a real pain point using Excel: **hard to fill in on desktop/online, an unfriendly UI,
-formulas nobody remembers, and getting lost scrolling a big sheet.** This project sets out to fix that directly
-rather than build a generic "calculator app," which means dealing with more subtlety than it first looks:
+The project began with practical problems in everyday Excel use: **data entry is awkward on desktop and on the
+web, the interface is unfriendly, formulas are hard to remember, and it is easy to lose track of the row or column
+while scrolling a large sheet.** The aim is to address those problems directly rather than to build a generic
+calculator, which raises several technical requirements:
 
-- Users should be able to type formulas themselves **or** drag one in without knowing any syntax — both paths
-  have to work equally well.
-- Formulas must shift references correctly both when copied/filled down a column (relative) **and** when a row
-  or column is inserted/deleted (structural) — two genuinely different algorithms. Get either wrong and the
-  sheet silently computes the wrong number.
-- Formulas can reference each other in a circle; that has to be detected, not hang the app.
-- Every edit (typing a value, inserting a formula, formatting) needs undo/redo, but moving the selection or
-  switching sheet tabs must **not** count as history — otherwise one Ctrl+Z would just undo where the cursor
-  was, not the actual content change.
-- Importing/exporting Excel files has to preserve **the original formulas and formatting** (bold/color/alignment),
-  not just the computed numbers.
-- It should work for both Thai and English speakers without needing locale-based routing (`/en/...`), since the
-  app is entirely client-rendered.
+- Users must be able to type formulas themselves **and** drag one in without knowing any syntax; both paths must
+  work equally well.
+- Formulas must adjust their references correctly both when copied or filled down a column (relative) **and**
+  when a row or column is inserted or deleted (structural). These are two different algorithms, and an error in
+  either produces wrong results without any visible sign.
+- Circular references must be detected without the application hanging.
+- Every edit (entering a value, inserting a formula, formatting) must support undo and redo, while moving the
+  selection or switching sheets must **not** be recorded as history; otherwise Ctrl+Z would undo the cursor
+  position rather than the actual change.
+- Importing and exporting Excel files must preserve **the original formulas and formatting** (bold, colour,
+  alignment), not only the computed values.
+- The application must serve both Thai and English speakers without locale-based routing (`/en/...`), since it
+  is rendered entirely on the client.
 
-The project's focus is therefore **correctness of the calculation logic + an architecture that's maintainable**,
-rather than a long feature list with shallow depth — see [Formula engine](#formula-engine) for the deep dive.
+The project therefore prioritises **correct calculation logic and a maintainable architecture** over the number
+of features. See [Formula engine](#formula-engine) for the technical detail.
 
 ---
 
@@ -381,10 +361,10 @@ Open **http://localhost:3000** and you land on a page explaining what the app do
 | Route | What it is |
 |---|---|
 | `/` | The landing page — features with screenshots from the running app, bilingual like the app itself |
-| `/app` | The app itself, opening on a sample sheet with nothing to configure |
+| `/app` | The application, which opens on a blank sheet with a **Try it with sample data** button on the green bar; nothing to configure |
 
-(The sample data is a coffee/bread/milk receipt with real total formulas. Click **ExcelToGo** in the
-app's top-left corner to get back to the landing page.)
+(The sample data is a list of coffee, bread and milk sales with working total formulas. Click **ExcelToGo**
+in the application's top-left corner to return to the landing page.)
 
 
 Other available commands:
@@ -978,8 +958,8 @@ Behind the scenes:
 - **Server-side sources do not work on Vercel** — they are stored in `data/sources.json`, and Vercel's disk is
   read-only. Run on a VPS, Docker with a volume, or a machine in the office. (Connecting from the browser works on
   Vercel as normal, because nothing is stored on the server.)
-- **There is no follow-along sample on the site yet** — the three sample sources that used to be put there are
-  gone; a step-by-step sample is on the [roadmap](#whats-next).
+- **The three former server-side sample sources have been removed** and replaced by
+  [three sample APIs](#try-a-sample-api) connected through the same form as the user's own API.
 
 ### Straight into a database (PostgreSQL / MySQL)
 
@@ -1832,7 +1812,7 @@ fails, a key listed and handled nowhere fails, and if the extraction itself ever
 third test catches that too — otherwise both of the others would pass by finding nothing. All three
 were confirmed by breaking the code on purpose and watching them go red.
 
-Two more things the gates could not have told me, both found by looking:
+Two further problems that no gate could have reported were found by inspection:
 
 - The button went in the toolbar first. At 1363px that row fitted its thirteen buttons with nothing
   to spare, and one more pushed 42px past the edge, clipping the language toggle on every laptop
@@ -1841,7 +1821,7 @@ Two more things the gates could not have told me, both found by looking:
   this dialog does not exist until you press something. Run against it open, axe found two serious
   violations inside it — headings at 2.62:1, and a scrolling list no keyboard could reach. Both are
   fixed, and **the gate now opens the dialog and checks it too**, so the next one gets caught by CI
-  rather than by me remembering to look.
+  rather than by someone remembering to look.
 
 ### Formulas that answer with a whole table (array formulas)
 
@@ -2790,7 +2770,7 @@ still a form.
 
 ### A usage count that provably cannot identify anyone
 
-The smallest useful question is **"has anyone actually used this, or am I looking at my own
+The smallest useful question is **"has anyone actually used this, or are these the maintainer's own
 visits?"**, and it sits against the sentence the landing page leads with — so the shape of the
 answer is the argument, not a footnote to it.
 
@@ -3793,7 +3773,7 @@ flowchart LR
 
 ## Security — what was actually tested
 
-This section exists because it is the line between "I asked an AI for an app" and building software.
+This section exists because it marks the difference between asking an AI for an application and building software.
 Code that looks right and runs is not the same as code that is safe, and the only way to find out is
 to attack it.
 
@@ -4098,7 +4078,7 @@ mostly Next's own framework chunks that aren't needed for the first frame. Going
 the framework bundle itself, which isn't a trade worth making here. Written down rather than rounded up.
 
 > These are localhost numbers, not Vercel's. The deployed site has a CDN and compression and should do
-> better, but I can't verify that from here, so only what was actually measured is reported.
+> better, but that has not been measured, so only the figures actually measured are reported.
 
 ## Testing
 
@@ -4225,14 +4205,14 @@ measurement.
 
 **Each gate was proved by breaking it first** — take `say(...)` out of `addRow` and the fifth flow fails at
 once; disable `ArrowRight` in the grid and two assertions in the third fail. (The first attempt at that
-second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
+second one stayed green: the inserted `case` landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **2017 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
-> the model, so it returns what the test author imagined. A test count says what you thought to ask,
-> not whether you asked enough. Only a real API key found this: see
-> [What 2017 passing tests could not catch](#what-2017-passing-tests-could-not-catch), repeatable
-> with `npm run check:ai`.
+> **All 2017 tests passed, yet 43% of the assistant's answers were unusable**, because those tests mock
+> the model and so return what the test author expected. A test count shows what was tested, not whether
+> the testing was sufficient. Only a real API key revealed this; see
+> [Limits of automated testing](#limits-of-automated-testing). The check can be repeated with
+> `npm run check:ai`.
 
 | File | Cases | Tests |
 |---|---|---|
@@ -4345,15 +4325,49 @@ as the one floor.
 and because the range does not reach the next major, Vercel will not quietly move to it. A new Node major goes
 into CI and `engines` together.
 
+### Limits of automated testing
+
+Every test of the assistant **mocks the model**, so it answers as the test's author expected. With a real API key
+and fourteen ordinary questions, **six answers used functions this engine does not support** (`TEXTJOIN`, `FIND`,
+`RANK.EQ`, `SUMPRODUCT`, `CEILING`, `CHAR`). Each was valid Excel, and each showed `#NAME?` in the cell after the
+user pressed a button labelled "insert".
+
+The first fix made the problem worse. The system prompt asked for "the closest formula the list allows", so
+_"join all the names into one line"_ returned `=SUM(A2:A20)`, which shows `0` with no warning. **A visible error
+had been replaced by an invisible wrong number.**
+
+The same pattern appeared again elsewhere in the app. With every gate passing (the full suite green and `axe`
+reporting no violations on either page at either width), about an hour of using the public build as a first-time
+visitor found three problems that no gate detected.
+
+- With a formula from the palette half-inserted, **all six sidebar buttons stopped responding.** They still set the
+  mode in the store, but the render condition `pending ? … : mode` gave precedence to `pending`, and Escape did
+  not clear it, so the pressed command took effect later, together with whichever click cancelled the formula.
+- The keyword matcher, which on the public site without a key is the only answer a visitor sees, answered
+  _"add up all the sales"_ with `=SUM(E2)`, the total of a single cell, and _"join the product name and the
+  category"_ with the same formula. The system prompt had forbidden that substitution for the model since the
+  fix above, but the rule had never been applied to the matcher.
+- `axe` passed the grid in all four combinations (two pages at two widths), while to a screen reader it was an
+  ordinary table that could not be operated: no `role="grid"`, no `aria-selected`, no `scope` on the headers,
+  every cell reachable with Tab, and **browser focus remaining on A1 while Ctrl+↓ moved the cursor to A10**.
+  The `axe` result was correct, since a `<table>` with `<th>` is a valid table; it simply did not describe what
+  this application is.
+
+All four problems have been fixed. The conclusion is the same in each case: a passing suite confirms that the
+code does what the tests specify, not that the specification is right. The full account and the fix are in
+[Ask AI for a formula](#ask-ai-for-a-formula), and the check can be repeated with `npm run check:ai`.
+
 ---
 
 ## What's next
 
-What's not done yet, and why — to show this is a known gap, not something forgotten:
+This section lists what has been done, what has not, and why, so that each limitation is recorded as a known
+gap. While development is paused, all outstanding work is tracked in the
+[open issues](https://github.com/SuruchBoss/ExcelToGo/issues).
 
 - [x] **Automated CI (GitHub Actions)** — done: lint → check:readme → test → build on every push and PR,
       across Node 22.12 and 24
-- [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see ✨ Features):
+- [x] **Cloud save / cross-device sync** — done as **bring-your-own-backend** (see [Features](#features)):
       point it at your own Supabase project. Off by default, because this is an open-source project
       rather than a hosted service. Sharing a workbook with another account shipped with the live
       session that needed it. Still open: automatic sync (version history is done — see its own item below)
@@ -4379,18 +4393,18 @@ What's not done yet, and why — to show this is a known gap, not something forg
       Also worth a policy test pinning the behaviour for a confirmed vs an unconfirmed address
 - [ ] **Rows drawn on past the last one, as columns are** — columns now run to the edge of the screen,
       but rows still stop at a new sheet's 30th, which leaves blank space under it on a tall screen
-- [x] **Simultaneous editing** — done, over your own Supabase Realtime (see ✨ Features): people see
+- [x] **Simultaneous editing** — done, over your own Supabase Realtime (see [Features](#features)): people see
       each other type, presence shows where each cursor is, the cell you have open is never
       overwritten mid-word, and your undo does not erase their work. **Not a CRDT** — one cell typed
       into twice at once leaves one value and tells the person who lost, and row inserts save and ask
       the others to reload. Still open: formatting, charts and comments are not synced live
-- [x] **Charts/graphs** — done (see ✨ Features): bar, line and pie drawn from a range and following
+- [x] **Charts/graphs** — done (see [Features](#features)): bar, line and pie drawn from a range and following
       the live values, placed on the grid, dragged and resized there, anchored to a cell, and carried
       into both the `.xlsx` and the PDF. **A chart in the `.xlsx` is now a real, editable chart** —
       the OOXML chart parts are written by hand and spliced into what ExcelJS produces. Still open:
       charts in the PDF are still pictures (jsPDF has no chart primitive), and a pie draws one
       series at a time
-- [x] **Pivot tables** — done (see ✨ Features): group by several columns, fan one field out across
+- [x] **Pivot tables** — done (see [Features](#features)): group by several columns, fan one field out across
       the top, summarise with sum/count/average/min/max, and get an ordinary sheet back that can be
       sorted, charted and exported. **A summary sheet now remembers its source** and offers a
       Refresh button once the numbers behind it move. Still open: refreshing is manual, one column
@@ -4429,9 +4443,9 @@ What's not done yet, and why — to show this is a known gap, not something forg
       the split lives on the sheet, so it survives a reload, goes into undo, follows a row inserted above
       it, and carries into `.xlsx` both ways. Still open: no split at an arbitrary scroll position, only
       at the cursor, which is the shape Excel's own button has.
-- [x] **Conditional formatting** — done (see ✨ Features): compare/text/rank/colour scale/data bar,
+- [x] **Conditional formatting** — done (see [Features](#features)): compare/text/rank/colour scale/data bar,
       written into and read back from `.xlsx`. Still open: icon sets and custom-formula rules
-- [x] **Cell comments** — done (see ✨ Features): a note per cell with an amber corner, following
+- [x] **Cell comments** — done (see [Features](#features)): a note per cell with an amber corner, following
       edits to the sheet, and exported as a real Excel note. Still open: an author and timestamp,
       and threaded replies
 - [x] **`INDEX`/`MATCH`, `SUMIFS`, `COUNTIFS`, `AVERAGEIFS` and wildcards in criteria** — done
@@ -4441,7 +4455,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       needn't be leftmost, matching exactly by default and taking its own not-found value, plus date
       gaps in all six units (which turned up a bug where `DAY`/`MONTH`/`YEAR` were a day out west of
       UTC)
-- [x] **Mobile/tablet support** — done (see ✨ Features): a tab bar with a name on every tab, a menu and a
+- [x] **Mobile/tablet support** — done (see [Features](#features)): a tab bar with a name on every tab, a menu and a
       cell tools sheet instead of rows that scrolled off screen, a second tap edits a cell, 44px targets, and
       a range is dragged out with a finger from a grip on the selection's corner (which scrolls the sheet to meet it)
 - [x] **Finding how to connect an API or database on a phone** — done: the menu's first line, the "Connect your
@@ -4461,8 +4475,8 @@ What's not done yet, and why — to show this is a known gap, not something forg
 - [ ] **Company cookie / single sign-on auth** — requests always go with `credentials: "omit"`; `include` would
       need the API to answer `Access-Control-Allow-Credentials` with no `*` origin. Not designed yet
 - [ ] **OAuth** — not there; only a header you type in
-- [ ] **A follow-along sample** to replace the three sample sources that were removed — the list in
-      `src/lib/server/demoSources.ts` is kept for it
+- [x] **A sample to try** in place of the three sample sources that were removed — done:
+      [three sample APIs](#try-a-sample-api), connected through the same form as the user's own API
 - [ ] **Private Network Access tested against a real internal IP** on Chrome, Edge and Safari — point three of the
       checklist for IT has never been tried on a real machine, which is why it says "may"
 - [ ] **PaynEat ERP answering CORS for this site** — the first real case of connecting from the browser; wherever
@@ -4473,7 +4487,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       (Supabase, which the app already supports) first
 - [ ] **Tell "not switched on on the server" apart from "wrong token"** — the server already answers
       differently (403 / 401), but the token box shows one message for both; there is a link to the guide at the foot of the panel instead
-- [ ] **Ctrl+B / Ctrl+I / Ctrl+U** — the buttons exist, the shortcuts don't yet
+- [x] **Ctrl+B / Ctrl+I / Ctrl+U** — done: they toggle bold, italic and underline across the selection (`Cmd` on a Mac)
 - [ ] **Nothing compares the in-app guide with the README** — when an env var or a step changes, `/guide` has
       to be updated by hand
 - [x] **Accessibility checks in CI** — done: `npm run check:a11y` runs axe (WCAG 2.0/2.1/2.2 A+AA) on both
@@ -4574,20 +4588,20 @@ What's not done yet, and why — to show this is a known gap, not something forg
       `Ctrl`/`Cmd`+`/` or `F1`, or the button at the end of the sheet-tab strip. The list is kept honest by
       a test that reads the handlers' source, so a key cannot be added, renamed or removed without the sheet
       failing. Still open: it covers the grid and the global handlers, not the keys inside individual panels.
-- [x] **Direct CSV import/export** — done (see ✨ Features): the delimiter is sniffed (`,`, `;`, tab), the BOM
+- [x] **Direct CSV import/export** — done (see [Features](#features)): the delimiter is sniffed (`,`, `;`, tab), the BOM
       is stripped on the way in and written on the way out so Excel reads Thai, quoting follows RFC 4180, and
       the export carries computed values, **and CSV injection is neutralised** without touching negative
       numbers or changing this app's own round trip. Still open: non-UTF-8 files.
-- [x] **Merge cells** — done (see ✨ Features): one button for merge and split, overlapping merges are
+- [x] **Merge cells** — done (see [Features](#features)): one button for merge and split, overlapping merges are
       absorbed, it asks first only when data would be lost, and the export carries real `<mergeCell>`
       elements. Still open: vertical centring, and freezing beyond the already-sticky headers.
 
-- [x] **Template support for imported files** — done (see ✨ Features): cell locking, dropdowns and column
+- [x] **Template support for imported files** — done (see [Features](#features)): cell locking, dropdowns and column
       widths are read from a protected file, every route into the structure is guarded, and export puts the
       template back together
 - [x] **Imported files keep their look** — done: fills, font sizes, borders, row heights and merged cells.
       Still open: images/charts, and authoring a template in-app
-- [x] **Live data from REST API / CSV** — done (prototype, see ✨ Features), polling-based refresh
+- [x] **Live data from REST API / CSV** — done (prototype, see [Features](#features)), polling-based refresh
 - [x] **Following paginated APIs** — done: auto-detected from a Link header / next field / cursor / a param
       already in the URL, and the user is told when the data came back incomplete
 - [x] **Rate limits explained to the user** — done: reads `Retry-After`/`X-RateLimit-Reset`, genuinely stops
@@ -4699,7 +4713,7 @@ Built by **Suruch Boss**
 - LinkedIn — [linkedin.com/in/suruchboss](https://www.linkedin.com/in/suruchboss)
 - Email — [bossxiii@gmail.com](mailto:bossxiii@gmail.com)
 
-If this project is useful to you, or you'd like to talk about work, do get in touch.
+For questions about the project or enquiries about work, please use the contact details above.
 
 ---
 
