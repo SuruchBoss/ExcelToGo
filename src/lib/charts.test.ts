@@ -93,20 +93,20 @@ describe("reading a range into a chart", () => {
 
 describe("the value axis", () => {
   it("always includes zero, so a bar's length means what it looks like", () => {
-    expect(valueExtent([{ name: "a", points: [80, 100] }])).toEqual({ min: 0, max: 100 });
+    expect(valueExtent([{ name: "a", column: 1, points: [80, 100] }])).toEqual({ min: 0, max: 100 });
   });
 
   it("extends below zero when the data does", () => {
-    expect(valueExtent([{ name: "a", points: [-30, 50] }])).toEqual({ min: -30, max: 50 });
+    expect(valueExtent([{ name: "a", column: 1, points: [-30, 50] }])).toEqual({ min: -30, max: 50 });
   });
 
   it("never returns a zero-width span, which would divide by nothing when scaling", () => {
-    const flat = valueExtent([{ name: "a", points: [0, 0] }]);
+    const flat = valueExtent([{ name: "a", column: 1, points: [0, 0] }]);
     expect(flat.max).toBeGreaterThan(flat.min);
   });
 
   it("handles a series with no numbers at all", () => {
-    const none = valueExtent([{ name: "a", points: [null, null] }]);
+    const none = valueExtent([{ name: "a", column: 1, points: [null, null] }]);
     expect(none.max).toBeGreaterThan(none.min);
   });
 });

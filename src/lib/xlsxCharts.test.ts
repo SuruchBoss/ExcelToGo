@@ -74,6 +74,36 @@ describe("charts in the exported .xlsx", () => {
     expect(Object.keys(zip.files).some((n) => n.startsWith("xl/media/"))).toBe(false);
   });
 
+  // #59: a text column between the labels and the numbers is not a series, but it still takes up
+  // a column. The references used to be counted from the series' position, so Q1 pointed at
+  // Notes and Q2 at Q1, and Excel, which reads the references, drew the wrong numbers.
+  it("points each series at its own column when a text column sits between them (#59)", async () => {
+    const sheet = createEmptySheet();
+    const rows = [
+      ["Branch", "Notes", "Q1", "Q2"],
+      ["North", "new", "120", "130"],
+      ["South", "ok", "150", "140"],
+      ["East", "late", "90", "95"],
+      ["West", "ok", "60", "70"],
+    ];
+    rows.forEach((r, ri) => r.forEach((v, ci) => (sheet.cells[ri][ci] = v)));
+    const range = { startRow: 0, startCol: 0, endRow: 4, endCol: 3 };
+    sheet.charts = [
+      { id: "bar", kind: "bar", range, anchor: { col: 5, row: 1, dx: 0, dy: 0, w: 480, h: 300 } },
+      { id: "pie", kind: "pie", range, seriesIndex: 1, anchor: { col: 5, row: 18, dx: 0, dy: 0, w: 480, h: 300 } },
+    ];
+    const zip = await exportZip([{ name: "Sheet1", sheet, computed: computeSheet(sheet) }]);
+    const bar = await zip.file("xl/charts/chart1.xml")!.async("string");
+    expect(bar).toContain("<c:f>Sheet1!$C$1</c:f>");
+    expect(bar).toContain("<c:f>Sheet1!$C$2:$C$5</c:f>");
+    expect(bar).toContain("<c:f>Sheet1!$D$1</c:f>");
+    expect(bar).toContain("<c:f>Sheet1!$D$2:$D$5</c:f>");
+    expect(bar).not.toContain("$B$2:$B$5");
+    const pie = await zip.file("xl/charts/chart2.xml")!.async("string");
+    expect(pie).toContain("<c:f>Sheet1!$D$2:$D$5</c:f>");
+    expect(pie).toContain("<c:f>Sheet1!$A$2:$A$5</c:f>");
+  });
+
   // The failure this guards against is the worst one: a package with a relationship pointing at a
   // part that isn't there opens as "corrupt" with nothing saying which part is missing.
   it("leaves no dangling relationship anywhere in the package", async () => {

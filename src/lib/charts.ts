@@ -101,6 +101,10 @@ export function clampFrame(frame: ChartFrame, canvas: { width: number; height: n
 
 export interface ChartSeries {
   name: string;
+  /** Which column of the range it came from, counted from the range's first column. A column with
+   *  no numbers is not a series, so this is not always the series' position after the labels, and
+   *  an exported chart that assumed it was pointed at the wrong column (#59). */
+  column: number;
   /** One value per label; a cell that holds no number becomes null and leaves a gap. */
   points: (number | null)[];
 }
@@ -192,7 +196,7 @@ export function chartDataFrom(values: FormulaValue[][], range: SheetRange, dateT
     // A column with nothing numeric in it is not a series; plotting it would draw a flat nothing.
     if (points.every((p) => p === null)) continue;
     const headerName = usedHeaderRow ? cellText(cells[0][c]).trim() : "";
-    series.push({ name: headerName || `${c - firstDataCol + 1}`, points });
+    series.push({ name: headerName || `${c - firstDataCol + 1}`, column: c, points });
   }
 
   // Labels name points; with nothing to plot they name nothing, so an empty range stays empty
