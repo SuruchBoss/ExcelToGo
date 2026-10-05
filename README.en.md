@@ -1266,7 +1266,7 @@ share one rule (`src/lib/cellLiteral.ts`), in this order:
 | A cell formatted as **Text** (number format menu · Excel's `@`) | `123` | text — for a whole column of codes |
 | An integer with a leading zero | `0812345678`, `00123` | text, automatically (`0` and `0.5` are still numbers) |
 | Twelve digits or more, nothing else | `1234567890123` | text, automatically (eleven digits or fewer, or with a point or sign, are numbers) |
-| An error code as Excel spells it (#226) | `#N/A`, `#DIV/0!` | **the error value**, as in Excel — `#1` or `#N/A please` stay text |
+| One of Excel's seven error codes, in any case (#226) | `#N/A`, `#DIV/0!`, `#n/a` | **the error value**, as in Excel — `#1`, `#N/A please` or `#SPILL!` stay text |
 | A number as a screen shows it — commas at the thousands, a trailing `%`, or a currency sign in front (#52) | `1,250`, `12%`, `฿1,500.00` | **a number** — `12%` is 0.12 (as #53 stores it) · the cell shows what was typed |
 | Everything else | `-3`, `12.50`, `10000000000` | a number, as before |
 
@@ -3730,7 +3730,9 @@ error values: `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`.
 `#REF!`, `#NAME?`, `#NUM!` and `#NULL!` typed into a cell, pasted from Excel, opened from a file or written by a pivot used
 to be text, so `SUM` stepped over them to a clean-looking total and `IFERROR` let them through. Now `SUM` gives the
 error and `IFERROR`/`IFNA` catch it. A leading apostrophe, the Text format, or text that only starts with `#` (`#1`,
-`#N/A please`) stays text, and so does a file's text cell that happens to read `#N/A`, as Excel stores it.
+`#N/A please`) stays text, and so does a file's text cell that happens to read `#N/A`, as Excel stores it. Case does
+not matter: `#n/a` is `#N/A`, as Excel makes it when it is typed. The newer codes such as `#SPILL!` stay text, because
+Excel keeps them as text when they are typed into a cell. (Both were checked in real Excel.)
 
 Want to add a formula to the drag-and-drop palette? Add the real function in `functions.ts`, then add its entry
 plus both languages' text in `formulaCatalog.ts` and `i18n/th.ts`/`en.ts`.
