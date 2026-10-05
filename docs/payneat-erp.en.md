@@ -13,7 +13,7 @@
 
 - **ExcelToGo still stands on its own.** Someone who never uses the ERP sees nothing different. Anything
   specific to PaynEat lives in a template or in operator configuration, never on the main screen.
-- **The ERP is reached through its public API only.** A [database source](../README.en.md#-straight-into-a-database-postgresql--mysql)
+- **The ERP is reached through its public API only.** A [database source](../README.en.md#straight-into-a-database-postgresql--mysql)
   must not be pointed at the ERP's database: its tables are not a contract, and reading them directly steps
   around the ERP's audit trail. **ExcelToGo cannot enforce this in code** — the list of reachable hosts
   belongs to the operator — so the ERP should also close the network path to its own database.
