@@ -1601,6 +1601,46 @@ const FLOWS = [
     },
   },
   {
+    // #235. A sort over a live block moved its rows and was said as done; the next refresh wrote the
+    // block back in the source's order while the notes typed beside it stayed sorted, so a note sat
+    // on another product's row without a word. The seam is a sort meeting a block that rewrites itself.
+    name: "sorting next to a live block is refused whole and said, and every note stays on its product (#235)",
+    async run(page) {
+      await cell(page, 0, 0).click();
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.trySales }).click();
+      const form = page.getByRole("dialog");
+      await form.getByRole("button", { name: label.test }).click();
+      await form.getByText(/ได้ข้อมูล 5 แถว|Got 5 rows/).waitFor({ timeout: 15_000 });
+      await form.getByRole("button", { name: label.saveAndAdd }).click();
+      const insert = page.getByRole("dialog").getByRole("button", { name: label.insert });
+      await insert.waitFor({ timeout: 15_000 });
+      await insert.click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "CF-01", null, { timeout: 15_000 });
+
+      // A note per product in H, beside the block, as a person keeps them.
+      const pairs = async () => {
+        const out = [];
+        for (let r = 1; r <= 5; r++) out.push([(await cell(page, r, 0).innerText()).trim(), (await cell(page, r, 7).innerText()).trim()]);
+        return out;
+      };
+      for (let r = 1; r <= 5; r++) await typeInCell(page, r, 7, `n-${(await cell(page, r, 0).innerText()).trim()}`);
+      const before = await pairs();
+
+      await cell(page, 1, 3).click();
+      await page.getByRole("button", { name: label.tools }).click();
+      await page.getByTitle(label.sortAsc).click();
+      note(/^A2:G6 (เป็นข้อมูลสด|is live data)/.test((await cell(page, 1, 3).getAttribute("data-refused")) ?? ""), "D2 says under itself why the sort did not happen");
+      const spoken = await page.evaluate(() => [...document.querySelectorAll('[role="status"][aria-live]')].map((e) => e.textContent).join(" "));
+      note(!/เรียง|[Ss]orted/.test(spoken), `nothing is said as sorted ("${spoken.trim().slice(0, 80)}")`);
+      note(JSON.stringify(await pairs()) === JSON.stringify(before), "no row moved");
+      await page.waitForTimeout(6000); // past the source's 5-second refresh, when the notes used to land on other rows
+      const after = await pairs();
+      const wrong = after.filter(([sku, n]) => n !== `n-${sku}`);
+      note(wrong.length === 0, `after a refresh every note is on its own product (${wrong.length} on another)`);
+    },
+  },
+  {
     // #83. The app is used to open a file, fix it and send it back, and a file with pictures or
     // Excel's own charts loses them on the way — which the person used to hear from whoever got
     // the file. The fixture is a real package (ExcelJS wrote the picture, the app's chart writer
