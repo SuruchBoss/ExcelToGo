@@ -1670,6 +1670,13 @@ export const useSheetStore = create<SheetState>()(
             const selection = activeSelectionOf(s);
             const computed = computeTab(sheet, s.sheets);
             const range = detectSortRange(sheet, computed, selection, selection.anchorRow);
+            // A sort that moves live rows is undone by the next refresh, which writes the block back
+            // in the source's order while the person's own columns beside it stay sorted (#235).
+            const refused = refusedWrite(s, range.startRow, range.startCol, range.endRow, range.endCol, {
+              row: selection.anchorRow,
+              col: selection.anchorCol,
+            });
+            if (refused) return { ...refused, sortWarning: null };
             // Asked first, not refused: sometimes a running total is meant to be re-run on new
             // rows. But a sort that silently gives each row another row's numbers is how #48 cost
             // a tester 2,710 baht, so it is never silent.
