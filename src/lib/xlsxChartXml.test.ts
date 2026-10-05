@@ -132,8 +132,8 @@ describe("seriesRefsFrom", () => {
   const data: ChartData = {
     labels: ["Jan", "Feb", "Mar"],
     series: [
-      { name: "Sales", points: [1, 2, 3] },
-      { name: "Profit", points: [4, 5, 6] },
+      { name: "Sales", column: 1, points: [1, 2, 3] },
+      { name: "Profit", column: 2, points: [4, 5, 6] },
     ],
     usedHeaderRow: true,
     usedLabelColumn: true,

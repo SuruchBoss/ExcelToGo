@@ -202,11 +202,10 @@ export function seriesRefsFrom(
     labelCol === null ? undefined : colRef(sheetName, columnLetter(labelCol), firstDataRow, lastDataRow);
 
   const chosen = pie ? data.series.slice(seriesIndex, seriesIndex + 1) : data.series;
-  return chosen.map((s, i) => {
-    const sourceIndex = pie ? seriesIndex : i;
-    // Series sit in the range's columns, after the label column when there is one.
-    const col = range.startCol + (data.usedLabelColumn ? 1 : 0) + sourceIndex;
-    const letter = columnLetter(col);
+  return chosen.map((s) => {
+    // The column the series was read from, not its position among the series: a text column
+    // between two numeric ones is skipped as a series but still takes up a column (#59).
+    const letter = columnLetter(range.startCol + s.column);
     return {
       name: s.name,
       nameRef: data.usedHeaderRow
