@@ -762,7 +762,7 @@ describe("a constant error cell in an opened file (#227)", () => {
     expect(ws.getCell("A2").value).toBe("#N/A");
     // Typed as Excel spells it, it is the error Excel would make of it.
     expect(ws.getCell("A3").value).toEqual({ error: "#REF!" });
-    // Only the exact spelling Excel writes in a file goes out as an error; any other spelling stays as typed.
-    expect(ws.getCell("A4").value).toBe("#n/a");
+    // Excel makes the error of a typed #n/a too, so it goes out as #N/A (checked in Excel, #226).
+    expect(ws.getCell("A4").value).toEqual({ error: "#N/A" });
   });
 });
