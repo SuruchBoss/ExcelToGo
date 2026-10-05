@@ -17,6 +17,7 @@ import { shiftNames, type NameTable } from "./namedRanges";
 import { sheetRefPrefix, splitSheetRef } from "./formulaEngine/address";
 import { tokenize } from "./formulaEngine/tokenizer";
 import { adjustFormulaForStructuralOp, Axis } from "./formulaEngine/structuralShift";
+import { moveFormulaRefs, type CellMove } from "./formulaEngine/moveRefs";
 import { cloneSheet, SheetModel } from "./sheet";
 import { cleanSheetName, sheetNameProblem, uniqueSheetName } from "./sheetNames";
 
@@ -73,6 +74,33 @@ export function shiftOtherSheetsForStructuralOp(
     if (!names) delete next.names;
     return next;
   });
+}
+
+/**
+ * Points every reference to a cut block at where it was pasted (#51), on every sheet and in every
+ * name's target. The block's own cells are rewritten here too, as they stand before the paste; the
+ * caller writes the moved formulas from the clipboard through `moveFormulaRefs` itself, because
+ * those are read on the sheet they came from and written on the one they go to.
+ */
+export function moveRefsInWorkbook(tabs: NamedSheet[], move: CellMove): SheetModel[] {
+  return tabs.map(({ name, sheet }) => {
+    const place = { readSheet: name, writeSheet: name };
+    const moved = mapFormulas(sheet, (body) => moveFormulaRefs(body, move, place));
+    const names = moveRefsInNames(moved.names, move, name);
+    return names === moved.names ? moved : { ...moved, names };
+  });
+}
+
+function moveRefsInNames(table: NameTable | undefined, move: CellMove, sheetName: string): NameTable | undefined {
+  if (!table) return table;
+  let changed = false;
+  const next: NameTable = {};
+  for (const [key, entry] of Object.entries(table)) {
+    const ref = moveFormulaRefs(entry.ref, move, { readSheet: sheetName, writeSheet: sheetName });
+    if (ref !== entry.ref) changed = true;
+    next[key] = ref === entry.ref ? entry : { ...entry, ref };
+  }
+  return changed ? next : table;
 }
 
 /**

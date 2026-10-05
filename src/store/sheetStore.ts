@@ -40,6 +40,7 @@ import {
   insertRowBefore,
   parseTsv,
   pasteClipboardBlock,
+  placeMovedBlock,
   pastePlainTextBlock,
   setCellRaw,
   sheetFromGrid,
@@ -61,7 +62,8 @@ import { autoSumRange, hasHeaderRow, headerRow, namedColumns, runIsText, TOTAL_L
 import { placeFormula, type Cell } from "@/lib/aiPlacement";
 import { referencedRects } from "@/lib/precedents";
 import { hiddenRowsFor, visibleRowCount } from "@/lib/sheetFilter";
-import { fitSheetNames, renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
+import { fitSheetNames, moveRefsInWorkbook, renameIncomingToFit, renameSheetInFormulas, shiftOtherSheetsForStructuralOp } from "@/lib/workbookRefs";
+import { moveFormulaRefs, type CellMove } from "@/lib/formulaEngine/moveRefs";
 import { nextSheetName, SheetNameProblem, sheetNameProblem } from "@/lib/sheetNames";
 import { lessonBySlug, lessonSheet } from "@/lib/lessons";
 import { fillBlock, fillTargetFor, fillWithin, type FillTarget } from "@/lib/fillSeries";
@@ -1585,50 +1587,53 @@ export const useSheetStore = create<SheetState>()(
             const targetRow = selection.anchorRow;
             const targetCol = selection.anchorCol;
             if (clipboard) {
-              let next = pasteClipboardBlock(sheet, clipboard, targetRow, targetCol);
-              let clearedClipboard: ClipboardState | null = clipboard;
-              let sheets = withActiveSheet(s, () => next);
-              if (clipboard.cut) {
+              const from = clipboard.cut ? s.sheets.find((t) => t.id === clipboard.sheetId) : undefined;
+              let sheets: SheetTab[];
+              // A cut is a move (#51): references to the cut cells follow them, on every sheet, and the
+              // moved formulas keep pointing where they did. If the sheet it was cut from has been
+              // deleted since, there is nothing left to move from, and it goes down as a copy.
+              if (from) {
                 const height = clipboard.rows.length;
                 const width = clipboard.rows[0]?.length ?? 0;
                 const srcEndRow = clipboard.sourceRows?.at(-1) ?? clipboard.startRow + height - 1;
                 const srcEndCol = clipboard.startCol + width - 1;
-                // A cut made under a filter took only the rows on screen (#50); only those are
-                // emptied, and the hidden rows between them stay as they were.
+                // A cut made under a filter took only the rows on screen (#50); only those move and
+                // are emptied, and the hidden rows between them stay as they were.
+                const cutRows = clipboard.sourceRows ?? Array.from({ length: height }, (_, r) => clipboard.startRow + r);
+                const cut = new Set(cutRows);
                 const kept = new Set<number>();
-                if (clipboard.sourceRows) {
-                  const cut = new Set(clipboard.sourceRows);
-                  for (let r = clipboard.startRow; r <= srcEndRow; r++) if (!cut.has(r)) kept.add(r);
-                }
-                const destId = activeTab(s).id;
-                if (clipboard.sheetId === destId) {
-                  const destOverlapsSource =
-                    targetRow <= srcEndRow &&
-                    targetRow + height - 1 >= clipboard.startRow &&
-                    targetCol <= srcEndCol &&
-                    targetCol + width - 1 >= clipboard.startCol;
-                  // Moving to a spot that overlaps the original block would otherwise wipe out
-                  // the very cells pasteClipboardBlock just wrote there.
-                  if (!destOverlapsSource) {
-                    next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol, kept);
-                    sheets = withActiveSheet(s, () => next);
+                for (let r = clipboard.startRow; r <= srcEndRow; r++) if (!cut.has(r)) kept.add(r);
+                const dest = activeTab(s);
+                const move: CellMove = {
+                  fromSheet: from.name,
+                  toSheet: dest.name,
+                  startRow: clipboard.startRow,
+                  startCol: clipboard.startCol,
+                  endRow: srcEndRow,
+                  endCol: srcEndCol,
+                  rowTo: new Map(cutRows.map((r, i) => [r, targetRow + i])),
+                  colOffset: targetCol - clipboard.startCol,
+                };
+                const moved = moveRefsInWorkbook(s.sheets, move);
+                const place = { readSheet: from.name, writeSheet: dest.name };
+                // Emptied first and written second, so a block moved onto part of itself keeps what
+                // lands there and loses only what it left. Every sheet changes in one update, so one
+                // undo puts the whole move back.
+                sheets = s.sheets.map((t, i) => {
+                  let next = moved[i];
+                  if (t.id === from.id) next = clearRange(next, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol, kept);
+                  if (t.id === dest.id) {
+                    next = placeMovedBlock(next, clipboard, targetRow, targetCol, (body) => moveFormulaRefs(body, move, place));
                   }
-                } else {
-                  // Cleared on the sheet it was cut from. If that sheet has been deleted since,
-                  // there is nothing left to clear, and this is a copy: nothing on the sheet being
-                  // pasted into is touched beyond the block itself. Both sheets change in one
-                  // update, so one undo puts both back.
-                  sheets = sheets.map((t) =>
-                    t.id === clipboard.sheetId
-                      ? { ...t, sheet: clearRange(t.sheet, clipboard.startRow, clipboard.startCol, srcEndRow, srcEndCol, kept) }
-                      : t
-                  );
-                }
-                clearedClipboard = null;
+                  return next === t.sheet ? t : { ...t, sheet: next };
+                });
+              } else {
+                sheets = withActiveSheet(s, () => pasteClipboardBlock(sheet, clipboard, targetRow, targetCol));
               }
               return {
                 sheets,
-                clipboard: clearedClipboard,
+                // A cut is pasted once, as in Excel; a copy can go down again.
+                clipboard: clipboard.cut ? null : clipboard,
                 pasteWarning: null,
                 ...say(
                   getMessages().live.pasted(

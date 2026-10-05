@@ -29,7 +29,7 @@ export default function OgImage() {
   const stats = [
     ["66", "engine functions"],
     ["37", "palette formulas"],
-    ["1991", "automated tests"],
+    ["2004", "automated tests"],
     ["325", "of them security"],
     ["0", "formula libraries"],
   ];

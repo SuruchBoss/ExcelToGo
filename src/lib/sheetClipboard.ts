@@ -82,6 +82,31 @@ export function pasteClipboardBlock(sheet: SheetModel, clip: ClipboardBlock, tar
   return next;
 }
 
+/**
+ * Writes a cut block at (targetRow, targetCol) for a move (#51). Its formulas are not shifted the
+ * way a copy's are: each goes through `rewrite`, which moves only the references that point into
+ * the block itself, so `=A1*2` cut from B1 to C5 still reads A1.
+ */
+export function placeMovedBlock(
+  sheet: SheetModel,
+  clip: ClipboardBlock,
+  targetRow: number,
+  targetCol: number,
+  rewrite: (body: string) => string
+): SheetModel {
+  const height = clip.rows.length;
+  const width = clip.rows[0]?.length ?? 0;
+  const next = cloneSheet(ensureBounds(sheet, targetRow + height, targetCol + width));
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < width; c++) {
+      const raw = clip.rows[r][c];
+      next.cells[targetRow + r][targetCol + c] = raw.startsWith("=") && raw.length > 1 ? `=${rewrite(raw.slice(1))}` : raw;
+      next.formats[targetRow + r][targetCol + c] = clip.formats[r]?.[c];
+    }
+  }
+  return next;
+}
+
 /** Pastes plain text (e.g. from the OS clipboard / another spreadsheet) as literal values —
  *  no formula reinterpretation, since we can't tell if "=SUM(...)" from another app is meant
  *  literally or as a formula in ours. */
