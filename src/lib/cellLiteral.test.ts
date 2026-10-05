@@ -3,7 +3,8 @@
 
 import ExcelJS from "exceljs";
 import { beforeEach, describe, expect, it } from "vitest";
-import { formattedNumber, literalValue, looksNumeric, rawForText } from "./cellLiteral";
+import { ERROR_CODES, formattedNumber, literalValue, looksNumeric, rawForText } from "./cellLiteral";
+import { FormulaError } from "./formulaEngine/types";
 import { computeSheet, createEmptySheet, setCellRaw, setRangeFormat, SheetModel } from "./sheet";
 import { computeStats, resetComputeCache } from "./sheetCompute";
 import { sortRange } from "./sheetSort";
@@ -184,6 +185,36 @@ describe("rawForText", () => {
     expect(looksNumeric(PHONE)).toBe(true);
     expect(looksNumeric("12a")).toBe(false);
     expect(looksNumeric(" ")).toBe(false);
+  });
+});
+
+describe("an error code in a cell is that error (#226)", () => {
+  it("for each of the seven codes, spelled as Excel spells them", () => {
+    for (const code of ERROR_CODES) {
+      const value = literalValue(code);
+      expect(value, code).toBeInstanceOf(FormulaError);
+      expect((value as FormulaError).code, code).toBe(code);
+    }
+  });
+
+  it("in any case, spelled back as Excel spells it, as a typed #n/a is in Excel", () => {
+    for (const typed of ["#n/a", "#div/0!", "#Value!", "#ref!"]) {
+      const value = literalValue(typed);
+      expect(value, typed).toBeInstanceOf(FormulaError);
+      expect((value as FormulaError).code, typed).toBe(typed.toUpperCase());
+    }
+    // A file's string cell reading "#n/a" is text there too, so it keeps an apostrophe.
+    expect(rawForText("#n/a")).toBe("'#n/a");
+  });
+
+  it("but stays text after an apostrophe, under the Text format, or when it only starts with #", () => {
+    expect(literalValue("'#N/A")).toBe("#N/A");
+    expect(literalValue("#DIV/0!", "text")).toBe("#DIV/0!");
+    // `#SPILL!` and the other newer codes stay text when typed into Excel too.
+    for (const t of ["#1", "#N/A please", "#hashtag", "#", "#SPILL!", "#CALC!"]) expect(literalValue(t), t).toBe(t);
+    // Text from a file's string cell keeps its apostrophe, so it does not turn into the error.
+    expect(rawForText("#N/A")).toBe("'#N/A");
+    expect(literalValue(rawForText("#DIV/0!"))).toBe("#DIV/0!");
   });
 });
 

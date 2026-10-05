@@ -158,7 +158,7 @@ describe("range names a file holds that cannot come in (#60), in the same report
   });
 });
 
-describe("constant error cells (#227), shown as text until #226", () => {
+describe("constant error cells (#227, #226)", () => {
   /** Two sheets: errors typed into the first, as Excel writes them, and a formula that errs in the second. */
   async function errorsFile(): Promise<Uint8Array> {
     const wb = new ExcelJS.Workbook();
@@ -172,15 +172,9 @@ describe("constant error cells (#227), shown as text until #226", () => {
     return new Uint8Array(await wb.xlsx.writeBuffer());
   }
 
-  it("are counted and placed; a formula whose result is an error is not, since it calculates again", async () => {
+  it("are not reported: the app now reads them as the errors they are, and export keeps them", async () => {
+    // #227 listed them because the app held them as text; since #226 nothing about them is lost.
     const { losses } = await openFixture(await errorsFile());
-    expect(losses).toEqual([{ kind: "errorValues", count: 2, sheets: ["ยอดขาย"] }]);
-  });
-
-  it("are still there, and still said, after the file goes out of the app and back in", async () => {
-    const { sheets } = await openFixture(await errorsFile());
-    const blob = await exportWorkbookToXlsxBlob(sheets.map(({ name, sheet }) => ({ name, sheet, computed: computeSheet(sheet) })));
-    const { losses } = await openFixture(new Uint8Array(await blob.arrayBuffer()));
-    expect(losses).toEqual([{ kind: "errorValues", count: 2, sheets: ["ยอดขาย"] }]);
+    expect(losses).toEqual([]);
   });
 });

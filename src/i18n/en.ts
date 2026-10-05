@@ -431,7 +431,7 @@ export const en: Messages = {
     stats: [
       { value: "37", label: "ready-made formulas" },
       { value: "66", label: "engine functions" },
-      { value: "1979", label: "automated tests" },
+      { value: "1985", label: "automated tests" },
       { value: "325", label: "security tests" },
       { value: "0", label: "formula libraries used" },
     ],
@@ -818,15 +818,12 @@ export const en: Messages = {
       pivots: (n) => `${n} Excel ${n === 1 ? "PivotTable" : "PivotTables"}`,
       unknownFunctions: (n, names) => `${n} ${n === 1 ? "formula uses" : "formulas use"} a function the app doesn't have yet (${names.join(", ")})`,
       names: (n, names) => `${n} range ${n === 1 ? "name" : "names"} that could not be brought in (${names.join(", ")})`,
-      errorValues: (n) => `${n} ${n === 1 ? "cell holds" : "cells hold"} an error value such as #DIV/0! or #N/A`,
       externalLinks: (n) => `${n} ${n === 1 ? "link" : "links"} to other files`,
       macros: () => "Macros (VBA)",
     },
     detail: {
       unknownFunctions: "The app shows #NAME? for them, but the exported file keeps the formula as it was, and Excel can calculate it",
       names: "Formulas using them read #NAME?, and the exported file won't have these names. Only a name for one range on a sheet of the file comes in — not a formula, a whole column or several areas",
-      errorValues:
-        "The app shows them as text, so a formula that reads one does not see an error: SUM steps over it and gives a number. The exported file writes them back as error values, as they were",
       externalLinks: "Values pulled from other files won't update in the app",
       macros: "The app doesn't run macros, and the exported file doesn't carry them",
     },
