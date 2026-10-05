@@ -427,6 +427,16 @@ describe("TEXT writes the value the way its format says, as Excel does (#29)", (
     expect(calc('TEXT(0.1,"[mm]:ss")')).toBe("144:00");
     expect(calc('TEXT(0.5,"[s]")')).toBe("43200");
   });
+
+  // Checked in Excel (#219): serial 0 is 0 January 1900, and a negative serial is no date at all.
+  it("shows serial 0 as Excel's 00/01/1900 and refuses a negative one with #VALUE!", () => {
+    expect(calc('TEXT(0,"dd/mm/yyyy")')).toBe("00/01/1900");
+    for (const f of ['TEXT(-1,"dd/mm/yyyy")', 'TEXT(-0.5,"hh:mm")', 'TEXT(-1,"[h]:mm")']) {
+      expect(String(calc(f)), f).toBe("#VALUE!");
+    }
+    // A negative number under a number code is still just a number.
+    expect(calc('TEXT(-1,"0.0")')).toBe("-1.0");
+  });
 });
 
 describe("the *IF(S) functions pass on an error they read, as Excel does (#96)", () => {

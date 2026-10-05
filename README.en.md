@@ -44,7 +44,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-2005%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-2014%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -65,7 +65,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 2005 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 2014 automated tests.
 
 ---
 
@@ -109,7 +109,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 2005 passing tests could not catch
+### 🧪 What 2014 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -120,7 +120,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 2005 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 2014 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -395,7 +395,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 2005-case Vitest suite |
+| `npm test` | Run the 2014-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -403,7 +403,7 @@ Other available commands:
 | `npm run check:bundle` | Size budgets, and the cloud client staying in a chunk of its own (needs a build) |
 | `npm run check:mutants` | Breaks the engine on purpose and checks the suite notices — 32/32 (no build needed) |
 | `npm run check:a11y` | axe on both pages at 390px and 1280px, plus sideways-scroll checks (needs a build) · `A11Y_WIDTH=390` runs one half, which is how CI runs it |
-| `npm run check:e2e` | Drives the real app through 59 flows: Ctrl+V into a live cell writing nothing, saying nothing about a paste, putting the live-data note under the cell, and a refresh changing nothing, with typing on a range that starts on a live cell answered too (#232), `999` and Enter on a live-data cell getting a note under the cell saying why, Enter putting the note away with the cursor and the value where they were, and Delete and a double-click saying so too (#207), opening Ask AI putting what is typed in the question box rather than in the cell it covers, and Escape closing it with focus back on that cell, at 1280 and 390 (#203), on a phone, a second tap on a formula cell opening its editor with the formula whole, what is typed going into that formula and the cell two rows down left alone (#201), and a tap on another cell with nothing typed selecting that cell alone rather than a range (#210), on a phone, typing after Enter into a filled cell replacing its value rather than going on the end (#202), on a phone, a tap after Enter in the formula bar selecting the cell rather than breaking the next cell's formula, and a formula only opened to look at left alone (#201), typing into a dropdown cell saving what was typed in full, text off the list refused and a pick from the list still saving, at 1280 and 390 (#198), a file with a picture and a chart saying what it will lose as it opens, a plain one saying nothing, and range names that could not come in in the same report (#83), a live source that answers after the picker opens never blanking the cell (#126), one tap on a phone only selecting and saying to tap again, with nothing typed lost in silence (#171), Enter or ↓ on the last row adding a row with nothing typed over and one undo taking the value and its row back with typing still landing after it (#170), on a phone an undo with an editor open on a row Enter grew closing the editor, saying what it dropped, and the next value landing (#191), a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), duplicate or invalid sheet names fixed on load, refused when typed, and exported with the right names and formulas (#54), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
+| `npm run check:e2e` | Drives the real app through 60 flows: a sort beside a live block refused with the note, no row moving, and every note still on its own product after a refresh (#235), Ctrl+V into a live cell writing nothing, saying nothing about a paste, putting the live-data note under the cell, and a refresh changing nothing, with typing on a range that starts on a live cell answered too (#232), `999` and Enter on a live-data cell getting a note under the cell saying why, Enter putting the note away with the cursor and the value where they were, and Delete and a double-click saying so too (#207), opening Ask AI putting what is typed in the question box rather than in the cell it covers, and Escape closing it with focus back on that cell, at 1280 and 390 (#203), on a phone, a second tap on a formula cell opening its editor with the formula whole, what is typed going into that formula and the cell two rows down left alone (#201), and a tap on another cell with nothing typed selecting that cell alone rather than a range (#210), on a phone, typing after Enter into a filled cell replacing its value rather than going on the end (#202), on a phone, a tap after Enter in the formula bar selecting the cell rather than breaking the next cell's formula, and a formula only opened to look at left alone (#201), typing into a dropdown cell saving what was typed in full, text off the list refused and a pick from the list still saving, at 1280 and 390 (#198), a file with a picture and a chart saying what it will lose as it opens, a plain one saying nothing, and range names that could not come in in the same report (#83), a live source that answers after the picker opens never blanking the cell (#126), one tap on a phone only selecting and saying to tap again, with nothing typed lost in silence (#171), Enter or ↓ on the last row adding a row with nothing typed over and one undo taking the value and its row back with typing still landing after it (#170), on a phone an undo with an editor open on a row Enter grew closing the editor, saying what it dropped, and the next value landing (#191), a formula page's try-it button landing the page's own numbers in the sheet, and asking first over work (#149), numbers pasted through the real clipboard as Excel copies them adding up while codes stay text (#52), the AI assistant putting a column's total under it and sending a condition to the SUMIF form (#62–#64), a view-only tab editing by itself, with all the work, once the editing tab closes (#146), a crash bringing up the rescue screen, whose file holds the work and whose Try again comes back (#145), a Buddhist-Era date that counts and Convert to dates from the cell menu (#82), duplicate or invalid sheet names fixed on load, refused when typed, and exported with the right names and formulas (#54), a second tab asking first, and taking over turning the first view-only with no edit lost (#47), dates in Excel's default column width showing as dates rather than `###` (1280 and 390), a Thai sheet name downloading as a Thai file name, the sample sorted in both languages with every row still multiplying its own numbers and a risky sort asking first, a percent saved before #53 reading the same, opening blank with a sample left in the browser not coming back, New file asking first and undoing, formulas, `.xlsx` round trip, an import on top of work that asks first, Tab then Enter and the cell menu, dragging a column's width, Enter on a phone going into the next cell, a range dragged on a phone staying in its column and a tap during `=` saving nothing, tapped cells going into a formula that Done saves with its bracket closed, ⌖ on a phone picking from the grid, a file opened on a phone leaving one message at a time, twelve rows or more and a sideways swipe that works, with "saved in this browser" moved to the save status, a phone on its side folding the bars into two rows with six rows of grid and a long press opening the cell menu, keyboard only, undo, editing after undoing a new sheet, a cut across sheets, a formula bar that never writes a stale value, announcements, the AI assistant, the CSP, an API connected from the browser (nothing reaching `/api/*`), an API without CORS getting the IT checklist, no page calling itself a demo, every page in the sitemap naming its own canonical with the landing page carrying the Search Console tag, the phone tab bar, cross-sheet values on screen after a PDF export, a sort and undo (needs a build · `E2E_ONLY=<part of a name>` runs just the matching flows while editing) |
 | `npm run check:ai` | Asks the real Claude with your own key and checks the formulas against what this engine can evaluate — not in `verify`, because it needs a key and costs money |
 | `npm run verify` | Everything, before a push: lint → check:readme → check:screens → check:deps → test → check:mutants → build → check:bundle → check:a11y → check:e2e (~5 min) |
 | `npm run verify:quick` | The same gates minus `check:mutants`, `check:a11y`, `check:e2e` and `check:deps` — **37 seconds**, for the loop while writing. Not a substitute for `verify` before a push |
@@ -945,6 +945,10 @@ Behind the scenes:
   one live cell changes nothing, as Excel refuses a paste over protected cells, and the note under the cursor's cell
   names the cells, e.g. "A2:B3 is live data, so nothing was changed". It is not applied around them, since that
   would shift rows against each other. Typing on a range whose first cell is live is answered the same way.
+- **A sort whose range reaches a live block is refused whole** (#235). The sort used to move the block's rows and
+  say it was done; the next refresh wrote the block back in the source's order while the columns typed beside it
+  stayed sorted, so a note sat on another product's row without a word. Now nothing moves, and the same note names
+  the live cells. A range that does not reach the block (only the person's own columns selected) sorts as before.
 - Refreshes **never enter the undo history** (zundo is paused during the write) — one Ctrl+Z undoes the whole
   placed block, and "Change" (clear the old block + place the new one) counts as a single step too.
 - **Drag and drop still works** for people who prefer it, it's just no longer the primary path.
@@ -1191,9 +1195,9 @@ believe they had one.
   rather than reading an empty cell as 0). A moved formula keeps pointing where it did instead of shifting like a
   copy (`=A1*2` moved from B1 to C5 is still `=A1*2`). A range follows only when all of it was cut; one that reaches
   outside the block stays put. Moved to another sheet, a reference picks up the sheet's name. A block moved onto
-  part of itself empties only what it left. **Not supported yet:** a formula that read a destination cell the paste
-  covered goes on reading what landed there (Excel shows `#REF!`), and the source cells keep their formatting
-  rather than it moving with them.
+  part of itself empties only what it left. A formula that read a destination cell the paste covered becomes `#REF!`,
+  as in Excel (checked in real Excel). **Not supported yet:** a range reaching into the landing area stays as it was,
+  and the source cells keep their formatting rather than it moving with them.
 
 ### 🎨 Cell formatting
 
@@ -1266,7 +1270,7 @@ share one rule (`src/lib/cellLiteral.ts`), in this order:
 | A cell formatted as **Text** (number format menu · Excel's `@`) | `123` | text — for a whole column of codes |
 | An integer with a leading zero | `0812345678`, `00123` | text, automatically (`0` and `0.5` are still numbers) |
 | Twelve digits or more, nothing else | `1234567890123` | text, automatically (eleven digits or fewer, or with a point or sign, are numbers) |
-| An error code as Excel spells it (#226) | `#N/A`, `#DIV/0!` | **the error value**, as in Excel — `#1` or `#N/A please` stay text |
+| One of Excel's seven error codes, in any case (#226) | `#N/A`, `#DIV/0!`, `#n/a` | **the error value**, as in Excel — `#1`, `#N/A please` or `#SPILL!` stay text |
 | A number as a screen shows it — commas at the thousands, a trailing `%`, or a currency sign in front (#52) | `1,250`, `12%`, `฿1,500.00` | **a number** — `12%` is 0.12 (as #53 stores it) · the cell shows what was typed |
 | Everything else | `-3`, `12.50`, `10000000000` | a number, as before |
 
@@ -3041,7 +3045,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (2005 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (2014 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3721,7 +3725,10 @@ unformatted.
 
 **Elapsed time counts past a day, as Excel does (#219)** — `[h]`, `[mm]` and `[ss]` count the total hours, minutes or
 seconds, not the time of day. 1.5 days in `[h]:mm` shows `36:00` (it used to show `12:00`), so a timesheet totalled in
-`[h]:mm` shows the real total, in the grid and in `TEXT` alike.
+`[h]:mm` shows the real total, in the grid and in `TEXT` alike. Zero and negative values show as Excel shows them
+too (checked in real Excel): 0 under `dd/mm/yyyy` is `00/01/1900` (it used to show `31/12/1899`, a date Excel never
+shows), a negative value under a date or time format shows `########` rather than an invented date, and `TEXT` of a
+negative value under a date or time code gives `#VALUE!`.
 
 **Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
 position inside a block. `MROUND` is not in the engine. Arithmetic that overflows (`10^308*10`) still
@@ -3734,7 +3741,9 @@ error values: `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`, `#REF!`, `#CIRCULAR!`.
 `#REF!`, `#NAME?`, `#NUM!` and `#NULL!` typed into a cell, pasted from Excel, opened from a file or written by a pivot used
 to be text, so `SUM` stepped over them to a clean-looking total and `IFERROR` let them through. Now `SUM` gives the
 error and `IFERROR`/`IFNA` catch it. A leading apostrophe, the Text format, or text that only starts with `#` (`#1`,
-`#N/A please`) stays text, and so does a file's text cell that happens to read `#N/A`, as Excel stores it.
+`#N/A please`) stays text, and so does a file's text cell that happens to read `#N/A`, as Excel stores it. Case does
+not matter: `#n/a` is `#N/A`, as Excel makes it when it is typed. The newer codes such as `#SPILL!` stay text, because
+Excel keeps them as text when they are typed into a cell. (Both were checked in real Excel.)
 
 Want to add a formula to the drag-and-drop palette? Add the real function in `functions.ts`, then add its entry
 plus both languages' text in `formulaCatalog.ts` and `i18n/th.ts`/`en.ts`.
@@ -4091,20 +4100,20 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 2005 cases across 144 files, via Vitest
+npm test      # 2014 cases across 145 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 2005 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 2014 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
 instead of computed values (both tested) · one new button pushed the language toggle 42px off the screen.
 
 ```bash
-npm run check:e2e   # 59 flows in a real browser (needs a build)
+npm run check:e2e   # 60 flows in a real browser (needs a build)
 ```
 
 Flows are picked by one rule: **would a unit test already catch it?** If yes it does not belong there. What
@@ -4216,10 +4225,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **2005 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **2014 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 2005 passing tests could not catch](#-what-2005-passing-tests-could-not-catch), repeatable
+> [What 2014 passing tests could not catch](#-what-2014-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4247,10 +4256,10 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 12 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 16 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
-| `moveRefs.test.ts` | 6 | Reference rewriting for a cut and paste (#51): references into the block follow it with their `$`, everything outside and an untouched formula's text stay as they were, a range moves only when all of it was cut, a sheet name is added across sheets, a moved formula keeps naming the sheet it came from, and a cut under a filter moves only the rows it took |
+| `moveRefs.test.ts` | 7 | Reference rewriting for a cut and paste (#51): references into the block follow it with their `$`, everything outside and an untouched formula's text stay as they were, a range moves only when all of it was cut, a sheet name is added across sheets, a moved formula keeps naming the sheet it came from, a reference to a cell the block landed on becomes `#REF!`, and a cut under a filter moves only the rows it took |
 | `sheetSort.test.ts` | 13 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) · The header stays on top either way (#49): numbers under a word in any column, a label over an empty column, bold, a row with a number is not a header, a plain word list sorts whole |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
-| `excelDate.test.ts` | 17 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) and elapsed time past a day (`[h]:mm` of 1.5 days is `36:00`, #219) · Buddhist-Era dates (#82): every form in the issue as 15 Jan 2026, all twelve Thai months full, short and dotless, a two-digit year beside a Thai month, what must not be guessed (`2569`, `15/01/69`, `15/01/2024`), every Thai-calendar code plus `bbbb` and Thai month names |
+| `excelDate.test.ts` | 19 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) and elapsed time past a day (`[h]:mm` of 1.5 days is `36:00`, #219), 0 as `00/01/1900` and a negative value as `########` in the grid (#219) · Buddhist-Era dates (#82): every form in the issue as 15 Jan 2026, all twelve Thai months full, short and dotless, a two-digit year beside a Thai month, what must not be guessed (`2569`, `15/01/69`, `15/01/2024`), every Thai-calendar code plus `bbbb` and Thai month names |
 | `dateConvert.test.ts` | 6 | "Convert to dates" (#82): a two-digit B.E. year is 25yy and an A.D. one follows Excel's window, month-first and year-first orders, dates already readable written as ISO, unreadable text left alone, a range planned without empty cells or formulas |
 | `numberFormatCode.test.ts` | 6 | Excel number-format codes (#53): the issue's table (7%, 12.5%, $1,234.50, 1.235, 12,345), the old `0.00"%"` not multiplied, negative/zero sections, currency tags, scaling commas, literals between digits, and the fallback for fractions and scientific codes |
 | `numberFormats.test.ts` | 5 | Percent, currency and decimals through a real .xlsx both ways (#53): a file's codes shown and exported unchanged, the app's Percent ×100 and exported as `0.00%`, and old sheets in the browser and the cloud (format 1) still reading 50.00% |
@@ -4282,6 +4291,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/sheetNaming.test.ts` | 6 | Sheet names through the real store (#54): QA's four cases (+ after a delete, a rename onto a name in use, a case twin, a forbidden character), a save from before the fix opening with valid names and formulas on the right tab, the export read as XML with cross-sheet `<v>` values real (#101), and a failed export announced |
 | `store/sheetRules.test.ts` | 11 | Both features at the store: a value outside the rule is not saved and is announced, rules and names follow row edits, deleting a name leaves the formula reading `#NAME?` rather than rewritten, and undo brings the name back |
 | `store/liveBlockStructure.test.ts` | 8 | Live data and row/column edits (#46), through the real store and then a refresh: the block moves with them, a total under it is not written over, an edit inside it is refused with the reason, deleting its header unlinks it and keeps the values, and undo brings the linked block back |
+| `store/liveSortRefused.test.ts` | 3 | A sort whose range reaches a live block is refused whole and said (#235): from a live column, with no row moving and every note still on its own product after a refresh; from the person's own column beside the block; a range that does not reach the block still sorting |
 | `store/liveWriteRefused.test.ts` | 7 | A write that reaches a live block is refused whole and said (#232): a paste from the app's clipboard and one from another program that starts outside the block and runs into it, fill down/Ctrl+Enter/delete/cut, another way of writing a cell (the AI assistant), said once while the same note stays up with a paste outside the block still going in, and a paste over a template's structure said with the note rather than an alert, and Replace all skipping live cells |
 | `store/livePicker.test.ts` | 5 | A single-value live cell never writes a blank (#126): the default is worked out again when the table arrives late (five rows → the whole table), a single value with no number cannot be inserted, the person's own pick is kept, and the store refuses a value block with no column on add and on change |
 | `store/liveEmptyResult.test.ts` | 2 | A source answering with an empty list (#65): the block keeps its last header, the rows under it are cleared, a SUM reads 0 rather than the envelope, and it fills again when rows come back |
@@ -4290,7 +4300,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/pivotSize.test.ts` | 6 | A summary sheet as big as its answer (#56): all 35 products with the Grand total row in bold, all twelve months with the Grand total column, the same after a refresh, a small result still opening on a 30×10 sheet with room to work, a result too big for a sheet built nowhere and its size said, and a refresh too big for one alerting while the old pivot stays |
 | `store/pivotError.test.ts` | 2 | A pivot over a source with an error (#222): Sum, Average, Min and Max of the group holding `#DIV/0!` and the Grand total show `#DIV/0!` while the other group keeps its number, when built and when refreshed after the source gains the error |
 | `store/errorLiterals.test.ts` | 4 | An error code held in a cell as a value is the error (#226), by every way in: typed (`SUM` gives `#DIV/0!`, `IFERROR`/`IFNA` catch it), pasted as Excel copies it (`#1`, `#N/A please`, `'#N/A` stay text), opened from a file (a `t="e"` cell is the error, a string cell reading `#N/A` stays text), and `SUM`/`IFERROR` over a pivot sheet holding an error |
-| `store/cutMove.test.ts` | 7 | Cut and paste is a move, as in Excel (#51): a formula reading the moved cell follows it with the same value, a moved formula keeps pointing where it did, a block that refers to itself still does at its new place, a block moved onto part of itself empties what it left and moves references once, a range name follows, across sheets with one undo, and a copy still shifting as a copy |
+| `store/cutMove.test.ts` | 8 | Cut and paste is a move, as in Excel (#51): a formula reading the moved cell follows it with the same value, a moved formula keeps pointing where it did, a formula reading a cell the paste covered says `#REF!`, a block that refers to itself still does at its new place, a block moved onto part of itself empties what it left and moves references once, a range name follows, across sheets with one undo, and a copy still shifting as a copy |
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/convertDates.test.ts` | 5 | "Convert to dates" and "Date (B.E.)" through the store (#82): converted cells show the Buddhist year while unreadable ones and formulas stay, A.D. month-first, one undo for all, a chosen format kept, the B.E. format shown and switched back |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |
@@ -4536,7 +4546,7 @@ What's not done yet, and why — to show this is a known gap, not something forg
       prerendering, measured at +10–15 ms of TTFB · an API a user connects from the browser enters that one
       user's `connect-src`, through a cookie validated entry by entry. Still open: CSP cannot stop a top-level navigation.
 - [x] **Tests that actually open the app (E2E) in CI** — done: `npm run check:e2e` drives Chromium
-      through 59 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
+      through 60 flows as its own CI job — a formula recalculating on screen, an `.xlsx` round trip through
       the real buttons, keyboard-only navigation, undo, and whether anything is announced. Three bugs this
       project previously found by hand are now inside the gate's reach, and each gate was proved by breaking
       it. **The AI assistant is now covered too**, with `/api/ai/formula` stubbed: the range the panel

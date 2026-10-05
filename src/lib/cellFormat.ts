@@ -1,7 +1,7 @@
 // Copyright 2026 Suruch Chakrapeesirisuk
 // SPDX-License-Identifier: Apache-2.0
 
-import { BE_DATE_CODE, DEFAULT_DATE_CODE, formatSerial, isDateFormatCode, kindOfDateCode } from "./excelDate";
+import { BE_DATE_CODE, DEFAULT_DATE_CODE, formatSerial, isDateFormatCode, kindOfDateCode, NOT_A_DATE, showableAsDate } from "./excelDate";
 import { formatNumberCode, isPercentCode } from "./numberFormatCode";
 
 /**
@@ -90,7 +90,7 @@ export function pxToPt(px: number | undefined): number | undefined {
  * (`numCode`) wins over the preset, so `0%` and `"$"#,##0.00` show as the file has them.
  */
 export function formatNumberForDisplay(value: number, fmt: NumberFormat, dateCode?: string, numCode?: string): string {
-  if (isDateFormat(fmt)) return formatSerial(value, dateCode ?? DEFAULT_DATE_CODE[fmt]);
+  if (isDateFormat(fmt)) return showableAsDate(value) ? formatSerial(value, dateCode ?? DEFAULT_DATE_CODE[fmt]) : NOT_A_DATE;
   if (numCode) return formatNumberCode(value, numCode);
   const fixed2 = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   switch (fmt) {

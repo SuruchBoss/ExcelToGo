@@ -48,6 +48,18 @@ describe("cut and paste moves, as in Excel (#51)", () => {
     expect(values()[0][2]).toBe(11);
   });
 
+  it("a formula that read the cell the block landed on says #REF!, as Excel does", () => {
+    // The owner's check in Excel: D1 5, E1 =D1*2, F1 =H1; cut D1, paste on H1 → E1 10, F1 #REF!.
+    state().setCellRaw(0, 3, "5");
+    state().setCellRaw(0, 4, "=D1*2");
+    state().setCellRaw(0, 5, "=H1");
+    move([0, 3], [0, 7]);
+    expect(cells()[0][4]).toBe("=H1*2");
+    expect(values()[0][4]).toBe(10);
+    expect(cells()[0][5]).toBe("=#REF!");
+    expect(String(values()[0][5])).toBe("#REF!");
+  });
+
   it("a block that refers to itself still does, at its new place", () => {
     state().setCellRaw(1, 0, "=SUM(A1:B1)");
     move([0, 0, 0, 1], [4, 3]);

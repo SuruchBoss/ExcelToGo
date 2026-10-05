@@ -3,7 +3,7 @@
 
 import { EvalResult, FormulaError, FormulaValue, flattenResult, isError, ERR_DIV0, ERR_NA, ERR_NUM, ERR_VALUE } from "./types";
 import { toBoolean, toDisplayString, toNumber, isBlank } from "./coerce";
-import { dateLiteral, formatSerial, isDateFormatCode, partsOfSerial, serialOf } from "../excelDate";
+import { dateLiteral, formatSerial, isDateFormatCode, partsOfSerial, serialOf, showableAsDate } from "../excelDate";
 import { formatNumberCode } from "../numberFormatCode";
 
 /** Whether an argument was read from cells — a range, or one cell by reference (#166). */
@@ -673,7 +673,9 @@ export const FUNCTIONS: Record<string, FnImpl> = {
     const n = isBlank(v) ? 0 : toNumber(v);
     if (isError(n)) return toDisplayString(v);
     if (code === "") return "";
-    return isDateFormatCode(code) ? formatSerial(n, code) : formatNumberCode(n, code);
+    if (!isDateFormatCode(code)) return formatNumberCode(n, code);
+    // A negative serial is no date at all, and Excel says so rather than inventing one (#219).
+    return showableAsDate(n) ? formatSerial(n, code) : ERR_VALUE;
   },
   // Both are serials (#45), in the reader's own time zone: NOW used to be UTC while TODAY was local,
   // so in Bangkok between midnight and 7am the two disagreed about the date.

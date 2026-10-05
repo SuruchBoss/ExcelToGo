@@ -303,6 +303,17 @@ function tokenizeWithLocale(code: string): { tokens: Token[]; locale: DateLocale
 }
 
 /**
+ * Whether a serial can be shown under a date or time code. A negative one cannot (#219, checked in
+ * Excel): the grid fills the cell with `#` and `TEXT` gives `#VALUE!`, under the 1900 date system.
+ */
+export function showableAsDate(serial: number): boolean {
+  return Number.isFinite(serial) && serial >= 0;
+}
+
+/** What a cell shows for a value that cannot be a date, as Excel fills it at its default width. */
+export const NOT_A_DATE = "########";
+
+/**
  * A serial shown the way an Excel format code says: `dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`.
  *
  * The part of Excel's format language that dates use, which is what files carry: year, month, day,
@@ -312,7 +323,11 @@ function tokenizeWithLocale(code: string): { tokens: Token[]; locale: DateLocale
  * year in any code (#82). Other locale tags (`[$-409]`) are read past.
  */
 export function formatSerial(serial: number, code: string): string {
-  const p = partsOfSerial(serial);
+  // Serial 0 is Excel's 0 January 1900 (`00/01/1900`), not the day before 1 January (#219,
+  // checked in Excel). Only the display moves: `partsOfSerial` still answers 31 December 1899 for
+  // the date functions and for the ISO text a cell keeps, which have no day 0 to write.
+  const zero = Math.floor(Math.round(serial * 86_400) / 86_400) === 0;
+  const p = zero ? { ...partsOfSerial(serial), year: 1900, month: 1, day: 0 } : partsOfSerial(serial);
   const { tokens, locale } = tokenizeWithLocale(code);
   const months = locale.thai ? THAI_MONTHS : MONTHS;
   const shortMonth = (m: number) => (locale.thai ? THAI_MONTHS_SHORT[m - 1] : MONTHS[m - 1].slice(0, 3));

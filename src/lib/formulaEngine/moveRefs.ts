@@ -52,6 +52,7 @@ export interface FormulaPlace {
 }
 
 const sameSheet = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+const REF_ERROR = "#REF!";
 const CELL_TOKEN_RE = /^(\$?)([A-Za-z]{1,3})(\$?)(\d+)$/;
 
 interface CellParts {
@@ -94,11 +95,28 @@ function movedAddress(ref: string, move: CellMove): string | null {
   return `${write(pa, move.rowTo.get(pa.row)!, pa.col + move.colOffset)}:${write(pb, move.rowTo.get(pb.row)!, pb.col + move.colOffset)}`;
 }
 
+/**
+ * Whether a single-cell reference names a cell the pasted block landed on. In Excel such a
+ * reference becomes `#REF!`: the cell it meant was replaced by the moved one (checked in Excel,
+ * #51). A range reaching into the landing area is left alone, as nobody has checked Excel for it.
+ */
+function landedOn(ref: string, move: CellMove): boolean {
+  if (ref.includes(":")) return false;
+  const p = parts(ref);
+  if (!p) return false;
+  const col = p.col - move.colOffset;
+  if (col < move.startCol || col > move.endCol) return false;
+  for (const to of move.rowTo.values()) if (to === p.row) return true;
+  return false;
+}
+
 /** One reference token, rewritten for the move and for where its formula will be written. */
 function moveToken(token: string, move: CellMove, place: FormulaPlace): string {
   const { sheet: prefix, ref } = splitSheetRef(token);
   const target = prefix ?? place.readSheet;
   const moved = sameSheet(target, move.fromSheet) ? movedAddress(ref, move) : null;
+  // Excel drops the sheet name with the reference, since there is no address left to qualify.
+  if (moved === null && sameSheet(target, move.toSheet) && landedOn(ref, move)) return REF_ERROR;
   const sheet = moved === null ? target : move.toSheet;
   const address = moved ?? ref;
   // Written with a sheet name when it had one, or when the sheet it means is no longer the one
