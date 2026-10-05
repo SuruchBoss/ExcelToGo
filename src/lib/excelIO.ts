@@ -135,6 +135,10 @@ function rawForDate(d: Date, numFmt: string | undefined): string {
   const whole = Math.floor(serial);
   // Midnight in a time-only format is `00:00`, not a date: serial 0 has no day to show.
   const timeOnly = whole === 0 && (serial !== 0 || (!!numFmt && kindOfDateCode(numFmt) === "time"));
+  // Zero and below have no date to write: ISO text for them is a year-1899 day no date reading
+  // accepts, so the cell turned into text (#241). Kept as the number, its format shows it as Excel
+  // does (`00/01/1900`, `########`).
+  if (serial < 0 || (serial === 0 && !timeOnly)) return String(serial);
   const kind = timeOnly ? "time" : serial === whole ? "date" : "datetime";
   return isoFromSerial(serial, kind);
 }
