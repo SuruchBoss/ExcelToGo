@@ -282,7 +282,6 @@ export default function SpreadsheetGrid() {
   }, [sheet]);
   const hasContent = (col: number) => columnsWithContent.has(col);
   const blockAt = (row: number, col: number) => boundCells.get(`${row},${col}`);
-  const isBound = (row: number, col: number) => boundCells.has(`${row},${col}`);
   const sourceNameOf = (sourceId: string) => sources.find((s) => s.id === sourceId)?.name ?? "";
   const selectedBlock = blockAt(selection.anchorRow, selection.anchorCol);
 
@@ -571,28 +570,6 @@ export default function SpreadsheetGrid() {
   }, [tapHintShown, tapHint]);
 
   /**
-   * A cell that refused an edit, and why (#207).
-   *
-   * A live-data cell, or a template's structure, cannot be typed over, and it used to refuse in
-   * silence: no editor opened, the keys went nowhere, Enter moved on, and what was typed was gone
-   * with only a hover tooltip to explain it. Now the cell says so under itself, the way the tap
-   * hint does, and says it out loud once. Every keystroke that is refused keeps it up a little longer.
-   */
-  const [refusal, setRefusal] = useState<{ row: number; col: number; shift: number; text: string } | null>(null);
-  const refusalShown =
-    refusal !== null &&
-    !editing &&
-    selection.startRow === selection.endRow &&
-    selection.startCol === selection.endCol &&
-    refusal.row === selection.anchorRow &&
-    refusal.col === selection.anchorCol;
-  useEffect(() => {
-    if (!refusalShown) return;
-    const timer = window.setTimeout(() => setRefusal(null), 6000);
-    return () => window.clearTimeout(timer);
-  }, [refusalShown, refusal]);
-
-  /**
    * Put the browser's focus where the cursor is.
    *
    * Two jobs in one effect, because they are the same move.
@@ -696,15 +673,50 @@ export default function SpreadsheetGrid() {
     return Math.max(0, Math.round(overhang));
   };
 
+  /**
+   * A cell that refused an edit, and why (#207).
+   *
+   * A live-data cell, or a template's structure, cannot be typed over, and it used to refuse in
+   * silence: no editor opened, the keys went nowhere, Enter moved on, and what was typed was gone
+   * with only a hover tooltip to explain it. Now the cell says so under itself, the way the tap
+   * hint does, and says it out loud once. Every keystroke that is refused keeps it up a little longer.
+   *
+   * The refusal lives in the store (#232), because a paste, a fill, a cut or a delete is refused
+   * there, and each says so with the same note under the cell the cursor is on. It shows whatever
+   * the selection, so typing on a range whose first cell is live data is answered too.
+   */
+  const refusal = useSheetStore((s) => s.refusal);
+  const dismissRefusal = useSheetStore((s) => s.dismissRefusal);
+  const refusalShown =
+    refusal !== null &&
+    refusal.sheetId === activeSheetId &&
+    !editing &&
+    refusal.row === selection.anchorRow &&
+    refusal.col === selection.anchorCol;
+  // Measured as a note arrives rather than kept with it: the store does not know the screen.
+  const [refusalShift, setRefusalShift] = useState(0);
+  useEffect(
+    () =>
+      useSheetStore.subscribe((now, before) => {
+        if (now.refusal && now.refusal !== before.refusal) {
+          setRefusalShift(labelShift(now.refusal.row, now.refusal.col, REFUSAL_ROOM));
+        }
+      }),
+    []
+  );
+  useEffect(() => {
+    if (!refusalShown) return;
+    const timer = window.setTimeout(dismissRefusal, 6000);
+    return () => window.clearTimeout(timer);
+  }, [refusalShown, refusal?.seq, dismissRefusal]);
+
   /** Say under the cell why it did not take an edit (#207), out loud only the first time in a row. */
   const refuseEdit = (row: number, col: number) => {
     const text = boundCells.has(`${row},${col}`)
       ? t.data.liveCellRefused(cellRef(row, col))
       : t.template.lockedCellRefused(cellRef(row, col));
-    const again = refusalShown && refusal.row === row && refusal.col === col;
     setTapHint(null);
-    setRefusal({ row, col, shift: labelShift(row, col, REFUSAL_ROOM), text });
-    if (!again) announce(text);
+    useSheetStore.getState().refuseEdit(row, col, text);
   };
 
   const startEdit = (row: number, col: number, initialValue?: string) => {
@@ -712,7 +724,7 @@ export default function SpreadsheetGrid() {
     // A tab that is only looking (#47) says so rather than opening an editor it cannot save.
     if (!isEditingTab()) return noteRefusedEdit();
     setTapHint(null);
-    setRefusal(null);
+    if (refusal) dismissRefusal();
     setEditing({ row, col, value: initialValue ?? rawAt(row, col), typed: initialValue !== undefined });
   };
 
@@ -825,7 +837,7 @@ export default function SpreadsheetGrid() {
     // Typing and pressing Enter in one go was how the value vanished: the note came with the first
     // key and the cursor left with Enter, taking the note with it before anyone could read it.
     if (refusalShown && (e.key === "Enter" || e.key === "Escape") && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      setRefusal(null);
+      dismissRefusal();
       e.preventDefault();
       return;
     }
@@ -1020,8 +1032,8 @@ export default function SpreadsheetGrid() {
       }
       case "Delete":
       case "Backspace":
-        if (!isBound(row, col)) clearSelection();
-        else refuseEdit(row, col);
+        // Refused in the store when the range reaches live data or a template's structure (#232).
+        clearSelection();
         e.preventDefault();
         break;
       case "F2":
@@ -1344,7 +1356,7 @@ export default function SpreadsheetGrid() {
                         ? ({ "--tap-hint-shift": `${tapHint.shift}px` } as React.CSSProperties)
                         : null),
                       ...(refusalShown && refusal.row === r && refusal.col === c
-                        ? ({ "--refused-shift": `${refusal.shift}px` } as React.CSSProperties)
+                        ? ({ "--refused-shift": `${refusalShift}px` } as React.CSSProperties)
                         : null),
                     };
                   })()}

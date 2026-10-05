@@ -64,6 +64,7 @@ export const en: Messages = {
     liveCellTitle: (source) => `Live data from "${source}" — click for options`,
     liveCellReadOnly: "This cell is live data and can't be edited — click \"Remove\" first to type over it",
     liveCellRefused: (address) => `${address} is live data and can't be typed over — press "Remove" first to edit it yourself`,
+    liveCellsRefused: (cells) => `${cells} is live data, so nothing was changed — press "Remove" first to edit it yourself`,
     partial: (rows) => `Only the first ${rows.toLocaleString("en-US")} rows`,
     partialHint: "This source has more data — raise the row limit in the source's settings",
     partialSizeHint: (mb) =>
@@ -523,6 +524,7 @@ export const en: Messages = {
     hint: "The white cells are yours to fill in; the grey ones are the template's structure",
     lockedCell: "This cell is part of the template's structure — click \"Unlock the sheet\" to change it",
     lockedCellRefused: (address) => `${address} is part of the template's structure — press "Unlock the sheet" to change it`,
+    lockedCellsRefused: (cells) => `${cells} is part of the template's structure, so nothing was changed — press "Unlock the sheet" to change it`,
     unlock: "Unlock the sheet",
     confirmUnlock: "Unlock this template? Every cell becomes editable like an ordinary sheet and the dropdowns are dropped (Ctrl+Z undoes it).",
     unlocked: "Unlocked — every cell is editable",

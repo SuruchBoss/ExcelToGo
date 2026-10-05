@@ -1561,6 +1561,46 @@ const FLOWS = [
     },
   },
   {
+    // #232. Pasting was the other door into a live cell: written, announced as pasted, then wiped
+    // by the next refresh with nothing said and nothing Ctrl+Z could bring back. The seam is the
+    // clipboard meeting a block that rewrites itself every five seconds.
+    name: "pasting into a live block is refused whole and said, and a refresh changes nothing (#232)",
+    async run(page) {
+      const REFUSED = /^B3 (เป็นข้อมูลสด|is live data)/;
+      await cell(page, 0, 0).click();
+      await page.getByRole("button", { name: label.liveData }).first().click();
+      await page.getByRole("button", { name: label.trySales }).click();
+      const form = page.getByRole("dialog");
+      await form.getByRole("button", { name: label.test }).click();
+      await form.getByText(/ได้ข้อมูล 5 แถว|Got 5 rows/).waitFor({ timeout: 15_000 });
+      await form.getByRole("button", { name: label.saveAndAdd }).click();
+      const insert = page.getByRole("dialog").getByRole("button", { name: label.insert });
+      await insert.waitFor({ timeout: 15_000 });
+      await insert.click();
+      await page.waitForFunction(() => document.querySelector('td[data-row="1"][data-col="0"]')?.innerText.trim() === "CF-01", null, { timeout: 15_000 });
+
+      await typeInCell(page, 1, 8, "PASTED");
+      await cell(page, 1, 8).click();
+      await page.keyboard.press("Control+c");
+      const before = (await cell(page, 2, 1).innerText()).trim();
+      await cell(page, 2, 1).click();
+      await page.keyboard.press("Control+v");
+      const spoken = await page.evaluate(() => [...document.querySelectorAll('[role="status"][aria-live]')].map((e) => e.textContent).join(" "));
+      note(!/วาง|[Pp]asted/.test(spoken), `nothing is said as pasted ("${spoken.trim().slice(0, 80)}")`);
+      note(REFUSED.test((await cell(page, 2, 1).getAttribute("data-refused")) ?? ""), "B3 says under itself that it is live data");
+      note((await cell(page, 2, 1).innerText()).trim() === before, `B3 still holds the source's value ("${before}")`);
+      await page.waitForTimeout(6000); // past the source's 5-second refresh, when the paste used to vanish
+      const after = (await cell(page, 2, 1).innerText()).trim();
+      note(after !== "PASTED", `after a refresh B3 is the source's value, as it was all along ("${after}")`);
+
+      // A range whose first cell is live: typing is answered under that cell too.
+      await cell(page, 4, 1).click();
+      await cell(page, 5, 2).click({ modifiers: ["Shift"] });
+      await page.keyboard.type("9");
+      note(/^B5 (เป็นข้อมูลสด|is live data)/.test((await cell(page, 4, 1).getAttribute("data-refused")) ?? ""), "typing on B5:C6 says why under B5");
+    },
+  },
+  {
     // #83. The app is used to open a file, fix it and send it back, and a file with pictures or
     // Excel's own charts loses them on the way — which the person used to hear from whoever got
     // the file. The fixture is a real package (ExcelJS wrote the picture, the app's chart writer

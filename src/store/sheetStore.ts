@@ -101,7 +101,7 @@ import { useLocaleStore } from "@/store/localeStore";
 import { TableData } from "@/lib/dataSources/types";
 import { dateTextAt, valuesWithIsoDates, withFormulaDateFormat, withRoomForDateTime } from "@/lib/dateCells";
 import { afterWrite, boundCellsOf, clearLiveBlock, LiveBlock, liveBlockCells, shiftLiveBlocks, writeLiveBlock } from "@/lib/liveBlocks";
-import { isTemplateLocked, rangeHasLockedCells } from "@/lib/sheetTemplate";
+import { isTemplateLocked } from "@/lib/sheetTemplate";
 
 export type SidebarMode = "palette" | "ai" | "data" | "cf" | "chart" | "pivot" | "cloud" | "none";
 export type { ApplyScope };
@@ -267,6 +267,15 @@ interface SheetState {
    * announcer swaps between two regions on the parity of this, which guarantees a change either way.
    */
   announcement: { text: string; seq: number } | null;
+  /**
+   * A cell that refused an edit, and why (#207, #232): a live-data cell or a template's structure.
+   * The grid draws `text` under the cell while the cursor is on it. `seq` moves on every refusal, so
+   * another refused keystroke keeps the note up for longer.
+   */
+  refusal: { sheetId: string; row: number; col: number; text: string; seq: number } | null;
+  /** Shows the note under a cell that refused an edit, said out loud once while it stays the same. */
+  refuseEdit: (row: number, col: number, text: string) => void;
+  dismissRefusal: () => void;
   clipboard: ClipboardState | null;
   /** Which source the "what do you want to insert" dialog is open for, and whether it's changing
    *  an existing block rather than adding one. Opened from the panel and from a block's toolbar. */
@@ -611,13 +620,58 @@ function clampSelectionToBounds(sheet: SheetModel, selection: SelectionRect): Se
   return singleCellSelection(Math.min(selection.anchorRow, sheet.rows - 1), Math.min(selection.anchorCol, sheet.cols - 1));
 }
 
-/** A template exists to stop the form being broken by accident, so operations that would write
- *  over its fixed cells are refused rather than partially applied — and the user is told why,
- *  since silently doing nothing reads as the app being broken. */
-function refusedByTemplate(sheet: SheetModel, startRow: number, startCol: number, endRow: number, endCol: number): boolean {
-  if (!rangeHasLockedCells(sheet.template, startRow, startCol, endRow, endCol)) return false;
-  alert(getMessages().template.lockedCell);
-  return true;
+let refusalSeq = 0;
+
+/**
+ * The state that shows a refusal under `(row, col)` and says it, or only keeps the note up when the
+ * same note is already there: a second refused keystroke is not a second announcement.
+ */
+function refusalAt(s: SheetState, row: number, col: number, text: string): Partial<SheetState> {
+  const sheetId = s.activeSheetId;
+  const r = s.refusal;
+  const again = r !== null && r.sheetId === sheetId && r.row === row && r.col === col && r.text === text;
+  return {
+    refusal: { sheetId, row, col, text, seq: ++refusalSeq },
+    ...(again ? {} : say(text)),
+  };
+}
+
+/**
+ * Whether a write over a rectangle of the active sheet is refused, and the state that says so.
+ *
+ * Refused whole, never applied around the cells it may not touch, as Excel refuses a paste over
+ * protected cells: a paste that skipped a live column would shift its rows against each other.
+ * Two kinds of cell refuse (#232): a live-data cell, which the next refresh writes over, and a
+ * template's structure. The note goes under `at`, the cell the person is on, and names the cells
+ * that refused.
+ */
+function refusedWrite(
+  s: SheetState,
+  startRow: number,
+  startCol: number,
+  endRow: number,
+  endCol: number,
+  at: { row: number; col: number } = { row: startRow, col: startCol }
+): Partial<SheetState> | null {
+  const tab = activeTab(s);
+  const bound = boundCellsOf(tab.liveBlocks ?? []);
+  const template = tab.sheet.template;
+  if (bound.size === 0 && !template) return null;
+  let live: SelectionRect | null = null;
+  let locked: SelectionRect | null = null;
+  const grow = (box: SelectionRect | null, r: number, c: number): SelectionRect =>
+    box
+      ? { ...box, startRow: Math.min(box.startRow, r), startCol: Math.min(box.startCol, c), endRow: Math.max(box.endRow, r), endCol: Math.max(box.endCol, c) }
+      : singleCellSelection(r, c);
+  for (let r = startRow; r <= endRow; r++) {
+    for (let c = startCol; c <= endCol; c++) {
+      if (bound.has(`${r},${c}`)) live = grow(live, r, c);
+      else if (isTemplateLocked(template, r, c)) locked = grow(locked, r, c);
+    }
+  }
+  if (live) return refusalAt(s, at.row, at.col, getMessages().data.liveCellsRefused(rangeLabel(live)));
+  if (locked) return refusalAt(s, at.row, at.col, getMessages().template.lockedCellsRefused(rangeLabel(locked)));
+  return null;
 }
 
 function refusedStructuralChange(sheet: SheetModel): boolean {
@@ -793,7 +847,11 @@ function applyFill(
 ): void {
   const s = get();
   const { sheet } = activeTab(s);
-  if (refusedByTemplate(sheet, target.startRow, target.startCol, target.endRow, target.endCol)) return;
+  const refused = refusedWrite(s, target.startRow, target.startCol, target.endRow, target.endCol, {
+    row: source.startRow,
+    col: source.startCol,
+  });
+  if (refused) return set(() => refused);
   const writes = fillBlock((r, c) => sheet.cells[r]?.[c] ?? "", source, target);
   if (writes.length === 0) return;
   // Rows a filter hides are not filled (#50): Excel fills what is on screen, and a fill that
@@ -954,6 +1012,9 @@ export const useSheetStore = create<SheetState>()(
         fileLosses: null,
         fileLossesOpen: false,
         announcement: null,
+        refusal: null,
+        refuseEdit: (row, col, text) => set((s) => refusalAt(s, row, col, text)),
+        dismissRefusal: () => set({ refusal: null }),
         clipboard: null,
         dataPicker: null,
 
@@ -1037,7 +1098,11 @@ export const useSheetStore = create<SheetState>()(
             // holding an address that undo took away (#191, an editor left open on a row Enter
             // grew). The grid closes that editor itself; this keeps a stale caller from throwing.
             if (row < 0 || col < 0 || row >= sheet.rows || col >= sheet.cols) return {};
-            if (isTemplateLocked(sheet.template, row, col)) return {};
+            // A live-data cell or a template's structure: the grid opens no editor on one, and
+            // anything else that writes a cell (the AI assistant, the formula bar) is refused the
+            // same way, with the note, rather than writing what the next refresh wipes (#232).
+            const refused = refusedWrite(s, row, col, row, col);
+            if (refused) return refused;
             // Refused rather than warned about afterwards: a warning on a cell that already holds
             // the wrong thing is a note about a mistake; refusing is the mistake not happening.
             // Said out loud, because a keystroke that does nothing and says nothing is
@@ -1320,7 +1385,8 @@ export const useSheetStore = create<SheetState>()(
             // push an undo step that changes nothing, and Ctrl+Z would look broken.
             if (sel.startRow === sel.endRow && sel.startCol === sel.endCol) return {};
             const { sheet } = activeTab(s);
-            if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            const refused = refusedWrite(s, sel.startRow, sel.startCol, sel.endRow, sel.endCol, { row: sel.anchorRow, col: sel.anchorCol });
+            if (refused) return refused;
 
             const source = sheet.cells[sel.anchorRow]?.[sel.anchorCol] ?? "";
             const hidden = hiddenRowsOfActive(s);
@@ -1362,7 +1428,10 @@ export const useSheetStore = create<SheetState>()(
           const raw = tab.sheet.cells[match.row]?.[match.col] ?? "";
           const next = replaceIn(raw, needle, replacement, options);
           if (next === raw) return false;
-          if (isTemplateLocked(tab.sheet.template, match.row, match.col)) return false;
+          // A live cell is skipped as the template's structure is: the next refresh would undo it (#232).
+          if (isTemplateLocked(tab.sheet.template, match.row, match.col) || boundCellsOf(tab.liveBlocks ?? []).has(`${match.row},${match.col}`)) {
+            return false;
+          }
           set({
             sheets: s.sheets.map((t) =>
               t.id === match.sheetId ? { ...t, sheet: setCellRaw(t.sheet, match.row, match.col, next) } : t
@@ -1393,6 +1462,7 @@ export const useSheetStore = create<SheetState>()(
             if (!tab) continue;
             const current = edited.get(m.sheetId) ?? tab.sheet;
             if (isTemplateLocked(current.template, m.row, m.col)) continue;
+            if (boundCellsOf(tab.liveBlocks ?? []).has(`${m.row},${m.col}`)) continue;
             const raw = current.cells[m.row]?.[m.col] ?? "";
             const next = replaceIn(raw, needle, replacement, options);
             if (next === raw) continue;
@@ -1410,7 +1480,8 @@ export const useSheetStore = create<SheetState>()(
         clearSelection: () =>
           set((s) => {
             const sel = activeSelectionOf(s);
-            if (refusedByTemplate(activeTab(s).sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            const refused = refusedWrite(s, sel.startRow, sel.startCol, sel.endRow, sel.endCol, { row: sel.anchorRow, col: sel.anchorCol });
+            if (refused) return refused;
             const hidden = hiddenRowsOfActive(s);
             return {
               sheets: updateActiveSheet(s, (sheet, selection) =>
@@ -1427,7 +1498,8 @@ export const useSheetStore = create<SheetState>()(
           set((s) => {
             const sel = activeSelectionOf(s);
             const { sheet } = activeTab(s);
-            if (refusedByTemplate(sheet, sel.startRow, sel.startCol, sel.endRow, sel.endCol)) return {};
+            const refused = refusedWrite(s, sel.startRow, sel.startCol, sel.endRow, sel.endCol, { row: sel.anchorRow, col: sel.anchorCol });
+            if (refused) return refused;
             // Rows a filter hides are left as they are (#50), as delete and fill leave them.
             const plan = planConversion((r, c) => sheet.cells[r]?.[c] ?? "", sel, order, calendar, hiddenRowsOfActive(s));
             const said = say(getMessages().live.datesConverted(plan.changes.length, plan.unreadable.length));
@@ -1464,6 +1536,13 @@ export const useSheetStore = create<SheetState>()(
           const s = get();
           const { sheet } = activeTab(s);
           const selection = activeSelectionOf(s);
+          // A cut empties its cells on paste, and a live block or a template's structure cannot be
+          // emptied (#232): refused here, before anything reaches the clipboard.
+          const refused = refusedWrite(s, selection.startRow, selection.startCol, selection.endRow, selection.endCol, {
+            row: selection.anchorRow,
+            col: selection.anchorCol,
+          });
+          if (refused) return set(refused);
           const block = copyRange(sheet, selection.startRow, selection.startCol, selection.endRow, selection.endCol, hiddenRowsOfActive(s));
           set({
             clipboard: { ...block, cut: true, sheetId: activeTab(s).id },
@@ -1479,6 +1558,20 @@ export const useSheetStore = create<SheetState>()(
           set((s) => {
             const { sheet } = activeTab(s);
             const selection = activeSelectionOf(s);
+            {
+              // Sized to what would actually be written, not just the selected cell. A paste that
+              // would land on a live-data cell used to be written, said as pasted, and then wiped by
+              // the next refresh (#232); it is refused whole, before anything changes.
+              const height = s.clipboard?.rows.length ?? parseTsv(externalText ?? "").length;
+              const width = s.clipboard?.rows[0]?.length ?? parseTsv(externalText ?? "")[0]?.length ?? 1;
+              const endRow = selection.anchorRow + Math.max(0, height - 1);
+              const endCol = selection.anchorCol + Math.max(0, width - 1);
+              const refused = refusedWrite(s, selection.anchorRow, selection.anchorCol, endRow, endCol, {
+                row: selection.anchorRow,
+                col: selection.anchorCol,
+              });
+              if (refused) return { ...refused, pasteWarning: null };
+            }
             // A paste goes down in one piece, so under a filter it can land on rows nobody can see
             // (#50). Delete and fill skip those; a paste cannot, so it asks first (PO's call).
             if (!force) {
@@ -1487,14 +1580,6 @@ export const useSheetStore = create<SheetState>()(
               let covered = 0;
               for (let r = selection.anchorRow; r < selection.anchorRow + height; r++) if (hidden.has(r)) covered++;
               if (covered > 0) return { pasteWarning: { hidden: covered, text: externalText } };
-            }
-            if (sheet.template) {
-              // Size the guard to what would actually be written, not just the selected cell.
-              const height = s.clipboard?.rows.length ?? parseTsv(externalText ?? "").length;
-              const width = s.clipboard?.rows[0]?.length ?? parseTsv(externalText ?? "")[0]?.length ?? 1;
-              const endRow = selection.anchorRow + Math.max(0, height - 1);
-              const endCol = selection.anchorCol + Math.max(0, width - 1);
-              if (refusedByTemplate(sheet, selection.anchorRow, selection.anchorCol, endRow, endCol)) return {};
             }
             const { clipboard } = s;
             const targetRow = selection.anchorRow;
