@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { dateLiteral, formatSerial, isDateFormatCode, isoFromSerial, partsOfSerial, serialOf } from "./excelDate";
+import { formatNumberForDisplay } from "./cellFormat";
 
 /**
  * Dates as Excel keeps them (#45): a serial number of days, 1900 system, with the 29 February 1900
@@ -156,5 +157,19 @@ describe("a Buddhist-Era format shows the year Thai Excel does (#82)", () => {
 
   it("the Buddhist codes count as date codes", () => {
     for (const code of ["[$-107041E]d/m/yyyy;@", "dd/mm/bbbb", "[$-th-TH,107]d/m/yyyy"]) expect(isDateFormatCode(code), code).toBe(true);
+  });
+});
+
+// Checked in Excel (#219): a cell holding 0 under dd/mm/yyyy shows 00/01/1900, and one holding a
+// negative number under a date or [h]:mm code is filled with #. It used to show 31/12/1899 and
+// 30/12/1899, dates Excel never shows.
+describe("zero and negative values under a date or time format (#219)", () => {
+  it("shows 0 as 00/01/1900 in the grid", () => {
+    expect(formatNumberForDisplay(0, "date", "dd/mm/yyyy")).toBe("00/01/1900");
+  });
+
+  it("fills a negative value with # in the grid instead of inventing a date", () => {
+    expect(formatNumberForDisplay(-1, "date", "dd/mm/yyyy")).toBe("########");
+    expect(formatNumberForDisplay(-1.5, "time", "[h]:mm")).toBe("########");
   });
 });

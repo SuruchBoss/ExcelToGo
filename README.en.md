@@ -44,7 +44,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-2010%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-2013%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -65,7 +65,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 2010 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 2013 automated tests.
 
 ---
 
@@ -109,7 +109,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 2010 passing tests could not catch
+### 🧪 What 2013 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -120,7 +120,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 2010 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 2013 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -395,7 +395,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 2010-case Vitest suite |
+| `npm test` | Run the 2013-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -3041,7 +3041,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (2010 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (2013 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -3721,7 +3721,10 @@ unformatted.
 
 **Elapsed time counts past a day, as Excel does (#219)** — `[h]`, `[mm]` and `[ss]` count the total hours, minutes or
 seconds, not the time of day. 1.5 days in `[h]:mm` shows `36:00` (it used to show `12:00`), so a timesheet totalled in
-`[h]:mm` shows the real total, in the grid and in `TEXT` alike.
+`[h]:mm` shows the real total, in the grid and in `TEXT` alike. Zero and negative values show as Excel shows them
+too (checked in real Excel): 0 under `dd/mm/yyyy` is `00/01/1900` (it used to show `31/12/1899`, a date Excel never
+shows), a negative value under a date or time format shows `########` rather than an invented date, and `TEXT` of a
+negative value under a date or time code gives `#VALUE!`.
 
 **Not supported:** `MATCH` over a two-dimensional range — that returns `#N/A` rather than guessing a
 position inside a block. `MROUND` is not in the engine. Arithmetic that overflows (`10^308*10`) still
@@ -4093,13 +4096,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 2010 cases across 145 files, via Vitest
+npm test      # 2013 cases across 145 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 2010 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 2013 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -4218,10 +4221,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **2010 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **2013 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 2010 passing tests could not catch](#-what-2010-passing-tests-could-not-catch), repeatable
+> [What 2013 passing tests could not catch](#-what-2013-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4252,7 +4255,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `moveRefs.test.ts` | 7 | Reference rewriting for a cut and paste (#51): references into the block follow it with their `$`, everything outside and an untouched formula's text stay as they were, a range moves only when all of it was cut, a sheet name is added across sheets, a moved formula keeps naming the sheet it came from, a reference to a cell the block landed on becomes `#REF!`, and a cut under a filter moves only the rows it took |
 | `sheetSort.test.ts` | 13 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) · The header stays on top either way (#49): numbers under a word in any column, a label over an empty column, bold, a row with a number is not a header, a plain word list sorts whole |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
-| `excelDate.test.ts` | 17 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) and elapsed time past a day (`[h]:mm` of 1.5 days is `36:00`, #219) · Buddhist-Era dates (#82): every form in the issue as 15 Jan 2026, all twelve Thai months full, short and dotless, a two-digit year beside a Thai month, what must not be guessed (`2569`, `15/01/69`, `15/01/2024`), every Thai-calendar code plus `bbbb` and Thai month names |
+| `excelDate.test.ts` | 19 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) and elapsed time past a day (`[h]:mm` of 1.5 days is `36:00`, #219), 0 as `00/01/1900` and a negative value as `########` in the grid (#219) · Buddhist-Era dates (#82): every form in the issue as 15 Jan 2026, all twelve Thai months full, short and dotless, a two-digit year beside a Thai month, what must not be guessed (`2569`, `15/01/69`, `15/01/2024`), every Thai-calendar code plus `bbbb` and Thai month names |
 | `dateConvert.test.ts` | 6 | "Convert to dates" (#82): a two-digit B.E. year is 25yy and an A.D. one follows Excel's window, month-first and year-first orders, dates already readable written as ISO, unreadable text left alone, a range planned without empty cells or formulas |
 | `numberFormatCode.test.ts` | 6 | Excel number-format codes (#53): the issue's table (7%, 12.5%, $1,234.50, 1.235, 12,345), the old `0.00"%"` not multiplied, negative/zero sections, currency tags, scaling commas, literals between digits, and the fallback for fractions and scientific codes |
 | `numberFormats.test.ts` | 5 | Percent, currency and decimals through a real .xlsx both ways (#53): a file's codes shown and exported unchanged, the app's Percent ×100 and exported as `0.00%`, and old sheets in the browser and the cloud (format 1) still reading 50.00% |
