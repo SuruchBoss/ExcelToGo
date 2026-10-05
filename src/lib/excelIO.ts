@@ -700,9 +700,6 @@ export async function importWorkbookFromFile(file: File): Promise<ImportedSheet[
   });
 }
 
-/** The error values Excel writes into a file as `t="e"` cells. */
-const EXCEL_ERROR_CODES = new Set(["#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A"]);
-
 /** Whether a cell's format sets anything, so an empty cell that only carries a fill still goes out. */
 function hasAnyFormat(format: CellFormat | undefined): boolean {
   return !!format && Object.values(format).some((v) => v !== undefined && v !== false);
@@ -730,15 +727,13 @@ async function writeSheetToWorksheet(worksheet: ExcelJS.Worksheet, sheet: SheetM
         };
       } else if (raw === "") {
         // leave blank
-      } else if (EXCEL_ERROR_CODES.has(raw) && format?.numberFormat !== "text") {
-        // An error code as Excel spells it goes out as the error value, the way Excel itself stores
-        // `#N/A` typed into a cell. Written as text, a file that held `#DIV/0!` came back to Excel
-        // with SUM stepping over it (#227). An apostrophe or a Text format still keeps it text.
-        cell.value = { error: raw } as ExcelJS.CellErrorValue;
       } else {
         // The engine's own reading, not a second copy of it: a file that decided differently from
-        // the grid is how `0812345678` went out as the number 812345678 (#23).
-        cell.value = literalValue(raw, sheet.formats[r]?.[c]?.numberFormat) as string | number;
+        // the grid is how `0812345678` went out as the number 812345678 (#23). An error code goes
+        // out as the error value, as Excel stores `#N/A` typed into a cell (#227, #226); an
+        // apostrophe or a Text format still keeps it text.
+        const value = literalValue(raw, format?.numberFormat);
+        cell.value = isError(value) ? ({ error: value.code } as ExcelJS.CellErrorValue) : (value as string | number);
       }
 
       if (format?.bold || format?.color || format?.fontSize || format?.italic || format?.underline) {
