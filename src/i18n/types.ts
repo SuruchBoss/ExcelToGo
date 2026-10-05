@@ -94,6 +94,8 @@ export interface Messages {
     liveCellReadOnly: string;
     /** Under a live cell that was typed into (#207): which cell, and how to type over it after all. */
     liveCellRefused: (address: string) => string;
+    /** A paste, fill, cut or delete refused because it reached live cells (#232), which it names. */
+    liveCellsRefused: (cells: string) => string;
     /** Shown wherever a paginated source's table is only part of the data. */
     partial: (rows: number) => string;
     partialHint: string;
@@ -354,6 +356,8 @@ export interface Messages {
     lockedCell: string;
     /** Under a template cell that was typed into (#207). */
     lockedCellRefused: (address: string) => string;
+    /** The same for a template's structure (#232). */
+    lockedCellsRefused: (cells: string) => string;
     unlock: string;
     confirmUnlock: string;
     unlocked: string;
