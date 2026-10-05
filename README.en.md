@@ -44,7 +44,7 @@ right here, with the URL, the header and the data never passing through our serv
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Zustand" src="https://img.shields.io/badge/Zustand-5-443E38">
   <a href="https://excel-to-go.vercel.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_try_it-excel--to--go.vercel.app-2F9E44"></a>
-  <img alt="Vitest" src="https://img.shields.io/badge/tests-2004%20passing-2F9E44?logo=vitest&logoColor=white">
+  <img alt="Vitest" src="https://img.shields.io/badge/tests-2006%20passing-2F9E44?logo=vitest&logoColor=white">
   <img alt="CI" src="https://github.com/SuruchBoss/ExcelToGo/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -65,7 +65,7 @@ self-hosted, straight from PostgreSQL/MySQL — one saved read-only query, and n
 and full-fidelity Excel/PDF export, where a chart exported to `.xlsx` is a real, editable chart
 bound to its cells, because the OOXML chart parts are written by hand (ExcelJS writes none). Plus optional
 bring-your-own-backend cloud save and live co-editing over it — presence, last-writer-wins with the loser told, and
-an undo that does not erase the other person's work. Bilingual UI (Thai/English), 2004 automated tests.
+an undo that does not erase the other person's work. Bilingual UI (Thai/English), 2006 automated tests.
 
 ---
 
@@ -109,7 +109,7 @@ Want the harder parts: [embedding a Thai font in the PDF, with stacked tone mark
 
 ---
 
-### 🧪 What 2004 passing tests could not catch
+### 🧪 What 2006 passing tests could not catch
 
 Every test of the assistant **mocks the model** — it returns what I imagined it would. Put a real
 API key behind it, ask fourteen ordinary questions, and **six answers used functions this engine
@@ -120,7 +120,7 @@ Then **the first fix made it worse.** The rule started as "give the closest form
 allows", so _"join all the names into one line"_ came back as `=SUM(A2:A20)` — `0` in the cell, no
 error, nothing to notice. **A visible `#NAME?` traded for an invisible wrong number.**
 
-**And it happened again, in a different place.** With every gate green — 2004 tests, `axe` clean on
+**And it happened again, in a different place.** With every gate green — 2006 tests, `axe` clean on
 both pages at two widths — an hour of clicking through the public build the way a first-time visitor
 would found three things no gate can see:
 
@@ -395,7 +395,7 @@ Other available commands:
 | `npm run build` | Build a production bundle |
 | `npm run start` | Run the production build (run `npm run build` first) |
 | `npm run lint` | Check code quality with ESLint |
-| `npm test` | Run the 2004-case Vitest suite |
+| `npm test` | Run the 2006-case Vitest suite |
 | `npm run check:readme` | Check the READMEs still match the code (links/images/test count/new modules/both languages) |
 | `npm run check:screens` | Figures printed on a screenshot still match the source |
 | `npm run check:rls` | Two real accounts against your own Supabase: does the database refuse what the policies say it should (needs env) |
@@ -1191,9 +1191,9 @@ believe they had one.
   rather than reading an empty cell as 0). A moved formula keeps pointing where it did instead of shifting like a
   copy (`=A1*2` moved from B1 to C5 is still `=A1*2`). A range follows only when all of it was cut; one that reaches
   outside the block stays put. Moved to another sheet, a reference picks up the sheet's name. A block moved onto
-  part of itself empties only what it left. **Not supported yet:** a formula that read a destination cell the paste
-  covered goes on reading what landed there (Excel shows `#REF!`), and the source cells keep their formatting
-  rather than it moving with them.
+  part of itself empties only what it left. A formula that read a destination cell the paste covered becomes `#REF!`,
+  as in Excel (checked in real Excel). **Not supported yet:** a range reaching into the landing area stays as it was,
+  and the source cells keep their formatting rather than it moving with them.
 
 ### 🎨 Cell formatting
 
@@ -3037,7 +3037,7 @@ architecture behind it.
 | `@anthropic-ai/sdk` | Connects to the Claude API for the AI assistant |
 | `lucide-react` | UI icons |
 | `clsx` | Conditional className composition |
-| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (2004 cases) |
+| `vitest` | Unit tests for the formula engine, sort logic, JSON-to-table conversion, pagination, rate limiting, templates, file fidelity, conditional formatting and live blocks (2006 cases) |
 
 > **Note:** No off-the-shelf formula library (e.g. HyperFormula) is used — the **formula engine is hand-written**
 > (tokenizer, parser, evaluator, and functions) to keep full control over its behavior. See
@@ -4087,13 +4087,13 @@ the framework bundle itself, which isn't a trade worth making here. Written down
 ## 🧪 Testing
 
 ```bash
-npm test      # 2004 cases across 144 files, via Vitest
+npm test      # 2006 cases across 144 files, via Vitest
 ```
 
 Testing is focused on the **formula engine, sort logic, JSON-to-table conversion, pagination, rate-limit backoff, Excel templates and live-block placement** — pure functions with no React/DOM dependency, so
 they run fast and give high confidence.
 
-**But not one of those 2004 cases opens the app**, and nearly every bug this project found by hand lived in
+**But not one of those 2006 cases opens the app**, and nearly every bug this project found by hand lived in
 the wiring *between* pieces that all passed their tests — the toolbar's "+ row" called `addRow`, which
 announced nothing, while `insertRowAtSelection` next to it announced correctly (both tested) · the AI
 assistant sent a range including its text header, because the context builder read raw `sheet.cells`
@@ -4212,10 +4212,10 @@ once; disable `ArrowRight` in the grid and two assertions in the third fail. (Th
 second one stayed green: the `case` I inserted landed *after* the existing `case "ArrowRight"` and was dead
 code. Proving a gate means checking that the thing you meant to break actually broke.)
 
-> **2004 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
+> **2006 tests passed, and 43% of the assistant's answers were unusable** — because those tests mock
 > the model, so it returns what the test author imagined. A test count says what you thought to ask,
 > not whether you asked enough. Only a real API key found this: see
-> [What 2004 passing tests could not catch](#-what-2004-passing-tests-could-not-catch), repeatable
+> [What 2006 passing tests could not catch](#-what-2006-passing-tests-could-not-catch), repeatable
 > with `npm run check:ai`.
 
 | File | Cases | Tests |
@@ -4243,7 +4243,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `formulaCatalog.test.ts` | 12 | What the palette actually builds: criteria quoting, a half-filled second condition, and every formula having text in both languages |
 | `shift.test.ts` | 12 | Relative reference shifting on copy/paste; absolute references staying put |
 | `structuralShift.test.ts` | 16 | Reference adjustment on row/column insert/delete, including `#REF!` and range grow/shrink |
-| `moveRefs.test.ts` | 6 | Reference rewriting for a cut and paste (#51): references into the block follow it with their `$`, everything outside and an untouched formula's text stay as they were, a range moves only when all of it was cut, a sheet name is added across sheets, a moved formula keeps naming the sheet it came from, and a cut under a filter moves only the rows it took |
+| `moveRefs.test.ts` | 7 | Reference rewriting for a cut and paste (#51): references into the block follow it with their `$`, everything outside and an untouched formula's text stay as they were, a range moves only when all of it was cut, a sheet name is added across sheets, a moved formula keeps naming the sheet it came from, a reference to a cell the block landed on becomes `#REF!`, and a cut under a filter moves only the rows it took |
 | `sheetSort.test.ts` | 13 | The bounds/header-detection heuristic, and sorting itself (blank values, limited column scope) · The header stays on top either way (#49): numbers under a word in any column, a label over an empty column, bold, a row with a number is not a header, a plain word list sorts whole |
 | `jsonToTable.test.ts` | 14 | Finding the record array in a response, flattening nested objects, numeric-column detection, single-row KPI objects, an empty list in an envelope as no rows rather than a row of the envelope (#65), CSV codes keeping their leading zeros all the way to the sheet (#36) |
 | `excelDate.test.ts` | 17 | Dates as Excel keeps them (#45): 1900-system serials matching Excel, including its 29 Feb 1900; the ISO forms read as dates (others stay text); Excel date format codes (`dd/mm/yyyy`, `d-mmm-yy`, `h:mm AM/PM`) and elapsed time past a day (`[h]:mm` of 1.5 days is `36:00`, #219) · Buddhist-Era dates (#82): every form in the issue as 15 Jan 2026, all twelve Thai months full, short and dotless, a two-digit year beside a Thai month, what must not be guessed (`2569`, `15/01/69`, `15/01/2024`), every Thai-calendar code plus `bbbb` and Thai month names |
@@ -4286,7 +4286,7 @@ code. Proving a gate means checking that the thing you meant to break actually b
 | `store/pivotSize.test.ts` | 6 | A summary sheet as big as its answer (#56): all 35 products with the Grand total row in bold, all twelve months with the Grand total column, the same after a refresh, a small result still opening on a 30×10 sheet with room to work, a result too big for a sheet built nowhere and its size said, and a refresh too big for one alerting while the old pivot stays |
 | `store/pivotError.test.ts` | 2 | A pivot over a source with an error (#222): Sum, Average, Min and Max of the group holding `#DIV/0!` and the Grand total show `#DIV/0!` while the other group keeps its number, when built and when refreshed after the source gains the error |
 | `store/errorLiterals.test.ts` | 4 | An error code held in a cell as a value is the error (#226), by every way in: typed (`SUM` gives `#DIV/0!`, `IFERROR`/`IFNA` catch it), pasted as Excel copies it (`#1`, `#N/A please`, `'#N/A` stay text), opened from a file (a `t="e"` cell is the error, a string cell reading `#N/A` stays text), and `SUM`/`IFERROR` over a pivot sheet holding an error |
-| `store/cutMove.test.ts` | 7 | Cut and paste is a move, as in Excel (#51): a formula reading the moved cell follows it with the same value, a moved formula keeps pointing where it did, a block that refers to itself still does at its new place, a block moved onto part of itself empties what it left and moves references once, a range name follows, across sheets with one undo, and a copy still shifting as a copy |
+| `store/cutMove.test.ts` | 8 | Cut and paste is a move, as in Excel (#51): a formula reading the moved cell follows it with the same value, a moved formula keeps pointing where it did, a formula reading a cell the paste covered says `#REF!`, a block that refers to itself still does at its new place, a block moved onto part of itself empties what it left and moves references once, a range name follows, across sheets with one undo, and a copy still shifting as a copy |
 | `store/dateEntry.test.ts` | 5 | Entering a date as a person does (#45): `=TODAY()`/`=DATE()`/`=NOW()` formatted as dates while the cell is General, a date and time widening a default-width column, picking a date format replacing the file's layout |
 | `store/convertDates.test.ts` | 5 | "Convert to dates" and "Date (B.E.)" through the store (#82): converted cells show the Buddhist year while unreadable ones and formulas stay, A.D. month-first, one undo for all, a chosen format kept, the B.E. format shown and switched back |
 | `store/sampleNotice.test.ts` | 19 | Opening blank, the sample opened by its button and undone, a sample left in the browser (either language) not restored while one edit of any kind makes it work, New file undone and announced, the sample notice only while untouched, and the sample following the language on screen |

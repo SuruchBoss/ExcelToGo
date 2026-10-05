@@ -46,6 +46,17 @@ describe("moveFormulaRefs (#51)", () => {
     expect(moveFormulaRefs("B1", across, { readSheet: "Sheet1", writeSheet: "Sheet2" })).toBe("C5");
   });
 
+  it("a reference to a cell the block landed on becomes #REF!, as in Excel; a range into it stays", () => {
+    // D1 cut and pasted onto H1, while F1 read H1 (checked in Excel).
+    const onto = blockMove("Sheet1", "Sheet1", { row: 0, col: 3 }, { row: 0, col: 3 }, { row: 0, col: 7 });
+    expect(moveFormulaRefs("H1", onto, here)).toBe("#REF!");
+    expect(moveFormulaRefs("Sheet1!H1+1", onto, { readSheet: "Sheet2", writeSheet: "Sheet2" })).toBe("#REF!+1");
+    expect(moveFormulaRefs("D1*2", onto, here)).toBe("H1*2");
+    expect(moveFormulaRefs("SUM(H1:H3)", onto, here)).toBe("SUM(H1:H3)");
+    // H1 on another sheet is not where the block landed.
+    expect(moveFormulaRefs("H1", onto, { readSheet: "Sheet2", writeSheet: "Sheet2" })).toBe("H1");
+  });
+
   it("under a filter, only the rows that were cut move, and a range over a hidden row stays", () => {
     // Rows 2 and 4 cut (row 3 hidden), pasted at row 10 and 11.
     const filtered: CellMove = {
